@@ -774,7 +774,7 @@ function ExamGeneralFormBody({
         </p>
       )}
       {exam && exam.servingVersion !== null && canModify && !isDiscontinued && (
-        <p role="note" className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary-50 px-4 py-3 text-body text-text">
+        <p role="note" className="flex items-start gap-2 rounded-lg border border-border-primary bg-primary-50 px-4 py-3 text-body text-text">
           <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-primary-text" />
           {tGeneral("workingDraftBanner", { version: exam.servingVersion })}
         </p>

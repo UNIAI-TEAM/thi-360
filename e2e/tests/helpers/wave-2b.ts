@@ -519,7 +519,7 @@ async function fillOverviewCell(page: Page, name: RegExp, value: number | undefi
  */
 export async function fillExamStep1InUi(page: Page, spec: UiExamSpec): Promise<void> {
   await page.goto(`${ADMIN_URL}/exams/new`);
-  await expect(page.getByRole("banner", { name: "Tạo bài thi" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tạo bài thi", level: 1 })).toBeVisible();
   await expect(page.getByRole("form", { name: "Tạo bài thi" })).toBeVisible();
   await page.getByRole("combobox", { name: /^Kỳ thi/ }).click();
   await page.getByRole("option", { name: KIND_LABEL[spec.kind] }).click();
@@ -593,10 +593,10 @@ export async function createExamInUi(page: Page, spec: UiExamSpec): Promise<stri
   return submitExamStep1InUi(page, spec);
 }
 
-/** Bước 2 vừa mở: dòng "Tổng số câu" của khối Tổng hợp cấu trúc khớp `questions`. */
+/** Bước 2 vừa mở: dòng "Số câu" của khối Tổng hợp cấu trúc ở đầu trang khớp `questions`. */
 export async function expectStructureQuestions(page: Page, questions: RegExp): Promise<void> {
   const summary = page.getByLabel("Tổng hợp cấu trúc");
-  await expect(summary.locator("div").filter({ has: page.getByText("Tổng số câu", { exact: true }) }).locator("dd")).toHaveText(questions);
+  await expect(summary.locator("div").filter({ has: summary.locator("dt", { hasText: /^Số câu$/ }) }).locator("dd")).toHaveText(questions);
 }
 
 /** Bấm "Lưu" của bước 2 và đợi máy chủ nhận (PUT 200); sau lưu không còn thay đổi chưa lưu nên nút Lưu tắt. */

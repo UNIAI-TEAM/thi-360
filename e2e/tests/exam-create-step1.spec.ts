@@ -15,7 +15,7 @@ test("Tạo bài thi HSA Toàn bài ở bước 1 rồi vào bước 2", async (
   await expect(form).toBeVisible();
 
   // HSA là kỳ thi đầu danh mục: ô chọn Kỳ thi, Toàn bài, bảng tổng quan nạp số của mẫu mặc định, không có ô chọn phiên bản.
-  await expect(page.getByRole("banner", { name: "Tạo bài thi" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Tạo bài thi", level: 1 })).toBeVisible();
   await expect(page.getByRole("combobox", { name: /^Kỳ thi/ })).toContainText("HSA");
   await expect(page.getByRole("radio", { name: /^Toàn bài/ })).toBeChecked();
   const editorNav = page.getByRole("navigation", { name: "Các phần của bài thi" });

@@ -30,7 +30,7 @@ function ExamEditorCreateLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <header aria-label={t("create.title")} className="flex flex-col gap-3">
+      <header className="flex flex-col gap-3">
         <Link
           href="/exams"
           className="inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text"

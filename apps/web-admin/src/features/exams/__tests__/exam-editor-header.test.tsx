@@ -70,12 +70,13 @@ describe("ExamEditorLayout & ExamEditorHeader (AC-01, AC-02)", () => {
   it("AC-01: chế độ tạo mới (!examId) hiện link quay lại /exams, thanh 5 tab với Thông tin chung đang chọn và 4 tab sau khóa tĩnh không bọc thẻ <a>", () => {
     window.history.replaceState(null, "", "/exams/new");
     renderExamsUi(
-      <ExamEditorLayout>
-        <div data-testid="create-child">Nội dung tạo bài</div>
-      </ExamEditorLayout>,
+      <main>
+        <ExamEditorLayout>
+          <div data-testid="create-child">Nội dung tạo bài</div>
+        </ExamEditorLayout>
+      </main>,
     );
 
-    expect(screen.getByRole("banner", { name: "Tạo bài thi" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Danh sách bài thi" })).toHaveAttribute("href", "/exams");
     expect(screen.getByRole("heading", { name: "Tạo bài thi", level: 1 })).toBeInTheDocument();
     expect(screen.getByTestId("create-child")).toBeInTheDocument();
