@@ -23,6 +23,8 @@ import {
   type AudioPlayAdapter,
   type AudioPlaybackSnapshot,
   Question,
+  filterAudioAttachments,
+  isAudioMime,
   orderById,
 } from "@thi360/ui/question";
 import { buildLoginUrl } from "@thi360/web-kit/redirect";
@@ -130,10 +132,6 @@ function extractAttemptAssetId(url: string | undefined): string | null {
   if (!url) return null;
   const match = url.match(/\/assets\/([^/?#]+)/i);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
-function isAudioMime(mime: string | undefined | null): boolean {
-  return Boolean(mime?.trim().toLowerCase().startsWith("audio/"));
 }
 
 export interface AttemptPlayerProps {
@@ -1005,9 +1003,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     };
     pushList(activeUnit.attachments);
     for (const child of activeUnit.childItems) {
-      const childAudio = sanitizeItemAttachments(child.attachments, attemptId).filter((att) =>
-        isAudioMime(att.mime),
-      );
+      const childAudio = filterAudioAttachments(sanitizeItemAttachments(child.attachments, attemptId));
       pushList(childAudio);
     }
     return merged;

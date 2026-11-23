@@ -1,7 +1,7 @@
 "use client";
 
 import { Slot } from "@radix-ui/react-slot";
-import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
+import { isValidElement, useEffect, useRef, type ComponentProps, type HTMLAttributes, type ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { followActiveTab } from "../lib/reveal-tab";
 import { focusRing } from "../lib/styles";
@@ -40,13 +40,60 @@ export function NavTabs({ className, children, ...props }: NavTabsProps) {
 export type NavTabProps = {
   /** Mục của trang đang mở. */
   current?: boolean;
+  /** Vô hiệu hóa mục điều hướng: hiển thị dạng chữ tĩnh không nhận click/phím và bỏ qua `asChild`/`href`. */
+  disabled?: boolean;
   /** Bọc liên kết của ứng dụng (ví dụ `<Link>` của Next) thay cho thẻ `<a>` mặc định. */
   asChild?: boolean;
   className?: string;
   children: ReactNode;
 } & Omit<ComponentProps<"a">, "children" | "className" | "aria-current">;
 
-export function NavTab({ current = false, asChild = false, className, children, ...props }: NavTabProps) {
+function extractDisabledSpanAttributes(props: Record<string, unknown>): HTMLAttributes<HTMLSpanElement> {
+  const safe: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (
+      key === "id" ||
+      key === "title" ||
+      key === "lang" ||
+      key === "dir" ||
+      key === "style" ||
+      (key.startsWith("data-") && key !== "data-disabled") ||
+      (key.startsWith("aria-") && key !== "aria-current" && key !== "aria-disabled")
+    ) {
+      safe[key] = value;
+    }
+  }
+  return safe as HTMLAttributes<HTMLSpanElement>;
+}
+
+export function NavTab({
+  current = false,
+  disabled = false,
+  asChild = false,
+  className,
+  children,
+  ...props
+}: NavTabProps) {
+  if (disabled) {
+    const content =
+      asChild && isValidElement<{ children?: ReactNode }>(children) ? children.props.children : children;
+    return (
+      <li className="shrink-0">
+        <span
+          {...extractDisabledSpanAttributes(props)}
+          aria-disabled="true"
+          data-disabled=""
+          className={cn(
+            "relative inline-flex h-10 cursor-not-allowed items-center justify-center rounded-md px-4 text-label font-medium whitespace-nowrap text-text-muted/60 select-none",
+            className,
+          )}
+        >
+          {content}
+        </span>
+      </li>
+    );
+  }
+
   const Comp = asChild ? Slot : "a";
   return (
     <li className="shrink-0">

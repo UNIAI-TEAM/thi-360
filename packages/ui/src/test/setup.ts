@@ -32,3 +32,18 @@ window.matchMedia ??= (query: string) =>
     removeListener: () => {},
     dispatchEvent: () => false,
   }) as MediaQueryList;
+
+// jsdom không đo layout: ProseMirror/TipTap gọi getClientRects khi scrollToSelection/paste.
+const emptyDomRectList = {
+  length: 0,
+  item: () => null,
+  [Symbol.iterator]: function* () {},
+} as unknown as DOMRectList;
+
+if (typeof Range !== "undefined") {
+  Range.prototype.getClientRects ??= () => emptyDomRectList;
+  Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+}
+if (typeof Element !== "undefined") {
+  Element.prototype.getClientRects ??= () => emptyDomRectList;
+}
