@@ -10,7 +10,7 @@ import { findBlock, type StructureSelection } from "./exam-structure-draft";
 import { optionLabel, type StructureNames } from "./exam-structure-issues";
 import { ExamName } from "./exam-review-shared";
 
-export interface ExamStructureListProps {
+interface ExamStructureListProps {
   parts: readonly ExamPart[];
   /** Mã bài thi của các phần theo mã trong bản làm việc (R-24). */
   combinations: readonly StructureCombination[];

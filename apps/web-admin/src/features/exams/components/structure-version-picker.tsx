@@ -6,13 +6,13 @@ import { useState } from "react";
 import { matchingTemplates } from "../create-exam-schema";
 import { partTypeCounts } from "../part-type-counts";
 import { useApplyExamTemplate } from "../queries";
-import { ExamsApiError } from "../review-api";
+import { ExamsApiError } from "../errors";
 import type { ExamDetail, ExamPart, ExamTemplate, StructureOverviewPolicy } from "../types";
 import { ExamName, richNodes } from "./exam-review-shared";
 import { ReloadStructureDialog, type ReloadPartRow } from "./reload-structure-dialog";
 import { StructureOverviewConfirmDialog } from "./structure-overview-confirm-dialog";
 
-export interface StructureVersionPickerProps {
+interface StructureVersionPickerProps {
   exam: ExamDetail;
   templates: readonly ExamTemplate[];
   /** Bản nháp đang có thay đổi chưa lưu: sẽ mất khi nạp lại. */

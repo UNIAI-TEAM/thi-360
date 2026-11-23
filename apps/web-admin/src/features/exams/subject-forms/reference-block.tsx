@@ -41,7 +41,7 @@ import type { SubjectFormEntry } from "./registry";
 
 type PercentIssue = Extract<BlockIssue, { code: "PERCENT_TOTAL" }>;
 
-export interface ReferenceBlockProps {
+interface ReferenceBlockProps {
   section: ExamSection;
   entry: SubjectFormEntry;
   axes: MatrixAxes;

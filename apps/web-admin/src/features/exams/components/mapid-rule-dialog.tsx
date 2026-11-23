@@ -24,9 +24,7 @@ import type { ContentReference, KnowledgeRef } from "@/features/content/types";
 import { countFromPercent } from "../allocation";
 import { checkMapidRuleConflicts } from "../mapid-rule-form-conflicts";
 import {
-  describeRule,
   emptyRuleForm,
-  formatRuleTopicNames,
   formFromRule,
   groupSize,
   type MapidRuleForm,
@@ -42,12 +40,13 @@ import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
 import { ExamContentText, markExamContent } from "./exam-content-text";
 import { draftId } from "./exam-structure-draft";
+import { useMapidRuleText } from "./mapid-rules-table";
 
 const SUBJECT_SCOPE = "__subject__";
 const ALL_RULE_TYPES: readonly MapidRuleType[] = ["PRESENT", "COUNT", "ONLY_IN_GROUP", "SOURCE"];
 const SUBJECT_RULE_TYPES: readonly MapidRuleType[] = ["PRESENT", "COUNT", "SOURCE"];
 
-export interface MapidRuleDialogProps {
+interface MapidRuleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Môn đang sửa: `mapidRules` và số câu của môn (mẫu số của quy tắc cả môn). */
@@ -92,10 +91,10 @@ export function MapidRuleDialog(props: MapidRuleDialogProps) {
 
 function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange, onSave, onOpenRule }: MapidRuleDialogProps) {
   const t = useTranslations("exams.mapidRules.dialog");
-  const tMapid = useTranslations("exams.mapidRules");
   const tContent = useTranslations("content");
   const tGroups = useTranslations("exams.structure.subject.groups");
   const format = useFormatter();
+  const ruleText = useMapidRuleText(reference);
 
   const withNumberId = useId();
   const typeErrorId = useId();
@@ -199,41 +198,6 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
 
   const visibleTypes = form.groupId === null ? SUBJECT_RULE_TYPES : ALL_RULE_TYPES;
 
-  const formatTopics = (nodeIds: readonly string[], marked = false) =>
-    formatRuleTopicNames(
-      nodeIds,
-      knowledgeIndex,
-      (items) => format.list(items, { type: "disjunction" }),
-      marked ? markExamContent : undefined,
-    );
-
-  const ruleSentenceText = (targetRule: MapidRule, marked: boolean): string => {
-    const data = describeRule(view, targetRule);
-    const groupLabel = data.group
-      ? data.group.name
-        ? marked
-          ? markExamContent(data.group.name)
-          : data.group.name
-        : tMapid("untitledGroup")
-      : data.deletedGroupName
-        ? tMapid("groupDeleted", { name: marked ? markExamContent(data.deletedGroupName) : data.deletedGroupName })
-        : tMapid("scopeDeleted");
-    const scopeLabel = data.scope === "SUBJECT" ? tMapid("scopeSubject") : groupLabel;
-    return tMapid(`sentence.${data.kind}`, {
-      scope: scopeLabel,
-      group: groupLabel,
-      topics: formatTopics(targetRule.nodeIds, marked),
-      amount: data.amount ?? "",
-    });
-  };
-
-  const scopeLabelForGroupId = (groupId: string | null): string => {
-    if (groupId === null) return tMapid("scopeSubject");
-    const target = groups.find((item) => item.id === groupId);
-    if (!target) return tMapid("scopeDeleted");
-    return target.name ? markExamContent(target.name) : tMapid("untitledGroup");
-  };
-
   const blockingNumberIssue = issues.find(
     (item): item is Extract<RuleIssue, "PERCENT_RANGE" | "PERCENT_POOL" | "PERCENT_DENOMINATOR_UNKNOWN" | "COUNT_ABOVE_GROUP" | "COUNT_ABOVE_TOTAL"> =>
       item === "PERCENT_RANGE" ||
@@ -286,7 +250,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     if (form.type === null) return t("summary.pendingType");
     if (form.nodeIds.length === 0) return t("summary.pendingNodes");
     if (needsNumber && (numberInvalid || issues.includes("PERCENT_RANGE"))) return t("summary.pendingCondition");
-    const topics = formatTopics(form.nodeIds, true);
+    const topics = ruleText.topics(form.nodeIds, true);
     const scopePhrase =
       form.groupId === null
         ? section.questionCount === null
@@ -334,19 +298,19 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     if (!showCrossCheck) return "";
     if (crossCheck.kind === "EQUIVALENT") {
       return t("conflict.EQUIVALENT", {
-        scope: scopeLabelForGroupId(form.groupId),
-        topics: formatTopics(form.nodeIds, true),
-        rule: ruleSentenceText(crossCheck.relatedRules[0]!, true),
+        scope: ruleText.scopeLabel(groups, form.groupId),
+        topics: ruleText.topics(form.nodeIds, true),
+        rule: ruleText.sentence(view, crossCheck.relatedRules[0]!, true),
       });
     }
     if (crossCheck.kind === "SUBSUMED_BY") {
       return t("conflict.SUBSUMED_BY", {
-        rule: ruleSentenceText(crossCheck.relatedRules[0]!, true),
+        rule: ruleText.sentence(view, crossCheck.relatedRules[0]!, true),
       });
     }
     if (crossCheck.kind === "SUBSUMES") {
       const rulesList = format.list(
-        crossCheck.relatedRules.map((item) => ruleSentenceText(item, true)),
+        crossCheck.relatedRules.map((item) => ruleText.sentence(view, item, true)),
         { type: "conjunction" },
       );
       const key =
@@ -367,15 +331,15 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     }
 
     const firstRelated = crossCheck.relatedRules[0];
-    const relatedSentence = firstRelated ? ruleSentenceText(firstRelated, true) : "";
+    const relatedSentence = firstRelated ? ruleText.sentence(view, firstRelated, true) : "";
     const rulesList = format.list(
-      crossCheck.relatedRules.map((item) => ruleSentenceText(item, true)),
+      crossCheck.relatedRules.map((item) => ruleText.sentence(view, item, true)),
       { type: "conjunction" },
     );
-    const topics = formatTopics(crossCheck.nodeIds, true);
-    const scope = scopeLabelForGroupId(crossCheck.scopeGroupId);
-    const onlyGroup = crossCheck.onlyGroupId !== undefined ? scopeLabelForGroupId(crossCheck.onlyGroupId) : scope;
-    const otherGroup = crossCheck.otherGroupId !== undefined ? scopeLabelForGroupId(crossCheck.otherGroupId) : scope;
+    const topics = ruleText.topics(crossCheck.nodeIds, true);
+    const scope = ruleText.scopeLabel(groups, crossCheck.scopeGroupId);
+    const onlyGroup = crossCheck.onlyGroupId !== undefined ? ruleText.scopeLabel(groups, crossCheck.onlyGroupId) : scope;
+    const otherGroup = crossCheck.otherGroupId !== undefined ? ruleText.scopeLabel(groups, crossCheck.otherGroupId) : scope;
     if (crossCheck.code === "CAPACITY_EXCEEDED") {
       return t(crossCheck.scopeGroupId === null ? "conflict.CAPACITY_EXCEEDED_SUBJECT" : "conflict.CAPACITY_EXCEEDED_GROUP", {
         scope,
@@ -679,14 +643,14 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                         size="sm"
                         className="h-auto min-h-9 min-w-0 max-w-full whitespace-normal py-1.5 text-left [&>span]:min-w-0 [&>span]:max-w-full"
                         data-testid={`mapid-rule-open-${related.id}`}
-                        aria-label={t("conflict.openRuleNamed", { rule: ruleSentenceText(related, false) })}
+                        aria-label={t("conflict.openRuleNamed", { rule: ruleText.sentence(view, related, false) })}
                         onClick={() => onOpenRule(related.id)}
                       >
                         <span className="min-w-0 wrap-anywhere">
                           {crossCheck.relatedRules.length === 1 ? (
                             t("conflict.openRule")
                           ) : (
-                            <ExamContentText text={t("conflict.openRuleNamed", { rule: ruleSentenceText(related, true) })} />
+                            <ExamContentText text={t("conflict.openRuleNamed", { rule: ruleText.sentence(view, related, true) })} />
                           )}
                         </span>
                       </Button>

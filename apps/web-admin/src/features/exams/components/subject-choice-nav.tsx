@@ -7,7 +7,7 @@ import type { ExamPartOption } from "../types";
 import type { StructureNames } from "./exam-structure-issues";
 import { optionLabel } from "./exam-structure-issues";
 
-export interface SubjectChoiceNavProps {
+interface SubjectChoiceNavProps {
   option: ExamPartOption;
   sectionId: string;
   names: StructureNames;

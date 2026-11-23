@@ -39,10 +39,9 @@ function openStructure(examId: string, search = "") {
 }
 
 const list = () => screen.findByRole("navigation", { name: "Cấu trúc" });
-/** Đường dẫn "Sửa thông tin tổng quan" của đầu trang: nằm cạnh bảng tổng hợp cấu trúc, không lẫn với đường dẫn của các ô chỉ đọc. */
+/** Đường dẫn ngữ cảnh "Sửa thông tin tổng quan" cạnh ô số câu chỉ đọc của phần đang mở (về `/exams/<id>`). */
 async function headerEditLink() {
-  const summary = await screen.findByLabelText("Tổng hợp cấu trúc");
-  return within(summary.parentElement!).getByRole("link", { name: "Sửa thông tin tổng quan" });
+  return (await screen.findAllByRole("link", { name: "Sửa thông tin tổng quan" }))[0]!;
 }
 const dialogName = "Lưu thay đổi của Phần 1 · Toán học?";
 
@@ -523,8 +522,9 @@ describe("Khung bước 2: nút kiểm tra", () => {
       expect(within(titleRow).getByRole("button", { name })).toBeInTheDocument();
     }
     expect(within(titleRow).queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
-    // Nút ở đầu màn Cấu trúc (không nằm ở hàng nút của khung); các đường dẫn cạnh ô số câu chỉ đọc đứng sau nó.
-    expect(screen.getAllByRole("link", { name: "Sửa thông tin tổng quan" }).length).toBeGreaterThanOrEqual(1);
+    // Dải tổng hợp và nút Sửa thông tin tổng quan trùng ở đầu Tab 2 đã bỏ (R-10.1, AC-15).
+    expect(screen.queryByLabelText("Tổng hợp cấu trúc")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
     const detailTitle = await screen.findByRole("heading", { level: 2, name: /Toán/ });
     expect(detailTitle.parentElement!.parentElement!).toContainElement(screen.getByRole("button", { name: "Kiểm tra môn" }));
     titleRow.remove();

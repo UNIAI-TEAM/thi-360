@@ -12,7 +12,7 @@ import { ChoiceCardGroup } from "./create-exam-fields";
 
 /** Số ý của câu Đúng/Sai cho phép trong bảng điểm mong đợi. */
 export const MIN_STATEMENTS = 2;
-export const MAX_STATEMENTS = 8;
+const MAX_STATEMENTS = 8;
 
 function round(value: number): number {
   return Math.round(value * 10_000) / 10_000;
@@ -34,7 +34,7 @@ export function defaultTrueFalseTable(defaults: ScoringDefaults | null, points: 
   return table.map((value) => round((value * points) / max));
 }
 
-export type TrueFalseTableIssue = "LAST_NOT_POINTS" | "DECREASING";
+type TrueFalseTableIssue = "LAST_NOT_POINTS" | "DECREASING";
 
 /** Bảng hợp lệ: không giảm khi đúng thêm ý, phần tử cuối bằng điểm mỗi câu của khối. */
 export function trueFalseTableIssues(table: readonly number[], points: number): TrueFalseTableIssue[] {
@@ -60,7 +60,7 @@ export function expectedScoringFor(
   return undefined;
 }
 
-export interface BlockScoringEditorProps {
+interface BlockScoringEditorProps {
   block: QuestionBlock;
   /** Quy tắc chấm mặc định của kỳ thi; `null` khi chưa tải được danh mục. */
   defaults: ScoringDefaults | null;

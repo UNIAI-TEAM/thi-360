@@ -1,21 +1,13 @@
 "use client";
 
-import {
-  Button,
-  cn,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  focusRing,
-} from "@thi360/ui";
+import { cn, focusRing } from "@thi360/ui";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import type { ExamDetail, ExamPart, ExamTemplate, StructureOverviewPolicy } from "../types";
+import { ChoiceCardGroup, type ChoiceCardOption } from "./choice-card-group";
+import { ReloadDialogShell } from "./reload-structure-dialog";
 
-export interface StructureOverviewConfirmDialogProps {
+interface StructureOverviewConfirmDialogProps {
   open: boolean;
   exam: ExamDetail;
   /** Mẫu đang dùng của bài; `undefined` khi mẫu không còn trong danh sách. */
@@ -88,7 +80,7 @@ export function StructureOverviewConfirmDialog({
 
   const cell = (value: number | null, minutes: boolean) =>
     value === null ? "—" : minutes ? t("valueMinutes", { count: value }) : format.number(value, { maximumFractionDigits: 2 });
-  const options: Array<{ value: StructureOverviewPolicy; label: string; hint: string }> = [
+  const options: ChoiceCardOption<StructureOverviewPolicy>[] = [
     {
       value: "KEEP_EDITED",
       label: t("keepEdited"),
@@ -106,83 +98,63 @@ export function StructureOverviewConfirmDialog({
   ];
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (!next && !loading ? onCancel() : undefined)}>
-      <DialogContent size="lg" closeLabel={t("close")} data-testid="overview-confirm-dialog">
-        <DialogHeader>
-          <p className="text-caption font-semibold text-text-muted">{t("step")}</p>
-          <DialogTitle>{t("title")}</DialogTitle>
-          <DialogDescription>{t("description")}</DialogDescription>
-        </DialogHeader>
-        {rows.length > 0 && (
-          <div role="region" tabIndex={0} aria-label={t("tableCaption")} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
-            <table className="w-full min-w-[32rem] border-collapse text-body tabular-nums">
-              <caption className="sr-only">{t("tableCaption")}</caption>
-              <thead>
-                <tr className="bg-subtle text-left text-caption text-text-muted">
-                  <th scope="col" className="px-3 py-2 font-semibold">{t("columnItem")}</th>
-                  <th scope="col" className="px-2 py-2 text-right font-semibold">{t("columnTemplate")}</th>
-                  <th scope="col" className="px-2 py-2 text-right font-semibold">{t("columnEdited")}</th>
-                  <th scope="col" className="px-3 py-2 text-right font-semibold">{t("columnNext")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const changed = row.template !== null && row.edited !== null && row.template !== row.edited;
-                  return (
-                    <tr key={row.key} className="border-t border-border">
-                      <th scope="row" className="px-3 py-2 text-left font-semibold text-text">{row.label}</th>
-                      <td className="px-2 py-2 text-right text-text-secondary">{cell(row.template, row.minutes)}</td>
-                      <td className={cn("px-2 py-2 text-right", changed ? "font-bold text-warning" : "text-text-secondary")}>
-                        {cell(row.edited, row.minutes)}
-                        {changed && <span> · {t("edited")}</span>}
-                      </td>
-                      <td className="px-3 py-2 text-right text-text-secondary">{cell(row.next, row.minutes)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <fieldset className="flex flex-col gap-2" disabled={loading}>
-          <legend className="sr-only">{t("legend")}</legend>
-          {options.map((option) => (
-            <label
-              key={option.value}
-              className={cn(
-                "flex cursor-pointer items-start gap-2.5 rounded-md border p-3 transition-colors duration-150 motion-reduce:transition-none",
-                policy === option.value ? "border-primary-text bg-primary-50" : "border-border bg-surface hover:border-border-strong",
-              )}
-            >
-              <input
-                type="radio"
-                name="overview-policy"
-                value={option.value}
-                checked={policy === option.value}
-                onChange={() => setPolicy(option.value)}
-                className={cn("mt-0.5 size-4 shrink-0 accent-primary-fill", focusRing)}
-              />
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="font-semibold text-text">{option.label}</span>
-                <span className="text-text-muted">{option.hint}</span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-        {error && (
-          <p role="alert" className="rounded-md border border-danger/30 bg-danger-bg px-3 py-2 text-body text-danger">
-            {error}
-          </p>
-        )}
-        <DialogFooter>
-          <Button type="button" variant="secondary" disabled={loading} onClick={onCancel}>
-            {t("cancel")}
-          </Button>
-          <Button type="button" loading={loading} onClick={() => onConfirm(policy)}>
-            {t("confirm")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ReloadDialogShell
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onCancel();
+      }}
+      size="lg"
+      closeLabel={t("close")}
+      testId="overview-confirm-dialog"
+      step={t("step")}
+      title={t("title")}
+      description={t("description")}
+      cancelLabel={t("cancel")}
+      confirmLabel={t("confirm")}
+      loading={loading}
+      error={error}
+      onConfirm={() => onConfirm(policy)}
+    >
+      {rows.length > 0 && (
+        <div role="region" tabIndex={0} aria-label={t("tableCaption")} className={cn("overflow-x-auto rounded-md border border-border", focusRing)}>
+          <table className="w-full min-w-[32rem] border-collapse text-body tabular-nums">
+            <caption className="sr-only">{t("tableCaption")}</caption>
+            <thead>
+              <tr className="bg-subtle text-left text-caption text-text-muted">
+                <th scope="col" className="px-3 py-2 font-semibold">{t("columnItem")}</th>
+                <th scope="col" className="px-2 py-2 text-right font-semibold">{t("columnTemplate")}</th>
+                <th scope="col" className="px-2 py-2 text-right font-semibold">{t("columnEdited")}</th>
+                <th scope="col" className="px-3 py-2 text-right font-semibold">{t("columnNext")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const changed = row.template !== null && row.edited !== null && row.template !== row.edited;
+                return (
+                  <tr key={row.key} className="border-t border-border">
+                    <th scope="row" className="px-3 py-2 text-left font-semibold text-text">{row.label}</th>
+                    <td className="px-2 py-2 text-right text-text-secondary">{cell(row.template, row.minutes)}</td>
+                    <td className={cn("px-2 py-2 text-right", changed ? "font-bold text-warning" : "text-text-secondary")}>
+                      {cell(row.edited, row.minutes)}
+                      {changed && <span> · {t("edited")}</span>}
+                    </td>
+                    <td className="px-3 py-2 text-right text-text-secondary">{cell(row.next, row.minutes)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <ChoiceCardGroup
+        layout="stack"
+        ariaLabel={t("legend")}
+        name="overview-policy"
+        value={policy}
+        onChange={setPolicy}
+        disabled={loading}
+        options={options}
+      />
+    </ReloadDialogShell>
   );
 }

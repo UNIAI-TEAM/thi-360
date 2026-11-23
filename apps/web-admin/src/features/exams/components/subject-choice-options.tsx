@@ -12,7 +12,7 @@ import type { MatrixLabels } from "./block-matrix-editor";
 import type { StructureNames } from "./exam-structure-issues";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
 
-export interface SubjectChoiceOptionsProps {
+interface SubjectChoiceOptionsProps {
   option: ExamPartOption;
   names: StructureNames;
   axes: MatrixAxes;

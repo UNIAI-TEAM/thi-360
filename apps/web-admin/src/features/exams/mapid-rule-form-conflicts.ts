@@ -2,7 +2,7 @@ import type { KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
 import { ruleCount, ruleUnits } from "./mapid-rules";
 import type { ExamSection, MapidRule } from "./types";
 
-export type MapidRuleConflictCode =
+type MapidRuleConflictCode =
   | "CAPACITY_EXCEEDED"
   | "EXACT_COUNTS_DIFFER"
   | "EXACT_BELOW_MINIMUM"
@@ -13,7 +13,7 @@ export type MapidRuleConflictCode =
   | "ONLY_IN_GROUP_EXCLUDES_SOURCE"
   | "EXACT_ZERO_CONFLICTS_SOURCE";
 
-export type MapidRuleSubsumptionReason =
+type MapidRuleSubsumptionReason =
   | "EXACT_COVERS_PRESENT"
   | "AT_LEAST_COVERS_PRESENT"
   | "COVERS_PRESENT"
@@ -22,7 +22,7 @@ export type MapidRuleSubsumptionReason =
   | "ONLY_IN_GROUP_COVERS_UNNUMBERED"
   | "RULE_COVERS_RULE";
 
-export type MapidRuleCheckResult =
+type MapidRuleCheckResult =
   | { kind: "OK" }
   | {
       kind: "CONFLICT";

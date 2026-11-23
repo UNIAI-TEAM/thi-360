@@ -39,7 +39,7 @@ export function usesMapidMatrix(subjectCode: string): boolean {
 const hasNodes = (scope: { nodeIds: readonly string[] } | null | undefined): boolean => (scope?.nodeIds.length ?? 0) > 0;
 
 /** Môn còn phạm vi MAPID hoặc chỉ tiêu chủ đề kiểu cũ, ở môn hoặc ở nhóm. */
-export function hasLegacyMapid(section: ExamSection): boolean {
+function hasLegacyMapid(section: ExamSection): boolean {
   return (
     hasNodes(section.knowledgeScope) ||
     (section.topicQuotas?.length ?? 0) > 0 ||
@@ -168,7 +168,7 @@ export function mapidViewMode(section: ExamSection): MapidMode | null {
  * Số câu cố định của một nhóm: chùm là `số chùm × số câu con`, nhóm câu đơn là số câu của nhóm. Nhóm "lấy phần còn lại"
  * (`questionCount` rỗng, không phải chùm) không có số cố định: `null`; số của nó là `remainderUnits`.
  */
-export function groupUnits(block: QuestionBlock): number | null {
+function groupUnits(block: QuestionBlock): number | null {
   if (isSetBlock(block) && block.setCount && block.setSize) return block.setCount * block.setSize;
   return block.questionCount;
 }
@@ -202,7 +202,7 @@ function unitsInSection(section: Pick<ExamSection, "questionCount" | "blocks">, 
   return takesRemainder(block) ? remainderUnits(section, block) : groupUnits(block);
 }
 
-export interface GroupSize {
+interface GroupSize {
   /** Chùm: số chùm và số câu con mỗi chùm; nhóm câu đơn: `null`. */
   sets: number | null;
   size: number | null;
@@ -279,7 +279,7 @@ export function deletedGroupRules(section: Pick<ExamSection, "mapidRules" | "blo
 
 // ---------------------------------------------------------------- câu mô tả
 
-export type RuleSentenceKind =
+type RuleSentenceKind =
   | "PRESENT"
   | "COUNT_EXACT"
   | "COUNT_AT_LEAST"
@@ -478,7 +478,7 @@ export function mapidRuleAnchor(ruleId: string): string {
   return `mapid-rule-${ruleId}`;
 }
 
-export function mapidRuleSelector(ruleId: string): string {
+function mapidRuleSelector(ruleId: string): string {
   return `[data-field="${CSS.escape(mapidRuleAnchor(ruleId))}"]`;
 }
 

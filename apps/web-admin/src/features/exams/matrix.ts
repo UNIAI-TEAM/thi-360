@@ -131,7 +131,7 @@ function chunk(values: readonly number[], size: number): number[][] {
 }
 
 /** Phân bổ của một khối sau quy đổi: số câu nguyên làm căn cứ sinh đề. */
-export interface BlockAllocation {
+interface BlockAllocation {
   mode: MatrixMode;
   unit: MatrixUnit;
   /** Chế độ kết hợp: số câu theo ô (dòng khối lớp, cột độ khó). Chế độ riêng: `null`. */
@@ -335,6 +335,11 @@ function fillToMarginals(rows: readonly number[], columns: readonly number[]): n
   return grid;
 }
 
+/** Quy đổi mảng giá trị giữa tỷ lệ % và số câu (% → phần dư lớn nhất, số câu → % nguyên tổng 100). */
+export function convertValuesByUnit(values: readonly number[], unit: MatrixUnit, total: number): number[] {
+  return unit === "COUNT" ? apportionByPercent(values, total).results : countsToPercents(values, total);
+}
+
 /** Đổi đơn vị nhập: % → số câu theo phần dư lớn nhất; số câu → % nguyên tổng 100. */
 export function convertMatrixUnit(
   matrix: BlockMatrix,
@@ -343,8 +348,7 @@ export function convertMatrixUnit(
   axes: MatrixAxes,
 ): BlockMatrix {
   if (matrix.unit === unit) return matrix;
-  const convert = (values: readonly number[]) =>
-    unit === "COUNT" ? apportionByPercent(values, questionCount).results : countsToPercents(values, questionCount);
+  const convert = (values: readonly number[]) => convertValuesByUnit(values, unit, questionCount);
   const competency = hasCompetencyDimension(matrix)
     ? {
         byCompetency: toDimension(
@@ -595,7 +599,7 @@ function blocksOf(sections: readonly ExamSection[]): QuestionBlock[] {
 }
 
 /** Điểm mỗi câu mặc định (B5) khi khối không đặt điểm mỗi câu yêu cầu. */
-export const DEFAULT_POINTS_PER_QUESTION = 1;
+const DEFAULT_POINTS_PER_QUESTION = 1;
 
 /** Điểm mỗi câu của khối: điểm mỗi câu yêu cầu nếu có, không thì mặc định 1 (điểm thật lấy từ phiên bản câu khi sinh đề). */
 export function blockPointsEach(block: Pick<QuestionBlock, "requiredPointsPerQuestion">): number {

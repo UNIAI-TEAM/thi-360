@@ -4,18 +4,18 @@ import { cn, Input, Label } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import { useId, useState } from "react";
 import { ratePercent } from "../allocation";
-import { parseNumberText } from "../components/block-number-input";
+import { parseNumberText, parsePercentText } from "../components/block-number-input";
 import { percentToCount, wholeSetCount } from "./percent";
 import type { SubjectFormEntry } from "./registry";
 
 /** Chữ đã gõ mà chưa ghi được vào bản nháp (FTM R-15): biểu mẫu đưa vào kho nhập thô để chặn lưu và hỏi trước khi rời trang. */
-export interface CountPercentRaw {
+interface CountPercentRaw {
   text: string;
   code: "invalidNumber" | "setNotWhole";
   source?: "COUNT" | "PERCENT";
 }
 
-export interface CountPercentInputProps {
+interface CountPercentInputProps {
   /** Nhãn của hàng (ví dụ "Trắc nghiệm"); nhóm điều khiển lấy nhãn này. */
   label: string;
   /** Kiểu nhập % của cặp (`SubjectFormEntry.percentEntry`, R-9). `NONE`: một ô số câu, % chỉ đọc bên cạnh. */
@@ -57,8 +57,8 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
   const [problem, setProblem] = useState<Problem>(() => {
     if (rawText === undefined) return null;
     const percent = rawSource === "PERCENT";
-    const parsed = parseNumberText(rawText, percent);
-    if (parsed === null || (percent && (parsed < 0 || parsed > 100))) return { code: "invalidNumber", count: 0 };
+    const parsed = percent ? parsePercentText(rawText) : parseNumberText(rawText, false);
+    if (parsed === null) return { code: "invalidNumber", count: 0 };
     if (percent && setSize !== null) {
       const converted = percentToCount(parsed, total);
       if (!wholeSetCount(converted, setSize).ok) return { code: "setNotWhole", count: converted };
@@ -83,7 +83,7 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
     }
   }
 
-  const typedPercent = percentText === "" ? null : parseNumberText(percentText, true);
+  const typedPercent = percentText === "" ? null : parsePercentText(percentText);
   const preview = problem === null && typedPercent !== null ? t("preview", { percent: typedPercent, total, count: percentToCount(typedPercent, total) }) : null;
   const message = problem
     ? problem.code === "setNotWhole"
@@ -119,9 +119,9 @@ export function CountPercentInput({ label, entry, total, count, setSize = null, 
       onRawInput?.(null);
       return;
     }
-    const parsed = parseNumberText(text, true);
+    const parsed = parsePercentText(text);
     // R1-9: tỷ lệ ngoài 0–100 báo sai ngay, không quy đổi.
-    if (parsed === null || parsed < 0 || parsed > 100) return reject(text, "invalidNumber", "PERCENT");
+    if (parsed === null) return reject(text, "invalidNumber", "PERCENT");
     const converted = percentToCount(parsed, total);
     if (setSize !== null && !wholeSetCount(converted, setSize).ok) return reject(text, "setNotWhole", "PERCENT", converted);
     setCountText(String(converted));

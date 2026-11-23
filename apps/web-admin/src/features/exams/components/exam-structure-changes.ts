@@ -4,7 +4,7 @@ import type { ExamPart, ExamSection, QuestionBlock } from "../types";
 /** Số dòng thay đổi hiện trong hộp thoại chuyển mục; phần còn lại gộp thành "và N thay đổi khác". */
 export const MAX_CHANGE_LINES = 5;
 
-export type PartNumberField = "questionCount" | "questionCountRequired" | "questionCountOnPaper" | "durationMinutes" | "maxPoints";
+type PartNumberField = "questionCount" | "questionCountRequired" | "questionCountOnPaper" | "durationMinutes" | "maxPoints";
 
 /** Một thay đổi chưa lưu, đã gắn tên hiển thị (phần, môn, nhóm); chữ do hộp thoại dựng từ bảng thông báo. */
 export type StructureChange =

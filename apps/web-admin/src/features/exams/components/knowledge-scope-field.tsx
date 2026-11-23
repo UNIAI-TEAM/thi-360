@@ -11,7 +11,7 @@ import type { KnowledgeScope, MapidMode } from "../types";
 
 const EMPTY_SCOPE: KnowledgeScope = { nodeIds: [] };
 
-export interface KnowledgeScopeFieldProps {
+interface KnowledgeScopeFieldProps {
   /** Phạm vi riêng; `null` hoặc `nodeIds` rỗng: "Toàn môn" (nhóm kế thừa phạm vi của môn, môn không giới hạn MAPID). */
   value: KnowledgeScope | null;
   onChange: (scope: KnowledgeScope | null) => void;
@@ -208,7 +208,7 @@ export function KnowledgeScopeField({
   );
 }
 
-export interface MapidModeFieldProps {
+interface MapidModeFieldProps {
   mode: MapidMode;
   onModeChange: (mode: MapidMode) => void;
   /** Số quy tắc đang nằm trong bản nháp; ở "Toàn bài" hiện ghi chú "N quy tắc tạm ngừng áp dụng". */

@@ -1,6 +1,7 @@
 import type { QuestionType } from "@/features/content/types";
+import type { AudioCountQuery } from "./api";
 import { apportionByPercent, computeAllocation, type MatrixAxes, sum } from "./matrix";
-import type { AnswerQuotas, ExamPartOption, ExamSection, KnowledgeScope, QuestionBlock } from "./types";
+import type { AnswerQuotas, CountKnowledgeScope, ExamPartOption, ExamSection, KnowledgeScope, QuestionBlock } from "./types";
 
 /**
  * Số đã phân bổ và còn thiếu của một môn (spec 5.2 "Ma trận theo môn", B9). Chỉ để soạn: khả năng sinh đề do kiểm tra
@@ -180,4 +181,31 @@ export function effectiveScope(block: Pick<QuestionBlock, "knowledgeScope">, sec
   const base = section.knowledgeScope;
   if (!base) return own;
   return own?.competencyCodes?.length ? { ...base, competencyCodes: own.competencyCodes } : base;
+}
+
+/** Xây danh sách nhóm đếm nguồn câu hỏi của môn (kèm lọc audio R-130, R-142 khi môn quy định Nghe/Đọc). */
+export function subjectAudioGroups(
+  section: ExamSection,
+  quotaTypes: readonly QuestionType[],
+  scopeOf: (block: QuestionBlock, section: ExamSection) => CountKnowledgeScope | null,
+): AudioCountQuery[] {
+  const audio =
+    section.audioRequirement === "REQUIRED" || section.audioRequirement === "FORBIDDEN"
+      ? { audioRequirement: section.audioRequirement }
+      : {};
+  return section.blocks.map(
+    (block): AudioCountQuery => ({
+      subjectCode: section.subjectCode,
+      questionType: block.questionType,
+      answerTypes: block.questionType === null ? [...quotaTypes] : [],
+      childAnswerType: block.childAnswerType,
+      knowledgeScope: scopeOf(block, section),
+      tagCodes: block.tagCodes,
+      requiredPointsPerQuestion: block.requiredPointsPerQuestion,
+      itemShape: block.itemShape,
+      answerFormats: block.answerFormats,
+      childConditions: block.childConditions,
+      ...audio,
+    }),
+  );
 }
