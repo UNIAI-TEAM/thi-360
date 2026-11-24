@@ -70,7 +70,7 @@ export function MatrixForm(props: SubjectFormRendererProps) {
       templateLocked={templateLocked}
       action={headerAction}
     >
-      <div data-form-kind="MATRIX" className="flex flex-col gap-6">
+      <div data-form-kind="MATRIX" className="flex flex-col gap-6 divide-y divide-border [&>*]:pt-6 [&>*:first-child]:pt-0">
         {beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
         <MatrixStructureBlock
           {...blockProps}

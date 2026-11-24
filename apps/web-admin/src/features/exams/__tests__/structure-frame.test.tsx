@@ -191,7 +191,7 @@ describe("Khung bước 2: vùng danh sách", () => {
 describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
   const blockId = () => backend.app(QDA).parts[0]!.sections[0]!.blocks[0]!.id;
 
-  it("đọc structure/summary: 'Đã phân bổ 47/50 câu. Còn thiếu 3 câu.'; bấm dòng chọn đúng môn và nhóm", async () => {
+  it("đọc structure/summary: thanh trạng thái gọn trên màn Phần/Môn, bấm 'Xem bảng tổng hợp' mở bảng và nhảy tới đúng môn/nhóm", async () => {
     const user = userEvent.setup();
     backend.seedSummary(QDA, [
       {
@@ -216,14 +216,19 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
     ]);
     openStructure(QDA, "?part=part-38");
     expect(await screen.findByTestId("structure-headline")).toHaveTextContent("Đã phân bổ 47/50 câu. Còn thiếu 3 câu.");
+    expect(screen.queryByRole("table", { name: /Tổng hợp số câu theo phần/ })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Đến Toán học" }));
+    await user.click(screen.getByRole("button", { name: "Xem bảng tổng hợp" }));
+    await waitFor(() => expect(window.location.search).toContain("exam=1"));
+    await user.click(await screen.findByRole("button", { name: "Đến Toán học" }));
     await waitFor(() => expect(window.location.search).toContain("section=sec-41"));
-    await user.click(screen.getByRole("button", { name: "Đến Nhóm của Toán" }));
+
+    await user.click(screen.getByRole("button", { name: "Xem bảng tổng hợp" }));
+    await user.click(await screen.findByRole("button", { name: "Đến Nhóm của Toán" }));
     await waitFor(() => expect(window.location.search).toContain(`block=${blockId()}`));
   });
 
-  it("máy chủ trả tổng hợp thập phân: tiêu đề và bảng hiện 1,25 / 2,5 theo dấu phẩy của vi, tối đa 2 chữ số", async () => {
+  it("máy chủ trả tổng hợp thập phân: tiêu đề và bảng ở Tổng quan bài hiện 1,25 / 2,5 theo dấu phẩy của vi, tối đa 2 chữ số", async () => {
     backend.seedSummary(QDA, [
       {
         name: "Phần 1 · Toán học",
@@ -235,7 +240,7 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
         children: [],
       },
     ]);
-    openStructure(QDA, "?part=part-38");
+    openStructure(QDA, "?exam=1");
     expect(await screen.findByTestId("structure-headline")).toHaveTextContent(
       "Đã phân bổ 1,25/2,5 câu. Còn thiếu 1,25 câu.",
     );
@@ -246,7 +251,7 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
     expect(cells).toEqual(["2,5", "1,25", "Thiếu 1,25 câu", "1,24"]);
   });
 
-  it("tổng hợp dạng cây của máy chủ: dòng phần, môn, nhóm đều thành dòng của bảng", async () => {
+  it("tổng hợp dạng cây của máy chủ: ở Tổng quan bài, dòng phần, môn, nhóm đều thành dòng của bảng", async () => {
     backend.seedSummary(QDA, [
       {
         name: "Phần 1 · Toán học",
@@ -267,7 +272,7 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
         ],
       },
     ]);
-    openStructure(QDA, "?part=part-38");
+    openStructure(QDA, "?exam=1");
     const table = await screen.findByRole("table", { name: /Tổng hợp số câu theo phần/ });
     expect(within(table).getAllByRole("row")).toHaveLength(4);
     expect(within(table).getByRole("button", { name: "Đến Nhóm của Toán" })).toBeInTheDocument();
@@ -508,7 +513,7 @@ describe("Khung bước 2: nút kiểm tra", () => {
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
   });
 
-  it("nút đầu trang nằm ở hàng tiêu đề của khung, 'Kiểm tra môn' nằm ở đầu vùng chi tiết", async () => {
+  it("nút thao tác nằm ở thanh công cụ đầu khung Master-Detail, 'Kiểm tra môn' nằm ở đầu vùng chi tiết", async () => {
     const titleRow = document.createElement("div");
     document.body.append(titleRow);
     window.history.replaceState(null, "", `/exams/${QDA}/structure?section=sec-41`);
@@ -518,11 +523,12 @@ describe("Khung bước 2: nút kiểm tra", () => {
       </ExamEditorActionsSlot.Provider>,
     );
     await screen.findByRole("navigation", { name: "Cấu trúc" });
+    const toolbar = screen.getByTestId("structure-toolbar");
     for (const name of ["Lưu", "Kiểm tra toàn bài", "Tiếp tục"]) {
-      expect(within(titleRow).getByRole("button", { name })).toBeInTheDocument();
+      expect(within(toolbar).getByRole("button", { name })).toBeInTheDocument();
+      expect(within(titleRow).queryByRole("button", { name })).not.toBeInTheDocument();
     }
     expect(within(titleRow).queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
-    // Dải tổng hợp và nút Sửa thông tin tổng quan trùng ở đầu Tab 2 đã bỏ (R-10.1, AC-15).
     expect(screen.queryByLabelText("Tổng hợp cấu trúc")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
     const detailTitle = await screen.findByRole("heading", { level: 2, name: /Toán/ });

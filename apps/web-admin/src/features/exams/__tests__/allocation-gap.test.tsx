@@ -6,7 +6,7 @@ import { getContentReferenceFixture as getContentReference } from "@/test/fixtur
 import { renderWithProviders } from "@/test/render";
 import type { ContentReference } from "@/features/content/types";
 import { ExamStructureSubjectPanel } from "../components/exam-structure-subject-panel";
-import { ExamStructureSummaryRegion } from "../components/exam-structure-summary";
+import { ExamStructureSummaryTable } from "../components/exam-structure-summary";
 import { ExamStructureView } from "../components/exam-structure-view";
 import type { BlockMatrix, ExamPart, ExamSection, ExamStructureSummary, QuestionBlock } from "../types";
 import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
@@ -197,14 +197,10 @@ describe("Tổng hợp cấu trúc: cột Chênh lệch", () => {
 
   it("dòng vượt hiện 'Vượt 3 câu' đỏ, dòng thiếu hiện 'Thiếu 3 câu', dòng đủ không có chữ lệch", () => {
     renderWithProviders(
-      <ExamStructureSummaryRegion
+      <ExamStructureSummaryTable
         summary={summary}
         load="ready"
         dirty={false}
-        local={{ allocated: 0, total: 0, missing: 0 }}
-        issues={[]}
-        issueText={() => ""}
-        checkResult={null}
         names={{ subject: (code) => code }}
         onSelect={() => {}}
       />,

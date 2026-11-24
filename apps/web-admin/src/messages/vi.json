@@ -5043,6 +5043,7 @@
         "headline": "{state, select, ok {Đã phân bổ đủ {target, number} câu.} over {Đã phân bổ {allocated, number}/{target, number} câu. Thừa {extra, number} câu.} other {Đã phân bổ {allocated, number}/{target, number} câu. Còn thiếu {missing, number} câu.}}",
         "name": "Mục",
         "noIssues": "Không có lỗi cấu trúc trên màn hình.",
+        "openOverview": "Xem bảng tổng hợp",
         "points": "Điểm",
         "rowGo": "Đến {name}",
         "stale": "Bảng theo bản đã lưu gần nhất; lưu để cập nhật.",
@@ -5053,6 +5054,7 @@
       "part": {
         "fixedHint": "Mọi học viên làm cùng các môn của phần này.",
         "choiceHint": "{shared, select, yes {Mỗi đường lựa chọn phải đủ {count, number} câu; thời lượng dùng chung cả bài.} other {Mỗi đường lựa chọn phải đủ {count, number} câu và {minutes, number} phút.}}",
+        "step1MetaTitle": "Thông số từ Thông tin chung",
         "name": "Tên phần",
         "nameRequired": "Nhập tên phần.",
         "order": "Thứ tự",

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, cn, focusRing, FormField, Input } from "@thi360/ui";
+import { Button, cn, focusRing, FormField, Input } from "@thi360/ui";
 import { Lock, Plus, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -99,11 +99,14 @@ export function ExamStructurePartPanel({
   const onlySubjectChoice = part.mode === "CHOICE" && part.options.length === 1 && part.options[0]?.kind === "SUBJECT_CHOICE";
 
   return (
-    <Card padding="md" className="flex flex-col gap-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-5 p-4 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 data-exam-content className="text-h3 font-bold wrap-break-word text-text">{part.name}</h2>
-          <p className="text-caption text-text-muted">
+          <h2 className="flex items-center gap-2 text-h3 font-bold wrap-break-word text-text">
+            <span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-primary-600" />
+            <span data-exam-content>{part.name}</span>
+          </h2>
+          <p className="pl-3 text-caption text-text-muted">
             {part.mode === "CHOICE"
               ? t("choiceHint", {
                   count: part.questionCount,
@@ -118,8 +121,8 @@ export function ExamStructurePartPanel({
 
       <TopicQuotaElsewhereAlert error={topicError} />
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(11rem,100%),1fr))] gap-4">
-        <FormField label={t("name")} required error={part.name.trim() ? undefined : t("nameRequired")} className="col-span-full sm:col-span-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <FormField label={t("name")} required error={part.name.trim() ? undefined : t("nameRequired")}>
           {(controlProps) => (
             <Input
               {...controlProps}
@@ -128,29 +131,6 @@ export function ExamStructurePartPanel({
               maxLength={200}
               onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
             />
-          )}
-        </FormField>
-        <FormField label={t("order")} hint={t("orderHint")}>
-          {(controlProps) => <Input {...controlProps} value={String(part.order)} readOnly className="tabular-nums" />}
-        </FormField>
-        <FormField
-          label={t("questionCountOnPaper")}
-          required
-          hint={t("questionCountOnPaperHint")}
-          error={paperInvalid ? t("paperInvalid") : undefined}
-        >
-          {(controlProps) => (
-            <LockedCount {...controlProps} value={part.questionCountOnPaper} examId={examId} templateLocked={templateLocked} />
-          )}
-        </FormField>
-        <FormField
-          label={t("questionCount")}
-          required
-          hint={t("questionCountHint")}
-          error={countInvalid ? t("countInvalid") : undefined}
-        >
-          {(controlProps) => (
-            <LockedCount {...controlProps} value={part.questionCount} examId={examId} templateLocked={templateLocked} />
           )}
         </FormField>
         {shared ? (
@@ -177,7 +157,36 @@ export function ExamStructurePartPanel({
           {(controlProps) => <OptionalNumberInput {...controlProps} value={part.maxPoints ?? null} onValueChange={onPoints} />}
         </FormField>
       </div>
-      {shared && <p className="text-caption text-text-muted">{t("sharedHint")}</p>}
+      {shared && <p className="-mt-2 text-caption text-text-muted">{t("sharedHint")}</p>}
+
+      <div className="flex flex-col gap-3 rounded-md border border-border bg-subtle/25 p-3.5">
+        <span className="text-caption font-semibold text-text-secondary">{t("step1MetaTitle")}</span>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <FormField label={t("order")} hint={t("orderHint")}>
+            {(controlProps) => <Input {...controlProps} value={String(part.order)} readOnly aria-readonly="true" className={cn("w-20 tabular-nums", LOCKED_FIELD)} />}
+          </FormField>
+          <FormField
+            label={t("questionCountOnPaper")}
+            required
+            hint={t("questionCountOnPaperHint")}
+            error={paperInvalid ? t("paperInvalid") : undefined}
+          >
+            {(controlProps) => (
+              <LockedCount {...controlProps} value={part.questionCountOnPaper} examId={examId} templateLocked={templateLocked} />
+            )}
+          </FormField>
+          <FormField
+            label={t("questionCount")}
+            required
+            hint={t("questionCountHint")}
+            error={countInvalid ? t("countInvalid") : undefined}
+          >
+            {(controlProps) => (
+              <LockedCount {...controlProps} value={part.questionCount} examId={examId} templateLocked={templateLocked} />
+            )}
+          </FormField>
+        </div>
+      </div>
 
       {!part.codeSource && (
         <section aria-label={t("participation.title")} className="flex flex-col gap-1.5">
@@ -278,7 +287,7 @@ export function ExamStructurePartPanel({
           />
         </>
       )}
-    </Card>
+    </div>
   );
 }
 

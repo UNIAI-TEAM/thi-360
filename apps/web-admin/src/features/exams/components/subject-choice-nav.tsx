@@ -26,9 +26,9 @@ export function SubjectChoiceNav({ option, sectionId, names, onOpenOption, onOpe
     <nav
       aria-label={t("navLabel", { name })}
       data-testid="subject-choice-nav"
-      className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2.5"
+      className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-subtle/35 px-4 py-2.5 sm:px-6"
     >
-      <span className="text-caption text-text-muted">
+      <span className="text-caption font-medium text-text-secondary">
         {t("position", { name, index: index + 1, total: option.sections.length })}
       </span>
       <span className="flex flex-wrap gap-2">

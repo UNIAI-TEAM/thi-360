@@ -74,17 +74,17 @@ export function SubjectChoiceOptions({ option, names, axes, labels, sectionState
       </div>
 
       <div role="region" tabIndex={0} aria-label={t("caption")} className={cn("relative overflow-x-auto rounded-md border border-border", focusRing)}>
-        <table className="w-full min-w-176 border-separate border-spacing-0 text-body">
+        <table className="w-full min-w-184 border-separate border-spacing-0 text-body [&_tbody_tr:last-child>*]:border-b-0">
           <caption className="sr-only">{t("caption")}</caption>
           <thead>
             <tr className="text-left text-caption text-text-muted">
               <th scope="col" className="min-w-28 border-b border-border bg-subtle px-3 py-2 font-semibold">{t("subject")}</th>
               <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">{t("group")}</th>
               <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold whitespace-nowrap">{t("count")}</th>
-              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{axes.grades.map(labels.grade).join("/")}</th>
-              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{axes.difficulties.map(labels.difficulty).join("/")}</th>
-              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold">{t("groups")}</th>
-              {sectionStates && <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold">{t("status")}</th>}
+              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">{axes.grades.map(labels.grade).join("/")}</th>
+              <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">{axes.difficulties.map(labels.difficulty).join("/")}</th>
+              <th scope="col" className="min-w-48 border-b border-border bg-subtle px-2.5 py-2 text-right font-semibold">{t("groups")}</th>
+              {sectionStates && <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">{t("status")}</th>}
               <th scope="col" className="sticky right-0 z-1 border-b border-l border-border bg-subtle px-3 py-2 text-right font-semibold"><span className="sr-only">{t("actions")}</span></th>
             </tr>
           </thead>
@@ -97,15 +97,15 @@ export function SubjectChoiceOptions({ option, names, axes, labels, sectionState
                   (section.blocks.length === 0 ? "INCOMPLETE" : null))
                 : null;
               return (
-                <tr key={section.id}>
-                  <th scope="row" className="min-w-28 border-b border-border px-3 py-2 text-left font-medium text-text">{subject}</th>
-                  <td className="border-b border-border px-2 py-2 whitespace-nowrap">
+                <tr key={section.id} className="hover:bg-subtle/30">
+                  <th scope="row" className="min-w-28 border-b border-border px-3 py-2.5 text-left font-medium text-text">{subject}</th>
+                  <td className="border-b border-border px-2 py-2.5 whitespace-nowrap">
                     {section.choiceGroup ? <Badge className="font-medium">{t(`choiceGroup.${section.choiceGroup}`)}</Badge> : "—"}
                   </td>
-                  <td className="border-b border-border px-2 py-2 text-right tabular-nums">{section.questionCount === null ? "—" : format.number(section.questionCount, DISPLAY_NUMBER_FORMAT)}</td>
-                  <td className="border-b border-border px-2 py-2 tabular-nums">{distribution(section, "byGrade")}</td>
-                  <td className="border-b border-border px-2 py-2 tabular-nums">{distribution(section, "byDifficulty")}</td>
-                  <td className="border-b border-border px-2 py-2 text-right tabular-nums">
+                  <td className="border-b border-border px-2 py-2.5 text-right whitespace-nowrap tabular-nums">{section.questionCount === null ? "—" : format.number(section.questionCount, DISPLAY_NUMBER_FORMAT)}</td>
+                  <td className="border-b border-border px-2 py-2.5 whitespace-nowrap tabular-nums">{distribution(section, "byGrade")}</td>
+                  <td className="border-b border-border px-2 py-2.5 whitespace-nowrap tabular-nums">{distribution(section, "byDifficulty")}</td>
+                  <td className="min-w-48 border-b border-border px-2.5 py-2.5 text-right leading-snug tabular-nums">
                     {section.blocks.length}
                     <span className="block text-caption font-normal text-text-muted">
                       {section.blocks.length === 0
@@ -120,11 +120,11 @@ export function SubjectChoiceOptions({ option, names, axes, labels, sectionState
                     </span>
                   </td>
                   {sectionStates && (
-                    <td className="border-b border-border px-2 py-2">
+                    <td className="border-b border-border px-2 py-2.5 whitespace-nowrap">
                       {state ? <StatusChip tone={SECTION_STATE_TONES[state]}>{listT(`state.${state}`)}</StatusChip> : "—"}
                     </td>
                   )}
-                  <td className="sticky right-0 z-1 border-b border-l border-border bg-surface px-3 py-1 text-right">
+                  <td className="sticky right-0 z-1 border-b border-l border-border bg-surface px-3 py-1.5 text-right whitespace-nowrap">
                     <Button type="button" variant="secondary" size="sm" aria-label={t("editSubject", { subject })} onClick={() => onSelectSection(section.id)}>
                       {t("edit")}
                     </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, cn, focusRing, FormField, Input, Select } from "@thi360/ui";
+import { Button, cn, focusRing, FormField, Input, Select } from "@thi360/ui";
 import { ChevronRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -101,18 +101,21 @@ export function PracticeReviewSubjectPanel({
     }));
 
   return (
-    <Card padding="md" className="flex flex-col gap-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-5 p-4 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="text-h3 font-bold wrap-break-word text-text">{t("title", { subject: subjectName, count })}</h2>
-          <p className="text-caption text-text-muted">{t("hint")}</p>
+          <h2 className="flex items-center gap-2 text-h3 font-bold wrap-break-word text-text">
+            <span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-primary-600" />
+            <span>{t("title", { subject: subjectName, count })}</span>
+          </h2>
+          <p className="pl-3 text-caption text-text-muted">{t("hint")}</p>
         </div>
         {headerAction}
       </div>
 
       <TopicQuotaElsewhereAlert error={topicError} />
 
-      <section aria-label={t("step1Title")} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section aria-label={t("step1Title")} className="grid grid-cols-1 gap-4 rounded-md border border-border bg-subtle/25 p-3.5 sm:grid-cols-3">
         <FormField label={t("count")} hint={t("countHint")} error={mismatch ? t("countMismatch", { step1: step1Count, count }) : undefined}>
           {(controlProps) => (
             <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -244,6 +247,6 @@ export function PracticeReviewSubjectPanel({
           </details>
         </div>
       </details>
-    </Card>
+    </div>
   );
 }

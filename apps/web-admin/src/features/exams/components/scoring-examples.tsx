@@ -70,9 +70,9 @@ export function ScoringExamples({ kind, part }: ScoringExamplesProps) {
   // Phần không có dạng nào có ví dụ (V-SAT Ngữ văn chỉ có Tự luận, H-SCA không có câu chọn, trả lời ngắn): không vẽ khung rỗng.
   if (!(kind === "VSAT" ? V_SAT_TYPES : H_SCA_TYPES).some((type) => types.has(type))) return null;
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 sm:p-6">
+    <section aria-labelledby={headingId} className="flex flex-col gap-4 border-t border-border bg-subtle/15 p-4 sm:p-6">
       <div>
-        <h2 id={headingId} className="text-h3 font-bold text-text">
+        <h2 id={headingId} className="text-title font-bold text-text">
           {t("title")}
         </h2>
         <p className="text-caption text-text-muted">{t("description")}</p>

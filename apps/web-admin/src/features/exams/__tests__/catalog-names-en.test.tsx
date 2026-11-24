@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import enMessages from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
-import { ExamStructureSummaryRegion } from "../components/exam-structure-summary";
+import { ExamStructureSummaryTable } from "../components/exam-structure-summary";
 import { optionLabel, type StructureNames, useStructureIssueText } from "../components/exam-structure-issues";
 import type { StructureIssue } from "../matrix";
 import type { ExamPart, ExamSection, ExamStructureSummaryRow } from "../types";
@@ -55,14 +55,10 @@ const SUMMARY_ROWS = [
 
 function Summary({ locale }: { locale: "en" | "vi" }) {
   return (
-    <ExamStructureSummaryRegion
+    <ExamStructureSummaryTable
       summary={{ rows: SUMMARY_ROWS }}
       load="ready"
       dirty={false}
-      local={{ allocated: 50, total: 50, missing: 0 }}
-      issues={[]}
-      issueText={() => ""}
-      checkResult={null}
       names={namesFor(locale)}
       onSelect={vi.fn()}
     />
