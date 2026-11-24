@@ -23,7 +23,7 @@ export function MatrixScopeBlock({ section, subjectName, total, axes, labels, re
   };
 
   return (
-    <section aria-label={t("title")} className="flex flex-col gap-4 rounded-md border border-border p-4">
+    <section aria-label={t("title")} className="flex flex-col gap-4">
       <div className="flex flex-col gap-0.5">
         <h3 className="text-title font-semibold text-text">{t("title")}</h3>
         <p className="text-caption text-text-muted">{t("hint")}</p>

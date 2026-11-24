@@ -46,6 +46,7 @@ describe("Danh sách dòng: bảng dòng của HSA, QDA", () => {
     expect(await screen.findByRole("switch", { name: "Đảo thứ tự các chùm" })).toBeChecked();
     await user.click(within(rowOf("van-1")).getByRole("button", { name: /Sửa dòng Tu khac nhom nghia/ }));
     await screen.findByRole("heading", { name: /Sửa dòng: Tu khac nhom nghia/ });
+    expect(rowOf("van-1").nextElementSibling).toHaveAttribute("data-form-row-editor-row", "van-1");
     expect(screen.queryByRole("switch", { name: "Đảo thứ tự các chùm" })).toBeNull();
   });
 

@@ -53,7 +53,7 @@ function SubjectEnforcement({ mode, name, value, onChange, declared = true, lock
   const reasonId = useId();
 
   const group = (children: ReactNode) => (
-    <div role="group" aria-label={t("legend", { name })} data-enforcement-mode={mode} className="flex min-w-0 flex-col gap-1">
+    <div role="group" aria-label={t("legend", { name })} data-enforcement-mode={mode} className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
       {children}
     </div>
   );
@@ -70,7 +70,7 @@ function SubjectEnforcement({ mode, name, value, onChange, declared = true, lock
       <Chip variant="tag" className="w-fit">
         {applied ? t("required") : t("referenceOnly")}
       </Chip>
-      <span className="flex flex-wrap items-center gap-2">
+      <span className="inline-flex flex-wrap items-center gap-2">
         <Switch
           id={switchId}
           checked={applied}
@@ -78,11 +78,11 @@ function SubjectEnforcement({ mode, name, value, onChange, declared = true, lock
           aria-describedby={lockReason ? reasonId : undefined}
           onCheckedChange={(checked) => onChange?.(checked ? "REQUIRED" : "REFERENCE")}
         />
-        <label htmlFor={switchId} className="text-label font-medium text-text-secondary">
+        <label htmlFor={switchId} className="cursor-pointer text-label font-medium text-text-secondary">
           {t("apply")}
         </label>
       </span>
-      {lockReason && <LockReason code={lockReason} id={reasonId} />}
+      {lockReason && <LockReason code={lockReason} id={reasonId} className="w-full justify-end" />}
     </>,
   );
 }

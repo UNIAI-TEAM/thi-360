@@ -44,8 +44,8 @@ function MatrixDimension({ dimension, title, codes, codeLabel, section, entry, k
   const gradeOptional = kindCode === "HSA" && (section.subjectCode === "SU" || section.subjectCode === "DIA") && dimension === "grade";
 
   return (
-    <div data-form-field={fieldBase} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div data-form-field={fieldBase} className="flex flex-col gap-3 rounded-md border border-border/70 bg-subtle/20 p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h4 className="text-label font-semibold text-text">{title}</h4>
         {gradeOptional && !declared ? (
           <Chip variant="tag" className="w-fit">
@@ -109,7 +109,7 @@ export function MatrixDistributionBlock(props: MatrixBlockProps) {
   };
 
   return (
-    <section ref={sectionRef} aria-label={t("title")} className="flex flex-col gap-4 rounded-md border border-border p-4">
+    <section ref={sectionRef} aria-label={t("title")} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h3 className="text-title font-semibold text-text">{t("title")}</h3>

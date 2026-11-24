@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, cn, focusRing, StatusChip } from "@thi360/ui";
+import { cn, focusRing, StatusChip } from "@thi360/ui";
 import { TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
@@ -9,13 +9,15 @@ import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { bucketCounts, canRequireQuota, hasChoicePath, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
 import { hsaQuotaAwaitsExpert } from "../hsa-enforcement";
 import { sum } from "../matrix";
-import type { ExamPart, ExamQuota, StructureCombination } from "../types";
+import type { ExamPart, ExamQuota, ExamStructureSummary, StructureCombination } from "../types";
 import type { MatrixLabels } from "./block-matrix-editor";
 import { AllocationGap } from "./allocation-gap";
 import { BlockNumberInput } from "./block-number-input";
 import { EnforcementControl } from "../subject-forms/enforcement-control";
 import { ExamName, richNodes } from "./exam-review-shared";
+import type { StructureSelection } from "./exam-structure-draft";
 import type { StructureNames } from "./exam-structure-issues";
+import { ExamStructureSummaryTable, type SummaryLoad } from "./exam-structure-summary";
 import { TopicQuotaElsewhereAlert } from "./topic-quota-elsewhere-alert";
 import type { TopicQuotaServerError } from "./topic-quota-table";
 
@@ -34,9 +36,29 @@ interface ExamOverviewPanelProps {
   topicError?: TopicQuotaServerError;
   /** Mã bài thi của phần theo mã, để lấy một mã làm đường tính điểm và mẫu số. */
   combinations?: readonly StructureCombination[];
+  /** Tổng hợp số câu toàn bài theo phần, môn và nhóm từ máy chủ. */
+  structureSummary?: ExamStructureSummary | null;
+  summaryLoad?: SummaryLoad;
+  dirty?: boolean;
+  onSelect?: (selection: StructureSelection) => void;
 }
 
-export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, names, labels, scopeError = false, topicError = null, combinations = [] }: ExamOverviewPanelProps) {
+export function ExamOverviewPanel({
+  examName,
+  summary,
+  parts,
+  quotas,
+  onQuotas,
+  names,
+  labels,
+  scopeError = false,
+  topicError = null,
+  combinations = [],
+  structureSummary = null,
+  summaryLoad = "ready",
+  dirty = false,
+  onSelect,
+}: ExamOverviewPanelProps) {
   const t = useTranslations("exams.examQuota");
   const format = useFormatter();
   const pointsId = useId();
@@ -50,14 +72,19 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
     onQuotas(quotas.map((quota) => (quota.id === quotaId ? change(quota) : quota)));
 
   return (
-    <Card padding="md" className="flex flex-col gap-6 sm:p-6">
-      <div className="flex flex-col gap-0.5 border-b border-border pb-4">
-        <h2 className="text-h3 font-bold wrap-break-word text-text">{richNodes(t, "title", { name: <ExamName>{examName}</ExamName> })}</h2>
-        <p className="text-caption text-text-muted">{summary}</p>
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
+      <div className="flex items-start gap-2.5 border-b border-border pb-4">
+        <span aria-hidden className="mt-1 h-5 w-1 shrink-0 rounded-full bg-primary-600" />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="text-h3 font-bold wrap-break-word text-text">
+            {richNodes(t, "title", { name: <ExamName>{examName}</ExamName> })}
+          </h2>
+          <p className="text-caption text-text-muted">{summary}</p>
+        </div>
       </div>
       {quotas.length === 0 && <TopicQuotaElsewhereAlert error={topicError} />}
 
-      <section aria-labelledby={pointsId} className="flex flex-col gap-2">
+      <section aria-labelledby={pointsId} className="flex flex-col gap-2.5">
         <h3 id={pointsId} className="text-title font-semibold text-text">
           {t("pointsTitle")}
         </h3>
@@ -89,7 +116,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
               ))}
             </tbody>
             <tfoot>
-              <tr className="font-semibold text-text">
+              <tr className="bg-subtle/30 font-semibold text-text">
                 <th scope="row" className="px-3 py-2 text-left">
                   {essayPoints > 0 ? t("essaySplit", { essay: number(essayPoints), objective: number(totalPoints - essayPoints) }) : t("total")}
                 </th>
@@ -105,7 +132,19 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
         )}
       </section>
 
-      <section aria-labelledby={quotasId} className="flex flex-col gap-3">
+      {onSelect && structureSummary && structureSummary.rows.length > 0 && (
+        <div className="border-t border-border pt-6">
+          <ExamStructureSummaryTable
+            summary={structureSummary}
+            load={summaryLoad}
+            dirty={dirty}
+            names={names}
+            onSelect={onSelect}
+          />
+        </div>
+      )}
+
+      <section aria-labelledby={quotasId} className="flex flex-col gap-3 border-t border-border pt-6">
         <div className="flex flex-col gap-0.5">
           <h3 id={quotasId} className="text-title font-semibold text-text">
             {t("quotasTitle")}
@@ -129,7 +168,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
           const quotaHeadingId = `${quotasId}-${quota.id}-title`;
           const quotaTitle = quota.name ? <ExamName>{quota.name}</ExamName> : t(quota.dimension === "GRADE" ? "gradeName" : "difficultyName");
           return (
-            <section key={quota.id} aria-labelledby={quotaHeadingId} className="flex flex-col gap-3 rounded-md border border-border p-4">
+            <section key={quota.id} aria-labelledby={quotaHeadingId} className="flex flex-col gap-3 rounded-md border border-border bg-subtle/20 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <h4 id={quotaHeadingId} className="text-label font-semibold text-text">
@@ -151,7 +190,7 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
                   onChange={(enforcement) => patch(quota.id, (current) => ({ ...current, enforcement }))}
                 />
               </div>
-              <ul className="divide-y divide-border rounded-lg border border-border bg-subtle/40 px-3">
+              <ul className="divide-y divide-border rounded-md border border-border bg-surface px-3">
                 {quota.buckets.map((bucket, index) => {
                   const bucketName = bucket.codes.map(label).join(" + ");
                   const value = percent ? (bucket.percent ?? 0) : (bucket.count ?? 0);
@@ -206,6 +245,6 @@ export function ExamOverviewPanel({ examName, summary, parts, quotas, onQuotas, 
           );
         })}
       </section>
-    </Card>
+    </div>
   );
 }

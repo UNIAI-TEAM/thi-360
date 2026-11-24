@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, ConfirmDialog, EmptyState, LiveStatus, notify, Skeleton, StatusChip } from "@thi360/ui";
+import { Button, Card, ConfirmDialog, EmptyState, LiveStatus, notify, Skeleton } from "@thi360/ui";
 import { ArrowRight, ClipboardCheck, Info, LayoutList, Save, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -53,7 +53,6 @@ import {
   updateSection,
   validateDraft,
 } from "./exam-structure-draft";
-import { ExamEditorActions } from "./exam-editor-actions";
 import { useMapidRuleText } from "./mapid-rules-table";
 import { ExamOverviewPanel } from "./exam-overview-panel";
 import { optionLabel, type StructureNames, useStructureIssueText } from "./exam-structure-issues";
@@ -62,7 +61,7 @@ import { ExamStructureLeaveDialog, type LeaveDestination } from "./exam-structur
 import { ExamStructureList } from "./exam-structure-list";
 import { ExamStructurePartPanel } from "./exam-structure-part-panel";
 import { ExamStructureSubjectPanel } from "./exam-structure-subject-panel";
-import { ExamStructureSummaryRegion } from "./exam-structure-summary";
+import { ExamStructureAlertsBanner, ExamStructureStatusStrip } from "./exam-structure-summary";
 import { checkIssueTarget } from "./exam-structure-check-result";
 import { StructureVersionPicker } from "./structure-version-picker";
 import { SubjectChoiceNav } from "./subject-choice-nav";
@@ -587,160 +586,156 @@ function StructureEditor({
       partCode: exam.partCode ?? "",
       subjectCode: exam.subjectCode ?? "",
     }).length >= 2;
-  const showTopCard = hasVersionPicker || yearsPending || Boolean(template?.expertNote);
+  const showTopStrip = hsaNormalizing || hasVersionPicker || yearsPending || Boolean(template?.expertNote);
   const statusNote = exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote");
+  const effectiveSummary =
+    reviewMode && JSON.stringify(loadedStructure.parts) !== JSON.stringify(structure.parts)
+      ? null
+      : (summaryQuery.data ?? null);
+  const sectionStrandTable =
+    sectionContext && !rendersReviewPanel(sectionContext.section, reviewMode)
+      ? strandTable(sectionContext.section, quotas, exam.scope)
+      : null;
 
   return (
     <div className="@container flex flex-col gap-4">
-      {hsaNormalizing && <HsaNormalizedNote />}
-      <ExamEditorActions>
-        {hasUnsavedChanges && <StatusChip tone="warning">{t("unsavedChip")}</StatusChip>}
-        <Button type="button" variant="secondary" disabled={!hasUnsavedChanges || save.isPending} onClick={() => setConfirmDiscard(true)}>
-          {t("discard")}
-        </Button>
-        <Button type="button" variant="secondary" onClick={() => runSave()} loading={save.isPending} disabled={!hasUnsavedChanges}>
-          <Save />
-          <span>{t("save")}</span>
-        </Button>
-        <Button type="button" variant="secondary" loading={check.isPending || save.isPending} onClick={() => runCheck({ scope: "EXAM" })}>
-          <ClipboardCheck />
-          <span>{t("check.all")}</span>
-        </Button>
-        <Button type="button" loading={check.isPending || save.isPending} onClick={continueToReview}>
-          <span>{t("check.continue")}</span>
-          <ArrowRight />
-        </Button>
-      </ExamEditorActions>
-      {showTopCard ? (
-        <Card padding="md" className="flex flex-col gap-3">
-          <p className="text-caption text-text-muted">{statusNote}</p>
-          <StructureVersionPicker
-            exam={exam}
-            templates={templates}
-            dirty={hasUnsavedChanges}
-            currentParts={draft}
-            onAnnounce={announce}
-            onApplied={(parts) => {
-              const loaded = hsaLoadedBaselines(hsa, JSON.stringify(parts), quotaBaseline);
-              setDraft(parts);
-              setBaseline(loaded.parts);
-              setQuotaBaseline(loaded.quotas);
-              setQuotas(JSON.parse(loaded.quotas) as ExamQuota[]);
-              setTopicFailure(null);
-              rawInputs.clearAll();
-              setFormEpoch((epoch) => epoch + 1);
-              setPinnedForms(pinForms(parts));
-              setFocusRequest(null);
-              setCheckResult(null);
-            }}
+      <div data-testid="structure-workspace" className="overflow-clip rounded-lg border border-border bg-surface shadow-xs">
+        <div
+          data-testid="structure-toolbar"
+          className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur-xs sm:px-5"
+        >
+          <ExamStructureStatusStrip
+            summary={effectiveSummary}
+            load={summaryLoad}
+            local={{ allocated: totals.allocated, total: totals.totalQuestions, missing: totals.missing }}
+            statusNote={statusNote}
+            hasUnsavedChanges={hasUnsavedChanges}
+            unsavedLabel={t("unsavedChip")}
+            issueCount={issues.length}
+            canOpenOverview={!reviewMode && current?.kind !== "exam" && Boolean(effectiveSummary && effectiveSummary.rows.length > 0)}
+            onOpenOverview={() => select({ kind: "exam" })}
           />
-          {yearsPending && (
-            <p className="flex flex-wrap items-start gap-x-2 gap-y-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-body text-text">
-              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
-              <span className="min-w-0 flex-1">
-                {t("yearsPending", { structure: exam.structureYear ?? 0, matrix: exam.matrixYear ?? 0 })}
-              </span>
-              <Button asChild variant="link" size="sm">
-                <Link href={examTabHref(exam.id, "general")}>{t("yearsLink")}</Link>
-              </Button>
-            </p>
-          )}
-          {template?.expertNote && (
-            <p className="flex items-start gap-2 text-body text-text-secondary">
-              <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>{t("expertNote", { note: template.expertNote })}</span>
-            </p>
-          )}
-          <LiveStatus message={liveMessage} />
-        </Card>
-      ) : (
-        <div className="flex items-center justify-between gap-2 px-1">
-          <p className="text-caption text-text-muted">{statusNote}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="secondary" size="sm" disabled={!hasUnsavedChanges || save.isPending} onClick={() => setConfirmDiscard(true)}>
+              {t("discard")}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => runSave()} loading={save.isPending} disabled={!hasUnsavedChanges}>
+              <Save />
+              <span>{t("save")}</span>
+            </Button>
+            <Button type="button" variant="secondary" size="sm" loading={check.isPending || save.isPending} onClick={() => runCheck({ scope: "EXAM" })}>
+              <ClipboardCheck />
+              <span>{t("check.all")}</span>
+            </Button>
+            <Button type="button" size="sm" loading={check.isPending || save.isPending} onClick={continueToReview}>
+              <span>{t("check.continue")}</span>
+              <ArrowRight />
+            </Button>
+          </div>
           <LiveStatus message={liveMessage} />
         </div>
-      )}
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[18.75rem_minmax(0,1fr)]">
-        <ExamStructureList
-          parts={draft}
-          combinations={structure.combinations ?? []}
-          sectionStates={sectionStates}
-          selection={current}
+        <ExamStructureAlertsBanner
           issues={issues}
+          issueText={issueText}
+          checkResult={checkResult}
           names={names}
+          parts={draft}
           onSelect={select}
-          showOverview={!reviewMode}
         />
-        <div ref={formRegionRef} className="flex min-w-0 flex-col gap-4">
-          {sectionContext?.option?.kind === "SUBJECT_CHOICE" && (
-            <SubjectChoiceNav
-              option={sectionContext.option}
-              sectionId={sectionContext.section.id}
-              names={names}
-              onOpenOption={() =>
-                select({ kind: "option", partId: sectionContext.part.id, optionId: sectionContext.option!.id })
-              }
-              onOpenSection={(sectionId) => select({ kind: "section", sectionId })}
-            />
-          )}
-          {current?.kind === "exam" ? (
-            <ExamOverviewPanel
-              examName={exam.name}
-              summary={t("overviewSummary", {
-                count: roundForDisplay(totals.totalQuestions),
-                minutes: roundForDisplay(totals.totalMinutes),
-                shared: shared ? "yes" : "no",
-                points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
-              })}
-              parts={draft}
-              quotas={quotas}
-              onQuotas={setQuotas}
-              names={names}
-              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              scopeError={quotaScopeError}
-              topicError={topicError}
-              combinations={structure.combinations ?? []}
-            />
-          ) : sectionContext && rendersReviewPanel(sectionContext.section, reviewMode) ? (
-            <PracticeReviewSubjectPanel
-              key={sectionContext.section.id}
-              context={sectionContext}
-              subjectName={lookup.subject(sectionContext.section.subjectCode)}
-              axes={axes}
-              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              reference={reference}
-              onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
-              step1Count={sectionContext.part.questionCount}
-              examId={exam.id}
-              minutes={roundForDisplay(totals.totalMinutes)}
-              maxScore={exam.maxScore}
-              headerAction={checkAction}
-              topicError={topicError}
-            />
-          ) : sectionContext && formKind ? (
-            <SubjectFormScreen
-              kind={formKind}
-              key={`${sectionContext.section.id}:${formEpoch}`}
-              context={sectionContext}
-              subjectName={lookup.subject(sectionContext.section.subjectCode)}
-              axes={axes}
-              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              reference={reference}
-              onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
-              headerAction={checkAction}
-              examId={exam.id}
-              templateLocked={templateLocked}
-              sourceVerified={sourceVerified(sectionContext.section)}
-              topicError={topicError}
-              examQuotas={quotas}
-              onExamQuotas={setQuotas}
-              examKind={exam.kind}
-              rawInputs={rawInputs}
-            />
-          ) : sectionContext ? (
-            <>
-              {sectionForm?.notice && <FullFormNotice reason={sectionForm.reason} />}
-              <ExamStructureSubjectPanel
+
+        {showTopStrip && (
+          <div className="flex flex-col gap-2.5 border-b border-border bg-subtle/25 px-4 py-3 sm:px-5">
+            {hsaNormalizing && <HsaNormalizedNote />}
+            {hasVersionPicker && (
+              <StructureVersionPicker
+                exam={exam}
+                templates={templates}
+                dirty={hasUnsavedChanges}
+                currentParts={draft}
+                onAnnounce={announce}
+                onApplied={(parts) => {
+                  const loaded = hsaLoadedBaselines(hsa, JSON.stringify(parts), quotaBaseline);
+                  setDraft(parts);
+                  setBaseline(loaded.parts);
+                  setQuotaBaseline(loaded.quotas);
+                  setQuotas(JSON.parse(loaded.quotas) as ExamQuota[]);
+                  setTopicFailure(null);
+                  rawInputs.clearAll();
+                  setFormEpoch((epoch) => epoch + 1);
+                  setPinnedForms(pinForms(parts));
+                  setFocusRequest(null);
+                  setCheckResult(null);
+                }}
+              />
+            )}
+            {yearsPending && (
+              <p className="flex flex-wrap items-start gap-x-2 gap-y-1 rounded-md border border-warning/40 bg-warning-bg px-3 py-2 text-body text-text">
+                <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+                <span className="min-w-0 flex-1">
+                  {t("yearsPending", { structure: exam.structureYear ?? 0, matrix: exam.matrixYear ?? 0 })}
+                </span>
+                <Button asChild variant="link" size="sm">
+                  <Link href={examTabHref(exam.id, "general")}>{t("yearsLink")}</Link>
+                </Button>
+              </p>
+            )}
+            {template?.expertNote && (
+              <p className="flex items-start gap-2 text-body text-text-secondary">
+                <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+                <span>{t("expertNote", { note: template.expertNote })}</span>
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+          <ExamStructureList
+            parts={draft}
+            combinations={structure.combinations ?? []}
+            sectionStates={sectionStates}
+            selection={current}
+            issues={issues}
+            names={names}
+            onSelect={select}
+            showOverview={!reviewMode}
+          />
+          <div ref={formRegionRef} className="flex min-w-0 flex-col bg-surface">
+            {sectionContext?.option?.kind === "SUBJECT_CHOICE" && (
+              <SubjectChoiceNav
+                option={sectionContext.option}
+                sectionId={sectionContext.section.id}
+                names={names}
+                onOpenOption={() =>
+                  select({ kind: "option", partId: sectionContext.part.id, optionId: sectionContext.option!.id })
+                }
+                onOpenSection={(sectionId) => select({ kind: "section", sectionId })}
+              />
+            )}
+            {current?.kind === "exam" ? (
+              <ExamOverviewPanel
+                examName={exam.name}
+                summary={t("overviewSummary", {
+                  count: roundForDisplay(totals.totalQuestions),
+                  minutes: roundForDisplay(totals.totalMinutes),
+                  shared: shared ? "yes" : "no",
+                  points: format.number(totals.totalPoints, DISPLAY_NUMBER_FORMAT),
+                })}
+                parts={draft}
+                quotas={quotas}
+                onQuotas={setQuotas}
+                names={names}
+                labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+                scopeError={quotaScopeError}
+                topicError={topicError}
+                combinations={structure.combinations ?? []}
+                structureSummary={effectiveSummary}
+                summaryLoad={summaryLoad}
+                dirty={dirty}
+                onSelect={select}
+              />
+            ) : sectionContext && rendersReviewPanel(sectionContext.section, reviewMode) ? (
+              <PracticeReviewSubjectPanel
                 key={sectionContext.section.id}
                 context={sectionContext}
                 subjectName={lookup.subject(sectionContext.section.subjectCode)}
@@ -748,8 +743,23 @@ function StructureEditor({
                 labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
                 reference={reference}
                 onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
-                onSelectBlock={(blockId) => select({ kind: "block", blockId })}
-                onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
+                step1Count={sectionContext.part.questionCount}
+                examId={exam.id}
+                minutes={roundForDisplay(totals.totalMinutes)}
+                maxScore={exam.maxScore}
+                headerAction={checkAction}
+                topicError={topicError}
+              />
+            ) : sectionContext && formKind ? (
+              <SubjectFormScreen
+                kind={formKind}
+                key={`${sectionContext.section.id}:${formEpoch}`}
+                context={sectionContext}
+                subjectName={lookup.subject(sectionContext.section.subjectCode)}
+                axes={axes}
+                labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+                reference={reference}
+                onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
                 headerAction={checkAction}
                 examId={exam.id}
                 templateLocked={templateLocked}
@@ -758,129 +768,148 @@ function StructureEditor({
                 examQuotas={quotas}
                 onExamQuotas={setQuotas}
                 examKind={exam.kind}
+                rawInputs={rawInputs}
+              />
+            ) : sectionContext ? (
+              <>
+                {sectionForm?.notice && (
+                  <div className="border-b border-border bg-subtle/25 px-4 py-2.5 sm:px-6">
+                    <FullFormNotice reason={sectionForm.reason} />
+                  </div>
+                )}
+                <ExamStructureSubjectPanel
+                  key={sectionContext.section.id}
+                  context={sectionContext}
+                  subjectName={lookup.subject(sectionContext.section.subjectCode)}
+                  axes={axes}
+                  labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+                  reference={reference}
+                  onChange={(update) => setDraft((parts) => updateSection(parts, sectionContext.location, update))}
+                  onSelectBlock={(blockId) => select({ kind: "block", blockId })}
+                  onAddBlock={() => handleAddBlock(sectionContext.location, sectionContext.section)}
+                  headerAction={checkAction}
+                  examId={exam.id}
+                  templateLocked={templateLocked}
+                  sourceVerified={sourceVerified(sectionContext.section)}
+                  topicError={topicError}
+                  examQuotas={quotas}
+                  onExamQuotas={setQuotas}
+                  examKind={exam.kind}
+                  rowsLocked={rowsLocked}
+                  reviewMode={reviewMode}
+                />
+              </>
+            ) : blockContext ? (
+              <BlockEditor
+                topicError={topicError}
+                partTotal={blockContext.part.questionCount}
+                rowsLocked={rowsLocked}
+                template={template}
+                commandCount={dirty ? null : (summaryQuery.data?.rows.find((row) => row.blockId === blockContext.block.id)?.commandCount ?? null)}
+                onRateInvalid={setRateInvalid}
+                key={blockContext.block.id}
+                block={blockContext.block}
+                section={blockContext.section}
+                onOpenSection={() => select({ kind: "section", sectionId: blockContext.section.id })}
+                subjectCode={blockContext.section.subjectCode}
+                locationText={t("blockLocation", {
+                  part: blockContext.part.name,
+                  option: blockContext.option ? optionLabel(blockContext.option, names) : "",
+                  subject: lookup.subject(blockContext.section.subjectCode),
+                  position: blockContext.position,
+                  total: blockContext.section.blocks.length,
+                  hasOption: blockContext.option ? "yes" : "no",
+                })}
+                position={blockContext.position}
+                siblingCount={blockContext.section.blocks.length}
+                axes={axes}
+                labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+                reference={reference}
+                examKind={exam.kind}
+                templateCode={exam.templateCode}
+                scoringDefaults={kind?.scoringDefaults ?? null}
+                competencies={kindCompetencies}
+                onChange={(block) => setDraft((parts) => updateBlock(parts, block.id, () => block))}
+                onMove={(offset) => setDraft((parts) => moveBlock(parts, blockContext.block.id, offset))}
+                onRemove={() => {
+                  const name = blockContext.block.name;
+                  setDraft((parts) => removeBlock(parts, blockContext.block.id));
+                  selectNow({ kind: "part", partId: blockContext.part.id });
+                  announce(t("blockRemoved", { name }));
+                }}
+                headerAction={checkAction}
+              />
+            ) : selectedPart ? (
+              <ExamStructurePartPanel
+                part={selectedPart}
+                timing={exam.timing}
+                sharedMinutes={exam.durationMinutes}
+                names={names}
+                structureCombinations={structure.combinations ?? []}
+                axes={axes}
+                labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
+                examId={exam.id}
+                templateLocked={templateLocked}
                 rowsLocked={rowsLocked}
                 reviewMode={reviewMode}
+                sectionForm={(sectionId) => pinnedForm(pinnedForms, sectionId).form}
+                onAddSubject={(subjectCode) => {
+                  setDraft((parts) => addPoolSection(parts, selectedPart.id, subjectCode));
+                  announce(t("subjectAdded", { subject: lookup.subject(subjectCode) }));
+                }}
+                showEnglish={
+                  selectedPart.options.some((option) => option.kind === "SUBJECT" && option.code === ENGLISH_CODE) ||
+                  (selectedPart.sections.length === 0 &&
+                    !selectedPart.options.some((option) => option.kind === "BRANCH") &&
+                    !template?.parts[selectedPart.order - 1]?.options?.length)
+                }
+                branchSubjects={branchSubjects}
+                onPoints={(points) => setDraft((parts) => setPartPoints(parts, selectedPart.id, points))}
+                onChoose={(choose) =>
+                  setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartChoose(part, choose)))
+                }
+                onAddBranch={(branch) => {
+                  setDraft((parts) => addBranch(parts, selectedPart.id, branch));
+                  announce(t("branchAdded", { name: branch.name.trim() }));
+                }}
+                onConfirm={(optionId) => {
+                  const option = selectedPart.options.find((item) => item.id === optionId);
+                  setDraft((parts) => confirmOption(parts, selectedPart.id, optionId));
+                  if (option) announce(t("optionConfirmed", { code: option.kind === "BRANCH" ? (option.name ?? option.code) : option.code }));
+                }}
+                issues={issues.filter((issue) =>
+                  ("partId" in issue ? issue.partId : issue.location.partId) === selectedPart.id,
+                )}
+                issueText={issueText}
+                onChange={(update) => setDraft((parts) => updatePart(parts, selectedPart.id, update))}
+                onAddBlock={(optionId, section) => handleAddBlock({ partId: selectedPart.id, optionId, sectionId: section.id }, section)}
+                onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
+                onRemoveOption={(optionId) => {
+                  const option = selectedPart.options.find((item) => item.id === optionId);
+                  setDraft((parts) => removeOption(parts, selectedPart.id, optionId));
+                  if (option) announce(t("combinationRemoved", { code: option.kind === "BRANCH" ? (option.name ?? option.code) : option.code }));
+                }}
+                onSelectBlock={(blockId) => select({ kind: "block", blockId })}
+                onSelectSection={(sectionId) => select({ kind: "section", sectionId })}
+                sectionStates={sectionStates}
+                headerAction={checkAction}
+                topicError={topicError}
               />
-            </>
-          ) : blockContext ? (
-            <BlockEditor
-              topicError={topicError}
-              partTotal={blockContext.part.questionCount}
-              rowsLocked={rowsLocked}
-              template={template}
-              commandCount={dirty ? null : (summaryQuery.data?.rows.find((row) => row.blockId === blockContext.block.id)?.commandCount ?? null)}
-              onRateInvalid={setRateInvalid}
-              key={blockContext.block.id}
-              block={blockContext.block}
-              section={blockContext.section}
-              onOpenSection={() => select({ kind: "section", sectionId: blockContext.section.id })}
-              subjectCode={blockContext.section.subjectCode}
-              locationText={t("blockLocation", {
-                part: blockContext.part.name,
-                option: blockContext.option ? optionLabel(blockContext.option, names) : "",
-                subject: lookup.subject(blockContext.section.subjectCode),
-                position: blockContext.position,
-                total: blockContext.section.blocks.length,
-                hasOption: blockContext.option ? "yes" : "no",
-              })}
-              position={blockContext.position}
-              siblingCount={blockContext.section.blocks.length}
-              axes={axes}
-              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              reference={reference}
-              examKind={exam.kind}
-              templateCode={exam.templateCode}
-              scoringDefaults={kind?.scoringDefaults ?? null}
-              competencies={kindCompetencies}
-              onChange={(block) => setDraft((parts) => updateBlock(parts, block.id, () => block))}
-              onMove={(offset) => setDraft((parts) => moveBlock(parts, blockContext.block.id, offset))}
-              onRemove={() => {
-                const name = blockContext.block.name;
-                setDraft((parts) => removeBlock(parts, blockContext.block.id));
-                selectNow({ kind: "part", partId: blockContext.part.id });
-                announce(t("blockRemoved", { name }));
-              }}
-              headerAction={checkAction}
-            />
-          ) : selectedPart ? (
-            <ExamStructurePartPanel
-              part={selectedPart}
-              timing={exam.timing}
-              sharedMinutes={exam.durationMinutes}
-              names={names}
-              structureCombinations={structure.combinations ?? []}
-              axes={axes}
-              labels={{ grade: lookup.grade, difficulty: lookup.difficulty }}
-              examId={exam.id}
-              templateLocked={templateLocked}
-              rowsLocked={rowsLocked}
-              reviewMode={reviewMode}
-              sectionForm={(sectionId) => pinnedForm(pinnedForms, sectionId).form}
-              onAddSubject={(subjectCode) => {
-                setDraft((parts) => addPoolSection(parts, selectedPart.id, subjectCode));
-                announce(t("subjectAdded", { subject: lookup.subject(subjectCode) }));
-              }}
-              showEnglish={
-                selectedPart.options.some((option) => option.kind === "SUBJECT" && option.code === ENGLISH_CODE) ||
-                (selectedPart.sections.length === 0 &&
-                  !selectedPart.options.some((option) => option.kind === "BRANCH") &&
-                  !template?.parts[selectedPart.order - 1]?.options?.length)
-              }
-              branchSubjects={branchSubjects}
-              onPoints={(points) => setDraft((parts) => setPartPoints(parts, selectedPart.id, points))}
-              onChoose={(choose) =>
-                setDraft((parts) => updatePart(parts, selectedPart.id, (part) => setPartChoose(part, choose)))
-              }
-              onAddBranch={(branch) => {
-                setDraft((parts) => addBranch(parts, selectedPart.id, branch));
-                announce(t("branchAdded", { name: branch.name.trim() }));
-              }}
-              onConfirm={(optionId) => {
-                const option = selectedPart.options.find((item) => item.id === optionId);
-                setDraft((parts) => confirmOption(parts, selectedPart.id, optionId));
-                if (option) announce(t("optionConfirmed", { code: option.kind === "BRANCH" ? (option.name ?? option.code) : option.code }));
-              }}
-              issues={issues.filter((issue) =>
-                ("partId" in issue ? issue.partId : issue.location.partId) === selectedPart.id,
-              )}
-              issueText={issueText}
-              onChange={(update) => setDraft((parts) => updatePart(parts, selectedPart.id, update))}
-              onAddBlock={(optionId, section) => handleAddBlock({ partId: selectedPart.id, optionId, sectionId: section.id }, section)}
-              onToggleEnglish={(enabled) => setDraft((parts) => setEnglishOption(parts, selectedPart.id, enabled))}
-              onRemoveOption={(optionId) => {
-                const option = selectedPart.options.find((item) => item.id === optionId);
-                setDraft((parts) => removeOption(parts, selectedPart.id, optionId));
-                if (option) announce(t("combinationRemoved", { code: option.kind === "BRANCH" ? (option.name ?? option.code) : option.code }));
-              }}
-              onSelectBlock={(blockId) => select({ kind: "block", blockId })}
-              onSelectSection={(sectionId) => select({ kind: "section", sectionId })}
-              sectionStates={sectionStates}
-              headerAction={checkAction}
-              topicError={topicError}
-            />
-          ) : null}
-          {sectionContext && !rendersReviewPanel(sectionContext.section, reviewMode) && (
-            <StrandReference
-              table={strandTable(sectionContext.section, quotas, exam.scope)}
-              subjectName={lookup.subject(sectionContext.section.subjectCode)}
-              difficultyName={lookup.difficulty}
-            />
-          )}
-          {current?.kind !== "exam" && !reviewMode && (
-            <ScoringExamples kind={exam.kind} part={(sectionContext ?? blockContext)?.part ?? selectedPart ?? null} />
-          )}
-          <ExamStructureSummaryRegion
-            summary={reviewMode && JSON.stringify(loadedStructure.parts) !== JSON.stringify(structure.parts) ? null : (summaryQuery.data ?? null)}
-            load={summaryLoad}
-            dirty={dirty}
-            local={{ allocated: totals.allocated, total: totals.totalQuestions, missing: totals.missing }}
-            issues={issues}
-            issueText={issueText}
-            checkResult={checkResult}
-            names={names}
-            parts={draft}
-            onSelect={select}
-          />
+            ) : null}
+
+            {sectionStrandTable && sectionContext && (
+              <div className="border-t border-border px-4 py-5 sm:px-6">
+                <StrandReference
+                  table={sectionStrandTable}
+                  subjectName={lookup.subject(sectionContext.section.subjectCode)}
+                  difficultyName={lookup.difficulty}
+                />
+              </div>
+            )}
+            {current?.kind !== "exam" && !reviewMode && (
+              <ScoringExamples kind={exam.kind} part={(sectionContext ?? blockContext)?.part ?? selectedPart ?? null} />
+            )}
+          </div>
         </div>
       </div>
 

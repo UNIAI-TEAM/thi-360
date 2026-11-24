@@ -5043,6 +5043,7 @@
         "headline": "{state, select, ok {All {target, number} questions are allocated.} over {Allocated {allocated, number}/{target, number} questions. {extra, number} too many.} other {Allocated {allocated, number}/{target, number} questions. {missing, number} still missing.}}",
         "name": "Item",
         "noIssues": "No structure issues on this screen.",
+        "openOverview": "View summary table",
         "points": "Points",
         "rowGo": "Go to {name}",
         "stale": "Table shows the last saved version; save to update it.",
@@ -5053,6 +5054,7 @@
       "part": {
         "fixedHint": "Every learner takes the same subjects in this part.",
         "choiceHint": "{shared, select, yes {Every path must have {count, plural, one {# question} other {# questions}}; the duration is shared by the whole exam.} other {Every path must have {count, plural, one {# question} other {# questions}} and {minutes, number} minutes.}}",
+        "step1MetaTitle": "Settings from General",
         "name": "Part name",
         "nameRequired": "Enter the part name.",
         "order": "Order",

@@ -270,7 +270,7 @@ export function MatrixFormHsa({ section, kindCode, subjectName, total, axes, lab
         )}
       </div>
     ) : (
-      <div className="flex flex-col gap-4 rounded-md border border-border p-4">
+      <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-0.5">
           <h3 className="text-title font-semibold text-text">{tScope("title")}</h3>
           <p className="text-caption text-text-muted">{tScope("hint")}</p>
@@ -310,7 +310,7 @@ export function MatrixFormHsa({ section, kindCode, subjectName, total, axes, lab
     <section
       aria-label={tHsa("strandTitle", { subject: subjectName })}
       data-testid="hsa-strand-section"
-      className="flex flex-col gap-4 rounded-md border border-border p-4"
+      className="flex flex-col gap-4"
     >
       <h3 className="text-title font-semibold text-text">{tHsa("strandTitle", { subject: subjectName })}</h3>
       {mapidContent}
@@ -323,7 +323,7 @@ export function MatrixFormHsa({ section, kindCode, subjectName, total, axes, lab
   if (!showMaterial) return strandBlock;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 divide-y divide-border [&>*]:pt-6 [&>*:first-child]:pt-0">
       {strandBlock}
       <DiaMaterialSection section={section} setBlock={setBlock} subjectName={subjectName} reference={reference} onChange={onChange} />
     </div>

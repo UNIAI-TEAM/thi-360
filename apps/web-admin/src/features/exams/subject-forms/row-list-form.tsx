@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card } from "@thi360/ui";
+import { Badge, Button, cn } from "@thi360/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -158,7 +158,7 @@ export function RowListForm({
   const columns = readOnlyNotice ? 4 : 5;
 
   return (
-    <div ref={rootRef} className="flex flex-col gap-4" data-subject-form="ROWS">
+    <div ref={rootRef} className="flex flex-col" data-subject-form="ROWS">
       <SubjectFormHeader
         subjectName={subjectName}
         choiceGroupLabel={section.choiceGroup ? tSubject(`choiceGroup.${section.choiceGroup}`) : null}
@@ -167,193 +167,198 @@ export function RowListForm({
         examId={examId}
         templateLocked={templateLocked}
         action={headerAction}
-      />
-
-      <Card padding="md" className="flex flex-col gap-3 sm:p-6" data-rows-card>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-title font-semibold text-text">{t("table.title")}</h3>
-          {audio && <AudioChip audio={audio} />}
-        </div>
-        {readOnlyNotice && <p className="rounded-md border border-border bg-subtle px-3 py-2 text-body text-text-secondary" data-read-only-notice>{t("notice.ESSAY_SKIPPED")}</p>}
-        {rowsLocked && <LockReason code="rowCounts" />}
-        {section.blocks.length === 0 ? (
-          <p className="text-body text-text-muted">{t("table.empty")}</p>
-        ) : (
-          <ScrollableTable label={t("table.caption", { subject: subjectName })} className="rounded-md border border-border">
-            <table className="w-full table-auto border-separate border-spacing-0 text-body">
-              <caption className="sr-only">{t("table.caption", { subject: subjectName })}</caption>
-              <thead>
-                <tr className="text-left text-caption text-text-muted">
-                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">
-                    {t("table.columns.order")}
-                  </th>
-                  <th scope="col" className="min-w-44 border-b border-border bg-subtle px-2 py-2 font-semibold">
-                    {t("table.columns.name")}
-                  </th>
-                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">
-                    {t("table.columns.quantity")}
-                  </th>
-                  <th scope="col" className="border-b border-border bg-subtle px-2 py-2 font-semibold whitespace-nowrap">
-                    {t("table.columns.conditions")}
-                  </th>
-                  {!readOnlyNotice && (
-                    <th scope="col" className="border-b border-border bg-subtle px-2 py-2 text-right font-semibold whitespace-nowrap">
-                      <span className="sr-only">{t("table.columns.actions")}</span>
+      >
+        <section className="flex flex-col gap-3" data-rows-card>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-title font-semibold text-text">{t("table.title")}</h3>
+            {audio && <AudioChip audio={audio} />}
+          </div>
+          {readOnlyNotice && <p className="rounded-md border border-border bg-subtle px-3 py-2 text-body text-text-secondary" data-read-only-notice>{t("notice.ESSAY_SKIPPED")}</p>}
+          {rowsLocked && <LockReason code="rowCounts" />}
+          {section.blocks.length === 0 ? (
+            <p className="text-body text-text-muted">{t("table.empty")}</p>
+          ) : (
+            <ScrollableTable label={t("table.caption", { subject: subjectName })} className="rounded-md border border-border">
+              <table className="w-full table-auto border-separate border-spacing-0 text-body [&_tbody_tr:last-child>*]:border-b-0">
+                <caption className="sr-only">{t("table.caption", { subject: subjectName })}</caption>
+                <thead>
+                  <tr className="text-left text-caption text-text-muted">
+                    <th scope="col" className="border-b border-border bg-subtle px-2.5 py-2 font-semibold whitespace-nowrap">
+                      {t("table.columns.order")}
                     </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {section.blocks.map((block, index) => {
-                  const segment = segmentOf(block);
-                  const previous = index > 0 ? segmentOf(section.blocks[index - 1]!) : null;
-                  const showSegment = segment !== null && segment.code !== previous?.code;
-                  const locks = rowLocks(block, rowContext);
-                  const rowReasons = lockReasonsOf({ ...locks, counts: false });
-                  const slots = (block.slots ?? []).filter((slot) => (slot.tagCodes?.length ?? 0) > 0 || (slot.knowledgeScope?.nodeIds.length ?? 0) > 0);
-                  const name = block.name || t("table.untitled");
-                  const figures = figuresText(block);
-                  const rowNameId = `${tableId}-row-${index}`;
-                  const editBtnId = `${tableId}-edit-${index}`;
-                  const slotsListId = `${tableId}-slots-${index}`;
-                  return (
-                    <Fragment key={block.id}>
-                      {showSegment && (
-                        <tr data-form-segment={segment.code}>
-                          <td colSpan={columns} className="border-b border-border bg-subtle/60 px-2 py-1.5 text-left text-label font-semibold text-text">
-                            <ExamName>{segment.name}</ExamName>
-                          </td>
-                        </tr>
-                      )}
-                      <tr data-form-row={block.id} className={openId === block.id ? "bg-primary-50" : undefined}>
-                        <td className="border-b border-border px-2 py-2 align-top text-caption whitespace-nowrap tabular-nums text-text-secondary">
-                          {block.positionRange ? t("table.range", { from: block.positionRange.from, to: block.positionRange.to, same: block.positionRange.from === block.positionRange.to ? "yes" : "no" }) : index + 1}
-                        </td>
-                        <th scope="row" className="min-w-44 border-b border-border px-2 py-2 align-top text-left font-medium text-text">
-                          <span className="flex flex-wrap items-center gap-1.5">
-                            <span id={rowNameId} data-exam-content>{name}</span>
-                            {block.questionType === "ESSAY" && <Badge className="font-medium">{tBlock("manualGrading")}</Badge>}
-                            {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
-                            {audio && <AudioChip audio={audio} />}
-                          </span>
-                          <div className="mt-0.5 text-caption font-normal text-text-muted">{kindText(block)}</div>
-                          {rowReasons.map((code) => (
-                            <LockReason key={code} code={code} className="mt-1 flex" />
-                          ))}
-                        </th>
-                        <td className="border-b border-border px-2 py-2 align-top tabular-nums text-text">
-                          <span className="inline-flex flex-wrap items-center gap-1.5">
-                            <span>{quantityText(block)}</span>
-                            {locks.counts && (
-                              <>
-                                <Lock aria-hidden className="size-3.5 shrink-0 text-text-muted" />
-                                <span className="sr-only">{t("table.countsLocked")}</span>
-                              </>
-                            )}
-                          </span>
-                          {figures && (
-                            <div data-row-figures className="mt-0.5 text-caption text-text-muted">
-                              {figures}
-                            </div>
-                          )}
-                        </td>
-                        <td className="border-b border-border px-2 py-2 align-top text-caption text-text-secondary">{conditionsText(block)}</td>
-                        {!readOnlyNotice && (
-                          <td className="border-b border-border px-2 py-1.5 align-top text-right whitespace-nowrap">
-                            <Button
-                              id={editBtnId}
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              aria-label={labelBeforeName(t, "table.editAria", "name")}
-                              aria-labelledby={`${editBtnId} ${rowNameId}`}
-                              aria-expanded={openId === block.id}
-                              onClick={() => openFromRow(block.id)}
-                            >
-                              {t("table.edit")}
-                            </Button>
-                          </td>
+                    <th scope="col" className="min-w-44 border-b border-border bg-subtle px-2.5 py-2 font-semibold">
+                      {t("table.columns.name")}
+                    </th>
+                    <th scope="col" className="border-b border-border bg-subtle px-2.5 py-2 font-semibold whitespace-nowrap">
+                      {t("table.columns.quantity")}
+                    </th>
+                    <th scope="col" className="border-b border-border bg-subtle px-2.5 py-2 font-semibold whitespace-nowrap">
+                      {t("table.columns.conditions")}
+                    </th>
+                    {!readOnlyNotice && (
+                      <th scope="col" className="border-b border-border bg-subtle px-2.5 py-2 text-right font-semibold whitespace-nowrap">
+                        <span className="sr-only">{t("table.columns.actions")}</span>
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {section.blocks.map((block, index) => {
+                    const segment = segmentOf(block);
+                    const previous = index > 0 ? segmentOf(section.blocks[index - 1]!) : null;
+                    const showSegment = segment !== null && segment.code !== previous?.code;
+                    const locks = rowLocks(block, rowContext);
+                    const rowReasons = lockReasonsOf({ ...locks, counts: false });
+                    const slots = (block.slots ?? []).filter((slot) => (slot.tagCodes?.length ?? 0) > 0 || (slot.knowledgeScope?.nodeIds.length ?? 0) > 0);
+                    const name = block.name || t("table.untitled");
+                    const figures = figuresText(block);
+                    const rowNameId = `${tableId}-row-${index}`;
+                    const editBtnId = `${tableId}-edit-${index}`;
+                    const slotsListId = `${tableId}-slots-${index}`;
+                    const isOpen = openId === block.id && editing !== null && !readOnlyNotice;
+                    const rowBorder = isOpen && slots.length === 0 ? "border-b border-primary-200" : "border-b border-border";
+                    return (
+                      <Fragment key={block.id}>
+                        {showSegment && (
+                          <tr data-form-segment={segment.code}>
+                            <td colSpan={columns} className="border-b border-border bg-subtle/60 px-2.5 py-1.5 text-left text-label font-semibold text-text">
+                              <ExamName>{segment.name}</ExamName>
+                            </td>
+                          </tr>
                         )}
-                      </tr>
-                      {slots.length > 0 && (
-                        <tr data-form-slots={block.id}>
-                          <td className="border-b border-border" />
-                          <td colSpan={columns - 1} className="border-b border-border px-2 py-2">
-                            <ul
-                              id={slotsListId}
-                              className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-text-secondary"
-                              aria-label={labelBeforeName(t, "table.slotsLabel", "name")}
-                              aria-labelledby={`${slotsListId} ${rowNameId}`}
-                            >
-                              {slots.map((slot) => (
-                                <li key={slot.index} data-form-slot={slot.index} className="min-w-0 wrap-break-word">
-                                  {richNodes(t, "table.slot", {
-                                    index: slot.index,
-                                    tags: <ExamName key="tags">{(slot.tagCodes ?? []).map(tagName).join(", ")}</ExamName>,
-                                    hasTags: (slot.tagCodes?.length ?? 0) > 0 ? "yes" : "no",
-                                    nodes: slot.knowledgeScope?.nodeIds.length ?? 0,
-                                  })}
-                                </li>
-                              ))}
-                            </ul>
+                        <tr data-form-row={block.id} className={isOpen ? "bg-primary-50/70" : "hover:bg-subtle/35"}>
+                          <td className={cn(rowBorder, "px-2.5 py-2.5 align-top text-caption whitespace-nowrap tabular-nums text-text-secondary")}>
+                            {block.positionRange ? t("table.range", { from: block.positionRange.from, to: block.positionRange.to, same: block.positionRange.from === block.positionRange.to ? "yes" : "no" }) : index + 1}
                           </td>
+                          <th scope="row" className={cn(rowBorder, "min-w-44 px-2.5 py-2.5 align-top text-left font-medium text-text")}>
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              <span id={rowNameId} data-exam-content>{name}</span>
+                              {block.questionType === "ESSAY" && <Badge className="font-medium">{tBlock("manualGrading")}</Badge>}
+                              {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
+                              {audio && <AudioChip audio={audio} />}
+                            </span>
+                            <div className="mt-0.5 text-caption font-normal text-text-muted">{kindText(block)}</div>
+                            {rowReasons.map((code) => (
+                              <LockReason key={code} code={code} className="mt-1 flex" />
+                            ))}
+                          </th>
+                          <td className={cn(rowBorder, "px-2.5 py-2.5 align-top tabular-nums text-text")}>
+                            <span className="inline-flex flex-wrap items-center gap-1.5">
+                              <span>{quantityText(block)}</span>
+                              {locks.counts && (
+                                <>
+                                  <Lock aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+                                  <span className="sr-only">{t("table.countsLocked")}</span>
+                                </>
+                              )}
+                            </span>
+                            {figures && (
+                              <div data-row-figures className="mt-0.5 text-caption text-text-muted">
+                                {figures}
+                              </div>
+                            )}
+                          </td>
+                          <td className={cn(rowBorder, "px-2.5 py-2.5 align-top text-caption text-text-secondary")}>{conditionsText(block)}</td>
+                          {!readOnlyNotice && (
+                            <td className={cn(rowBorder, "px-2.5 py-2 align-top text-right whitespace-nowrap")}>
+                              <Button
+                                id={editBtnId}
+                                type="button"
+                                variant={isOpen ? "primary" : "secondary"}
+                                size="sm"
+                                aria-label={labelBeforeName(t, "table.editAria", "name")}
+                                aria-labelledby={`${editBtnId} ${rowNameId}`}
+                                aria-expanded={openId === block.id}
+                                onClick={() => openFromRow(block.id)}
+                              >
+                                {t("table.edit")}
+                              </Button>
+                            </td>
+                          )}
                         </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </ScrollableTable>
-        )}
-      </Card>
+                        {slots.length > 0 && (
+                          <tr data-form-slots={block.id} className={isOpen ? "bg-primary-50/40" : undefined}>
+                            <td className={isOpen ? "border-b border-primary-200" : "border-b border-border"} />
+                            <td colSpan={columns - 1} className={cn(isOpen ? "border-b border-primary-200" : "border-b border-border", "px-2.5 py-2")}>
+                              <ul
+                                id={slotsListId}
+                                className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-text-secondary"
+                                aria-label={labelBeforeName(t, "table.slotsLabel", "name")}
+                                aria-labelledby={`${slotsListId} ${rowNameId}`}
+                              >
+                                {slots.map((slot) => (
+                                  <li key={slot.index} data-form-slot={slot.index} className="min-w-0 wrap-break-word">
+                                    {richNodes(t, "table.slot", {
+                                      index: slot.index,
+                                      tags: <ExamName key="tags">{(slot.tagCodes ?? []).map(tagName).join(", ")}</ExamName>,
+                                      hasTags: (slot.tagCodes?.length ?? 0) > 0 ? "yes" : "no",
+                                      nodes: slot.knowledgeScope?.nodeIds.length ?? 0,
+                                    })}
+                                  </li>
+                                ))}
+                              </ul>
+                            </td>
+                          </tr>
+                        )}
+                        {isOpen && editing && editingIndex >= 0 && (
+                          <tr data-form-row-editor-row={block.id}>
+                            <td colSpan={columns} className="border-b border-border bg-subtle/35 p-3 sm:p-4">
+                              <RowEditor
+                                key={editing.id}
+                                block={editing}
+                                section={section}
+                                kindCode={kindCode}
+                                entry={entry}
+                                position={editingIndex + 1}
+                                total={section.blocks.length}
+                                context={rowContext}
+                                template={template}
+                                axes={axes}
+                                labels={labels}
+                                reference={reference}
+                                topicError={topicError}
+                                onChange={(patch) => onChange((current) => writeRow(current, editing.id, patch))}
+                                onClose={closeEditor}
+                                focusNonce={focusNonce}
+                                focusField={focusField}
+                                sectionCount={count}
+                                rawInputs={rawInputs}
+                                split={splitState(editing, section, entry, rowContext)}
+                                onSplit={(parts) => {
+                                  rawInputs.clear(section.id, editing.id, COUNT_FIELD);
+                                  rawInputs.clear(section.id, editing.id, SPLIT_FIELD);
+                                  onChange((current) => {
+                                    const parent = readRow(current, editing.id);
+                                    return parent ? replaceWithSplit(current, parent.id, splitBlock(parent, parts)) : current;
+                                  });
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </ScrollableTable>
+          )}
+        </section>
 
-      {editing && !readOnlyNotice && (
-        <RowEditor
-          key={editing.id}
-          block={editing}
+        <ReferenceBlock
           section={section}
-          kindCode={kindCode}
           entry={entry}
-          position={editingIndex + 1}
-          total={section.blocks.length}
-          context={rowContext}
-          template={template}
           axes={axes}
           labels={labels}
+          subjectName={subjectName}
+          count={count}
           reference={reference}
+          examQuotas={examQuotas}
+          onExamQuotas={onExamQuotas}
           topicError={topicError}
-          onChange={(patch) => onChange((current) => writeRow(current, editing.id, patch))}
-          onClose={closeEditor}
-          focusNonce={focusNonce}
-          focusField={focusField}
-          sectionCount={count}
-          rawInputs={rawInputs}
-          split={splitState(editing, section, entry, rowContext)}
-          onSplit={(parts) => {
-            rawInputs.clear(section.id, editing.id, COUNT_FIELD);
-            rawInputs.clear(section.id, editing.id, SPLIT_FIELD);
-            onChange((current) => {
-              const parent = readRow(current, editing.id);
-              return parent ? replaceWithSplit(current, parent.id, splitBlock(parent, parts)) : current;
-            });
-          }}
+          onChange={onChange}
         />
-      )}
-
-      <ReferenceBlock
-        section={section}
-        entry={entry}
-        axes={axes}
-        labels={labels}
-        subjectName={subjectName}
-        count={count}
-        reference={reference}
-        examQuotas={examQuotas}
-        onExamQuotas={onExamQuotas}
-        topicError={topicError}
-        onChange={onChange}
-      />
+      </SubjectFormHeader>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select, StatusChip } from "@thi360/ui";
+import { Badge, Button, Checkbox, cn, ConfirmDialog, FormField, IconButton, Input, Select, StatusChip } from "@thi360/ui";
 import { ArrowDown, ArrowUp, ChevronRight, Lock, Trash2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useEffectEvent, useId, useState, type ReactNode } from "react";
@@ -293,18 +293,19 @@ export function BlockEditor({
   const blockNameNode = block.name ? <ExamName>{block.name}</ExamName> : t("untitled");
 
   return (
-    <Card padding="md" className="flex flex-col gap-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-5 p-4 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 id={titleId} className="flex flex-wrap items-center gap-2 text-h3 font-bold wrap-break-word text-text">
+            <span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-primary-600" />
             {richNodes(t, "title", { name: <span id={nameId}>{blockNameNode}</span> })}
             {range && <Badge className="font-medium">{tForm("positionRange", { from: range.from, to: range.to, same: range.from === range.to ? "yes" : "no" })}</Badge>}
             {block.questionType === "ESSAY" && <Badge className="font-medium">{t("manualGrading")}</Badge>}
             {block.omitted === true && <Badge className="font-medium">{tForm("omittedBadge")}</Badge>}
           </h2>
-          <p className="text-caption text-text-muted">{locationText}</p>
-          {block.templateGroupCode && <p className="text-caption text-text-muted">{t("fromTemplate")}</p>}
-          <Button type="button" variant="link" size="sm" className="w-fit px-0" onClick={onOpenSection}>
+          <p className="pl-3 text-caption text-text-muted">{locationText}</p>
+          {block.templateGroupCode && <p className="pl-3 text-caption text-text-muted">{t("fromTemplate")}</p>}
+          <Button type="button" variant="link" size="sm" className="w-fit pl-3 pr-0" onClick={onOpenSection}>
             {t("backToSection")}
           </Button>
         </div>
@@ -666,7 +667,7 @@ export function BlockEditor({
           onRemove();
         }}
       />
-    </Card>
+    </div>
   );
 }
 

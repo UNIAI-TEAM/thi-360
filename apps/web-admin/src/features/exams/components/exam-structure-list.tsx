@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, cn, focusRingInset, StatusChip } from "@thi360/ui";
+import { cn, focusRingInset, StatusChip } from "@thi360/ui";
 import { ChevronRight, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, type ReactNode } from "react";
@@ -176,23 +176,23 @@ export function ExamStructureList({
   };
 
   return (
-    <Card padding="none" className="flex flex-col lg:sticky lg:top-4 lg:max-h-[calc(100dvh-5rem)]">
-      <nav aria-labelledby={titleId} className="flex min-h-0 flex-col">
+    <div className="flex flex-col border-b border-border bg-subtle/20 lg:border-r lg:border-b-0">
+      <nav aria-labelledby={titleId} className="flex min-h-0 flex-col lg:sticky lg:top-14 lg:max-h-[calc(100dvh-4.5rem)]">
         <div className="flex items-baseline justify-between gap-2 border-b border-border px-4 py-3">
           <h2 id={titleId} className="text-title font-semibold text-text">
             {t("title")}
           </h2>
-          <span className="text-caption text-text-muted">
+          <span className="text-caption text-text-muted tabular-nums">
             {t("summary", { parts: parts.length, count: sum(parts.map((part) => part.questionCount)) })}
           </span>
         </div>
         <ol
           ref={listRef}
           onKeyDown={onKeyDown}
-          className="scroll-shadows-y flex min-h-0 flex-col gap-3 overflow-y-auto p-2"
+          className="scroll-shadows-y flex min-h-0 flex-col gap-3 overflow-y-auto p-2.5"
         >
           {showOverview && (
-            <li className="flex flex-col gap-1">
+            <li className="flex flex-col gap-1 border-b border-border/70 pb-2">
               <ListItemButton current={selection?.kind === "exam"} onClick={() => onSelect({ kind: "exam" })} strong>
                 {t("overview")}
               </ListItemButton>
@@ -239,7 +239,7 @@ export function ExamStructureList({
           ))}
         </ol>
       </nav>
-    </Card>
+    </div>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, FormField, Input } from "@thi360/ui";
+import { Button, FormField, Input } from "@thi360/ui";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ContentReference, QuestionType } from "@/features/content/types";
@@ -278,8 +278,12 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
     [base, locks.counts ? lockId : null, isSet && countError ? countErrId : null, setIssue?.code === "SET_SIZE_MISMATCH" ? setErrId : null].filter(Boolean).join(" ") || undefined;
 
   return (
-    <Card padding="md" className="flex flex-col gap-5 sm:p-6" data-form-row-editor={block.id} aria-labelledby={titleId}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div
+      className="flex flex-col gap-4 rounded-md border border-border border-l-4 border-l-primary-600 bg-surface p-4 shadow-xs sm:p-5"
+      data-form-row-editor={block.id}
+      aria-labelledby={titleId}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h3 id={titleId} ref={headingRef} tabIndex={-1} className="flex flex-wrap items-center gap-2 text-title font-semibold wrap-break-word text-text">
             {richNodes(t, "title", { name: <ExamName key="name">{block.name || t("untitled")}</ExamName> })}
@@ -457,6 +461,6 @@ export function RowEditor({ block, section, kindCode, entry, position, total, co
       <BlockSwitches block={block} onChange={onChange} template={template} lockedOmittedAsText />
 
       <BlockConditions block={block} reference={reference} onChange={onChange} onAddMapid={() => undefined} kinds={["TAGS"]} extras={extras} />
-    </Card>
+    </div>
   );
 }

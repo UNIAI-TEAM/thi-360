@@ -21,7 +21,7 @@ type RowKey = "CHOICE" | "SINGLE" | "SETS" | "CHILDREN" | "FILL";
 /** Ô nhập số câu của một dòng; `data-form-block` cho đích `?block=` của nhóm tương ứng. */
 function ReadOnlyCount({ label, value, hint, footer }: { label: string; value: number; hint: string; footer?: ReactNode }) {
   return (
-    <div className="flex max-w-xs flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <FormField label={label} hint={hint}>
         {(controlProps) => <Input {...controlProps} value={String(value)} readOnly aria-readonly="true" className={cn("w-24 tabular-nums", LOCKED_FIELD)} />}
       </FormField>
@@ -175,18 +175,27 @@ export function MatrixStructureBlock({ compact = false, renderRoleFooter, ...pro
       aria-label={t("title")}
       data-form-field={MATRIX_FIELDS.structure}
       data-structure-variant={compact ? "compact" : undefined}
-      className="flex flex-col gap-4 rounded-md border border-border p-4"
+      className="flex flex-col gap-4"
     >
       <div className="flex flex-col gap-0.5">
         <h3 className="text-title font-semibold text-text">{t("title")}</h3>
         {!compact && <p className="text-caption text-text-muted">{t("hint")}</p>}
       </div>
-      <div className={compact ? "flex flex-wrap items-start gap-4" : "grid gap-4 sm:grid-cols-2"}>
+      <div
+        className={
+          compact
+            ? "flex flex-wrap items-start gap-4"
+            : twoColumns
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        }
+      >
         {twoColumns ? (
           <>
             {single && row("SINGLE", MATRIX_FIELDS.single, t("single"))}
             {set && (structure.flexible ? row("CHILDREN", MATRIX_FIELDS.children, t("children"), t("childrenHint")) : row("SETS", MATRIX_FIELDS.sets, t("sets"), t("setSize", { size: structure.setSize ?? 0 })))}
             {fill && row("FILL", MATRIX_FIELDS.fill, t("fill"))}
+            {(single || set) && <ReadOnlyCount label={t("choiceTotal")} value={structure.choice} hint={t("choiceTotalHint")} />}
           </>
         ) : (
           <>
@@ -194,11 +203,10 @@ export function MatrixStructureBlock({ compact = false, renderRoleFooter, ...pro
             {set && !structure.flexible && row("SETS", MATRIX_FIELDS.sets, t("sets"), t("setSize", { size: structure.setSize ?? 0 }))}
             {set && structure.flexible && row("CHILDREN", MATRIX_FIELDS.children, t("children"), t("childrenHint"))}
             {fill && row("FILL", MATRIX_FIELDS.fill, t("fill"), limits && limits.shortAnswerMin > 0 ? t("fillMin", { min: limits.shortAnswerMin }) : undefined)}
+            {single && <ReadOnlyCount label={t("singleAuto")} value={structure.single} hint={t("singleAutoHint")} footer={renderRoleFooter?.(single)} />}
           </>
         )}
       </div>
-      {!twoColumns && single && <ReadOnlyCount label={t("singleAuto")} value={structure.single} hint={t("singleAutoHint")} footer={renderRoleFooter?.(single)} />}
-      {twoColumns && (single || set) && <ReadOnlyCount label={t("choiceTotal")} value={structure.choice} hint={t("choiceTotalHint")} />}
       {structureError && (
         <p role="alert" className="text-caption text-danger">
           {structureError}

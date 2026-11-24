@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, cn, focusRing, IconButton, Select, StatusChip } from "@thi360/ui";
+import { Badge, Button, cn, focusRing, IconButton, Select, StatusChip } from "@thi360/ui";
 import { CircleMinus, Lock, Plus } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId, useState, type ReactNode } from "react";
@@ -156,17 +156,18 @@ export function ExamStructureSubjectPanel({
   };
 
   return (
-    <Card padding="md" className="flex flex-col gap-6 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2
             tabIndex={-1}
             className={cn("flex flex-wrap items-center gap-2 rounded-sm text-h3 font-bold wrap-break-word text-text", focusRing)}
           >
+            <span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-primary-600" />
             {t("title", { subject: subjectName })}
             {section.choiceGroup && <Badge className="font-medium">{t(`choiceGroup.${section.choiceGroup}`)}</Badge>}
           </h2>
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-text-muted">
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-3 text-caption text-text-muted">
             {cases.length === 0
               ? t("countUnknown")
               : varies
@@ -468,7 +469,7 @@ export function ExamStructureSubjectPanel({
         reference={reference}
         mapid={mapidMode === "MATRIX"}
       />
-    </Card>
+    </div>
   );
 }
 
