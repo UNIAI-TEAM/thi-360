@@ -4,9 +4,11 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -23,7 +25,8 @@ class BiometricPromptPolicyTest {
     fun dataStorePromptMemoryPersistsLaterAcrossRestartsAndLogout() = runTest {
         val file = File(tempFolder.newFolder("bio_memory"), "prompt.preferences_pb")
 
-        val scope1 = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val job1 = SupervisorJob()
+        val scope1 = CoroutineScope(job1 + Dispatchers.IO)
         try {
             val store1 = DataStoreBiometricPromptMemoryStore(
                 PreferenceDataStoreFactory.create(scope = scope1) { file },
@@ -32,17 +35,18 @@ class BiometricPromptPolicyTest {
             store1.record(PromptAnswer.LATER)
             assertEquals(PromptMemory(PromptAnswer.LATER), store1.current())
         } finally {
-            scope1.cancel()
+            withContext(NonCancellable) { job1.cancelAndJoin() }
         }
 
-        val scope2 = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val job2 = SupervisorJob()
+        val scope2 = CoroutineScope(job2 + Dispatchers.IO)
         try {
             val store2 = DataStoreBiometricPromptMemoryStore(
                 PreferenceDataStoreFactory.create(scope = scope2) { file },
             )
             assertEquals(PromptMemory(PromptAnswer.LATER), store2.current())
         } finally {
-            scope2.cancel()
+            withContext(NonCancellable) { job2.cancelAndJoin() }
         }
     }
 

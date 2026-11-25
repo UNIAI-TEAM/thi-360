@@ -15,11 +15,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -131,7 +133,8 @@ class LocalePreferenceTest {
     fun localeAndThemeModePersistAcrossDataStoreRestarts() = runTest {
         val prefsFile = File(tempFolder.newFolder("datastore"), "prefs.preferences_pb")
 
-        val scope1 = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val job1 = SupervisorJob()
+        val scope1 = CoroutineScope(job1 + Dispatchers.IO)
         try {
             val store1 = PreferenceDataStoreFactory.create(scope = scope1) { prefsFile }
             val repo1 = DataStoreAppPreferencesRepository(store1)
@@ -143,10 +146,11 @@ class LocalePreferenceTest {
             repo1.setThemeMode(ThemeMode.DARK)
             assertEquals(AppPreferences(locale = AppLocale.EN, themeMode = ThemeMode.DARK), repo1.preferences.first())
         } finally {
-            scope1.cancel()
+            withContext(NonCancellable) { job1.cancelAndJoin() }
         }
 
-        val scope2 = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val job2 = SupervisorJob()
+        val scope2 = CoroutineScope(job2 + Dispatchers.IO)
         try {
             val store2 = PreferenceDataStoreFactory.create(scope = scope2) { prefsFile }
             val repo2 = DataStoreAppPreferencesRepository(store2)
@@ -167,7 +171,7 @@ class LocalePreferenceTest {
             composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home))
                 .assertTextEquals("Home")
         } finally {
-            scope2.cancel()
+            withContext(NonCancellable) { job2.cancelAndJoin() }
         }
     }
 }
