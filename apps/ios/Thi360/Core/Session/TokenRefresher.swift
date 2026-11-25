@@ -34,6 +34,7 @@ actor TokenRefresher {
     private let tokenStore: any TokenStore
     private let refreshExecutor: RefreshExecutor
     let eventSink: RefreshEventSink
+    private var sessionEpoch: UInt64 = 0
     private var inFlightTask: Task<SessionTokens, Error>?
 
     init(
@@ -44,6 +45,12 @@ actor TokenRefresher {
         self.tokenStore = tokenStore
         self.refreshExecutor = refreshExecutor
         self.eventSink = eventSink
+    }
+
+    func invalidate() {
+        sessionEpoch &+= 1
+        inFlightTask?.cancel()
+        inFlightTask = nil
     }
 
     func refreshIfNeeded(failedAccessToken: String? = nil) async throws -> SessionTokens {
@@ -60,18 +67,47 @@ actor TokenRefresher {
             return currentTokens
         }
 
+        let startEpoch = sessionEpoch
         let refreshToken = currentTokens.refreshToken
         let storedUsername = currentTokens.username
-        let executor = refreshExecutor
 
+        // Wrap the full actor-isolated commit so coalesced followers receive mergedTokens after persistence and event delivery.
         let task = Task<SessionTokens, Error> {
-            try await executor(refreshToken)
+            try await self.performRefresh(
+                startEpoch: startEpoch,
+                refreshToken: refreshToken,
+                storedUsername: storedUsername
+            )
         }
         inFlightTask = task
+        return try await task.value
+    }
 
+    func handleUnrecoverableUnauthorized(accessToken: String) async {
+        guard let current = try? tokenStore.read(), current.accessToken == accessToken else {
+            return
+        }
+        invalidate()
+        try? tokenStore.clear()
+        await eventSink.emit(.expired)
+    }
+
+    private func performRefresh(
+        startEpoch: UInt64,
+        refreshToken: String,
+        storedUsername: String?
+    ) async throws -> SessionTokens {
         do {
-            let newTokens = try await task.value
-            inFlightTask = nil
+            let newTokens = try await refreshExecutor(refreshToken)
+            if sessionEpoch == startEpoch {
+                inFlightTask = nil
+            }
+
+            guard sessionEpoch == startEpoch,
+                  (try? tokenStore.read())?.refreshToken == refreshToken
+            else {
+                throw MobileApiError.api(statusCode: 401, error: ApiError(code: "SESSION_REVOKED"))
+            }
 
             let mergedTokens = SessionTokens(
                 accessToken: newTokens.accessToken,
@@ -86,8 +122,17 @@ actor TokenRefresher {
             await eventSink.emit(.refreshed(mergedTokens))
             return mergedTokens
         } catch {
-            inFlightTask = nil
+            if sessionEpoch == startEpoch {
+                inFlightTask = nil
+            }
+
             let classified = MobileApiError.classify(error)
+
+            guard sessionEpoch == startEpoch,
+                  (try? tokenStore.read())?.refreshToken == refreshToken
+            else {
+                throw classified
+            }
 
             if classified.statusCode == 403, classified.apiCode == "APP_STUDENT_ONLY" {
                 try? tokenStore.clear()
@@ -103,13 +148,5 @@ actor TokenRefresher {
 
             throw classified
         }
-    }
-
-    func handleUnrecoverableUnauthorized(accessToken: String) async {
-        guard let current = try? tokenStore.read(), current.accessToken == accessToken else {
-            return
-        }
-        try? tokenStore.clear()
-        await eventSink.emit(.expired)
     }
 }

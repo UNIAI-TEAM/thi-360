@@ -55,12 +55,6 @@ final class InMemoryLogSink: LogSink, @unchecked Sendable {
         defer { lock.unlock() }
         return entries
     }
-
-    func clear() {
-        lock.lock()
-        defer { lock.unlock() }
-        entries.removeAll()
-    }
 }
 
 struct RedactingAppLogger: Sendable {

@@ -65,6 +65,7 @@ final class SessionStore {
         let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             let tokens = try await apiClient.login(identifier: trimmedIdentifier, password: password)
+            await apiClient.refresher.invalidate()
             try tokenStore.write(tokens)
             connectivityState = .online
             state = tokens.mustChangePassword ? .mustChangePassword : .active
@@ -72,6 +73,7 @@ final class SessionStore {
         } catch {
             let apiError = MobileApiError.classify(error)
             if apiError.statusCode == 403, apiError.apiCode == "APP_STUDENT_ONLY" {
+                await apiClient.refresher.invalidate()
                 try? tokenStore.clear()
                 connectivityState = .online
                 state = .signedOut(reason: .studentOnly(username: trimmedIdentifier))
@@ -95,15 +97,18 @@ final class SessionStore {
 
     func signOut(reason: SignedOutReason = .none) async {
         let refreshToken = (try? tokenStore.read())?.refreshToken
-        if let refreshToken, !refreshToken.isEmpty {
-            _ = try? await apiClient.logout(refreshToken: refreshToken)
-        }
+        await apiClient.refresher.invalidate()
         try? tokenStore.clear()
         connectivityState = .online
         state = .signedOut(reason: reason)
+        if let refreshToken, !refreshToken.isEmpty {
+            _ = try? await apiClient.logout(refreshToken: refreshToken)
+        }
     }
 
     func applyRefreshEvent(_ event: TokenRefreshEvent) {
+        guard state.isAuthenticated else { return }
+
         switch event {
         case let .refreshed(tokens):
             connectivityState = .online
@@ -124,8 +129,11 @@ final class SessionStore {
     private func probeStoredSession() async {
         do {
             _ = try await apiClient.refresher.refreshIfNeeded(failedAccessToken: nil)
-            connectivityState = .online
+            if state.isAuthenticated {
+                connectivityState = .online
+            }
         } catch {
+            guard state.isAuthenticated else { return }
             let apiError = MobileApiError.classify(error)
             if apiError.isOfflineOrConnectivity {
                 // Offline launch never signs out regardless of device clock (Spec AC-36, AC-90).
@@ -133,26 +141,6 @@ final class SessionStore {
                 logger.log(.info, category: "session", message: "Session launch probe offline; retaining session")
             }
         }
-    }
-
-    static func makeAuthenticatedPreview(
-        locale: AppLocale = .vi,
-        environment: AppEnvironment = .current
-    ) -> SessionStore {
-        let store = InMemoryTokenStore()
-        let client = MobileAPIClient(
-            serverURL: environment.apiBaseURL,
-            tokenStore: store,
-            logger: RedactingAppLogger(environment: environment.kind),
-            localeProvider: { locale }
-        )
-        return SessionStore(
-            tokenStore: store,
-            apiClient: client,
-            logger: RedactingAppLogger(environment: environment.kind),
-            initialStateOverride: .active,
-            skipsLaunchValidation: true
-        )
     }
 
     static func makeForCurrentProcess(

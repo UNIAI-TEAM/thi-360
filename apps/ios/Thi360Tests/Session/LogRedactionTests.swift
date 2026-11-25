@@ -5,18 +5,51 @@ import XCTest
 @MainActor
 final class LogRedactionTests: XCTestCase {
     func testDemoLogsNeverExposePasswordOrTokensDuringLoginRefreshAndProtectedRequests() async throws {
-        #if THI360_DEMO
-        XCTAssertEqual(AppEnvironment.current.kind, .demo)
-        let demoSuite = "vn.unicom.thi360.tests.demo.\(UUID().uuidString)"
-        let demoDefaults = try XCTUnwrap(UserDefaults(suiteName: demoSuite))
-        defer { demoDefaults.removePersistentDomain(forName: demoSuite) }
+        let demoEnvironment = AppEnvironment(
+            kind: .demo,
+            apiBaseURL: URL(string: "https://thi360.zone17.click")!,
+            webBaseURL: URL(string: "https://thi360.zone17.click")!
+        )
+        let isolatedSuite = "vn.unicom.thi360.tests.demo.\(UUID().uuidString)"
+        let isolatedKeychainService = "vn.unicom.thi360.tests.demo.kc.\(UUID().uuidString)"
+        let demoDefaults = try XCTUnwrap(UserDefaults(suiteName: isolatedSuite))
+        defer { demoDefaults.removePersistentDomain(forName: isolatedSuite) }
         let demoPrefs = AppPreferences(userDefaults: demoDefaults)
+
+        let defaultStore = KeychainTokenStore()
+        let previousDefaultTokens = try? defaultStore.read()
+        let previousFirstRunFlag = UserDefaults.standard.object(forKey: FirstRunKeychainCleaner.defaultFlagKey)
+        try? defaultStore.clear()
+        defer {
+            if let previousDefaultTokens {
+                try? defaultStore.write(previousDefaultTokens)
+            } else {
+                try? defaultStore.clear()
+            }
+            if let previousFirstRunFlag {
+                UserDefaults.standard.set(previousFirstRunFlag, forKey: FirstRunKeychainCleaner.defaultFlagKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: FirstRunKeychainCleaner.defaultFlagKey)
+            }
+        }
+
         let demoSession = SessionStore.makeForCurrentProcess(
             preferences: demoPrefs,
-            arguments: ["-uitest-authenticated", "-uitest-api-base-url", "http://127.0.0.1:9999"],
-            environment: .current
+            arguments: [
+                "-uitest-authenticated",
+                "-uitest-api-base-url", "http://127.0.0.1:9999",
+                "-uitest-keychain-service", isolatedKeychainService,
+                "-uitest-defaults-suite", isolatedSuite
+            ],
+            environment: demoEnvironment
         )
-        XCTAssertEqual(demoSession.apiClient.serverURL, AppEnvironment.current.apiBaseURL)
+        XCTAssertEqual(demoSession.apiClient.serverURL, demoEnvironment.apiBaseURL)
+        XCTAssertEqual((demoSession.tokenStore as? KeychainTokenStore)?.service, KeychainTokenStore.defaultService)
+        XCTAssertEqual(demoSession.state, .signedOut(reason: .none), "Demo must ignore -uitest-authenticated")
+
+        #if THI360_DEMO
+        XCTAssertEqual(AppEnvironment.current.kind, .demo)
+        XCTAssertEqual(AppEnvironment.current.apiBaseURL, demoEnvironment.apiBaseURL)
         #endif
 
         let secretPassword = "DemoSecretPassword!9941"
