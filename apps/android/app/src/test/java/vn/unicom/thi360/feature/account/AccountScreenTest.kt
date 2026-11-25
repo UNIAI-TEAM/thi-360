@@ -3,19 +3,26 @@ package vn.unicom.thi360.feature.account
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -39,6 +46,8 @@ import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.storage.Tokens
+import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.feature.recovery.OpenApiRecoveryGateway
 import vn.unicom.thi360.feature.recovery.PasswordTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
@@ -128,8 +137,17 @@ class AccountScreenTest {
         composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_SINGLE_PANE).assertIsDisplayed()
         composeRule.onNodeWithTag(AccountTestTags.PROFILE_LOADING).assertIsDisplayed()
 
-        // Unavailable biometric switch is disabled with explanation
-        composeRule.onNodeWithTag(AccountTestTags.BIOMETRIC_SWITCH).assertIsNotEnabled()
+        // Unavailable biometric switch is disabled with explanation and TalkBack contentDescription.
+        val switchNode = composeRule.onNodeWithTag(AccountTestTags.BIOMETRIC_SWITCH)
+            .assertIsNotEnabled()
+            .fetchSemanticsNode()
+        val contentDescriptions = switchNode.config
+            .getOrElseNullable(SemanticsProperties.ContentDescription) { null }
+            .orEmpty()
+        assertTrue(
+            "Biometric switch must expose a non-empty ContentDescription for TalkBack",
+            contentDescriptions.any { it.isNotBlank() },
+        )
         composeRule.onNodeWithTag(AccountTestTags.BIOMETRIC_EXPLANATION).assertIsDisplayed()
 
         // 2. Error state + Retry + local settings still usable
@@ -254,20 +272,125 @@ class AccountScreenTest {
         composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_SINGLE_PANE).assertDoesNotExist()
         composeRule.onNodeWithTag(AccountTestTags.DETAIL_PANE).assertIsDisplayed()
         composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsSelected()
+        composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).assertIsNotSelected()
+        composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).assertIsNotSelected()
 
-        // Selecting Language switches right detail pane and updates app copy immediately.
+        // Selecting Language switches right detail pane and updates selection semantics & app copy immediately.
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).performScrollTo().performClick()
+        composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).assertIsSelected()
+        composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsNotSelected()
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_OPTION_EN).performClick()
         assertEquals(AppLocale.EN, preferences.locale)
         composeRule.onNodeWithText("Security").assertIsDisplayed()
 
         // Selecting Theme switches right detail pane and updates theme preference.
         composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).performScrollTo().performClick()
+        composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).assertIsSelected()
         composeRule.onNodeWithTag(AccountTestTags.THEME_OPTION_DARK).performClick()
         assertEquals(ThemeMode.DARK, preferences.themeMode)
 
         // Selecting Change Password remounts AND-3 ChangePasswordScreen in right pane.
         composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).performScrollTo().performClick()
+        composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsSelected()
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w840dp-h720dp")
+    fun foldFromTwoPaneToSinglePaneMidPasswordDraftPreservesChangePasswordScreenAndDraft() {
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(signedInTokens("student.fold")),
+            localeProvider = { AppLocale.VI },
+        )
+        val profile = UserProfile("student.fold", "Học viên Gập", "fold@thi360.vn", true)
+        var isTwoPaneWidth by mutableStateOf(true)
+        var selectedPane by mutableStateOf(AccountDetailPane.CHANGE_PASSWORD)
+        var showSinglePaneChangePassword by mutableStateOf(false)
+        var profileState by mutableStateOf<ProfileLoadState>(ProfileLoadState.Loaded(profile))
+
+        composeRule.setContent {
+            Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
+                AccountScreen(
+                    isTwoPaneWidth = isTwoPaneWidth,
+                    usernameFallback = "student.fold",
+                    preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT),
+                    onSelectLocale = {},
+                    onSelectThemeMode = {},
+                    sessionManager = stack.sessionManager,
+                    profileGateway = object : AccountProfileGateway {
+                        override suspend fun fetchProfile(): ApiResult<UserProfile> = ApiResult.Success(profile)
+                    },
+                    recoveryGateway = OpenApiRecoveryGateway(
+                        publicAuthApi = stack.publicAuthApi,
+                        authenticatedAuthApi = stack.authenticatedAuthApi,
+                    ),
+                    biometricController = null,
+                    biometricAuthenticator = null,
+                    profileState = profileState,
+                    onProfileStateChanged = { profileState = it },
+                    selectedPane = selectedPane,
+                    onSelectPane = { selectedPane = it },
+                    showSinglePaneChangePassword = showSinglePaneChangePassword,
+                    onShowSinglePaneChangePassword = { showSinglePaneChangePassword = it },
+                )
+            }
+        }
+
+        // User starts typing into the mounted two-pane ChangePasswordScreen without clicking the left row.
+        composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performTextInput("OldSecret1!")
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("NewSecret1!")
+
+        // Device folds below 840dp: ChangePasswordScreen must stay mounted with draft preserved.
+        composeRule.runOnIdle { isTwoPaneWidth = false }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).assertTextContains("OldSecret1!")
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).assertTextContains("NewSecret1!")
+
+        // Navigating back from single-pane ChangePasswordScreen returns to the Account list.
+        composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_SINGLE_PANE).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp", fontScale = 2.0f)
+    fun narrowViewportAt200PercentFontScaleKeepsThemeRowReadableAndActionable() {
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(signedInTokens()),
+            localeProvider = { AppLocale.EN },
+        )
+        var preferences by mutableStateOf(AppPreferences(locale = AppLocale.EN, themeMode = ThemeMode.LIGHT))
+        val profile = UserProfile("student.demo", "Demo Student", "demo@thi360.vn", true)
+
+        composeRule.setContent {
+            AppRoot(
+                preferences = preferences,
+                onSelectLocale = { preferences = preferences.copy(locale = it) },
+                onSelectThemeMode = { preferences = preferences.copy(themeMode = it) },
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+                startDestination = Destination.Account.route,
+                profileGateway = object : AccountProfileGateway {
+                    override suspend fun fetchProfile(): ApiResult<UserProfile> = ApiResult.Success(profile)
+                },
+            )
+        }
+
+        composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).performScrollTo().assertIsDisplayed()
+        val labelBounds = composeRule.onNodeWithText("Appearance").getUnclippedBoundsInRoot()
+        assertTrue(
+            "Appearance label must not be crushed at 360dp @ 200% font scale (width=${labelBounds.right - labelBounds.left})",
+            (labelBounds.right - labelBounds.left) >= 80.dp,
+        )
+        composeRule.onNodeWithTag(AccountTestTags.THEME_OPTION_DARK).performScrollTo().performClick()
+        assertEquals(ThemeMode.DARK, preferences.themeMode)
     }
 }

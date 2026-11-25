@@ -1,5 +1,8 @@
 package vn.unicom.thi360.core.biometric
 
+import android.app.Activity
+import android.os.Build
+import android.view.WindowManager
 import vn.unicom.thi360.core.session.SessionState
 
 object LockPolicy {
@@ -23,4 +26,15 @@ object RecentsPrivacyPolicy {
         biometricState: BiometricState,
         sessionState: SessionState,
     ): Boolean = biometricState is BiometricState.On || sessionState is SessionState.Locked
+}
+
+fun Activity.applyRecentsPrivacy(protect: Boolean) {
+    if (protect) {
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    } else {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        setRecentsScreenshotEnabled(!protect)
+    }
 }

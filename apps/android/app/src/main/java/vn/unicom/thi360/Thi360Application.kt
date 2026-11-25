@@ -1,6 +1,7 @@
 package vn.unicom.thi360
 
 import android.app.Application
+import androidx.annotation.VisibleForTesting
 import vn.unicom.thi360.core.appearance.AppearanceRepository
 import vn.unicom.thi360.core.biometric.AndroidBiometricAvailabilityChecker
 import vn.unicom.thi360.core.biometric.BiometricController
@@ -14,15 +15,30 @@ class Thi360Application : Application() {
         DataStoreAppPreferencesRepository.create(this)
     }
 
-    val appearanceRepository: AppearanceRepository by lazy {
+    private var testAppearanceRepository: AppearanceRepository? = null
+    private val defaultAppearanceRepository: AppearanceRepository by lazy {
         AppearanceRepository.create(this)
     }
+    val appearanceRepository: AppearanceRepository
+        get() = testAppearanceRepository ?: defaultAppearanceRepository
 
-    val biometricController: BiometricController by lazy {
+    private var testBiometricController: BiometricController? = null
+    private val defaultBiometricController: BiometricController by lazy {
         BiometricController(
             availabilityChecker = AndroidBiometricAvailabilityChecker(this),
             vault = KeystoreBiometricVault.create(this),
             promptMemoryStore = DataStoreBiometricPromptMemoryStore.create(this),
         )
+    }
+    val biometricController: BiometricController
+        get() = testBiometricController ?: defaultBiometricController
+
+    @VisibleForTesting
+    internal fun setTestOverrides(
+        appearanceRepository: AppearanceRepository? = null,
+        biometricController: BiometricController? = null,
+    ) {
+        testAppearanceRepository = appearanceRepository
+        testBiometricController = biometricController
     }
 }

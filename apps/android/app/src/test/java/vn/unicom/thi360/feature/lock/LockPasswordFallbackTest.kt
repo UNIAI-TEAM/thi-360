@@ -8,11 +8,14 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -37,9 +40,12 @@ import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.core.session.RefreshOutcome
 import vn.unicom.thi360.core.session.SessionState
+import vn.unicom.thi360.core.session.SignOutReason
 import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.feature.login.LoginTestTags
+import vn.unicom.thi360.feature.password.ChangePasswordDraftViewModel
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
@@ -153,7 +159,7 @@ class LockPasswordFallbackTest {
         assertTrue(stack.sessionManager.state.value is SessionState.Locked)
         server.takeRequest()
 
-        // Valid login replaces session, calls mobile/logout on old session (ignoring 500 error),
+        // Valid login replaces session, calls mobile/logout on old session asynchronously (even when delayed and failing with 500),
         // clears old biometric data, and re-prompts per PromptMemory (lastAnswer == YES -> prompt shown!).
         server.enqueue(
             ContractFixtureLoader.jsonResponse(
@@ -161,7 +167,11 @@ class LockPasswordFallbackTest {
                 ContractFixtureLoader.readAuthFixture("login-200.json"),
             ),
         )
-        server.enqueue(MockResponse().setResponseCode(500))
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(500)
+                .setHeadersDelay(150, TimeUnit.MILLISECONDS),
+        )
 
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("CorrectPass1!")
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
@@ -178,10 +188,12 @@ class LockPasswordFallbackTest {
         assertEquals("Old biometric state must be cleared before re-enable", BiometricState.Off, controller.state.value)
         assertFalse(vault.hasWrappedToken())
 
-        val loginReq = server.takeRequest()
-        assertEquals("/api/v1/auth/mobile/login", loginReq.path)
-        val oldLogoutReq = server.takeRequest()
-        assertEquals("/api/v1/auth/mobile/logout", oldLogoutReq.path)
+        val loginReq = server.takeRequest(5, TimeUnit.SECONDS)
+        assertNotNull("Expected mobile/login request", loginReq)
+        assertEquals("/api/v1/auth/mobile/login", loginReq!!.path)
+        val oldLogoutReq = server.takeRequest(5, TimeUnit.SECONDS)
+        assertNotNull("Expected background mobile/logout request for old session", oldLogoutReq)
+        assertEquals("/api/v1/auth/mobile/logout", oldLogoutReq!!.path)
         assertTrue(
             "Old session refreshToken must be sent to mobile/logout",
             oldLogoutReq.body.readUtf8().contains("old-refresh-token"),
@@ -190,7 +202,7 @@ class LockPasswordFallbackTest {
 
     @Test
     @Config(qualifiers = "w390dp-h844dp")
-    fun fallbackValidLoginSkipsBiometricPromptWhenPromptMemoryIsLater() {
+    fun fallbackValidLoginSkipsBiometricPromptWhenPromptMemoryIsLaterAndClearsActivePasswordDrafts() {
         val vault = FakeBiometricVault(initialWrappedToken = "old-refresh-token")
         val controller = BiometricController(
             availabilityChecker = FakeBiometricAvailabilityChecker(BiometricAvailability.Available),
@@ -208,6 +220,11 @@ class LockPasswordFallbackTest {
             onSessionCleared = { controller.clearForSessionEnd() },
             startLocked = true,
         )
+        val activeDraft = ChangePasswordDraftViewModel().apply {
+            oldPasswordState.edit { append("OldSecret1!") }
+            newPasswordState.edit { append("NewSecret1!") }
+            confirmPasswordState.edit { append("NewSecret1!") }
+        }
 
         composeRule.setContent {
             AppRoot(
@@ -240,5 +257,34 @@ class LockPasswordFallbackTest {
 
         composeRule.onNodeWithTag(LockTestTags.ENABLE_PROMPT_SCREEN).assertDoesNotExist()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home)).assertIsDisplayed()
+        assertEquals("", activeDraft.oldPasswordState.text.toString())
+        assertEquals("", activeDraft.newPasswordState.text.toString())
+        assertEquals("", activeDraft.confirmPasswordState.text.toString())
+        assertNotNull(server.takeRequest(5, TimeUnit.SECONDS))
+        assertNotNull(server.takeRequest(5, TimeUnit.SECONDS))
+    }
+
+    @Test
+    fun unlockAndRefreshWithMissingStoredTokensExitsLockedToSignedOutExpired() = runBlocking {
+        var sessionClearedCount = 0
+        val tokenStore = InMemoryTokenStore(
+            Tokens("access-1", "refresh-1", 300, 604800, false, "student.locked"),
+        )
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = tokenStore,
+            localeProvider = { AppLocale.VI },
+            onSessionCleared = { sessionClearedCount++ },
+            startLocked = true,
+        )
+        assertTrue(stack.sessionManager.state.value is SessionState.Locked)
+
+        tokenStore.clear()
+        val outcome = stack.sessionManager.unlockAndRefresh()
+
+        assertEquals(RefreshOutcome.SignedOut, outcome)
+        assertEquals(SessionState.SignedOut(SignOutReason.Expired), stack.sessionManager.state.value)
+        assertEquals(1, sessionClearedCount)
     }
 }

@@ -3,9 +3,7 @@ package vn.unicom.thi360.shell
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -24,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,6 +48,7 @@ import vn.unicom.thi360.core.biometric.BiometricController
 import vn.unicom.thi360.core.biometric.BiometricState
 import vn.unicom.thi360.core.biometric.BiometricUnavailableReason
 import vn.unicom.thi360.core.biometric.RecentsPrivacyPolicy
+import vn.unicom.thi360.core.biometric.applyRecentsPrivacy
 import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -179,20 +179,12 @@ fun AppRoot(
         ?: remember { MutableStateFlow<BiometricState>(BiometricState.Unavailable(BiometricUnavailableReason.NO_HARDWARE)) })
         .collectAsStateWithLifecycle()
 
-    LaunchedEffect(activity, biometricState, sessionState) {
-        val window = activity?.window ?: return@LaunchedEffect
-        val protect = RecentsPrivacyPolicy.shouldProtectWindow(
-            biometricState = biometricState,
-            sessionState = sessionState,
-        )
-        if (protect) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            activity.setRecentsScreenshotEnabled(!protect)
-        }
+    val protectWindow = RecentsPrivacyPolicy.shouldProtectWindow(
+        biometricState = biometricState,
+        sessionState = sessionState,
+    )
+    SideEffect {
+        activity?.applyRecentsPrivacy(protectWindow)
     }
 
     LaunchedEffect(activeSessionManager, validateOnLaunch) {
@@ -322,8 +314,9 @@ internal fun AppSessionContent(
         ?: remember { MutableStateFlow(false) })
         .collectAsStateWithLifecycle()
 
-    // Session-scoped UI state survives Active <-> Locked transitions and wipes on sign-out / session replacement.
-    var savedShellNavState by remember(sessionManager, sessionGeneration) { mutableStateOf<Bundle?>(null) }
+    // Session-scoped UI state survives Active <-> Locked transitions (and rotation while Locked)
+    // and wipes on sign-out / session replacement.
+    var savedShellNavState by rememberSaveable(sessionGeneration) { mutableStateOf<Bundle?>(null) }
     var profileState by remember(sessionManager, sessionGeneration) {
         mutableStateOf<ProfileLoadState>(ProfileLoadState.Loading)
     }
@@ -335,8 +328,11 @@ internal fun AppSessionContent(
     }
 
     val isSignedOut = sessionState is SessionState.SignedOut
-    LaunchedEffect(isSignedOut) {
-        if (isSignedOut) {
+    var lastSeenSessionGeneration by remember(sessionManager) { mutableLongStateOf(sessionGeneration) }
+    LaunchedEffect(isSignedOut, sessionGeneration) {
+        val generationChanged = sessionGeneration != lastSeenSessionGeneration
+        lastSeenSessionGeneration = sessionGeneration
+        if (isSignedOut || generationChanged) {
             ChangePasswordDraftViewModel.clearAllActiveDrafts()
             savedShellNavState = null
             profileState = ProfileLoadState.Loading
@@ -660,8 +656,9 @@ internal fun AppSessionContent(
         DisposableEffect(shellNavController) {
             onDispose {
                 val nextState = sessionManager.state.value
+                val sameGeneration = sessionManager.sessionGeneration.value == sessionGeneration
                 if (navController != null) {
-                    if (nextState !is SessionState.Locked) {
+                    if (nextState is SessionState.SignedOut || !sameGeneration) {
                         Destination.entries.forEach { destination ->
                             shellNavController.clearBackStack(destination.route)
                         }
@@ -672,7 +669,7 @@ internal fun AppSessionContent(
                             )
                         }
                     }
-                } else if (nextState is SessionState.Locked) {
+                } else if (nextState !is SessionState.SignedOut && sameGeneration) {
                     savedShellNavState = shellNavController.saveState()
                 }
             }

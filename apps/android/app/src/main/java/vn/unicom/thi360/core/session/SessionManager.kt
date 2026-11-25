@@ -2,10 +2,14 @@ package vn.unicom.thi360.core.session
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -37,6 +41,7 @@ class SessionManager(
     private val authGateway: MobileAuthGateway,
     private val onSessionCleared: () -> Unit = {},
     startLocked: Boolean = false,
+    private val backgroundScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
 ) : TokenRefresher {
 
     private data class InFlightRefresh(
@@ -123,7 +128,7 @@ class SessionManager(
                     oldToken
                 }
                 if (previousRefreshToken != null && previousRefreshToken != stored.refreshToken) {
-                    withContext(NonCancellable) {
+                    backgroundScope.launch {
                         runCatching { authGateway.logout(previousRefreshToken) }
                     }
                 }
@@ -146,7 +151,7 @@ class SessionManager(
                         oldToken
                     }
                     if (previousRefreshToken != null) {
-                        withContext(NonCancellable) {
+                        backgroundScope.launch {
                             runCatching { authGateway.logout(previousRefreshToken) }
                         }
                     }
@@ -177,11 +182,18 @@ class SessionManager(
                         _state.value = stateForTokens(stored, isOffline = true)
                     } else {
                         onSessionCleared()
+                        _sessionGeneration.value += 1L
                         _state.value = SessionState.SignedOut(SignOutReason.Expired)
                     }
                 }
 
-                RefreshOutcome.Expired, RefreshOutcome.StudentOnly, RefreshOutcome.SignedOut -> Unit
+                RefreshOutcome.SignedOut -> {
+                    onSessionCleared()
+                    _sessionGeneration.value += 1L
+                    _state.value = SessionState.SignedOut(SignOutReason.Expired)
+                }
+
+                RefreshOutcome.Expired, RefreshOutcome.StudentOnly -> Unit
             }
         }
         return outcome

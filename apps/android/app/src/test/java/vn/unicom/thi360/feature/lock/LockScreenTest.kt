@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -227,5 +228,68 @@ class LockScreenTest {
             .assertTextContains("Nhập mật khẩu", substring = true)
         composeRule.onNodeWithTag(LockTestTags.OTHER_ACCOUNT_BUTTON)
             .assertTextContains("Đăng nhập bằng tài khoản khác", substring = true)
+    }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp")
+    fun rotationWhileLockedStillRestoresPriorTabOnUnlock() {
+        val vault = FakeBiometricVault(initialWrappedToken = "refresh-rotate")
+        val controller = BiometricController(
+            availabilityChecker = FakeBiometricAvailabilityChecker(BiometricAvailability.Available),
+            vault = vault,
+            promptMemoryStore = InMemoryBiometricPromptMemoryStore(),
+        )
+        val tokenStore = InMemoryTokenStore(
+            Tokens("access-rotate", "refresh-rotate", 300, 604800, false, "student.rotate"),
+        )
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = tokenStore,
+            localeProvider = { AppLocale.VI },
+            onSessionCleared = { controller.clearForSessionEnd() },
+        )
+        val restorationTester = StateRestorationTester(composeRule)
+
+        restorationTester.setContent {
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+                biometricController = controller,
+                biometricAuthenticator = FakeBiometricAuthenticator(BiometricPromptResult.Success(null)),
+            )
+        }
+
+        // Navigate to History tab and lock the session.
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).performClick()
+        composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.History)).assertIsDisplayed()
+
+        composeRule.runOnIdle { stack.sessionManager.lockSession() }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertIsDisplayed()
+
+        // Emulate Activity rotation / savedInstanceState recreation while Locked.
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertIsDisplayed()
+
+        // Unlock must still restore the saved History tab, not reset to Home.
+        server.enqueue(
+            ContractFixtureLoader.jsonResponse(
+                200,
+                ContractFixtureLoader.readAuthFixture("refresh-200.json"),
+            ),
+        )
+        composeRule.onNodeWithTag(LockTestTags.UNLOCK_BUTTON).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            stack.sessionManager.state.value is SessionState.Active
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).assertIsSelected()
+        composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.History)).assertIsDisplayed()
     }
 }

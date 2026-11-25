@@ -2,10 +2,12 @@ package vn.unicom.thi360.feature.account
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -41,6 +43,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,13 +57,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.launch
 import vn.unicom.thi360.R
@@ -76,6 +84,7 @@ import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.session.SessionManager
 import vn.unicom.thi360.core.theme.Thi360Theme
 import vn.unicom.thi360.feature.login.LoginIcons
+import vn.unicom.thi360.feature.password.ChangePasswordDraftViewModel
 import vn.unicom.thi360.feature.password.ChangePasswordScreen
 import vn.unicom.thi360.feature.recovery.RecoveryGateway
 import vn.unicom.thi360.shell.Destination
@@ -142,10 +151,26 @@ fun AccountScreen(
         biometricController?.refreshAvailability()
     }
 
+    val viewModelStoreOwner = LocalViewModelStoreOwner.current
     val resolvedUsername = (profileState as? ProfileLoadState.Loaded)?.profile?.username
         ?: usernameFallback
+    var previousTwoPaneWidth by rememberSaveable { mutableStateOf(isTwoPaneWidth) }
+    val foldedFromChangePasswordWithDraft = previousTwoPaneWidth &&
+        !isTwoPaneWidth &&
+        !showSinglePaneChangePassword &&
+        selectedPane == AccountDetailPane.CHANGE_PASSWORD &&
+        hasActiveVoluntaryPasswordDraft(viewModelStoreOwner, resolvedUsername)
+    val effectiveShowSinglePaneChangePassword =
+        showSinglePaneChangePassword || foldedFromChangePasswordWithDraft
 
-    if (!isTwoPaneWidth && showSinglePaneChangePassword) {
+    SideEffect {
+        if (foldedFromChangePasswordWithDraft) {
+            onShowSinglePaneChangePassword(true)
+        }
+        previousTwoPaneWidth = isTwoPaneWidth
+    }
+
+    if (!isTwoPaneWidth && effectiveShowSinglePaneChangePassword) {
         ChangePasswordScreen(
             username = resolvedUsername,
             recoveryGateway = recoveryGateway,
@@ -168,9 +193,7 @@ fun AccountScreen(
         onRetryProfile = ::loadProfile,
         onChangePasswordClick = {
             onSelectPane(AccountDetailPane.CHANGE_PASSWORD)
-            if (!isTwoPaneWidth) {
-                onShowSinglePaneChangePassword(true)
-            }
+            onShowSinglePaneChangePassword(true)
         },
         onToggleBiometric = { targetChecked ->
             val controller = biometricController ?: return@AccountScreenContent
@@ -211,6 +234,7 @@ fun AccountScreen(
         },
         onLanguageRowClick = {
             if (isTwoPaneWidth) {
+                onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.LANGUAGE)
             } else {
                 showLanguageDialog = true
@@ -218,6 +242,7 @@ fun AccountScreen(
         },
         onThemeRowClick = {
             if (isTwoPaneWidth) {
+                onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.THEME)
             }
         },
@@ -439,6 +464,7 @@ private fun AccountListColumn(
             title = stringResource(R.string.account_change_password),
             trailingValue = null,
             selected = compactTwoPane && selectedPane == AccountDetailPane.CHANGE_PASSWORD,
+            isSelectablePaneItem = compactTwoPane,
             showChevron = !compactTwoPane,
             horizontalPad = horizontalPad,
             onClick = onChangePasswordClick,
@@ -497,6 +523,7 @@ private fun AccountListColumn(
             title = stringResource(R.string.account_language_label),
             trailingValue = currentLocaleLabel,
             selected = compactTwoPane && selectedPane == AccountDetailPane.LANGUAGE,
+            isSelectablePaneItem = compactTwoPane,
             showChevron = !compactTwoPane,
             horizontalPad = horizontalPad,
             onClick = onLanguageRowClick,
@@ -514,6 +541,7 @@ private fun AccountListColumn(
                 title = stringResource(R.string.account_theme_label),
                 trailingValue = currentThemeLabel,
                 selected = selectedPane == AccountDetailPane.THEME,
+                isSelectablePaneItem = true,
                 showChevron = false,
                 horizontalPad = horizontalPad,
                 onClick = onThemeRowClick,
@@ -799,6 +827,7 @@ private fun AccountNavigationRow(
     title: String,
     trailingValue: String?,
     selected: Boolean,
+    isSelectablePaneItem: Boolean,
     showChevron: Boolean,
     horizontalPad: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit,
@@ -808,14 +837,29 @@ private fun AccountNavigationRow(
     val rowBg = if (selected) colors.primaryContainer else colors.bgPage.copy(alpha = 0f)
     val contentColor = if (selected) colors.primaryText else colors.text
     val iconColor = if (selected) colors.primaryText else colors.textMuted
+    val pillShape = RoundedCornerShape(28.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = if (selected) 4.dp else 0.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(pillShape)
             .background(rowBg)
+            .then(
+                if (selected) {
+                    Modifier.border(width = 1.dp, color = colors.borderStrong, shape = pillShape)
+                } else {
+                    Modifier
+                },
+            )
             .clickable(role = Role.Button, onClick = onClick)
+            .then(
+                if (isSelectablePaneItem) {
+                    Modifier.semantics { this.selected = selected }
+                } else {
+                    Modifier
+                },
+            )
             .heightIn(min = 56.dp)
             .padding(horizontal = horizontalPad, vertical = 10.dp)
             .testTag(testTag),
@@ -862,6 +906,7 @@ private fun BiometricSettingRow(
     val colors = Thi360Theme.colors
     val isAvailable = biometricState !is BiometricState.Unavailable
     val checked = biometricState is BiometricState.On
+    val biometricTitle = stringResource(R.string.account_biometric_title)
     val subtitleText = when (biometricState) {
         is BiometricState.Unavailable -> when (biometricState.reason) {
             BiometricUnavailableReason.NO_HARDWARE ->
@@ -897,7 +942,7 @@ private fun BiometricSettingRow(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = stringResource(R.string.account_biometric_title),
+                text = biometricTitle,
                 style = MaterialTheme.typography.bodyLarge,
                 color = if (isAvailable) colors.text else colors.textMuted,
             )
@@ -919,7 +964,9 @@ private fun BiometricSettingRow(
                 uncheckedTrackColor = colors.bgSubtle,
                 uncheckedBorderColor = colors.borderStrong,
             ),
-            modifier = Modifier.testTag(AccountTestTags.BIOMETRIC_SWITCH),
+            modifier = Modifier
+                .semantics { contentDescription = biometricTitle }
+                .testTag(AccountTestTags.BIOMETRIC_SWITCH),
         )
     }
 }
@@ -940,27 +987,33 @@ private fun InlineThemeSettingRow(
         inactiveBorderColor = colors.border,
     )
 
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
             .padding(horizontal = horizontalPad, vertical = 8.dp)
             .testTag(AccountTestTags.THEME_ROW),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = AccountIcons.Sun,
-            contentDescription = null,
-            tint = colors.textMuted,
-            modifier = Modifier.size(24.dp),
-        )
-        Text(
-            text = stringResource(R.string.account_theme_label),
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.text,
-            modifier = Modifier.weight(1f),
-        )
+        Row(
+            modifier = Modifier.padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                imageVector = AccountIcons.Sun,
+                contentDescription = null,
+                tint = colors.textMuted,
+                modifier = Modifier.size(24.dp),
+            )
+            Text(
+                text = stringResource(R.string.account_theme_label),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.text,
+            )
+        }
         SingleChoiceSegmentedButtonRow {
             SegmentedButton(
                 selected = selectedMode == ThemeMode.LIGHT,
@@ -984,6 +1037,18 @@ private fun InlineThemeSettingRow(
             )
         }
     }
+}
+
+private fun hasActiveVoluntaryPasswordDraft(
+    owner: ViewModelStoreOwner?,
+    username: String?,
+): Boolean {
+    if (owner == null) return false
+    val key = "voluntary_${username.orEmpty()}"
+    val draft = ViewModelProvider(owner)[key, ChangePasswordDraftViewModel::class.java]
+    return draft.oldPasswordState.text.isNotEmpty() ||
+        draft.newPasswordState.text.isNotEmpty() ||
+        draft.confirmPasswordState.text.isNotEmpty()
 }
 
 @Composable

@@ -1,6 +1,7 @@
 package vn.unicom.thi360.core.session
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import java.util.concurrent.atomic.AtomicReference
 import vn.unicom.thi360.Thi360Application
 import vn.unicom.thi360.core.config.AppEnvironment
@@ -50,6 +51,14 @@ object AppSessionContainer {
                     stack = it
                 }
             }
+        }
+    }
+
+    @VisibleForTesting
+    internal fun setTestStack(context: Context, testStack: Thi360SessionStack?) {
+        synchronized(this) {
+            cachedAppContext = if (testStack != null) context.applicationContext else null
+            stack = testStack
         }
     }
 }

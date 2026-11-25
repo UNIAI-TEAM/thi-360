@@ -126,6 +126,79 @@ class BiometricKeyInvalidationInstrumentedTest {
         assertFalse(vault.hasWrappedToken())
     }
 
+    @Test
+    fun realKeystoreEngineMissingOrInvalidatedKeyWipesWrappedFileAndUpdatesState() = runBlocking {
+        // Exercise the real AndroidBiometricKeystoreEngine against real AndroidKeyStore when the alias is absent/invalidated.
+        storageFile.writeBytes(byteArrayOf(1, 12) + ByteArray(28) { it.toByte() })
+        deleteKeyAlias(testKeyAlias)
+        assertTrue(storageFile.exists())
+
+        val realEngine = AndroidBiometricKeystoreEngine(keyAlias = testKeyAlias)
+        val vault = KeystoreBiometricVault(storageFile = storageFile, engine = realEngine)
+        val availabilityChecker = AndroidBiometricAvailabilityChecker(context)
+        val controller = BiometricController(
+            availabilityChecker = availabilityChecker,
+            vault = vault,
+            promptMemoryStore = object : BiometricPromptMemoryStore {
+                private val state = MutableStateFlow(PromptMemory(PromptAnswer.YES))
+                override val memory: Flow<PromptMemory> = state
+                override suspend fun current(): PromptMemory = state.value
+                override suspend fun record(answer: PromptAnswer) {
+                    state.value = PromptMemory(answer)
+                }
+            },
+        )
+        assertEquals(BiometricState.On, controller.state.value)
+
+        val authenticator = object : BiometricAuthenticator {
+            override suspend fun authenticate(mode: BiometricPromptMode, cipher: Cipher?): BiometricPromptResult =
+                error("BiometricPrompt must not be invoked once prepareDecryptCipher detects key invalidation")
+        }
+        val outcome = controller.unlock(authenticator)
+
+        assertEquals(BiometricUnlockOutcome.KeyInvalidated, outcome)
+        assertFalse("Real Keystore engine invalidation must delete wrapped file", storageFile.exists())
+        assertFalse(vault.hasWrappedToken())
+        val expectedState = when (val availability = availabilityChecker.check()) {
+            BiometricAvailability.Available -> BiometricState.Off
+            is BiometricAvailability.Unavailable -> BiometricState.Unavailable(availability.reason)
+        }
+        assertEquals(expectedState, controller.state.value)
+    }
+
+    @Test
+    fun realKeystoreEngineCorruptedPayloadHeaderWipesWrappedFileCleanly() = runBlocking {
+        // Unsupported payload version byte must fail safely inside AndroidBiometricKeystoreEngine header validation.
+        storageFile.writeBytes(byteArrayOf(99, 12) + ByteArray(28) { it.toByte() })
+        val realEngine = AndroidBiometricKeystoreEngine(keyAlias = testKeyAlias)
+        val vault = KeystoreBiometricVault(storageFile = storageFile, engine = realEngine)
+        val controller = BiometricController(
+            availabilityChecker = object : BiometricAvailabilityChecker {
+                override fun check(): BiometricAvailability = BiometricAvailability.Available
+            },
+            vault = vault,
+            promptMemoryStore = object : BiometricPromptMemoryStore {
+                private val state = MutableStateFlow(PromptMemory(PromptAnswer.YES))
+                override val memory: Flow<PromptMemory> = state
+                override suspend fun current(): PromptMemory = state.value
+                override suspend fun record(answer: PromptAnswer) {
+                    state.value = PromptMemory(answer)
+                }
+            },
+        )
+
+        val outcome = controller.unlock(
+            object : BiometricAuthenticator {
+                override suspend fun authenticate(mode: BiometricPromptMode, cipher: Cipher?): BiometricPromptResult =
+                    error("BiometricPrompt must not run on corrupted header")
+            },
+        )
+
+        assertEquals(BiometricUnlockOutcome.KeyInvalidated, outcome)
+        assertEquals(BiometricState.Off, controller.state.value)
+        assertFalse(storageFile.exists())
+    }
+
     private fun deleteKeyAlias(alias: String) {
         val keyStore = KeyStore.getInstance(AndroidBiometricKeystoreEngine.ANDROID_KEYSTORE).apply { load(null) }
         if (keyStore.containsAlias(alias)) {
