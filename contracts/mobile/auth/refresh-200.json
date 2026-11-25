@@ -1,0 +1,7 @@
+{
+  "accessToken": "fixture-access-token",
+  "refreshToken": "fixture-refresh-token",
+  "accessExpiresIn": 300,
+  "refreshExpiresIn": 604800,
+  "mustChangePassword": false
+}

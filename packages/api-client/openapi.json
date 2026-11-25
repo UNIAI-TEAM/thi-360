@@ -11221,6 +11221,77 @@
         "required" : [ "access", "fullName", "homeUrl", "id", "permissions", "realm", "username" ],
         "type" : "object"
       },
+      "MobileLoginRequest" : {
+        "description" : "Yêu cầu đăng nhập từ ứng dụng di động",
+        "properties" : {
+          "identifier" : {
+            "description" : "Tên đăng nhập hoặc email",
+            "type" : "string"
+          },
+          "password" : {
+            "description" : "Mật khẩu",
+            "format" : "password",
+            "type" : "string"
+          }
+        },
+        "required" : [ "identifier", "password" ],
+        "type" : "object"
+      },
+      "MobileLogoutRequest" : {
+        "description" : "Yêu cầu đăng xuất phiên trên ứng dụng di động",
+        "properties" : {
+          "refreshToken" : {
+            "description" : "Refresh token của phiên di động cần thu hồi",
+            "format" : "password",
+            "type" : "string"
+          }
+        },
+        "required" : [ "refreshToken" ],
+        "type" : "object"
+      },
+      "MobileRefreshRequest" : {
+        "description" : "Yêu cầu làm mới phiên trên ứng dụng di động",
+        "properties" : {
+          "refreshToken" : {
+            "description" : "Refresh token của phiên di động",
+            "format" : "password",
+            "type" : "string"
+          }
+        },
+        "required" : [ "refreshToken" ],
+        "type" : "object"
+      },
+      "MobileTokenResponse" : {
+        "description" : "Phản hồi token của API xác thực ứng dụng di động",
+        "properties" : {
+          "accessExpiresIn" : {
+            "description" : "Thời hạn access token tính bằng giây",
+            "example" : 300,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "accessToken" : {
+            "description" : "Access token dùng cho header Authorization: Bearer",
+            "type" : "string"
+          },
+          "mustChangePassword" : {
+            "description" : "Tài khoản có bắt buộc đổi mật khẩu trước khi tiếp tục hay không",
+            "type" : "boolean"
+          },
+          "refreshExpiresIn" : {
+            "description" : "Thời hạn không dùng của phiên di động tính bằng giây",
+            "example" : 604800,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "refreshToken" : {
+            "description" : "Refresh token dùng để làm mới phiên di động",
+            "type" : "string"
+          }
+        },
+        "required" : [ "accessExpiresIn", "accessToken", "mustChangePassword", "refreshExpiresIn", "refreshToken" ],
+        "type" : "object"
+      },
       "MoveCatalogItemRequest" : {
         "description" : "Yêu cầu chuyển nút cây sang nút cha khác cùng cấp",
         "properties" : {
@@ -47601,6 +47672,597 @@
           }
         },
         "summary" : "Đăng xuất khỏi phiên hiện tại",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/auth/mobile/login" : {
+      "post" : {
+        "description" : "Công khai. Trả cặp token trong thân phản hồi và không đặt cookie.",
+        "operationId" : "mobileLogin",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MobileLoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MobileTokenResponse"
+                }
+              }
+            },
+            "description" : "Đăng nhập thành công"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đăng nhập trên ứng dụng di động (chỉ tài khoản học viên)",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/auth/mobile/logout" : {
+      "post" : {
+        "operationId" : "mobileLogout",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MobileLogoutRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "Đã thu hồi phiên (idempotent)"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Đăng xuất phiên hiện tại trên ứng dụng di động",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/auth/mobile/refresh" : {
+      "post" : {
+        "operationId" : "mobileRefresh",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MobileRefreshRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MobileTokenResponse"
+                }
+              }
+            },
+            "description" : "Làm mới phiên thành công"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unprocessable Entity"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Làm mới phiên đăng nhập trên ứng dụng di động",
+        "tags" : [ "Auth" ]
+      }
+    },
+    "/api/v1/auth/mobile/register/verify" : {
+      "post" : {
+        "description" : "Công khai. Tạo tài khoản đã xác minh email và trả token trong thân phản hồi, không đặt cookie.",
+        "operationId" : "mobileVerifyRegistration",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterVerifyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MobileTokenResponse"
+                }
+              }
+            },
+            "description" : "Đã tạo tài khoản học viên và mở phiên di động"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Unauthorized"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Trùng tên đăng nhập hoặc email (USERNAME_TAKEN, EMAIL_TAKEN)"
+          },
+          "412" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Precondition Failed"
+          },
+          "413" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Payload Too Large"
+          },
+          "422" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmailCodeErrorResponse"
+                }
+              }
+            },
+            "description" : "EMAIL_CODE_INVALID (kèm remainingAttempts) hoặc EMAIL_CODE_EXPIRED"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Too Many Requests"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "501" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Not Implemented"
+          },
+          "502" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description" : "Bad Gateway"
+          }
+        },
+        "summary" : "Bước 2 tự đăng ký học viên trên ứng dụng di động: xác minh OTP, tạo tài khoản và cấp token",
         "tags" : [ "Auth" ]
       }
     },

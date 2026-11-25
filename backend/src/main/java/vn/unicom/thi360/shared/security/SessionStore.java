@@ -22,6 +22,7 @@ public class SessionStore {
     private static final String FIELD_USER_ID = "userId";
     private static final String FIELD_REALM = "realm";
     private static final String FIELD_CREATED_AT = "createdAt";
+    private static final String FIELD_CHANNEL = "channel";
     private static final DefaultRedisScript<List> CREATE_SESSION_SCRIPT = createScript(
             """
             local sessKey = KEYS[1]
@@ -36,6 +37,7 @@ public class SessionStore {
             local maxPerUser = tonumber(ARGV[6])
             local sessPrefix = ARGV[7]
             local expectedGen = tonumber(ARGV[8])
+            local channel = ARGV[9]
 
             local currentGen = tonumber(redis.call('GET', genKey) or '0')
             if currentGen ~= expectedGen then
@@ -45,7 +47,7 @@ public class SessionStore {
             local seq = redis.call('INCR', seqKey)
             redis.call('PEXPIRE', seqKey, ttlMs)
 
-            redis.call('HSET', sessKey, 'userId', userId, 'realm', realm, 'createdAt', createdAt)
+            redis.call('HSET', sessKey, 'userId', userId, 'realm', realm, 'createdAt', createdAt, 'channel', channel)
             redis.call('PEXPIRE', sessKey, ttlMs)
             redis.call('ZADD', userSessKey, seq, sid)
             redis.call('PEXPIRE', userSessKey, ttlMs)
@@ -78,19 +80,19 @@ public class SessionStore {
 
     private static final DefaultRedisScript<List> FIND_SESSION_SCRIPT = createScript(
             """
-            local vals = redis.call('HMGET', KEYS[1], 'userId', 'realm', 'createdAt')
+            local vals = redis.call('HMGET', KEYS[1], 'userId', 'realm', 'createdAt', 'channel')
             if not vals[1] or not vals[2] or not vals[3] then
               return {}
             end
             if not redis.call('ZSCORE', ARGV[2] .. vals[1], ARGV[1]) then
               return {}
             end
-            return vals
+            return {vals[1], vals[2], vals[3], vals[4] or 'WEB'}
             """,
             List.class);
     private static final DefaultRedisScript<List> FIND_SESSION_WITH_AUTHZ_SCRIPT = createScript(
             """
-            local vals = redis.call('HMGET', KEYS[1], 'userId', 'realm', 'createdAt')
+            local vals = redis.call('HMGET', KEYS[1], 'userId', 'realm', 'createdAt', 'channel')
             if not vals[1] or not vals[2] or not vals[3] then
               return {}
             end
@@ -98,7 +100,7 @@ public class SessionStore {
               return {}
             end
             local authz = redis.call('GET', KEYS[2])
-            return {vals[1], vals[2], vals[3], authz or ''}
+            return {vals[1], vals[2], vals[3], authz or '', vals[4] or 'WEB'}
             """,
             List.class);
 
@@ -189,8 +191,9 @@ public class SessionStore {
             local sessPrefix = ARGV[8]
             local expectedGen = tonumber(ARGV[9])
 
-            local userId = redis.call('HGET', oldSessKey, 'userId')
-            local realm = redis.call('HGET', oldSessKey, 'realm')
+            local oldVals = redis.call('HMGET', oldSessKey, 'userId', 'realm', 'createdAt', 'channel')
+            local userId = oldVals[1]
+            local realm = oldVals[2]
             if userId ~= expectedUserId or realm ~= expectedRealm then
               return 0
             end
@@ -201,14 +204,22 @@ public class SessionStore {
             if currentGen ~= expectedGen then
               return 0
             end
+            local remainingTtlMs = redis.call('PTTL', oldSessKey)
+            if remainingTtlMs == -2 or remainingTtlMs == 0 then
+              return 0
+            end
+            local effectiveTtlMs = (remainingTtlMs > 0 and remainingTtlMs < ttlMs) and remainingTtlMs or ttlMs
+            local preservedCreatedAt = oldVals[3] or createdAt
+            local preservedChannel = oldVals[4] or 'WEB'
             redis.call('DEL', oldSessKey)
             redis.call('ZREM', userSessKey, oldSid)
 
             local seq = redis.call('INCR', seqKey)
             redis.call('PEXPIRE', seqKey, ttlMs)
 
-            redis.call('HSET', newSessKey, 'userId', expectedUserId, 'realm', expectedRealm, 'createdAt', createdAt)
-            redis.call('PEXPIRE', newSessKey, ttlMs)
+            redis.call('HSET', newSessKey, 'userId', expectedUserId, 'realm', expectedRealm,
+                'createdAt', preservedCreatedAt, 'channel', preservedChannel)
+            redis.call('PEXPIRE', newSessKey, effectiveTtlMs)
 
             redis.call('ZADD', userSessKey, seq, newSid)
             redis.call('PEXPIRE', userSessKey, ttlMs)
@@ -265,15 +276,25 @@ public class SessionStore {
     }
 
     public List<String> createSession(String sessionId, UUID userId, Realm realm) {
+        return createSession(sessionId, userId, realm, LoginChannel.WEB);
+    }
+
+    public List<String> createSession(String sessionId, UUID userId, Realm realm, LoginChannel channel) {
         long gen = currentRevocationGeneration(Objects.requireNonNull(userId, "userId must not be null"));
-        return createSessionIfNotRevoked(sessionId, userId, realm, gen).evictedSessionIds();
+        return createSessionIfNotRevoked(sessionId, userId, realm, gen, channel).evictedSessionIds();
     }
 
     public SessionCreateResult createSessionIfNotRevoked(
             String sessionId, UUID userId, Realm realm, long expectedGeneration) {
+        return createSessionIfNotRevoked(sessionId, userId, realm, expectedGeneration, LoginChannel.WEB);
+    }
+
+    public SessionCreateResult createSessionIfNotRevoked(
+            String sessionId, UUID userId, Realm realm, long expectedGeneration, LoginChannel channel) {
         Objects.requireNonNull(sessionId, "sessionId must not be null");
         Objects.requireNonNull(userId, "userId must not be null");
         Objects.requireNonNull(realm, "realm must not be null");
+        Objects.requireNonNull(channel, "channel must not be null");
 
         long ttlMs = Math.max(1L, securityProperties.session().ttl().toMillis());
         int maxPerUser = Math.max(1, securityProperties.session().maxPerUser());
@@ -293,7 +314,8 @@ public class SessionStore {
                 Long.toString(ttlMs),
                 Integer.toString(maxPerUser),
                 SESSION_KEY_PREFIX,
-                Long.toString(expectedGeneration));
+                Long.toString(expectedGeneration),
+                channel.name());
 
         if (rawResult == null || rawResult.isEmpty()) {
             return new SessionCreateResult(false, List.of());
@@ -329,11 +351,13 @@ public class SessionStore {
             return Optional.empty();
         }
         try {
+            LoginChannel channel = values.size() >= 4 ? parseChannel(values.get(3)) : LoginChannel.WEB;
             return Optional.of(new SessionData(
                     sessionId,
                     UUID.fromString(String.valueOf(values.get(0))),
                     Realm.valueOf(String.valueOf(values.get(1))),
-                    Instant.ofEpochMilli(Long.parseLong(String.valueOf(values.get(2))))));
+                    Instant.ofEpochMilli(Long.parseLong(String.valueOf(values.get(2)))),
+                    channel));
         } catch (RuntimeException ex) {
             return Optional.empty();
         }
@@ -356,11 +380,13 @@ public class SessionStore {
             return Optional.empty();
         }
         try {
+            LoginChannel channel = values.size() >= 5 ? parseChannel(values.get(4)) : LoginChannel.WEB;
             SessionData session = new SessionData(
                     sessionId,
                     UUID.fromString(String.valueOf(values.get(0))),
                     Realm.valueOf(String.valueOf(values.get(1))),
-                    Instant.ofEpochMilli(Long.parseLong(String.valueOf(values.get(2)))));
+                    Instant.ofEpochMilli(Long.parseLong(String.valueOf(values.get(2)))),
+                    channel);
             Object rawAuthzObj = values.get(3);
             String rawAuthz = rawAuthzObj == null ? null : String.valueOf(rawAuthzObj);
             if (rawAuthz != null && rawAuthz.isBlank()) {
@@ -370,6 +396,14 @@ public class SessionStore {
         } catch (RuntimeException ex) {
             return Optional.empty();
         }
+    }
+
+    private static LoginChannel parseChannel(Object raw) {
+        if (raw == null) {
+            return LoginChannel.WEB;
+        }
+        String text = String.valueOf(raw).trim();
+        return text.isEmpty() ? LoginChannel.WEB : LoginChannel.valueOf(text);
     }
 
     public boolean exists(String sessionId) {
@@ -505,8 +539,12 @@ public class SessionStore {
             String sessionId,
             UUID userId,
             Realm realm,
-            Instant createdAt
+            Instant createdAt,
+            LoginChannel channel
     ) {
+        public SessionData(String sessionId, UUID userId, Realm realm, Instant createdAt) {
+            this(sessionId, userId, realm, createdAt, LoginChannel.WEB);
+        }
     }
 
     public record SessionWithAuthz(

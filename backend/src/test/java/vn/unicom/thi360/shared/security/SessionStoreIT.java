@@ -269,6 +269,42 @@ class SessionStoreIT extends AbstractIntegrationTest {
         }
     }
 
+    @Test
+    void rotateSessionPreservesChannelCreatedAtAndRemainingTtl() throws Exception {
+        Instant createdAt = Instant.parse("2026-11-25T10:00:00Z");
+        SessionStore createStore = new SessionStore(
+                redisTemplate, securityProperties, Clock.fixed(createdAt, ZoneOffset.UTC));
+        SessionStore rotateStore = new SessionStore(
+                redisTemplate, securityProperties, Clock.fixed(createdAt.plusSeconds(120), ZoneOffset.UTC));
+
+        UUID userId = UUID.randomUUID();
+        String oldSid = "mob-rot-1-" + userId;
+        String newSid = "mob-rot-2-" + userId;
+        try {
+            long gen = createStore.currentRevocationGeneration(userId);
+            assertThat(createStore.createSessionIfNotRevoked(
+                            oldSid, userId, Realm.APP, gen, LoginChannel.MOBILE)
+                    .accepted()).isTrue();
+            redisTemplate.expire("sess:" + oldSid, java.time.Duration.ofSeconds(45));
+
+            assertThat(rotateStore.rotateSession(oldSid, newSid, userId, Realm.APP, gen)).isTrue();
+            assertThat(rotateStore.findSession(oldSid)).isEmpty();
+            assertThat(rotateStore.findSession(newSid))
+                    .isPresent()
+                    .get()
+                    .satisfies(data -> {
+                        assertThat(data.channel()).isEqualTo(LoginChannel.MOBILE);
+                        assertThat(data.createdAt()).isEqualTo(createdAt);
+                    });
+
+            Long remainingSec = redisTemplate.getExpire("sess:" + newSid, TimeUnit.SECONDS);
+            assertThat(remainingSec).isNotNull().isPositive().isLessThanOrEqualTo(45L);
+        } finally {
+            createStore.deleteAllSessions(userId);
+            redisTemplate.delete(List.of("user-sess-seq:" + userId, "user-rev-gen:" + userId));
+        }
+    }
+
     private static void awaitBarrier(CyclicBarrier barrier) {
         try {
             barrier.await();

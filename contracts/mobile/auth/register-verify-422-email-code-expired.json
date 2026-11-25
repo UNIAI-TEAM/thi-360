@@ -1,0 +1,6 @@
+{
+  "code": "EMAIL_CODE_EXPIRED",
+  "message": "Mã xác minh đã hết hạn hoặc không còn hiệu lực, vui lòng gửi lại mã",
+  "fieldErrors": [],
+  "traceId": "00000000-0000-0000-0000-000000000000"
+}

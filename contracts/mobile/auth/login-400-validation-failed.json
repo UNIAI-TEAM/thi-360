@@ -1,0 +1,17 @@
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Dữ liệu không hợp lệ",
+  "fieldErrors": [
+    {
+      "field": "identifier",
+      "code": "NOTBLANK",
+      "message": "Tên đăng nhập hoặc email là bắt buộc"
+    },
+    {
+      "field": "password",
+      "code": "NOTBLANK",
+      "message": "Mật khẩu là bắt buộc"
+    }
+  ],
+  "traceId": "00000000-0000-0000-0000-000000000000"
+}

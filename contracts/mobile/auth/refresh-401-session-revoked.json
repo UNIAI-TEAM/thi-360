@@ -1,0 +1,6 @@
+{
+  "code": "SESSION_REVOKED",
+  "message": "Phiên đăng nhập đã hết hiệu lực hoặc bị thu hồi",
+  "fieldErrors": [],
+  "traceId": "00000000-0000-0000-0000-000000000000"
+}

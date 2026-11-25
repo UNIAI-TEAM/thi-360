@@ -23,6 +23,10 @@ public class CsrfFilter extends OncePerRequestFilter {
     private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS", "TRACE");
     private static final String LOGIN_PATH = "/api/v1/auth/login";
+    private static final Set<String> MOBILE_AUTH_PATHS = Set.of(
+            "/api/v1/auth/mobile/login",
+            "/api/v1/auth/mobile/refresh",
+            "/api/v1/auth/mobile/logout");
     private static final Set<String> PASSWORD_RESET_PATHS =
             Set.of("/api/v1/auth/password/forgot", "/api/v1/auth/password/reset");
 
@@ -38,7 +42,8 @@ public class CsrfFilter extends OncePerRequestFilter {
         if (SAFE_METHODS.contains(method)) {
             return true;
         }
-        if ("POST".equals(method) && LOGIN_PATH.equals(extractPath(request))) {
+        if ("POST".equals(method) && (LOGIN_PATH.equals(extractPath(request))
+                || MOBILE_AUTH_PATHS.contains(extractPath(request)))) {
             return true;
         }
         // Đăng ký công khai (TM 5.1): trình duyệt còn cookie cũ mà không có XSRF vẫn đăng ký được (AC-9).

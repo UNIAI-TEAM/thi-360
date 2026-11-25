@@ -45,6 +45,7 @@ import vn.unicom.thi360.shared.security.CurrentUser;
 import vn.unicom.thi360.shared.security.CurrentUserProvider;
 import vn.unicom.thi360.shared.security.KeycloakProperties;
 import vn.unicom.thi360.shared.web.AppMessages;
+import vn.unicom.thi360.shared.security.LoginChannel;
 import vn.unicom.thi360.shared.security.LoginThrottle;
 import vn.unicom.thi360.shared.security.PermissionCatalog;
 import vn.unicom.thi360.shared.security.PermissionSet;
@@ -226,6 +227,152 @@ public class AuthService {
         return loginMasterRealm(identifier.trim(), normalized, password, callbackUrl, response);
     }
 
+    public MobileLoginResult loginMobile(String identifier, String password, String requestedLocale) {
+        String normalized = Normalizer.normalize(identifier);
+        if (normalized == null) {
+            throw new ValidationException(List.of(
+                    new FieldError("identifier", "NOTBLANK", messages.get("validation.login.identifier.notBlank"))));
+        }
+
+        try {
+            loginThrottle.assertNotBlocked(normalized);
+        } catch (RateLimitedException ex) {
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.throttled")
+                    .log("Login blocked by per-identifier throttle");
+            recordAudit(AuditEvent.failure(MODULE, "LOGIN_FAILED", "USER", null, normalized, "LOGIN_THROTTLED"));
+            throw ex;
+        }
+
+        Optional<UserAccount> accountOpt = resolveActiveAccount(normalized);
+        if (accountOpt.isPresent()) {
+            return loginAppRealmMobile(accountOpt.get(), normalized, password, requestedLocale);
+        }
+        return loginMasterRealmMobile(identifier.trim(), normalized, password);
+    }
+
+    private MobileLoginResult loginAppRealmMobile(
+            UserAccount account,
+            String normalizedIdentifier,
+            String password,
+            String requestedLocale) {
+        long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
+        TokenResult tokens = authenticateAppRealmAccount(account, normalizedIdentifier, password, LoginChannel.MOBILE);
+
+        SessionAuthzResolver.AuthzSnapshot authz;
+        try {
+            authz = resolveAuthz(account.getId(), Realm.APP);
+        } catch (RuntimeException ex) {
+            keycloakClient.logout(keycloakProperties.realm(), LoginChannel.MOBILE, tokens.refreshToken());
+            throw ex;
+        }
+        if (authz.access() != Access.EXAM) {
+            keycloakClient.logout(keycloakProperties.realm(), LoginChannel.MOBILE, tokens.refreshToken());
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.app_student_only")
+                    .addKeyValue("userId", account.getId().toString())
+                    .log("Mobile login refused for non-student account");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "APP_STUDENT_ONLY"));
+            throw new ForbiddenException("APP_STUDENT_ONLY", null);
+        }
+
+        return completeMobileAppLogin(account, normalizedIdentifier, tokens, revocationGeneration, requestedLocale);
+    }
+
+    private MobileLoginResult loginMasterRealmMobile(
+            String rawUsername,
+            String normalizedIdentifier,
+            String password) {
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.passwordGrant(keycloakProperties.platformRealm(), rawUsername, password);
+        } catch (KeycloakAuthException ex) {
+            if (ex.getReason() == AuthFailureReason.ACCOUNT_LOCKED) {
+                recordAudit(AuditEvent.failure(
+                        MODULE, "LOGIN_FAILED", "USER", null, normalizedIdentifier, "LOGIN_THROTTLED"));
+                throw new RateLimitedException("LOGIN_THROTTLED");
+            }
+            loginThrottle.recordFailure(normalizedIdentifier);
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.invalid_credentials")
+                    .log("Login failed for unknown or master realm user");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", null, normalizedIdentifier, "INVALID_CREDENTIALS"));
+            throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
+        }
+
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(keycloakProperties.platformRealm(), tokens.refreshToken());
+            loginThrottle.recordFailure(normalizedIdentifier);
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.master_role_missing")
+                    .log("Master realm user lacks required platform role");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "PLATFORM_ADMIN", null, normalizedIdentifier, "INVALID_CREDENTIALS"));
+            throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
+        }
+
+        UUID userId = UUID.fromString(jwt.getSubject());
+        String username = Optional.ofNullable(jwt.getClaimAsString("preferred_username")).orElse(rawUsername);
+        keycloakClient.logout(keycloakProperties.platformRealm(), tokens.refreshToken());
+        securityLog.atWarn()
+                .addKeyValue("event", "login.app_student_only")
+                .addKeyValue("userId", userId.toString())
+                .log("Mobile login refused for platform admin account");
+        recordAudit(AuditEvent.failure(
+                MODULE, "LOGIN_FAILED", "PLATFORM_ADMIN", userId.toString(), username, "APP_STUDENT_ONLY"));
+        throw new ForbiddenException("APP_STUDENT_ONLY", null);
+    }
+
+    public MobileLoginResult openMobileSessionForRegisteredAccount(
+            UserAccount account,
+            String password,
+            String requestedLocale) {
+        long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
+        TokenResult tokens = keycloakClient.passwordGrant(
+                keycloakProperties.realm(), LoginChannel.MOBILE, account.getUsername(), password);
+        return completeMobileAppLogin(account, null, tokens, revocationGeneration, requestedLocale);
+    }
+
+    private MobileLoginResult completeMobileAppLogin(
+            UserAccount account,
+            String normalizedIdentifier,
+            TokenResult tokens,
+            long revocationGeneration,
+            String requestedLocale) {
+        String sid;
+        try {
+            Jwt jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+            sid = requireSid(jwt);
+        } catch (RuntimeException ex) {
+            keycloakClient.logout(keycloakProperties.realm(), LoginChannel.MOBILE, tokens.refreshToken());
+            throw ex;
+        }
+        Instant now = Instant.now(clock);
+
+        SessionStore.SessionCreateResult sessionResult = sessionStore.createSessionIfNotRevoked(
+                sid, account.getId(), Realm.APP, revocationGeneration, LoginChannel.MOBILE);
+        if (!sessionResult.accepted()) {
+            keycloakClient.logout(keycloakProperties.realm(), LoginChannel.MOBILE, tokens.refreshToken());
+            securityLog.atWarn()
+                    .addKeyValue("event", "login.session_revoked_during_grant")
+                    .addKeyValue("userId", account.getId().toString())
+                    .log("Mobile login refused because user sessions were revoked during authentication");
+            recordAudit(AuditEvent.failure(
+                    MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "SESSION_REVOKED"));
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+        if (normalizedIdentifier != null) {
+            loginThrottle.reset(normalizedIdentifier);
+        }
+        persistAppLoginSuccess(account, now, requestedLocale, LoginChannel.MOBILE);
+        return toMobileLoginResult(tokens, account.isMustChangePassword());
+    }
+
     private LoginResult loginAppRealm(
             UserAccount account,
             String normalizedIdentifier,
@@ -234,9 +381,21 @@ public class AuthService {
             String localeCookieValue,
             HttpServletResponse response) {
         long revocationGeneration = sessionStore.currentRevocationGeneration(account.getId());
+        TokenResult tokens = authenticateAppRealmAccount(account, normalizedIdentifier, password, LoginChannel.WEB);
+        return completeAppLogin(
+                account, normalizedIdentifier, tokens, revocationGeneration, callbackUrl, localeCookieValue, response);
+    }
+
+    private TokenResult authenticateAppRealmAccount(
+            UserAccount account,
+            String normalizedIdentifier,
+            String password,
+            LoginChannel channel) {
         TokenResult tokens;
         try {
-            tokens = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
+            tokens = channel == LoginChannel.MOBILE
+                    ? keycloakClient.passwordGrant(keycloakProperties.realm(), channel, account.getUsername(), password)
+                    : keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
         } catch (KeycloakAuthException ex) {
             if (ex.getReason() == AuthFailureReason.ACCOUNT_LOCKED) {
                 recordAudit(AuditEvent.failure(
@@ -254,7 +413,7 @@ public class AuthService {
         }
 
         if (account.getStatus() == UserStatus.INACTIVE) {
-            keycloakClient.logout(keycloakProperties.realm(), tokens.refreshToken());
+            logoutAppRealm(channel, tokens.refreshToken());
             securityLog.atWarn()
                     .addKeyValue("event", "login.account_inactive")
                     .addKeyValue("userId", account.getId().toString())
@@ -264,15 +423,21 @@ public class AuthService {
             throw new ForbiddenException("ACCOUNT_INACTIVE", null);
         }
         if (account.getStatus() != UserStatus.ACTIVE) {
-            keycloakClient.logout(keycloakProperties.realm(), tokens.refreshToken());
+            logoutAppRealm(channel, tokens.refreshToken());
             loginThrottle.recordFailure(normalizedIdentifier);
             recordAudit(AuditEvent.failure(
                     MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "INVALID_CREDENTIALS"));
             throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
         }
+        return tokens;
+    }
 
-        return completeAppLogin(
-                account, normalizedIdentifier, tokens, revocationGeneration, callbackUrl, localeCookieValue, response);
+    private void logoutAppRealm(LoginChannel channel, String refreshToken) {
+        if (channel == LoginChannel.MOBILE) {
+            keycloakClient.logout(keycloakProperties.realm(), channel, refreshToken);
+        } else {
+            keycloakClient.logout(keycloakProperties.realm(), refreshToken);
+        }
     }
 
     /**
@@ -320,26 +485,10 @@ public class AuthService {
         if (normalizedIdentifier != null) {
             loginThrottle.reset(normalizedIdentifier);
         }
-        // Mọi bước có thể ném lỗi (đọc quyền, ký ctx, chọn trang đích) xong TRƯỚC khi commit ngôn ngữ
-        // và nhật ký thành công: nếu không, đăng nhập báo lỗi mà ngôn ngữ thư đã bị đổi (R1-5).
         SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(account.getId(), Realm.APP);
         String ctx = ctxCookieSigner.sign(account.getId(), Realm.APP, authz.access(), authz.version());
         String redirectTo = redirectResolver.resolve(authz.access(), account.isMustChangePassword(), callbackUrl);
-        transactionTemplate.executeWithoutResult(status -> {
-            UserAccount fresh = userAccountRepository.findById(account.getId()).orElse(account);
-            fresh.markLoggedIn(now);
-            // TM 4: chỉ "vi" và "en"; thiếu hoặc lạ thì giữ giá trị đang lưu.
-            if ("vi".equals(localeCookieValue) || "en".equals(localeCookieValue)) {
-                fresh.changePreferredLocale(localeCookieValue);
-            }
-            userAccountRepository.save(fresh);
-            auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
-                    .actor(fresh.getId(), fresh.getUsername(), List.of(), AuditActorType.USER)
-                    .target("USER", fresh.getId().toString(), fresh.getUsername())
-                    .after(Map.of("realm", Realm.APP.name()))
-                    .outcome(AuditOutcome.SUCCESS)
-                    .build());
-        });
+        persistAppLoginSuccess(account, now, localeCookieValue, LoginChannel.WEB);
 
         authCookieService.setAuthCookies(
                 response,
@@ -350,6 +499,27 @@ public class AuthService {
                 ctx);
 
         return new LoginResult(redirectTo, account.isMustChangePassword());
+    }
+
+    private void persistAppLoginSuccess(
+            UserAccount account,
+            Instant now,
+            String requestedLocale,
+            LoginChannel channel) {
+        transactionTemplate.executeWithoutResult(status -> {
+            UserAccount fresh = userAccountRepository.findById(account.getId()).orElse(account);
+            fresh.markLoggedIn(now);
+            if ("vi".equals(requestedLocale) || "en".equals(requestedLocale)) {
+                fresh.changePreferredLocale(requestedLocale);
+            }
+            userAccountRepository.save(fresh);
+            auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
+                    .actor(fresh.getId(), fresh.getUsername(), List.of(), AuditActorType.USER)
+                    .target("USER", fresh.getId().toString(), fresh.getUsername())
+                    .after(Map.of("realm", Realm.APP.name(), "channel", channel.name()))
+                    .outcome(AuditOutcome.SUCCESS)
+                    .build());
+        });
     }
 
     private LoginResult loginMasterRealm(
@@ -421,7 +591,7 @@ public class AuthService {
             auditRecorder.record(AuditEvent.builder(MODULE, "LOGIN")
                     .actor(userId, username, List.of(keycloakProperties.platformRole()), AuditActorType.PLATFORM)
                     .target("PLATFORM_ADMIN", userId.toString(), username)
-                    .after(Map.of("realm", Realm.MASTER.name()))
+                    .after(Map.of("realm", Realm.MASTER.name(), "channel", LoginChannel.WEB.name()))
                     .outcome(AuditOutcome.SUCCESS)
                     .build());
         });
@@ -459,7 +629,7 @@ public class AuthService {
                     return new UnauthenticatedException("SESSION_REVOKED", null);
                 });
 
-        if (!refreshClaimsMatchSession(refreshClaims, session)) {
+        if (session.channel() != LoginChannel.WEB || !refreshClaimsMatchSession(refreshClaims, session)) {
             authCookieService.clearAuthCookies(response);
             throw new UnauthenticatedException("SESSION_REVOKED", null);
         }
@@ -537,6 +707,151 @@ public class AuthService {
         return new LoginResult(redirectTo, mustChangePassword);
     }
 
+    public MobileLoginResult refreshMobile(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new UnauthenticatedException("UNAUTHENTICATED", null);
+        }
+
+        JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
+        String oldSid = refreshClaims == null ? null : getStringClaim(refreshClaims, "sid");
+        if (oldSid == null || oldSid.isBlank()) {
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        SessionStore.SessionData session = sessionStore.findSession(oldSid)
+                .orElseThrow(() -> new UnauthenticatedException("SESSION_REVOKED", null));
+
+        if (session.channel() != LoginChannel.MOBILE
+                || session.realm() != Realm.APP
+                || !refreshClaimsMatchSession(refreshClaims, session)) {
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        String appRealm = keycloakProperties.realm();
+        long revocationGeneration = sessionStore.currentRevocationGeneration(session.userId());
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.refresh(appRealm, LoginChannel.MOBILE, refreshToken);
+        } catch (KeycloakAuthException ex) {
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        UUID userId = parseUuid(jwt.getSubject());
+        Realm verifiedRealm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
+        String newSid = requireSid(jwt);
+        if (userId == null
+                || !userId.equals(session.userId())
+                || verifiedRealm != Realm.APP) {
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        UserAccount account = userAccountRepository.findById(userId).orElse(null);
+        if (account == null || account.isDeleted() || account.getStatus() != UserStatus.ACTIVE) {
+            sessionStore.deleteAllSessions(userId);
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        SessionAuthzResolver.AuthzSnapshot authz = resolveAuthz(userId, Realm.APP);
+        if (authz.access() != Access.EXAM) {
+            sessionStore.deleteSessionIfOwner(oldSid, userId, Realm.APP);
+            if (!oldSid.equals(newSid)) {
+                sessionStore.deleteSessionIfOwner(newSid, userId, Realm.APP);
+            }
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+            securityLog.atWarn()
+                    .addKeyValue("event", "refresh.app_student_only")
+                    .addKeyValue("userId", userId.toString())
+                    .log("Mobile refresh refused and session revoked for non-student account");
+            throw new ForbiddenException("APP_STUDENT_ONLY", null);
+        }
+
+        if (!oldSid.equals(newSid)) {
+            if (!sessionStore.rotateSession(oldSid, newSid, userId, Realm.APP, revocationGeneration)) {
+                keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+                throw new UnauthenticatedException("SESSION_REVOKED", null);
+            }
+        } else if (!sessionStore.isSessionActiveForGeneration(oldSid, userId, Realm.APP, revocationGeneration)) {
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+            throw new UnauthenticatedException("SESSION_REVOKED", null);
+        }
+
+        return toMobileLoginResult(tokens, account.isMustChangePassword());
+    }
+
+    public void logoutMobile(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return;
+        }
+        JWTClaimsSet refreshClaims = parseClaimsUnverified(refreshToken);
+        String oldSid = refreshClaims == null ? null : getStringClaim(refreshClaims, "sid");
+        if (oldSid == null || oldSid.isBlank()) {
+            return;
+        }
+        String appRealm = keycloakProperties.realm();
+        Optional<SessionStore.SessionData> sessionOpt = sessionStore.findSession(oldSid);
+        if (sessionOpt.isEmpty()) {
+            // Redis session may already have expired or been evicted; let Keycloak validate and close if still open.
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, refreshToken);
+            return;
+        }
+        SessionStore.SessionData session = sessionOpt.get();
+        if (session.channel() != LoginChannel.MOBILE
+                || session.realm() != Realm.APP
+                || !refreshClaimsMatchSession(refreshClaims, session)) {
+            return;
+        }
+
+        TokenResult tokens;
+        try {
+            tokens = keycloakClient.refresh(appRealm, LoginChannel.MOBILE, refreshToken);
+        } catch (KeycloakAuthException ex) {
+            securityLog.atWarn()
+                    .addKeyValue("event", "logout.invalid_refresh_token")
+                    .log("Ignoring unverified mobile refresh token on logout");
+            return;
+        }
+
+        Jwt jwt;
+        try {
+            jwt = twoIssuerJwtDecoder.decode(tokens.accessToken());
+        } catch (JwtException ex) {
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+            return;
+        }
+
+        UUID userId = parseUuid(jwt.getSubject());
+        Realm verifiedRealm = resolveRealmByIssuer(jwt.getIssuer() != null ? jwt.getIssuer().toString() : null);
+        String newSid = jwt.getClaimAsString("sid");
+        if (userId == null
+                || !userId.equals(session.userId())
+                || verifiedRealm != Realm.APP) {
+            keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+            return;
+        }
+
+        String username = Optional.ofNullable(jwt.getClaimAsString("preferred_username"))
+                .filter(u -> !u.isBlank())
+                .orElse(userId.toString());
+
+        boolean deletedOld = sessionStore.deleteSessionIfOwner(oldSid, userId, Realm.APP);
+        boolean deletedNew = newSid != null && !newSid.isBlank() && !newSid.equals(oldSid)
+                && sessionStore.deleteSessionIfOwner(newSid, userId, Realm.APP);
+        keycloakClient.logout(appRealm, LoginChannel.MOBILE, tokens.refreshToken());
+        if (deletedOld || deletedNew) {
+            recordLogoutAudit(userId, username, Realm.APP);
+        }
+    }
+
     public void logout(String refreshToken, String accessToken, HttpServletResponse response) {
         try {
             Optional<CurrentUser> currentUserOpt = currentUserProvider.getCurrentUser();
@@ -601,7 +916,7 @@ public class AuthService {
             return;
         }
         SessionStore.SessionData session = sessionOpt.get();
-        if (!refreshClaimsMatchSession(refreshClaims, session)) {
+        if (session.channel() != LoginChannel.WEB || !refreshClaimsMatchSession(refreshClaims, session)) {
             return;
         }
 
@@ -826,7 +1141,45 @@ public class AuthService {
         }
     }
 
+    private MobileLoginResult toMobileLoginResult(TokenResult tokens, boolean mustChangePassword) {
+        int accessExpiresIn = clampSeconds(tokens.expiresInSeconds());
+        // Keycloak returns refresh_expires_in=0 for offline tokens; publish the realm's offline idle timeout.
+        int refreshExpiresIn = clampSeconds(keycloakProperties.mobileOfflineIdleTimeout().toSeconds());
+        return new MobileLoginResult(
+                tokens.accessToken(),
+                tokens.refreshToken(),
+                accessExpiresIn,
+                refreshExpiresIn,
+                mustChangePassword);
+    }
+
+    private static int clampSeconds(long seconds) {
+        if (seconds <= 0L) {
+            return 0;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, seconds);
+    }
+
     public record LoginResult(String redirectTo, boolean mustChangePassword) {
+    }
+
+    public record MobileLoginResult(
+            String accessToken,
+            String refreshToken,
+            int accessExpiresIn,
+            int refreshExpiresIn,
+            boolean mustChangePassword
+    ) {
+        @Override
+        public String toString() {
+            return "MobileLoginResult["
+                    + "accessToken=" + (accessToken == null ? "null" : "[REDACTED]")
+                    + ", refreshToken=" + (refreshToken == null ? "null" : "[REDACTED]")
+                    + ", accessExpiresIn=" + accessExpiresIn
+                    + ", refreshExpiresIn=" + refreshExpiresIn
+                    + ", mustChangePassword=" + mustChangePassword
+                    + ']';
+        }
     }
 
     public record MeResult(
