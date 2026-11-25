@@ -40,6 +40,9 @@ internal object ContractFixtureLoader {
     fun readApiFixture(name: String): String =
         File(contractsMobileDir, "api/$name").readText(Charsets.UTF_8)
 
+    fun readAppearanceFixture(name: String): String =
+        File(contractsMobileDir, "appearance/$name").readText(Charsets.UTF_8)
+
     fun jsonResponse(statusCode: Int, body: String): MockResponse =
         MockResponse()
             .setResponseCode(statusCode)

@@ -1,5 +1,6 @@
 package vn.unicom.thi360.feature.login
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,9 +71,12 @@ import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.session.LoginErrorKind
 import vn.unicom.thi360.core.session.LoginOutcome
 import vn.unicom.thi360.core.session.SessionManager
+import vn.unicom.thi360.core.session.SessionState
 import vn.unicom.thi360.core.session.SignOutReason
 import vn.unicom.thi360.core.theme.LocalAppLocale
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.feature.lock.LockTestTags
+import vn.unicom.thi360.feature.recovery.RecoveryIcons
 
 private const val TABLET_LOGIN_BREAKPOINT_DP = 840
 private const val WIDE_BRAND_PANEL_BREAKPOINT_DP = 1100
@@ -91,6 +95,8 @@ class LoginController(
     private val sessionManager: SessionManager,
     private val scope: CoroutineScope,
     initialIdentifier: String = "",
+    private val submitAction: suspend (String, String) -> LoginOutcome = sessionManager::login,
+    private val onAuthenticated: (mustChangePassword: Boolean) -> Unit = {},
 ) {
     private val submitInFlight = AtomicBoolean(false)
 
@@ -143,13 +149,14 @@ class LoginController(
 
         scope.launch {
             try {
-                when (val outcome = sessionManager.login(submittedIdentifier, submittedPassword)) {
+                when (val outcome = submitAction(submittedIdentifier, submittedPassword)) {
                     LoginOutcome.Authenticated -> {
                         passwordState.clearText()
                         uiState = uiState.copy(
                             passwordVisible = false,
                             isSubmitting = false,
                         )
+                        onAuthenticated(sessionManager.state.value is SessionState.MustChangePassword)
                     }
 
                     is LoginOutcome.StudentOnly -> {
@@ -186,17 +193,28 @@ fun LoginScreen(
     onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier,
     initialIdentifier: String = "",
+    onBack: (() -> Unit)? = null,
+    showRegisterLink: Boolean = true,
+    onSubmitCredentials: (suspend (String, String) -> LoginOutcome)? = null,
+    onLoginAuthenticated: ((mustChangePassword: Boolean) -> Unit)? = null,
 ) {
     var savedIdentifier by rememberSaveable(initialIdentifier) {
         mutableStateOf(initialIdentifier)
     }
     val scope = rememberCoroutineScope()
-    val controller = remember(sessionManager, initialIdentifier) {
+    val controller = remember(sessionManager, initialIdentifier, onSubmitCredentials, onLoginAuthenticated) {
         LoginController(
             sessionManager = sessionManager,
             scope = scope,
             initialIdentifier = savedIdentifier,
+            submitAction = onSubmitCredentials ?: sessionManager::login,
+            onAuthenticated = { mustChange -> onLoginAuthenticated?.invoke(mustChange) },
         )
+    }
+    if (onBack != null) {
+        BackHandler(enabled = !controller.uiState.isSubmitting) {
+            onBack()
+        }
     }
     LaunchedEffect(controller.passwordState.text) {
         if (controller.passwordState.text.isNotEmpty()) {
@@ -216,6 +234,8 @@ fun LoginScreen(
         onSelectLocale = onSelectLocale,
         onForgotPasswordClick = onForgotPasswordClick,
         onRegisterClick = onRegisterClick,
+        onBack = onBack,
+        showRegisterLink = showRegisterLink,
         modifier = modifier,
     )
 }
@@ -232,6 +252,8 @@ fun LoginScreenContent(
     onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier,
     passwordState: TextFieldState = rememberTextFieldState(),
+    onBack: (() -> Unit)? = null,
+    showRegisterLink: Boolean = true,
 ) {
     val currentLocale = LocalAppLocale.current
     val nextLocale = if (currentLocale == AppLocale.VI) AppLocale.EN else AppLocale.VI
@@ -255,6 +277,8 @@ fun LoginScreenContent(
                 onToggleLocale = { onSelectLocale(nextLocale) },
                 onForgotPasswordClick = onForgotPasswordClick,
                 onRegisterClick = onRegisterClick,
+                onBack = onBack,
+                showRegisterLink = showRegisterLink,
             )
         } else {
             PhoneLoginLayout(
@@ -267,6 +291,8 @@ fun LoginScreenContent(
                 onToggleLocale = { onSelectLocale(nextLocale) },
                 onForgotPasswordClick = onForgotPasswordClick,
                 onRegisterClick = onRegisterClick,
+                onBack = onBack,
+                showRegisterLink = showRegisterLink,
             )
         }
     }
@@ -283,6 +309,8 @@ private fun PhoneLoginLayout(
     onToggleLocale: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     onRegisterClick: () -> Unit,
+    onBack: (() -> Unit)?,
+    showRegisterLink: Boolean,
 ) {
     val colors = Thi360Theme.colors
     Column(
@@ -295,9 +323,24 @@ private fun PhoneLoginLayout(
                 .fillMaxWidth()
                 .height(56.dp)
                 .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = if (onBack != null) Arrangement.SpaceBetween else Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (onBack != null) {
+                IconButton(
+                    onClick = onBack,
+                    enabled = !uiState.isSubmitting,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .testTag(LockTestTags.FALLBACK_BACK_BUTTON),
+                ) {
+                    Icon(
+                        imageVector = RecoveryIcons.ArrowBack,
+                        contentDescription = stringResource(R.string.lock_fallback_back),
+                        tint = colors.textMuted,
+                    )
+                }
+            }
             LanguageToggleIconButton(onClick = onToggleLocale)
         }
 
@@ -338,7 +381,9 @@ private fun PhoneLoginLayout(
 
             Spacer(modifier = Modifier.weight(1f, fill = true))
 
-            RegisterPromptRow(onRegisterClick = onRegisterClick)
+            if (showRegisterLink) {
+                RegisterPromptRow(onRegisterClick = onRegisterClick)
+            }
         }
     }
 }
@@ -355,6 +400,8 @@ private fun TabletLoginLayout(
     onToggleLocale: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     onRegisterClick: () -> Unit,
+    onBack: (() -> Unit)?,
+    showRegisterLink: Boolean,
 ) {
     val colors = Thi360Theme.colors
 
@@ -401,8 +448,24 @@ private fun TabletLoginLayout(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = if (onBack != null) Arrangement.SpaceBetween else Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (onBack != null) {
+                    IconButton(
+                        onClick = onBack,
+                        enabled = !uiState.isSubmitting,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .testTag(LockTestTags.FALLBACK_BACK_BUTTON),
+                    ) {
+                        Icon(
+                            imageVector = RecoveryIcons.ArrowBack,
+                            contentDescription = stringResource(R.string.lock_fallback_back),
+                            tint = colors.textMuted,
+                        )
+                    }
+                }
                 LanguageToggleIconButton(onClick = onToggleLocale)
             }
 
@@ -435,7 +498,9 @@ private fun TabletLoginLayout(
                         onSubmit = onSubmit,
                         onForgotPasswordClick = onForgotPasswordClick,
                     )
-                    RegisterPromptRow(onRegisterClick = onRegisterClick)
+                    if (showRegisterLink) {
+                        RegisterPromptRow(onRegisterClick = onRegisterClick)
+                    }
                 }
             }
         }
