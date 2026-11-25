@@ -65,13 +65,15 @@ describe("ProductCard", () => {
     expect(within(article).getByText("79.000 đ")).toBeInTheDocument();
   });
 
-  it("bài theo phần ghi tên phần ở chip hình thức, số câu là khoảng khi các đường khác nhau", () => {
+  it("bài theo phần tách riêng tag hình thức và tag tên phần đi kèm, số câu là khoảng khi các đường khác nhau (UNI-2797)", () => {
     const { container } = renderWithProviders(<ProductCard product={PART_CARD} action={action} />);
     const article = card(PART_CARD.name);
 
-    expect(within(article).getByText(/Bài thi theo phần/)).toHaveTextContent(
-      "Bài thi theo phần · Toan hoc va Xu li so lieu",
-    );
+    const formatTag = within(article).getByText("Bài thi theo phần");
+    const partTag = within(article).getByText("Toan hoc va Xu li so lieu");
+    expect(formatTag).toBeInTheDocument();
+    expect(partTag).toBeInTheDocument();
+    expect(formatTag).not.toContainElement(partTag);
     expect(within(article).getByText("48–50 câu · 75 phút · 3 lượt")).toBeInTheDocument();
     // Không có ảnh bìa: ảnh mặc định, không có thẻ <img> lỗi.
     expect(container.querySelector("img")).toBeNull();
@@ -104,19 +106,21 @@ describe("ProductCard", () => {
     expect(scope.closest("[data-exam-content]")).toBeNull();
   });
 
-  it("giao diện tiếng Anh: nameEn rỗng thì chip hiện nameVi, nameEn khác nameVi thì hiện nameEn (A7)", () => {
+  it("giao diện tiếng Anh: nameEn rỗng thì tag môn hiện nameVi, nameEn khác nameVi thì hiện nameEn (A7, UNI-2797)", () => {
     const viOnly = renderWithProviders(<ProductCard product={VI_ONLY_CARD} action={action} />, {
       locale: "en",
       messages: enMessages,
     });
-    expect(within(card(VI_ONLY_CARD.name)).getByText(/Subject exam/)).toHaveTextContent("Subject exam · Lich su");
+    expect(within(card(VI_ONLY_CARD.name)).getByText("Subject exam")).toBeInTheDocument();
+    expect(within(card(VI_ONLY_CARD.name)).getByText("Lich su")).toBeInTheDocument();
     viOnly.unmount();
 
     renderWithProviders(<ProductCard product={REVIEW_CARD} action={action} />, {
       locale: "en",
       messages: enMessages,
     });
-    expect(within(card(REVIEW_CARD.name)).getByText(/Subject exam/)).toHaveTextContent("Subject exam · Math");
+    expect(within(card(REVIEW_CARD.name)).getByText("Subject exam")).toBeInTheDocument();
+    expect(within(card(REVIEW_CARD.name)).getByText("Math")).toBeInTheDocument();
   });
 
 
@@ -128,7 +132,8 @@ describe("ProductCard", () => {
     const article = card(REVIEW_CARD.name);
 
     expect(within(article).getByText("Review exam")).toBeInTheDocument();
-    expect(within(article).getByText(/Subject exam/)).toHaveTextContent("Subject exam · Math");
+    expect(within(article).getByText("Subject exam")).toBeInTheDocument();
+    expect(within(article).getByText("Math")).toBeInTheDocument();
     expect(within(article).getByText("48–50 questions · 75 minutes · 3 attempts")).toBeInTheDocument();
     expect(within(article).getByText("79,000 VND")).toBeInTheDocument();
   });

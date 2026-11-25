@@ -121,7 +121,7 @@ describe("AccessAction · bảng nút TM 11.3", () => {
     expect(screen.queryByRole("link", { name: "Xem chi tiết" })).toBeNull();
   });
 
-  // Trong khung chi tiết (flex-col) nút chỉ được căng ngang: flex-1 đặt flex-basis:0 làm nút xẹp ~20px (visual-6).
+  // Trong khung chi tiết và thẻ danh mục (flex-col) nút chỉ được căng ngang (w-full), không mang flex-1 (UNI-2797).
   it.each<[string, AccessView]>([
     ["khách", { kind: "guest" }],
     ["lỗi tải", { kind: "error" }],
@@ -137,6 +137,32 @@ describe("AccessAction · bảng nút TM 11.3", () => {
     expect(actions.length).toBeGreaterThan(0);
     for (const el of actions) {
       expect(el).not.toHaveClass("flex-1");
+      expect(el).toHaveClass("w-full");
+    }
+  });
+
+  it("thẻ danh mục (variant=card): EXHAUSTED hiển thị dạng Chưa mua gồm 2 nút xếp dọc Mua bài thi + Xem chi tiết, không hiện Mua lại (UNI-2797)", () => {
+    renderAction(ready({ state: "EXHAUSTED" }), "card");
+
+    const links = screen.getAllByRole("link");
+    expect(links.map((el) => el.textContent)).toEqual(["Mua bài thi", "Xem chi tiết"]);
+    expect(links[0]).toHaveAttribute("href", CHECKOUT);
+    expect(links[1]).toHaveAttribute("href", "/exams/HSA-FULL-01");
+    expect(screen.queryByText(/dùng hết lượt/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Mua lại" })).toBeNull();
+    for (const el of links) {
+      expect(el).toHaveClass("w-full");
+      expect(el).not.toHaveClass("flex-1");
+    }
+  });
+
+  it("thẻ danh mục (variant=card): CAN_START hiển thị dạng Đã mua gồm 3 nút xếp dọc Vào bài thi, Mua thêm lượt, Xem chi tiết (UNI-2797)", () => {
+    renderAction(ready({ state: "CAN_START", attemptsLeft: 3, entitlementId: "ent-1" }), "card");
+
+    expect(screen.getByText("Còn 3 lượt")).toBeInTheDocument();
+    const links = screen.getAllByRole("link");
+    expect(links.map((el) => el.textContent)).toEqual(["Vào bài thi", "Mua thêm lượt", "Xem chi tiết"]);
+    for (const el of links) {
       expect(el).toHaveClass("w-full");
     }
   });

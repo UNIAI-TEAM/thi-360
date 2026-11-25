@@ -46,15 +46,13 @@ export function AccessAction({
 
   const viewDetail =
     variant === "card" ? (
-      <Button asChild variant="secondary" className="h-11 flex-1">
+      <Button asChild variant="secondary" className="h-11 w-full">
         <Link href={detailHref}>{t("viewDetail")}</Link>
       </Button>
     ) : null;
 
-  const wrapper = variant === "card" ? "flex flex-wrap gap-2" : "flex flex-col gap-3";
-  // Căng theo chiều chính của lớp bọc: chỉ thẻ danh mục (hàng) dùng flex-1; ở trang chi tiết (cột) flex-1 đặt
-  // flex-basis:0 nên nút xẹp còn ~20px thay vì h-13 — dùng w-full (stretch) để giữ chiều cao.
-  const grow = variant === "card" ? "flex-1" : "w-full";
+  const wrapper = variant === "card" ? "flex flex-col gap-2" : "flex flex-col gap-3";
+  const grow = "w-full";
   if (view.kind === "loading") {
     return (
       <div role="status" aria-busy="true" aria-label={t("loading")}>
@@ -140,6 +138,16 @@ export function AccessAction({
         </div>
       );
     case "EXHAUSTED":
+      if (variant === "card") {
+        return (
+          <div className={wrapper}>
+            <Button asChild size={primarySize} className={grow}>
+              <Link href={checkout} prefetch={false}>{buyLabel}</Link>
+            </Button>
+            {viewDetail}
+          </div>
+        );
+      }
       return (
         <div className={wrapper}>
           <p className="w-full text-field-label text-text-secondary">{t("exhaustedNote")}</p>
