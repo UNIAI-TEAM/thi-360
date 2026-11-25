@@ -3,6 +3,7 @@ package vn.unicom.thi360.shell
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -51,6 +53,7 @@ import vn.unicom.thi360.feature.login.LoginRoutes
 import vn.unicom.thi360.feature.login.LoginScreen
 import vn.unicom.thi360.feature.login.OfflineSessionBanner
 import vn.unicom.thi360.feature.login.RoleNoticeScreen
+import vn.unicom.thi360.feature.password.ChangePasswordDraftViewModel
 import vn.unicom.thi360.feature.password.InvalidResetLinkScreen
 import vn.unicom.thi360.feature.password.NewPasswordMode
 import vn.unicom.thi360.feature.password.NewPasswordScreen
@@ -81,9 +84,13 @@ private fun clearConsumedResetIntent(activity: ComponentActivity?, allowedHost: 
     if (ResetLink.parseIntent(current, allowedHost) is ResetLinkIntentResult.Ignored) {
         return
     }
-    activity.intent = Intent(current).apply {
-        action = Intent.ACTION_MAIN
-        data = null
+    val savedComponent = current.component
+    // Mutate the live Intent in place so ActivityClientRecord cannot retain the reset token URI in memory.
+    current.action = Intent.ACTION_MAIN
+    current.data = null
+    current.replaceExtras(null as Bundle?)
+    activity.intent = Intent(Intent.ACTION_MAIN).apply {
+        component = savedComponent
     }
 }
 
@@ -151,6 +158,8 @@ fun AppRoot(
     // Keep reset link token strictly in ephemeral composition memory; never save to Bundle or disk.
     var activeResetOverlay by remember { mutableStateOf<ActiveResetOverlay?>(null) }
     var openForgotPasswordOverlay by remember { mutableStateOf(false) }
+    // Persist only a plain consumed flag so Activity recreation / state restoration never replays a dismissed reset Intent.
+    var initialIntentConsumed by rememberSaveable { mutableStateOf(false) }
 
     fun processResetIntent(candidate: Intent?) {
         when (val parsed = ResetLink.parseIntent(candidate, allowedResetHost)) {
@@ -171,7 +180,10 @@ fun AppRoot(
     }
 
     LaunchedEffect(initialIntent, activity) {
-        processResetIntent(initialIntent ?: activity?.intent)
+        if (!initialIntentConsumed) {
+            initialIntentConsumed = true
+            processResetIntent(initialIntent ?: activity?.intent)
+        }
     }
 
     DisposableEffect(activity, allowedResetHost) {
@@ -247,6 +259,13 @@ internal fun AppSessionContent(
     val coroutineScope = rememberCoroutineScope()
     var isRetryingOffline by remember { mutableStateOf(false) }
     var pendingSignedOutRoute by remember { mutableStateOf<String?>(null) }
+
+    val isSignedOut = sessionState is SessionState.SignedOut
+    LaunchedEffect(isSignedOut) {
+        if (isSignedOut) {
+            ChangePasswordDraftViewModel.clearAllActiveDrafts()
+        }
+    }
 
     // Password reset deep links bypass Locked, MustChangePassword, Active, and SignedOut states.
     if (activeResetOverlay != null) {

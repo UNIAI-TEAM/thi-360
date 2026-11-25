@@ -301,7 +301,10 @@ class OtpScreenTest {
             localeProvider = { AppLocale.VI },
         )
 
+        var dispatcher: androidx.activity.OnBackPressedDispatcher? = null
+
         composeRule.setContent {
+            dispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
             AppRoot(
                 preferences = AppPreferences(locale = AppLocale.VI),
                 onSelectLocale = {},
@@ -319,6 +322,12 @@ class OtpScreenTest {
         composeRule.onNodeWithTag(RegisterTestTags.OTP_SUBMIT_BUTTON).assertIsNotEnabled()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_SUBMIT_BUTTON).performClick()
         assertEquals(1, verifyCalls)
+
+        // Back / Back-to-edit must be ignored while verification is in flight.
+        composeRule.onNodeWithTag(RegisterTestTags.OTP_BACK_TO_EDIT_BUTTON).performScrollTo().assertIsNotEnabled()
+        composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(RegisterTestTags.SCREEN_OTP).assertIsDisplayed()
 
         releaseVerify.complete(
             ApiResult.Success(

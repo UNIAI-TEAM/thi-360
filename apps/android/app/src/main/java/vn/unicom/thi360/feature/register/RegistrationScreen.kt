@@ -201,6 +201,7 @@ class RegistrationController(
     }
 
     fun backToEditForm() {
+        if (uiState.isVerifyingOtp || uiState.isResendingOtp) return
         val otp = uiState.step as? RegistrationState.Otp ?: return
         passwordState.clearText()
         otpCodeState.clearText()
@@ -718,6 +719,7 @@ fun RegisterFormScreenContent(
             onNavigationClick = onBackToLogin,
             navigationContentDescription = stringResource(R.string.recovery_back),
             navigationTestTag = RegisterTestTags.BACK_BUTTON,
+            navigationEnabled = !uiState.isSubmittingForm,
         )
 
         Column(
@@ -1018,6 +1020,7 @@ fun OtpScreenContent(
             title = stringResource(R.string.register_otp_title),
             onNavigationClick = onBackToEdit,
             navigationContentDescription = stringResource(R.string.register_otp_back_to_edit),
+            navigationEnabled = !busy,
         )
 
         Column(

@@ -68,6 +68,7 @@ internal fun RecoveryTopBar(
     navigationContentDescription: String? = null,
     navigationTestTag: String? = null,
     useCloseIcon: Boolean = false,
+    navigationEnabled: Boolean = true,
 ) {
     val colors = Thi360Theme.colors
     Row(
@@ -81,6 +82,7 @@ internal fun RecoveryTopBar(
         if (onNavigationClick != null) {
             IconButton(
                 onClick = onNavigationClick,
+                enabled = navigationEnabled,
                 modifier = Modifier
                     .size(48.dp)
                     .then(if (navigationTestTag != null) Modifier.testTag(navigationTestTag) else Modifier),

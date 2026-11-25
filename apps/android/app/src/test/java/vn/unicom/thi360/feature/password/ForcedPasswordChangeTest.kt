@@ -251,4 +251,76 @@ class ForcedPasswordChangeTest {
         }
         assertTrue(stack.sessionManager.state.value is SessionState.Active)
     }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp")
+    fun externalSignOutClearsForcedPasswordDraftAcrossUsersWithNullUsername() {
+        val tokenStore = InMemoryTokenStore(
+            Tokens("a1", "r1", 300, 604800, mustChangePassword = true, username = null),
+        )
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = tokenStore,
+            localeProvider = { AppLocale.VI },
+        )
+        val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
+        val retainedViewModelStore = androidx.lifecycle.ViewModelStore()
+        val retainedOwner = object : androidx.lifecycle.ViewModelStoreOwner {
+            override val viewModelStore: androidx.lifecycle.ViewModelStore = retainedViewModelStore
+        }
+
+        composeRule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner provides retainedOwner,
+            ) {
+                AppRoot(
+                    preferences = AppPreferences(locale = AppLocale.VI),
+                    onSelectLocale = {},
+                    onSelectThemeMode = {},
+                    sessionManager = stack.sessionManager,
+                    validateOnLaunch = false,
+                    recoveryGateway = gateway,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performScrollTo().performTextInput("UserAOld1!")
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().performTextInput("UserANew2@")
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().performTextInput("UserANew2@")
+
+        // External session revocation (not NewPasswordController.logout()) transitions to SignedOut.
+        runBlocking {
+            stack.sessionManager.clearSession(vn.unicom.thi360.core.session.SignOutReason.Expired)
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        // Another user enters Forced mode with username = null under the same retained ViewModelStore.
+        runBlocking {
+            stack.sessionManager.adoptSession(
+                Tokens("a2", "r2", 300, 604800, mustChangePassword = true, username = null),
+            )
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_TOGGLE).performScrollTo().performClick()
+
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+
+        retainedViewModelStore.clear()
+    }
 }

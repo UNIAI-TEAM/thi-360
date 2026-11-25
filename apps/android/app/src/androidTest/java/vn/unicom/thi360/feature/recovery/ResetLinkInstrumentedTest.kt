@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -25,6 +26,7 @@ import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.theme.BrandPalette
+import vn.unicom.thi360.feature.login.LoginTestTags
 import vn.unicom.thi360.shell.ActiveResetOverlay
 import vn.unicom.thi360.shell.AppSessionContent
 import java.util.UUID
@@ -84,6 +86,24 @@ class ResetLinkInstrumentedTest {
                     activity.intent?.data == null,
                 )
             }
+
+            composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+            composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
+
+            scenario.recreate()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+            composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
         }
     }
 

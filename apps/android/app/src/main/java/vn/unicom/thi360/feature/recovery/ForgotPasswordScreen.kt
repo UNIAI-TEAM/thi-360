@@ -1,5 +1,6 @@
 package vn.unicom.thi360.feature.recovery
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -194,6 +195,11 @@ fun ForgotPasswordScreen(
     }
 
     val state = controller.uiState
+    BackHandler(enabled = true) {
+        if (!state.isSubmitting) {
+            onBackToLogin()
+        }
+    }
     val sentStep = state.step as? ForgotPasswordStep.Sent
     var cooldownTick by remember(sentStep?.resendAtMillis, state.cooldownGeneration) {
         mutableIntStateOf(0)
@@ -252,6 +258,7 @@ fun ForgotPasswordScreenContent(
             onNavigationClick = onBackToLogin,
             navigationContentDescription = stringResource(R.string.forgot_back_to_login),
             navigationTestTag = RecoveryTestTags.FORGOT_BACK_BUTTON,
+            navigationEnabled = !uiState.isSubmitting,
         )
 
         Column(

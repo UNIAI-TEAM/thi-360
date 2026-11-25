@@ -246,4 +246,76 @@ class NewPasswordFromLinkTest {
         }
         assertEquals(1, calls)
     }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp")
+    fun signedInInvalidResetLinkOpensForgotOverlayAndSystemBackReturnsToActiveShell() {
+        val tokenStore = InMemoryTokenStore(
+            Tokens(
+                accessToken = "active-user-access",
+                refreshToken = "active-user-refresh",
+                accessExpiresIn = 300,
+                refreshExpiresIn = 604800,
+                mustChangePassword = false,
+                username = "active.student",
+            ),
+        )
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = tokenStore,
+            localeProvider = { AppLocale.VI },
+        )
+        val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
+        server.enqueue(
+            ContractFixtureLoader.jsonResponse(
+                422,
+                ContractFixtureLoader.readApiFixture("password-reset-422-reset-token-invalid.json"),
+            ),
+        )
+
+        var dispatcher: androidx.activity.OnBackPressedDispatcher? = null
+
+        composeRule.setContent {
+            dispatcher = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+                recoveryGateway = gateway,
+                initialIntent = resetIntent("expired-while-signed-in"),
+            )
+        }
+
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("NewStrongPass1!")
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performTextInput("NewStrongPass1!")
+        composeRule.onNodeWithTag(PasswordTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(PasswordTestTags.SCREEN_INVALID_LINK).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        composeRule.onNodeWithTag(PasswordTestTags.INVALID_LINK_REQUEST_NEW).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(RecoveryTestTags.FORGOT_SCREEN_FORM).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        // System Back must dismiss the Forgot Password overlay back to the Active shell, not finish Activity.
+        composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(vn.unicom.thi360.shell.ShellTestTags.BOTTOM_BAR).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag(RecoveryTestTags.FORGOT_SCREEN_FORM).assertDoesNotExist()
+    }
 }

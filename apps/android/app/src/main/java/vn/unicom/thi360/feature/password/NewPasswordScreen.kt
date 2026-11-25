@@ -108,6 +108,7 @@ class NewPasswordController(
     private val onResetCompleted: () -> Unit,
     private val onResetTokenInvalid: () -> Unit,
     private val onVoluntaryChanged: () -> Unit,
+    private val onClearDraft: () -> Unit = {},
 ) {
     private val submitInFlight = AtomicBoolean(false)
     private val logoutInFlight = AtomicBoolean(false)
@@ -254,6 +255,7 @@ class NewPasswordController(
                     is NewPasswordMode.Forced, is NewPasswordMode.Voluntary -> {
                         when (val result = recoveryGateway.changePassword(oldPassword = oldPassword, newPassword = newPassword)) {
                             is ApiResult.Success -> {
+                                onClearDraft()
                                 oldPasswordState.clearText()
                                 newPasswordState.clearText()
                                 confirmPasswordState.clearText()
@@ -300,6 +302,7 @@ class NewPasswordController(
         uiState = uiState.copy(isLoggingOut = true, bannerError = null)
         scope.launch {
             try {
+                onClearDraft()
                 oldPasswordState.clearText()
                 newPasswordState.clearText()
                 confirmPasswordState.clearText()
@@ -422,21 +425,31 @@ fun NewPasswordScreen(
     val latestOnVoluntaryChanged by rememberUpdatedState(onVoluntaryChanged)
 
     val viewModelStoreOwner = LocalViewModelStoreOwner.current
-    val draftFields = remember(mode, viewModelStoreOwner) {
+    val draftViewModel = remember(mode, viewModelStoreOwner) {
         if (mode is NewPasswordMode.FromLink || viewModelStoreOwner == null) {
-            Triple(TextFieldState(), TextFieldState(), TextFieldState())
+            null
         } else {
             val key = when (mode) {
                 is NewPasswordMode.Forced -> "forced_${mode.username.orEmpty()}"
                 is NewPasswordMode.Voluntary -> "voluntary_${mode.username.orEmpty()}"
                 is NewPasswordMode.FromLink -> error("unreachable")
             }
-            val vm = ViewModelProvider(viewModelStoreOwner)[key, ChangePasswordDraftViewModel::class.java]
-            Triple(vm.oldPasswordState, vm.newPasswordState, vm.confirmPasswordState)
+            ViewModelProvider(viewModelStoreOwner)[key, ChangePasswordDraftViewModel::class.java]
+        }
+    }
+    val draftFields = remember(mode, draftViewModel) {
+        if (draftViewModel != null) {
+            Triple(
+                draftViewModel.oldPasswordState,
+                draftViewModel.newPasswordState,
+                draftViewModel.confirmPasswordState,
+            )
+        } else {
+            Triple(TextFieldState(), TextFieldState(), TextFieldState())
         }
     }
 
-    val controller = remember(mode, recoveryGateway, sessionManager, draftFields) {
+    val controller = remember(mode, recoveryGateway, sessionManager, draftFields, draftViewModel) {
         NewPasswordController(
             mode = mode,
             recoveryGateway = recoveryGateway,
@@ -448,16 +461,27 @@ fun NewPasswordScreen(
             onResetCompleted = { latestOnResetCompleted() },
             onResetTokenInvalid = { latestOnResetTokenInvalid() },
             onVoluntaryChanged = { latestOnVoluntaryChanged() },
+            onClearDraft = { draftViewModel?.clearAll() },
         )
     }
 
-    if (mode is NewPasswordMode.Forced) {
-        BackHandler(enabled = true) {}
-    } else if (mode is NewPasswordMode.FromLink && onBack != null) {
-        BackHandler(enabled = true) {
-            controller.invalidateEphemeralToken()
-            onBack()
+    val handleExit: (() -> Unit)? = onBack?.let { back ->
+        {
+            if (!controller.uiState.isSubmitting && !controller.uiState.isLoggingOut) {
+                controller.invalidateEphemeralToken()
+                if (mode is NewPasswordMode.Voluntary) {
+                    draftViewModel?.clearAll()
+                }
+                back()
+            }
         }
+    }
+
+    when {
+        mode is NewPasswordMode.Forced -> BackHandler(enabled = true) {}
+        mode is NewPasswordMode.FromLink && handleExit != null -> BackHandler(enabled = true) { handleExit() }
+        mode is NewPasswordMode.Voluntary && !embeddedInPane && handleExit != null ->
+            BackHandler(enabled = true) { handleExit() }
     }
 
     DisposableEffect(controller) {
@@ -492,12 +516,7 @@ fun NewPasswordScreen(
         confirmPasswordState = controller.confirmPasswordState,
         evaluation = evaluation,
         embeddedInPane = embeddedInPane,
-        onBack = onBack?.let { back ->
-            {
-                controller.invalidateEphemeralToken()
-                back()
-            }
-        },
+        onBack = handleExit,
         onToggleOldVisibility = controller::toggleOldPasswordVisibility,
         onToggleNewVisibility = controller::toggleNewPasswordVisibility,
         onToggleConfirmVisibility = controller::toggleConfirmPasswordVisibility,
@@ -551,6 +570,7 @@ fun NewPasswordScreenContent(
                 },
                 navigationTestTag = PasswordTestTags.CLOSE_BUTTON,
                 useCloseIcon = mode is NewPasswordMode.FromLink,
+                navigationEnabled = !busy,
             )
         }
 

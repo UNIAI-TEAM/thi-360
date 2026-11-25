@@ -7,12 +7,14 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -21,6 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLog
+import vn.unicom.thi360.MainActivity
 import vn.unicom.thi360.Thi360Application
 import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.config.Environment
@@ -76,7 +79,6 @@ class ResetTokenHandlingTest {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://$host/reset-password?token=$secretResetToken"))
 
         val restorationTester = StateRestorationTester(composeRule)
-        var deliverIntent = true
 
         restorationTester.setContent {
             AppRoot(
@@ -86,14 +88,14 @@ class ResetTokenHandlingTest {
                 sessionManager = stack.sessionManager,
                 validateOnLaunch = false,
                 recoveryGateway = gateway,
-                initialIntent = if (deliverIntent) intent else null,
+                initialIntent = intent,
             )
         }
 
         composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
 
-        // Leave reset screen via Close button -> token must be evicted and never reappear after restore.
-        deliverIntent = false
+        // Leave reset screen via Close button -> token must be evicted and AppRoot itself must suppress
+        // replay across saved-instance-state restore even when the same initialIntent is still supplied.
         composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
         composeRule.waitForIdle()
 
@@ -127,6 +129,44 @@ class ResetTokenHandlingTest {
                 val raw = file.readBytes().toString(Charsets.ISO_8859_1)
                 assertFalse("Reset token persisted on disk in ${file.name}", raw.contains(secretResetToken))
             }
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp")
+    fun dismissedResetLinkDoesNotReplayAfterActivityRecreate() {
+        val context = ApplicationProvider.getApplicationContext<Thi360Application>()
+        val host = ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
+        val launchIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://$host/reset-password?token=recreate-ephemeral-token"),
+        ).setClass(context, MainActivity::class.java)
+
+        ActivityScenario.launch<MainActivity>(launchIntent).use { scenario ->
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+            scenario.onActivity { activity ->
+                assertNull("Consumed reset intent URI must be cleared in place", activity.intent?.data)
+            }
+
+            composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+            composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
+
+            scenario.recreate()
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+            composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
         }
     }
 }

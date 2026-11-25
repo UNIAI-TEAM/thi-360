@@ -299,4 +299,83 @@ class ChangePasswordTest {
         }
         assertEquals(1, calls)
     }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp")
+    fun voluntaryTopBarBackAndSystemBackClearDraftPasswords() {
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(),
+            localeProvider = { AppLocale.VI },
+        )
+        val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
+
+        val retainedViewModelStore = ViewModelStore()
+        val retainedOwner = object : ViewModelStoreOwner {
+            override val viewModelStore: ViewModelStore = retainedViewModelStore
+        }
+
+        var showChangePassword by mutableStateOf(true)
+        var backCalls = 0
+        var dispatcher: androidx.activity.OnBackPressedDispatcher? = null
+
+        composeRule.setContent {
+            val backOwner = androidx.activity.compose.LocalOnBackPressedDispatcherOwner.current
+            dispatcher = backOwner?.onBackPressedDispatcher
+            CompositionLocalProvider(LocalViewModelStoreOwner provides retainedOwner) {
+                Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
+                    if (showChangePassword) {
+                        ChangePasswordScreen(
+                            username = "minhanh.tran",
+                            recoveryGateway = gateway,
+                            embeddedInPane = false,
+                            onBack = {
+                                backCalls++
+                                showChangePassword = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performTextInput("OldSecret1!")
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("NewSecret2@")
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performTextInput("NewSecret2@")
+
+        // Leave via top-bar Back -> clears retained ViewModel draft.
+        composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
+        composeRule.waitForIdle()
+        assertEquals(1, backCalls)
+
+        composeRule.runOnIdle { showChangePassword = true }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+
+        // Type again and leave via Android system Back -> BackHandler intercepts and clears draft.
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performScrollTo().performTextInput("SecondOld1!")
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().performTextInput("SecondNew2@")
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().performTextInput("SecondNew2@")
+
+        composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
+        composeRule.waitForIdle()
+        assertEquals(2, backCalls)
+
+        composeRule.runOnIdle { showChangePassword = true }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+        composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+        composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
+
+        retainedViewModelStore.clear()
+    }
 }
