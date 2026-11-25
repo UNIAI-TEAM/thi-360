@@ -111,7 +111,12 @@ final class PreviewPaperOrdering {
     }
 
     private static void collect(Map<String, Boolean> target, List<ExamSection> sections) {
-        for (ExamSection section : sections) collectBlocks(target, section.blocks());
+        for (ExamSection section : sections) {
+            if (section.isMixBlocks()) {
+                target.put(section.id(), true);
+            }
+            collectBlocks(target, section.blocks());
+        }
     }
 
     private static void collectBlocks(Map<String, Boolean> target, List<QuestionBlock> blocks) {

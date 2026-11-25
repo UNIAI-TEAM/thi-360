@@ -79,7 +79,7 @@ public final class ExamStructureOps {
         return new ExamSection(id(s.id(), regenerate), s.subjectCode(), s.questionCount(),
                 s.knowledgeScope(), s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks,
                 mapTopicQuotas(s.topicQuotas(), blockIds), s.audioRequirement(), s.mapidMode(),
-                mapMapidRules(s.mapidRules(), blockIds));
+                mapMapidRules(s.mapidRules(), blockIds), s.mixBlocks());
     }
 
     private static List<MapidRule> mapMapidRules(List<MapidRule> rules, Map<String, String> blockIds) {
@@ -192,7 +192,7 @@ public final class ExamStructureOps {
         }
         return new ExamSection(s.id(), s.subjectCode(), s.questionCount(), s.knowledgeScope(),
                 s.answerQuotas(), s.matrix(), s.choiceGroup(), blocks, s.topicQuotas(),
-                s.audioRequirement(), s.mapidMode(), s.mapidRules());
+                s.audioRequirement(), s.mapidMode(), s.mapidRules(), s.mixBlocks());
     }
 
     private static void index(ExamStructureDocument doc, Map<String, QuestionBlock> blocks) {

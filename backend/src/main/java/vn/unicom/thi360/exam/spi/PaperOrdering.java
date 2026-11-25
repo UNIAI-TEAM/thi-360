@@ -13,14 +13,22 @@ import java.util.Random;
 public final class PaperOrdering {
     private PaperOrdering() {}
 
-    public record Question(String id, JsonNode body) {
+    public record Question(String id, JsonNode body, String blockId) {
         public Question { Objects.requireNonNull(id); Objects.requireNonNull(body); }
+
+        public Question(String id, JsonNode body) {
+            this(id, body, null);
+        }
     }
     public record Block(String id, boolean shuffleUnits, List<Question> units) {
         public Block { units = List.copyOf(units); }
     }
-    public record Section(String id, List<Block> blocks) {
+    public record Section(String id, boolean mixBlocks, List<Block> blocks) {
         public Section { blocks = List.copyOf(blocks); }
+
+        public Section(String id, List<Block> blocks) {
+            this(id, false, blocks);
+        }
     }
     public record Part(String id, List<Section> sections) {
         public Part { sections = List.copyOf(sections); }
@@ -40,13 +48,30 @@ public final class PaperOrdering {
             List<Section> sections = new ArrayList<>();
             for (Section section : part.sections()) {
                 List<Block> blocks = new ArrayList<>();
-                for (Block block : section.blocks()) {
-                    List<Question> units = new ArrayList<>(block.units());
-                    if (block.shuffleUnits()) Collections.shuffle(units, random);
-                    for (Question unit : units) orderBody(unit.id(), unit.body(), random, options);
-                    blocks.add(new Block(block.id(), block.shuffleUnits(), units));
+                if (section.mixBlocks()) {
+                    List<Question> combined = new ArrayList<>();
+                    for (Block block : section.blocks()) {
+                        for (Question unit : block.units()) {
+                            combined.add(unit.blockId() != null
+                                    ? unit
+                                    : new Question(unit.id(), unit.body(), block.id()));
+                        }
+                    }
+                    Collections.shuffle(combined, random);
+                    for (Question unit : combined) orderBody(unit.id(), unit.body(), random, options);
+                    if (!combined.isEmpty() || !section.blocks().isEmpty()) {
+                        blocks.add(new Block(section.id(), true, combined));
+                    }
+                    sections.add(new Section(section.id(), true, blocks));
+                } else {
+                    for (Block block : section.blocks()) {
+                        List<Question> units = new ArrayList<>(block.units());
+                        if (block.shuffleUnits()) Collections.shuffle(units, random);
+                        for (Question unit : units) orderBody(unit.id(), unit.body(), random, options);
+                        blocks.add(new Block(block.id(), block.shuffleUnits(), units));
+                    }
+                    sections.add(new Section(section.id(), false, blocks));
                 }
-                sections.add(new Section(section.id(), blocks));
             }
             parts.add(new Part(part.id(), sections));
         }

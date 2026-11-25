@@ -84,9 +84,18 @@ public interface PaperSolverPort {
     }
 
     /** One section of a part (a subject), with the number of questions it holds after trimming. */
-    record GeneratedSection(String sectionId, String subjectCode, int questionCount, List<GeneratedGroup> groups) {
+    record GeneratedSection(
+            String sectionId,
+            String subjectCode,
+            int questionCount,
+            boolean mixBlocks,
+            List<GeneratedGroup> groups) {
         public GeneratedSection {
             groups = List.copyOf(groups);
+        }
+
+        public GeneratedSection(String sectionId, String subjectCode, int questionCount, List<GeneratedGroup> groups) {
+            this(sectionId, subjectCode, questionCount, false, groups);
         }
     }
 

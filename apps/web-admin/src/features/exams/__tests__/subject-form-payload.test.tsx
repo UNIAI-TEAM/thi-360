@@ -285,7 +285,7 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
       const wireParts = template.structure.parts as unknown as Wire[];
       const { server } = boot({ kind: template.kindCode, parts: wireParts });
       const view = openStructure(`?section=${target.id}`);
-      await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+      await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
       expect(screen.getByRole("button", { name: "Lưu" }), template.code).toBeDisabled();
       expect(screen.queryByText("Có thay đổi chưa lưu"), template.code).toBeNull();
       view.unmount();
@@ -303,9 +303,12 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
     const template = standardTemplates.templates.find((item) => item.code === "QDA_SUBJECT_LY")!;
     const wireParts = template.structure.parts as unknown as Wire[];
     const { server } = boot({ kind: "QDA", parts: wireParts });
-    const sectionId = (wireParts[0]!.sections as Wire[])[0]!.id as string;
+    const sectionWire = (wireParts[0]!.sections as Wire[])[0]!;
+    const sectionId = sectionWire.id as string;
+    const fillId = (sectionWire.blocks as Wire[])[2]!.id as string;
     openStructure(`?section=${sectionId}`);
-    const fill = await screen.findByRole("textbox", { name: "Điền đáp án" });
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
+    const fill = document.querySelector<HTMLInputElement>(`[data-form-block="${fillId}"] input`)!;
     await user.clear(fill);
     await user.type(fill, "2");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
@@ -319,9 +322,12 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
     const template = standardTemplates.templates.find((item) => item.code === "VACT_SUBJECT_TOAN")!;
     const wireParts = template.structure.parts as unknown as Wire[];
     const { server } = boot({ kind: "VACT", parts: wireParts });
-    const sectionId = (wireParts[0]!.sections as Wire[])[0]!.id as string;
+    const sectionWire = (wireParts[0]!.sections as Wire[])[0]!;
+    const sectionId = sectionWire.id as string;
+    const setId = (sectionWire.blocks as Wire[])[1]!.id as string;
     openStructure(`?section=${sectionId}`);
-    const children = await screen.findByLabelText("Câu con trong chùm");
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
+    const children = document.querySelector<HTMLInputElement>(`[data-form-block="${setId}"] input`)!;
     await user.clear(children);
     await user.type(children, "15");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
@@ -351,7 +357,7 @@ describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9)", () => {
       const wireParts = template.structure.parts as unknown as Wire[];
       const { server } = boot({ kind: "HSA", parts: wireParts });
       const view = openStructure(`?section=${targets[0]!.id}`);
-      await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+      await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
       expect(screen.getByRole("button", { name: "Lưu" }), template.code).toBeDisabled();
       expect(screen.queryByText("Có thay đổi chưa lưu"), template.code).toBeNull();
       expect(screen.queryByTestId("full-form-notice"), template.code).toBeNull();
@@ -399,7 +405,7 @@ describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9)", () => {
     ];
     const { server } = boot({ kind: "HSA", parts: legacy });
     openStructure("?section=sec-toan");
-    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
     expect(screen.getByTestId("mapid-rules-table")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
@@ -424,7 +430,7 @@ describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9)", () => {
 
     boot({ kind: "HSA", parts: wireParts });
     openStructure(`?section=${sectionId}`);
-    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
     expect(screen.queryByTestId("full-form-notice")).toBeNull();
   });
 });

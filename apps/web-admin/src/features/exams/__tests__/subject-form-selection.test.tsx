@@ -108,7 +108,7 @@ describe("Chọn trên màn: dòng chữ và ghim trong phiên (FTM R-2; CR-1 AC
     expect(screen.getByTestId("full-form-notice")).toHaveAttribute("data-reason", "LIMITS_VIOLATED");
     expect(screen.getByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
-    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
     expect(screen.queryByTestId("full-form-notice")).toBeNull();
     await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /MATH|Toán/ }));
     expect(await screen.findByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
@@ -126,10 +126,10 @@ describe("Chọn trên màn: dòng chữ và ghim trong phiên (FTM R-2; CR-1 AC
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /LY/ }));
     expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeNull();
     first.unmount();
     openStructure("?section=sec-ly");
-    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
     expect(screen.queryByTestId("full-form-notice")).toBeNull();
   });
 });

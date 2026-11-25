@@ -46,7 +46,8 @@ const template = (code: string, year: number) => ({
 });
 const TEMPLATES = [template("QDA_2026", 2026), template("QDA_2025", 2025)];
 
-const fillInput = () => screen.findByRole("textbox", { name: "Điền đáp án" });
+const FILL_INPUT_NAME = /^Số câu của .*(Điền đáp án|Trả lời ngắn|dien)/i;
+const fillInput = () => screen.findByRole("textbox", { name: FILL_INPUT_NAME });
 
 /** Mở môn Lý (MT thật) và gõ chữ sai vào Điền đáp án: bản nháp vẫn sạch, chỉ có nhập thô. */
 async function typeBadValue(user: UserEvent) {
@@ -167,7 +168,7 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     await act(() => view.client.invalidateQueries());
     await waitFor(() => expect(server.calls("GET", STRUCTURE).length).toBeGreaterThan(loadsBefore));
     expect(screen.queryAllByText(/Part lan hai/)).toHaveLength(0);
-    expect(screen.getByRole("textbox", { name: "Điền đáp án" })).toHaveValue("abc");
+    expect(screen.getByRole("textbox", { name: FILL_INPUT_NAME })).toHaveValue("abc");
   });
 
   it("giá trị chưa hợp lệ không bao giờ vào thân PUT: sửa đúng thì PUT mang số, không mang chữ đã gõ", async () => {

@@ -22,7 +22,7 @@ import {
 import { MatrixFormHsa } from "../subject-forms/matrix-form-hsa";
 import { subjectFormFor } from "../subject-forms/registry";
 import { subjectFormLimits } from "../subject-forms/limits";
-import { structureInput } from "./subject-matrix-harness";
+import { MATRIX_STRUCTURE_HEADING, rowCountInput, rowSetsInput, rowSetSizeInput, structureInput } from "./subject-matrix-harness";
 
 // Alias mã môn danh mục để lọc MAPID theo mã môn HSA, kèm nhãn tư liệu cho ca Địa lí (chỉ trong mock test).
 const { adaptRef } = vi.hoisted(() => ({
@@ -182,27 +182,33 @@ function wireHsaEnglish(id = "sec-anh"): Wire {
 async function openHsa(sectionId: string, parts: Wire[], { checkBody }: { checkBody?: Wire } = {}) {
   const booted = boot({ kind: "HSA", parts, ...(checkBody ? { checkBody } : {}) });
   const view = openStructure(`?section=${sectionId}`);
-  await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+  await screen.findByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING });
   return { ...booted, view };
 }
 
 describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC-5)", () => {
-  it("hsaMathDefaultsAndGap: Toán nạp 35 / 15 / 1×3 / 32; hiện nhãn nhìn thấy cho mọi ô Cấu trúc câu; đổi Điền 15 -> 12 ra 47/50, thiếu 3 và vẫn lưu nháp được", async () => {
+  it("hsaMathDefaultsAndGap: Toán nạp 32 / 15 / 1×3 cộng thẳng = 50; hiện đủ cột bảng v3; đổi Trả lời ngắn 15 -> 12 ra 47/50, thiếu 3 và vẫn lưu nháp được", async () => {
     const user = userEvent.setup();
     const { server } = await openHsa("sec-toan", [wirePart([wireHsaMath()])]);
     const structureBlock = document.querySelector('[data-form-field="STRUCTURE"]') as HTMLElement;
-    for (const label of ["Trắc nghiệm", "Số chùm", "Điền đáp án", "Trắc nghiệm đơn"]) {
-      expect(within(structureBlock).getByText(label)).toBeVisible();
+    for (const label of ["Vị trí câu", "Tên nhóm trên đề", "Loại câu hỏi", "Quy cách lấy câu", "Số câu", "Tỷ lệ", "Thao tác"]) {
+      expect(within(structureBlock).getByRole("columnheader", { name: label })).toBeVisible();
     }
-    expect(structureInput("Trắc nghiệm")).toHaveValue("35");
-    expect(structureInput("Điền đáp án")).toHaveValue("15");
-    expect(structureInput("Số chùm")).toHaveValue("1");
-    expect(screen.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveValue("32");
+    expect(within(structureBlock).getByText("1–32")).toBeVisible();
+    expect(within(structureBlock).getByText("33–47")).toBeVisible();
+    expect(within(structureBlock).getByText("48–50")).toBeVisible();
+    expect(rowCountInput("Trắc nghiệm độc lập")).toHaveValue("32");
+    expect(rowCountInput("Trả lời ngắn")).toHaveValue("15");
+    expect(rowSetsInput("Chùm cuối")).toHaveValue("1");
+    expect(rowSetSizeInput("Chùm cuối")).toHaveValue("3");
+    expect(rowCountInput("Chùm cuối")).toHaveValue("3");
+    expect(rowCountInput("Chùm cuối")).toHaveAttribute("readonly");
 
-    await type(user, structureInput("Điền đáp án"), "12");
+    await type(user, rowCountInput("Trả lời ngắn"), "12");
     const header = screen.getByTestId("subject-form-header");
     expect(header).toHaveTextContent(/47\s*\/\s*50/);
     expect(header).toHaveTextContent(/Thiếu 3/);
+    expect(within(structureBlock).getByText(/Thiếu 3 câu/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
@@ -262,7 +268,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     view.unmount();
 
     openStructure("?section=sec-su");
-    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    await screen.findByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING });
     await type(user, fill(), "1");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
@@ -286,7 +292,8 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     expect(within(diffSection).getByLabelText("Vận dụng cao")).toHaveValue("7");
     expect(within(diffSection).getByText("Bắt buộc")).toBeInTheDocument();
 
-    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Áp dụng khi sinh đề" })).not.toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Trộn lẫn giữa các loại câu" })).not.toBeChecked();
     expect(screen.queryByRole("button", { name: /Tỷ lệ/ })).not.toBeInTheDocument();
     mathView.view.unmount();
 
@@ -297,7 +304,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     boot({ kind: "HSA", parts: [wirePart([wireHsaEnglish()])] });
     openStructure("?section=sec-anh");
     expect(await screen.findByRole("heading", { name: "Các dòng lấy câu" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc câu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).not.toBeInTheDocument();
   });
 
   it("hsaScienceLimits: khớp 1:1 SubjectFormLimits — Hóa 3 chùm hoặc 0 điền chặn Lưu, Lưu và chuyển, Kiểm tra toàn bài và Tiếp tục; Sử 0 điền không lỗi", async () => {
@@ -394,7 +401,8 @@ describe("HSA Sử & Địa lí: AD-98 (thứ tự, gọn, phân bổ, khối l�
     expect(alloc).toHaveTextContent(/còn tự do: 7/);
     expect(strand).toHaveTextContent(/không ấn định vị trí câu trong đề/);
 
-    // Đổi Số chùm 1 -> 2 (trắc nghiệm đơn 14 -> 11) thì quy tắc 25% trên nhóm đơn giảm còn 3 -> phân bổ 5 + 3 + 1 = 9, còn 8.
+    // Bảng v3 cộng thẳng: đổi Trắc nghiệm độc lập 14 -> 11 và Số chùm 1 -> 2 (tổng giữ 17) thì quy tắc 25% trên nhóm đơn giảm còn 3 -> phân bổ 5 + 3 + 1 = 9, còn 8.
+    await type(user, rowCountInput("Trắc nghiệm độc lập"), "11");
     await type(user, structureInput("Số chùm"), "2");
     expect(alloc).toHaveTextContent(/9 \/ 17/);
     expect(alloc).toHaveTextContent(/còn tự do: 8/);
@@ -626,8 +634,16 @@ describe("HSA Sử & Địa lí: AD-98 (thứ tự, gọn, phân bổ, khối l�
     expect(await screen.findByTestId("hsa-mapid-allocation")).toHaveTextContent("Exceeds the subject total by 1 question");
 
     await user.click(within(screen.getByRole("navigation")).getByRole("button", { name: /Chemistry|HOA/ }));
-    await screen.findByRole("heading", { level: 3, name: "Question structure" });
-    await type(user, structureInput("Fill-in answer"), "0");
+    const structureEn = (await screen.findByRole("heading", { level: 3, name: "Question component structure" })).closest("[data-form-field]") as HTMLElement;
+    const strippedStructure = structureEn.cloneNode(true) as HTMLElement;
+    for (const contentNode of strippedStructure.querySelectorAll("[data-exam-content]")) contentNode.remove();
+    expect(strippedStructure.textContent).not.toMatch(vnRe);
+    for (const el of structureEn.querySelectorAll("[aria-label], [title]")) {
+      if (el.closest("[data-exam-content]")) continue;
+      expect(el.getAttribute("aria-label") ?? "").not.toMatch(vnRe);
+      expect(el.getAttribute("title") ?? "").not.toMatch(vnRe);
+    }
+    await type(user, screen.getByRole("textbox", { name: "Questions of Short answer" }), "0");
     expect(await screen.findByText("At least 1 fill-in answer needed")).toBeInTheDocument();
   });
 });

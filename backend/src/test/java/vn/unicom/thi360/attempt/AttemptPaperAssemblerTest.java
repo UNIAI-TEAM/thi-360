@@ -618,6 +618,70 @@ class AttemptPaperAssemblerTest {
                 .containsExactly(q1, q2, q3);
     }
 
+    @Test
+    void mixBlocksInterleavesQuestionTypesWhileKeepingSetsContiguousAndBlockIdsIntact() {
+        UUID q1 = UUID.randomUUID();
+        UUID q2 = UUID.randomUUID();
+        UUID sa1 = UUID.randomUUID();
+        UUID sa2 = UUID.randomUUID();
+        UUID setRoot = UUID.randomUUID();
+        UUID child1 = UUID.randomUUID();
+        UUID child2 = UUID.randomUUID();
+
+        Map<VersionKey, Version> versions = new java.util.HashMap<>();
+        versions.put(key(q1), singleChoiceVersion(q1, true, BigDecimal.ONE));
+        versions.put(key(q2), singleChoiceVersion(q2, true, BigDecimal.ONE));
+        versions.put(key(sa1), trueFalseVersion(sa1, BigDecimal.ONE));
+        versions.put(key(sa2), trueFalseVersion(sa2, BigDecimal.ONE));
+        versions.put(key(setRoot), setVersion(setRoot, List.of(
+                childJson(child1, true, BigDecimal.ONE),
+                childJson(child2, true, BigDecimal.ONE))));
+        versions.put(key(child1), singleChoiceVersion(child1, true, BigDecimal.ONE));
+        versions.put(key(child2), singleChoiceVersion(child2, true, BigDecimal.ONE));
+
+        GeneratedPart part = new GeneratedPart(
+                "P1",
+                List.of(new GeneratedSection(
+                        "S1",
+                        "TOAN",
+                        6,
+                        true,
+                        List.of(
+                                new GeneratedGroup("G-MCQ", List.of(new GeneratedQuestion(q1, 1), new GeneratedQuestion(q2, 1)), true),
+                                new GeneratedGroup("G-SA", List.of(new GeneratedQuestion(sa1, 1), new GeneratedQuestion(sa2, 1)), true),
+                                new GeneratedGroup("G-SET", List.of(new GeneratedQuestion(setRoot, 1)), true)))));
+
+        boolean interleavedAcrossGroups = false;
+        for (long seed = 1L; seed <= 30L; seed++) {
+            AssembledPart assembled = assembler.assemble(part, versions, Map.of(), seed, 1);
+            assertThat(assembled.totalUnitCount()).isEqualTo(6);
+            assertThat(assembled.nextDisplayNo()).isEqualTo(7);
+
+            Map<UUID, AssembledItem> byQuestionId = assembled.items().stream()
+                    .collect(java.util.stream.Collectors.toMap(AssembledItem::questionId, it -> it));
+            assertThat(byQuestionId.get(q1).blockId()).isEqualTo("G-MCQ");
+            assertThat(byQuestionId.get(q2).blockId()).isEqualTo("G-MCQ");
+            assertThat(byQuestionId.get(sa1).blockId()).isEqualTo("G-SA");
+            assertThat(byQuestionId.get(sa2).blockId()).isEqualTo("G-SA");
+            assertThat(byQuestionId.get(setRoot).blockId()).isEqualTo("G-SET");
+            assertThat(byQuestionId.get(child1).blockId()).isEqualTo("G-SET");
+            assertThat(byQuestionId.get(child2).blockId()).isEqualTo("G-SET");
+
+            // Child questions inside QUESTION_SET stay contiguous and in authored order.
+            assertThat(byQuestionId.get(child2).displayNo())
+                    .isEqualTo(byQuestionId.get(child1).displayNo() + 1);
+
+            List<String> rootBlocks = assembled.items().stream()
+                    .filter(it -> it.parentIndex() == null)
+                    .map(AssembledItem::blockId)
+                    .toList();
+            if (!rootBlocks.equals(List.of("G-MCQ", "G-MCQ", "G-SA", "G-SA", "G-SET"))) {
+                interleavedAcrossGroups = true;
+            }
+        }
+        assertThat(interleavedAcrossGroups).isTrue();
+    }
+
     private AttemptStateResponse projectAssembledViaStateService(
             UUID attemptId, List<AssembledItem> assembledItems, List<Version> versions) {
         UUID partId = UUID.randomUUID();

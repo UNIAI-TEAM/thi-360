@@ -74,9 +74,9 @@ const ly = () =>
 const dimension = (title: "Khối lớp" | "Độ khó") => within(screen.getByRole("heading", { level: 4, name: title }).closest("[data-form-field]") as HTMLElement);
 const reopen = async (user: UserEvent) => {
   await user.click(screen.getByRole("button", { name: "đóng mở màn" }));
-  expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc câu" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).not.toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "đóng mở màn" }));
-  await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+  await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
 };
 
 describe("MT: ô mở lại đọc nhập thô (R-15, R1-5, R1-9)", () => {
@@ -131,17 +131,18 @@ describe("MT: ô mở lại đọc nhập thô (R-15, R1-5, R1-9)", () => {
     await waitFor(() => expect(screen.queryByRole("heading", { level: 4, name: "Khối lớp" })).not.toBeInTheDocument());
   });
 
-  it("ô Cấu trúc câu: chữ sai và lỗi còn sau khi màn đóng rồi mở", async () => {
+  it("ô Cấu trúc thành phần câu hỏi: chữ sai và lỗi còn sau khi màn đóng rồi mở", async () => {
     const user = userEvent.setup();
     const store = createRawInputStore();
     renderWithProviders(<Host store={store} initial={ly()} kindCode="QDA" subjectCode="LY" />);
-    const fill = within(screen.getByRole("group", { name: "Điền đáp án" })).getByRole("textbox");
+    const fillCell = () => document.querySelector<HTMLElement>('[data-form-field="COUNT:ly-fill"]')!;
+    const fill = within(fillCell()).getByRole("textbox");
     // Gõ nối vào số đang có: ô giữ 1 trong bản nháp, chữ "1x" là nhập thô.
     await user.type(fill, "x");
-    expect(store.get("sec-ly", null, "FILL")).toMatchObject({ text: "1x", code: "invalidNumber" });
+    expect(store.get("sec-ly", null, "COUNT:ly-fill")).toMatchObject({ text: "1x", code: "invalidNumber" });
 
     await reopen(user);
-    const cell = within(screen.getByRole("group", { name: "Điền đáp án" }));
+    const cell = within(fillCell());
     expect(cell.getByRole("textbox")).toHaveValue("1x");
     expect(cell.getByRole("alert")).toHaveTextContent("Nhập một số không âm.");
   });

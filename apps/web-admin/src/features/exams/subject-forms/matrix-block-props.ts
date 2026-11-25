@@ -3,6 +3,7 @@ import type { MatrixLabels } from "../components/block-matrix-editor";
 import type { TopicQuotaServerError } from "../components/topic-quota-table";
 import type { MatrixAxes } from "../matrix";
 import type { ExamSection } from "../types";
+import type { MatrixDefaultSnapshot } from "./matrix-form-model";
 import type { SubjectFormEntry } from "./registry";
 
 interface MatrixRawFields {
@@ -12,6 +13,7 @@ interface MatrixRawFields {
   hasPrefix: (prefix: string) => boolean;
   set: (field: string, text: string, code: string) => void;
   clear: (field: string) => void;
+  clearPrefix?: (prefix: string) => void;
 }
 
 /** Dữ liệu chung của các khối của MT (`matrix-form.tsx` dựng, các khối vẽ). */
@@ -30,6 +32,8 @@ export interface MatrixBlockProps {
   raw: MatrixRawFields;
   /** Lỗi 422 từ máy chủ của bảng chỉ tiêu chủ đề (`MAX_TOPIC_QUOTAS` / `PERCENT_OUT_OF_RANGE`). */
   topicError?: TopicQuotaServerError;
+  /** Bản chụp bộ dòng thành phần mặc định của môn để khôi phục nhanh. */
+  defaultSnapshot?: MatrixDefaultSnapshot | null;
 }
 export interface MatrixKindSlotOptions {
   placement?: "before-structure" | "after-structure";

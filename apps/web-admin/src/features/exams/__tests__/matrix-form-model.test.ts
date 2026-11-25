@@ -2,13 +2,22 @@ import { describe, expect, it } from "vitest";
 import { sectionGroups } from "../components/exam-structure-draft";
 import { fitsForm } from "../subject-forms/fit";
 import {
+  addMatrixBlock,
+  changeMatrixBlockType,
   dimensionDeclared,
   editMatrixCell,
   initialEnforcement,
   matrixCell,
+  moveMatrixBlock,
   recomputeAnswerQuotas,
+  removeMatrixBlock,
+  resetMatrixSectionBlocks,
+  resolveMatrixDefaultSnapshot,
   roleBlocks,
   structureOf,
+  toggleMatrixSetMode,
+  toggleSectionMixBlocks,
+  updateMatrixSetDimensions,
   writeStructure,
 } from "../subject-forms/matrix-form-model";
 import { subjectFormFor } from "../subject-forms/registry";
@@ -257,6 +266,88 @@ describe("Khứ hồi mọi mẫu MT của QDA, BCA, V-ACT trong fixture (CR-2 A
     expect(structureOf(toan)).toMatchObject({ flexible: true, children: 18, single: 12 });
     const vn = standardFixtureTemplates().find((item) => item.code === "VACT_SUBJECT_VIETNAMESE")!.parts[0]!.sections![0]!;
     const roles = roleBlocks(vn);
-    expect([roles.single !== null, roles.set, roles.fill]).toEqual([true, null, null]);
+    expect(roles.single).not.toBeNull();
+    expect(roles.set).toBeNull();
+    expect(roles.fill).toBeNull();
+  });
+});
+
+describe("Bảng thành phần câu hỏi v3: dòng động, cỡ chùm, trộn lẫn toàn môn và mặc định của môn (UNI-2776)", () => {
+  it("addMatrixBlock & removeMatrixBlock: kế thừa điểm đồng nhất, giữ ít nhất 1 dòng, gắn deletedGroupName cho mapidRules và gỡ answerQuotas khi thêm định dạng mở rộng", () => {
+    const base: ExamSection = {
+      ...scienceWithQuotas(hsaB),
+      blocks: scienceWithQuotas(hsaB).blocks.map((item) => ({ ...item, requiredPointsPerQuestion: 2 })),
+      mapidRules: [{ id: "r1", type: "COUNT", groupId: "fill", nodeIds: ["kn-1"], comparator: "AT_LEAST", count: 3 }],
+    };
+    const withCloze = addMatrixBlock(base, "CLOZE", "Đọc điền khuyết");
+    expect(withCloze.blocks).toHaveLength(4);
+    expect(withCloze.blocks[3]).toMatchObject({ name: "Đọc điền khuyết", questionType: "CLOZE", questionCount: 0, requiredPointsPerQuestion: 2 });
+    expect(withCloze.answerQuotas).toBeNull();
+
+    const removedFill = removeMatrixBlock(withCloze, "fill");
+    expect(removedFill.blocks.map((item) => item.id)).not.toContain("fill");
+    expect(removedFill.mapidRules?.[0]?.deletedGroupName).toBe("fill");
+
+    const oneLeft = removeMatrixBlock(removeMatrixBlock(removedFill, "single"), "set");
+    expect(oneLeft.blocks).toHaveLength(1);
+    expect(removeMatrixBlock(oneLeft, oneLeft.blocks[0]!.id)).toBe(oneLeft);
+  });
+
+  it("moveMatrixBlock & toggleSectionMixBlocks: đổi chỗ dòng khi tắt trộn lẫn; khóa đổi chỗ khi mixBlocks = true; tắt xóa sạch khóa mixBlocks", () => {
+    const base = bcaHistory();
+    const swapped = moveMatrixBlock(base, "su-set", -1);
+    expect(swapped.blocks.map((item) => item.id)).toEqual(["su-set", "su-single"]);
+
+    const mixed = toggleSectionMixBlocks(swapped, true);
+    expect(mixed.mixBlocks).toBe(true);
+    expect(moveMatrixBlock(mixed, "su-single", -1)).toBe(mixed);
+
+    const unmixed = toggleSectionMixBlocks(mixed, false);
+    expect("mixBlocks" in unmixed).toBe(false);
+  });
+
+  it("changeMatrixBlockType, toggleMatrixSetMode & updateMatrixSetDimensions: đổi đơn ↔ chùm sạch dữ liệu, đổi cỡ cố định ↔ linh hoạt mượt", () => {
+    const base = bcaHistory();
+    const toSet = changeMatrixBlockType(base, "su-single", "QUESTION_SET", { nextName: "Chùm mới" });
+    expect(valueOf(toSet, "su-single")).toMatchObject({ name: "Chùm mới", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3, childAnswerType: "SINGLE_CHOICE" });
+
+    const resized = updateMatrixSetDimensions(toSet, "su-single", { setCount: 2, setSize: 5 });
+    expect(valueOf(resized, "su-single")).toMatchObject({ setCount: 2, setSize: 5, questionCount: 10 });
+
+    const flexible = toggleMatrixSetMode(resized, "su-single", "FLEXIBLE");
+    expect(valueOf(flexible, "su-single")).toMatchObject({ setCount: null, setSize: null, questionCount: 10 });
+
+    const backFixed = toggleMatrixSetMode(flexible, "su-single", "FIXED");
+    expect(valueOf(backFixed, "su-single")).toMatchObject({ setCount: 3, setSize: 3, questionCount: 9 });
+
+    const backSingle = changeMatrixBlockType(backFixed, "su-single", "TRUE_FALSE");
+    expect(valueOf(backSingle, "su-single")).toMatchObject({ questionType: "TRUE_FALSE", setCount: null, setSize: null, childAnswerType: null });
+  });
+
+  it("resolveMatrixDefaultSnapshot & resetMatrixSectionBlocks: khôi phục từ bản lưu gốc về đúng dòng, answerQuotas và mixBlocks ban đầu", () => {
+    const original = scienceWithQuotas(hsaB);
+    const baselineParts = [
+      {
+        id: "p1",
+        name: "P1",
+        order: 1,
+        mode: "FIXED" as const,
+        durationMinutes: 75,
+        questionCount: 50,
+        questionCountOnPaper: 50,
+        questionCountRequired: 50,
+        participation: { mode: "ALL" as const, choose: null },
+        maxPoints: 50,
+        sections: [original],
+        options: [],
+      },
+    ];
+    const edited = toggleSectionMixBlocks(addMatrixBlock(original, "ESSAY", "Tự luận"), true);
+    const snapshot = resolveMatrixDefaultSnapshot(edited, "HSA", null, [], baselineParts)!;
+    expect(snapshot).not.toBeNull();
+    const reset = resetMatrixSectionBlocks(edited, snapshot);
+    expect(reset.blocks.map((item) => item.id)).toEqual(["single", "set", "fill"]);
+    expect(reset.answerQuotas).toEqual(hsaB);
+    expect("mixBlocks" in reset).toBe(false);
   });
 });

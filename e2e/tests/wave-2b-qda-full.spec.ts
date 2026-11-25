@@ -123,26 +123,32 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
     expect(groups.reduce((total, group) => total + group.questions, 0), `môn ${name}: tổng số câu của các nhóm`).toBe(count);
 
     if (matrix) {
-      // Năm môn Khoa học/Xã hội (FTM MT): Cấu trúc câu, Khối lớp và độ khó, Phạm vi và chỉ tiêu chủ đề.
+      // Năm môn Khoa học/Xã hội (FTM MT): Cấu trúc thành phần câu hỏi, Khối lớp và độ khó, Phạm vi và chỉ tiêu chủ đề.
       await expect(page.locator('[data-form-kind="MATRIX"]'), `môn ${name}: biểu mẫu MT`).toBeVisible();
-      await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" }), `môn ${name}`).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" }), `môn ${name}`).toBeVisible();
       await expect(page.getByRole("button", { name: /Thêm nhóm/ }), `môn ${name}`).toHaveCount(0);
 
-      const singleGroup = groups.find((group) => !group.sets && group.name !== "Trả lời ngắn");
-      const setGroup = groups.find((group) => group.sets !== undefined);
-      const fillGroup = groups.find((group) => group.name === "Trả lời ngắn");
-      const expectedChoice = (singleGroup?.questions ?? 0) + (setGroup?.questions ?? 0);
-      await expect(page.getByRole("textbox", { name: "Trắc nghiệm", exact: true }), `môn ${name}: Trắc nghiệm`).toHaveValue(String(expectedChoice));
-      await expect(page.getByRole("textbox", { name: "Số chùm", exact: true }), `môn ${name}: Số chùm`).toHaveValue(String(setGroup!.sets!.count));
-      await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true }), `môn ${name}: Trắc nghiệm đơn`).toHaveValue(
-        String(singleGroup!.questions),
-      );
-      if (fillGroup) {
-        await expect(page.getByRole("textbox", { name: "Điền đáp án", exact: true }), `môn ${name}: Điền đáp án`).toHaveValue(
-          String(fillGroup.questions),
-        );
-      } else {
-        await expect(page.getByRole("textbox", { name: "Điền đáp án", exact: true }), `môn ${name}: không có Điền đáp án`).toHaveCount(0);
+      for (const group of groups) {
+        await expect(
+          page.getByRole("textbox", { name: `Số câu của ${group.name}`, exact: true }),
+          `môn ${name}: Số câu của ${group.name}`,
+        ).toHaveValue(String(group.questions));
+        if (group.sets) {
+          await expect(
+            page.getByRole("textbox", { name: `Số chùm của ${group.name}`, exact: true }),
+            `môn ${name}: Số chùm của ${group.name}`,
+          ).toHaveValue(String(group.sets.count));
+          await expect(
+            page.getByRole("textbox", { name: `Số câu mỗi chùm của ${group.name}`, exact: true }),
+            `môn ${name}: Số câu mỗi chùm của ${group.name}`,
+          ).toHaveValue(String(group.sets.size));
+        }
+      }
+      if (!groups.some((group) => group.name === "Trả lời ngắn")) {
+        await expect(
+          page.getByRole("textbox", { name: /Số câu của Trả lời ngắn/ }),
+          `môn ${name}: không có Trả lời ngắn`,
+        ).toHaveCount(0);
       }
 
       // Khối lớp và độ khó (MT): Khối lớp khai đủ 25/25 và Bắt buộc; Độ khó hiện các mức của mẫu (trống nếu chưa khai).
@@ -192,12 +198,14 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
     }
   }
 
-  // Sửa một giá trị của môn Vật lí trên MT (Số chùm 1 -> 2, lưu PUT 200 và kiểm tra API, rồi trả về 1 để kiểm tra/công bố chuẩn mẫu).
+  // Sửa giá trị của môn Vật lí trên MT v3 (Số chùm 1 -> 2, dòng đơn 21 -> 18, lưu PUT 200 và kiểm tra API, rồi trả về 1 và 21 để công bố chuẩn mẫu).
   const ly = pool.find((section) => section.subjectCode === "LY")!;
+  const lySingle = (ly.blocks ?? []).find((block) => block.questionType === "SINGLE_CHOICE")!;
   await nav.getByRole("button", { name: new RegExp(`^${SUBJECT_NAME.LY}`) }).click();
-  const setsInput = page.getByRole("textbox", { name: "Số chùm", exact: true });
+  const setsInput = page.getByRole("textbox", { name: /^Số chùm của / });
+  const singleCountInput = page.getByRole("textbox", { name: `Số câu của ${lySingle.name}`, exact: true });
   await setsInput.fill("2");
-  await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true })).toHaveValue("18");
+  await singleCountInput.fill("18");
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
   await saveStructureInUi(page, id);
   const savedLy = allSections(await getStructure(admin, id)).find((section) => section.id === ly.id)!;
@@ -205,10 +213,11 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   expect(savedLy.blocks?.find((block) => block.questionType === "SINGLE_CHOICE")).toMatchObject({ questionCount: 18 });
 
   await setsInput.fill("1");
-  await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true })).toHaveValue("21");
+  await singleCountInput.fill("21");
   await saveStructureInUi(page, id);
   const restoredLy = allSections(await getStructure(admin, id)).find((section) => section.id === ly.id)!;
   expect(restoredLy.blocks?.find((block) => block.questionType === "QUESTION_SET")).toMatchObject({ setCount: 1, setSize: 3, questionCount: 3 });
+  expect(restoredLy.blocks?.find((block) => block.questionType === "SINGLE_CHOICE")).toMatchObject({ questionCount: 21 });
 
   // Điền thông tin bán trước khi chạy Kiểm tra môn và Kiểm tra toàn bài (phản hồi `/check` luôn đính kèm `listingCheck`).
   await ensureListingFilledInUi(page, id);

@@ -171,7 +171,7 @@ test("R-2 lùi MD có thông báo, ghim hết phiên, tải lại về MT và gi
   await page.reload();
   await expect(page.locator('[data-form-kind="MATRIX"]')).toBeVisible();
   await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
-  await expect(page.getByRole("textbox", { name: "Số chùm", exact: true })).toHaveValue("2");
+  await expect(page.getByRole("textbox", { name: /^Số chùm của / })).toHaveValue("2");
 
   // AC-56: HSA Tiếng Anh dùng DS; ma trận lớp tham khảo chờ chuyên gia giữ `REFERENCE` khi mở và lưu.
   const hsaAnhId = await createApiExam(admin, {

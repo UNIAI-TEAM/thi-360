@@ -664,7 +664,8 @@ public class ExamService {
                 section.choiceGroup(), section.blocks(),
                 section.topicQuotas().stream()
                         .filter(q -> q.basis() != QuotaBasis.PROMPT).toList(),
-                section.audioRequirement(), section.mapidMode(), section.mapidRules());
+                section.audioRequirement(), section.mapidMode(), section.mapidRules(),
+                section.mixBlocks());
     }
 
     /**
@@ -700,7 +701,7 @@ public class ExamService {
                         section.id(), subjectCode, section.questionCount(), section.knowledgeScope(),
                         section.answerQuotas(), section.matrix(), section.choiceGroup(), section.blocks(),
                         section.topicQuotas(), section.audioRequirement(), section.mapidMode(),
-                        section.mapidRules())).toList(), part.options(),
+                        section.mapidRules(), section.mixBlocks())).toList(), part.options(),
                 part.subjectPool(), part.codeSource(), part.displaySegments())).toList(), doc.examQuotas());
     }
 

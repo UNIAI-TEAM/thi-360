@@ -769,6 +769,9 @@ function StructureEditor({
                 onExamQuotas={setQuotas}
                 examKind={exam.kind}
                 rawInputs={rawInputs}
+                template={template}
+                templates={templates}
+                baselineParts={baselineParts}
               />
             ) : sectionContext ? (
               <>

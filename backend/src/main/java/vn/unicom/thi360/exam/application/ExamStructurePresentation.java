@@ -44,7 +44,7 @@ final class ExamStructurePresentation {
         List<ExamSection> sections = option.sections().stream()
                 .map(section -> withPositionRanges(section, counter)).toList();
         List<QuestionBlock> blocks = option.blocks().stream()
-                .map(block -> withPositionRange(block, counter)).toList();
+                .map(block -> withPositionRange(block, counter, false)).toList();
         return new ExamPartOption(option.id(), option.kind(), option.code(), option.name(), option.chooseSubjects(),
                 option.countsByPick(), sections, blocks, option.expertConfirmed());
     }
@@ -53,14 +53,15 @@ final class ExamStructurePresentation {
         if (section == null) {
             return null;
         }
+        boolean omitRange = section.isMixBlocks();
         List<QuestionBlock> blocks = section.blocks().stream()
-                .map(block -> withPositionRange(block, counter)).toList();
+                .map(block -> withPositionRange(block, counter, omitRange)).toList();
         return new ExamSection(section.id(), section.subjectCode(), section.questionCount(), section.knowledgeScope(),
                 section.answerQuotas(), section.matrix(), section.choiceGroup(), blocks, section.topicQuotas(),
-                section.audioRequirement(), section.mapidMode(), section.mapidRules());
+                section.audioRequirement(), section.mapidMode(), section.mapidRules(), section.mixBlocks());
     }
 
-    private static QuestionBlock withPositionRange(QuestionBlock block, Counter counter) {
+    private static QuestionBlock withPositionRange(QuestionBlock block, Counter counter, boolean omitRange) {
         if (block == null || Boolean.TRUE.equals(block.omitted())) {
             return block;
         }
@@ -72,7 +73,7 @@ final class ExamStructurePresentation {
                 block.setSize(), block.knowledgeScope(), block.matrix(), block.childAnswerType(), block.templateGroupCode(),
                 block.answerTypeLocked(), block.requiredPointsPerQuestion(), block.tagCodes(), block.expectedScoring(),
                 block.shuffleUnits(), block.shuffleEditable(), block.slots(), block.childConditions(), block.itemShape(),
-                block.answerFormats(), block.omitted(), block.topicQuotas(), range);
+                block.answerFormats(), block.omitted(), block.topicQuotas(), omitRange ? null : range);
     }
 
     private static final class Counter {

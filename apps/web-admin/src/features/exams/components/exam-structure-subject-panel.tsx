@@ -10,7 +10,7 @@ import { convertValuesByUnit, emptyMatrix, isSetBlock, type MatrixAxes, sum } fr
 import { useAvailableQuestions, useSubjectAvailableQuestions } from "../queries";
 import { referenceEntries, referenceToMatrix, type ReferenceEntry } from "../reference-distribution";
 import { effectiveScopeSource, groupAnswerType, remainderGroupCount, sectionCaseCounts, subjectAllocation, subjectAudioGroups, type QuotaRow } from "../subject-matrix";
-import type { AnswerQuotas, ExamQuota, ExamSection, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
+import type { AnswerQuotas, ExamPart, ExamQuota, ExamSection, ExamTemplate, KnowledgeScope, MatrixUnit, QuestionBlock } from "../types";
 import { BlockMatrixEditor, type MatrixLabels } from "./block-matrix-editor";
 import { BlockNumberInput } from "./block-number-input";
 import { ChoiceCardGroup } from "./create-exam-fields";
@@ -47,6 +47,9 @@ export interface SubjectPanelProps {
   examKind?: string | null;
   rowsLocked?: boolean;
   reviewMode?: boolean;
+  template?: ExamTemplate | null;
+  templates?: readonly ExamTemplate[];
+  baselineParts?: readonly ExamPart[];
 }
 
 export function ExamStructureSubjectPanel({

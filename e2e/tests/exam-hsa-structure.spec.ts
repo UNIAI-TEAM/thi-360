@@ -82,13 +82,13 @@ test("HSA dùng cấu trúc môn: màn môn không còn ô Số câu của mục
     await expect(page.getByRole("textbox", { name })).toHaveAttribute("readonly", "");
   }
 
-  // CR-2H / AD-129: `HSA SUBJECT TOAN` mở `MatrixFormHsa` (`Cấu trúc câu`); các ô vai trò sửa được, còn `Trắc nghiệm đơn` tự tính chỉ đọc.
+  // CR-2H / UNI-2776: `HSA SUBJECT TOAN` mở `MatrixFormHsa` (`Cấu trúc thành phần câu hỏi`); các dòng đơn/điền/chùm sửa trực tiếp, ô `Số câu của Chùm cuối` (Cố định cỡ) tự tính chỉ đọc.
   await page.getByRole("button", { name: /^Soạn môn/ }).first().click();
-  await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
-  for (const name of ["Trắc nghiệm", "Điền đáp án", "Số chùm"] as const) {
+  await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeVisible();
+  for (const name of ["Số câu của Trắc nghiệm độc lập", "Số câu của Trả lời ngắn", "Số chùm của Chùm cuối", "Số câu mỗi chùm của Chùm cuối"] as const) {
     await expect(page.getByRole("textbox", { name, exact: true })).not.toHaveAttribute("readonly", "");
   }
-  await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true })).toHaveAttribute("readonly", "");
+  await expect(page.getByRole("textbox", { name: "Số câu của Chùm cuối", exact: true })).toHaveAttribute("readonly", "");
 });
 
 test("HSA Văn: nhóm lấy câu mở và sửa qua danh sách dòng", async ({ context, page }) => {
