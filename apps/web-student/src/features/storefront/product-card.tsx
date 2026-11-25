@@ -11,7 +11,7 @@ import type { ProductCard as ProductCardData } from "./types";
 
 const chipBase = "inline-flex min-h-6 items-center rounded-full px-2.5 py-0.5 text-caption leading-[1.1875rem]";
 
-/** Chip hình thức của một sản phẩm: "Bài thi FULL", "Bài thi theo phần · <phần>", "Bài thi theo môn · <môn>", "Bộ đề". */
+/** Các tag hình thức và phần/môn đi kèm của sản phẩm: tách riêng từng tag để không bị gãy thành hai cột trong một chip. */
 export function FormatChip({
   format,
   scopeLabel,
@@ -22,22 +22,23 @@ export function FormatChip({
   const t = useTranslations("storefront.format");
   const locale = useLocale();
   const known = format === "FULL" || format === "PART" || format === "SUBJECT" || format === "BUNDLE";
+  const scopeName = scopeLabel ? pickName(scopeLabel, locale) : "";
   return (
-    <span className={`${chipBase} bg-subtle font-medium text-text-secondary`}>
-      {known ? t(format) : format}
-      {scopeLabel && (
-        <>
-          {" · "}
-          {/* Tên phần (PART) là nội dung đề nên đánh dấu data-exam-content; tên môn (SUBJECT) qua pickName từ danh
-              mục song ngữ, phép kiểm lẫn ngôn ngữ vẫn áp cho nó. */}
-          {format === "PART" ? (
-            <span data-exam-content>{pickName(scopeLabel, locale)}</span>
-          ) : (
-            <span>{pickName(scopeLabel, locale)}</span>
-          )}
-        </>
+    <>
+      <span className={`${chipBase} bg-subtle font-medium text-text-secondary`}>
+        {known ? t(format) : format}
+      </span>
+      {scopeName && (
+        /* Tên phần (PART) là nội dung đề nên đánh dấu data-exam-content; tên môn (SUBJECT) qua pickName từ danh
+           mục song ngữ, phép kiểm lẫn ngôn ngữ vẫn áp cho nó. */
+        <span
+          data-exam-content={format === "PART" ? "" : undefined}
+          className={`${chipBase} bg-subtle font-medium text-text-secondary`}
+        >
+          {scopeName}
+        </span>
       )}
-    </span>
+    </>
   );
 }
 
