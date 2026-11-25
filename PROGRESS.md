@@ -2,6 +2,19 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### App học viên native Android/iOS: khung và xác thực — đặc tả và kế hoạch đã duyệt, chờ lệnh bắt đầu (2026-11-25, `UNI-2785`)
+
+- **Phạm vi đã chốt với người yêu cầu** (bảng quyết định ở mục 10 của đặc tả): app chỉ cho cổng thi, chỉ học viên vào; viết native riêng từng nền tảng (Kotlin + Jetpack Compose, Android 8.0+; Swift + SwiftUI, iOS 17+) thay cho React Native ghi trước đây (`ARCHITECTURE.md` đã sửa theo trong cùng PR tài liệu: mục 1, 2, 3, 5.9, 6, 7, 8); bố cục theo điện thoại, tablet, màn hình gập Android, iPad, iPhone Duo. Đợt đầu gồm khung 4 mục và xác thực: đăng nhập, đăng xuất, đăng ký có OTP, quên mật khẩu, deep link đặt lại mật khẩu, bắt đổi mật khẩu, tự làm mới phiên, mở khóa sinh trắc học. Backend thêm API đăng nhập mobile trả token trong thân; phiên app hết sau 7 ngày không dùng và tối đa 30 ngày kể từ lúc đăng nhập; màu và chế độ sáng/tối theo cấu hình Tùy chỉnh giao diện của admin.
+- **Tài liệu (PR tài liệu của `UNI-2785`):**
+  - Đặc tả bản 6 `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md`: 14 yêu cầu, 94 tiêu chí chấp nhận. Bản 5 duyệt ở cổng G1; bản 6 thêm hai thay đổi yêu cầu (trần phiên 30 ngày, app lấy bảng màu qua route của web học viên), duyệt cùng kế hoạch.
+  - Kế hoạch bản 4 `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md`: 12 task, 5 sóng, 62 điểm, `plan-lint` 0 lỗi, duyệt ở cổng G2.
+  - Bản thiết kế 28 màn (Android Material 3 và iOS) ở `docs/design/app-hoc-vien/`, người yêu cầu đã duyệt.
+- **Rà soát độc lập:** omp `devin/swe-2-1` mức max, ba vòng cho đặc tả và ba vòng cho kế hoạch; mọi phát hiện đã xử lý, ghi ở nhật ký rà soát cuối mỗi tài liệu.
+- **Thử nghiệm đã chạy:** Keycloak 26.4 cho phiên mobile (chọn offline token cho một client riêng, không đổi thời hạn của web); sinh client API cho Kotlin và Swift từ OpenAPI 3.1 của dự án (đạt khi bỏ hai thao tác có tham số cookie).
+- **Issue:** cha `UNI-2785`; sub-issue theo task: BE-1 `UNI-2798`, WEB-1 `UNI-2799`, DOC-1 `UNI-2800`, AND-1 `UNI-2801`, IOS-1 `UNI-2802`, AND-2 `UNI-2803`, IOS-2 `UNI-2804`, AND-3 `UNI-2805`, IOS-3 `UNI-2806`, AND-4 `UNI-2807`, IOS-4 `UNI-2808`, QA `UNI-2809`.
+- **Máy build iOS `devin-mac`** (phiên Devin Cloud nối vào Orca, tự ngủ khi rảnh): Xcode 27.1, runtime iOS 27.1, simulator iPhone Duo (màn ngoài 466×678 điểm, màn trong 669×951 điểm), AGY CLI.
+- **Tiếp theo:** chờ người yêu cầu ra lệnh bắt đầu triển khai (cổng G3); khi đó xác nhận roster và kiểm nhánh gốc rồi mới mở lane. Chưa viết mã.
+
 ### Hoàn tất sửa 3 lỗi giao diện Cổng học viên (`UNI-2795` / `UNI-1710`, `UNI-2796` / `UNI-1711`, `UNI-2797` / `UNI-1712`) (2026-11-25)
 
 - **`UNI-2795` (`uniworkos UNI-1710` — Độ rộng hiển thị từng khối khi làm bài theo từng màn hình, nhánh `fix/UNI-2795-attempt-player-widths`):**

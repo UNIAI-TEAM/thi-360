@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Tablet, khung ứng dụng</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}}" style="width: 1280px; height: 800px; flex-direction: row">
+  <nav class="rail" aria-label="Điều hướng chính">
+    <span class="logo sm" style="margin-bottom: 8px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="m9 12 3 3 8-9"/></svg></span>
+    <a class="nav-i on" href="A-Tablet-Home.dc.html" aria-current="page"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg></span>Trang chủ</a>
+    <a class="nav-i" href="A-Tablet-Home.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span>Bài thi của tôi</a>
+    <a class="nav-i" href="A-Tablet-Home.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>Lịch sử</a>
+    <a class="nav-i" href="A-Fold-Account.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Tài khoản</a>
+  </nav>
+  <div class="col grow" style="padding: 24px 24px 24px 0">
+    <div class="pane col grow g24" style="padding: 32px">
+      <div class="row between">
+        <div class="col g4">
+          <h1 class="t-display">Chào Minh Anh</h1>
+          <p class="t-small">Trang chủ</p>
+        </div>
+        <a class="icon-btn" href="A-Fold-Account.dc.html" aria-label="Tài khoản của Trần Minh Anh"><span class="avatar">MA</span></a>
+      </div>
+      <div class="empty grow">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span class="t-title" style="color: var(--on-surface)">Chưa có nội dung</span>
+        <span class="t-small" style="max-width: 440px">Danh mục và bài thi sẽ được bổ sung ở đợt sau. Trên màn rộng, vùng này chia thành danh sách bên trái và chi tiết bên phải.</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Hỏi bật mở khóa sinh trắc học</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px">
+  <div class="col pad grow center g24" style="justify-content: center">
+    <span class="hero-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11v4a6 6 0 0 1-1.5 4"/><path d="M8 15v-4a4 4 0 0 1 8 0v3a10 10 0 0 1-1 4.5"/><path d="M5 17a12 12 0 0 0 .5-3.5V11a6.5 6.5 0 0 1 11-4.7"/><path d="M19 11v2a14 14 0 0 1-.4 3.4"/></svg></span>
+    <div class="col g12">
+      <h1 class="t-headline">Mở khóa bằng vân tay hoặc khuôn mặt?</h1>
+      <p class="t-body">Lần sau mở Thi 360, bạn chỉ cần quét vân tay hoặc khuôn mặt thay vì nhập mật khẩu.</p>
+    </div>
+    <div class="card col g12" style="text-align: left; align-self: stretch">
+      <span class="t-small">Ứng dụng tự khóa khi bạn rời đi quá 5 phút.</span>
+      <span class="t-small">Quét không được thì nhập mật khẩu như bình thường.</span>
+      <span class="t-small">Bật, tắt bất cứ lúc nào trong mục Tài khoản.</span>
+    </div>
+  </div>
+  <div class="col pad g8" style="padding-bottom: 16px">
+    <a class="btn filled block" href="A-Home.dc.html">Bật mở khóa sinh trắc học</a>
+    <a class="btn text block" href="A-Home.dc.html">Để sau</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>

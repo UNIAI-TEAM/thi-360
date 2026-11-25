@@ -1,0 +1,59 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-25T09:30:00Z" },
+  "title": "Thi 360 — App học viên: khung và xác thực",
+  "launch": { "view": "canvas", "page": "android" },
+  "pages": [
+    { "id": "android", "name": "Android · Material 3" },
+    { "id": "ios", "name": "iOS" }
+  ],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Đăng nhập", "page": "android", "radius": 28 },
+    "A-Register.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 1", "page": "android", "radius": 28 },
+    "A-Otp.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 2 (OTP)", "page": "android", "radius": 28 },
+    "A-Forgot.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 844, "title": "Quên mật khẩu", "page": "android", "radius": 28 },
+    "A-NewPassword.dc.html": { "x": 1880, "y": 0, "w": 390, "h": 844, "title": "Đặt mật khẩu mới (deep link / bắt đổi)", "page": "android", "radius": 28 },
+    "A-BioEnable.dc.html": { "x": 0, "y": 1190, "w": 390, "h": 844, "title": "Hỏi bật sinh trắc học", "page": "android", "radius": 28 },
+    "A-BioUnlock.dc.html": { "x": 470, "y": 1190, "w": 390, "h": 844, "title": "Màn khóa", "page": "android", "radius": 28 },
+    "A-RoleNotice.dc.html": { "x": 940, "y": 1190, "w": 390, "h": 844, "title": "Vai trò khác học viên", "page": "android", "radius": 28 },
+    "A-Home.dc.html": { "x": 1410, "y": 1190, "w": 390, "h": 844, "title": "Khung · Trang chủ", "page": "android", "radius": 28 },
+    "A-Account.dc.html": { "x": 1880, "y": 1190, "w": 390, "h": 844, "title": "Tài khoản", "page": "android", "radius": 28 },
+    "A-Fold-Account.dc.html": { "x": 0, "y": 2380, "w": 840, "h": 720, "title": "Màn hình gập (mở) · Tài khoản hai cột", "page": "android", "radius": 24 },
+    "A-Tablet-Login.dc.html": { "x": 920, "y": 2380, "w": 1280, "h": 800, "title": "Tablet · Đăng nhập", "page": "android", "radius": 24 },
+    "A-Tablet-Home.dc.html": { "x": 2280, "y": 2380, "w": 1280, "h": 800, "title": "Tablet · Khung", "page": "android", "radius": 24 },
+    "I-Login.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Đăng nhập", "page": "ios", "radius": 44 },
+    "I-Register.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 1", "page": "ios", "radius": 44 },
+    "I-Otp.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 2 (OTP)", "page": "ios", "radius": 44 },
+    "I-Forgot.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 844, "title": "Quên mật khẩu", "page": "ios", "radius": 44 },
+    "I-NewPassword.dc.html": { "x": 1880, "y": 0, "w": 390, "h": 844, "title": "Đặt mật khẩu mới (deep link / bắt đổi)", "page": "ios", "radius": 44 },
+    "I-BioEnable.dc.html": { "x": 0, "y": 1190, "w": 390, "h": 844, "title": "Hỏi bật Face ID", "page": "ios", "radius": 44 },
+    "I-BioUnlock.dc.html": { "x": 470, "y": 1190, "w": 390, "h": 844, "title": "Màn khóa", "page": "ios", "radius": 44 },
+    "I-RoleNotice.dc.html": { "x": 940, "y": 1190, "w": 390, "h": 844, "title": "Vai trò khác học viên", "page": "ios", "radius": 44 },
+    "I-Home.dc.html": { "x": 1410, "y": 1190, "w": 390, "h": 844, "title": "Khung · Trang chủ", "page": "ios", "radius": 44 },
+    "I-Account.dc.html": { "x": 1880, "y": 1190, "w": 390, "h": 844, "title": "Tài khoản", "page": "ios", "radius": 44 },
+    "I-Pad-Login.dc.html": { "x": 0, "y": 2380, "w": 1180, "h": 820, "title": "iPad · Đăng nhập", "page": "ios", "radius": 24 },
+    "I-Pad-Account.dc.html": { "x": 1260, "y": 2380, "w": 1180, "h": 820, "title": "iPad · Tài khoản", "page": "ios", "radius": 24 },
+    "I-Duo-Cover-Login.dc.html": { "x": 0, "y": 3543, "w": 466, "h": 678, "title": "iPhone Duo gập (màn ngoài) · Đăng nhập", "page": "ios", "radius": 40 },
+    "I-Duo-Open-Login.dc.html": { "x": 546, "y": 3543, "w": 952, "h": 670, "title": "iPhone Duo mở (hai nửa màn) · Đăng nhập", "page": "ios", "radius": 36 },
+    "I-Duo-Open-Account.dc.html": { "x": 1578, "y": 3543, "w": 952, "h": 670, "title": "iPhone Duo mở (hai nửa màn) · Tài khoản", "page": "ios", "radius": 36 }
+  },
+  "order": [
+    "Main.dc.html", "A-Register.dc.html", "A-Otp.dc.html", "A-Forgot.dc.html", "A-NewPassword.dc.html",
+    "A-BioEnable.dc.html", "A-BioUnlock.dc.html", "A-RoleNotice.dc.html", "A-Home.dc.html", "A-Account.dc.html",
+    "A-Fold-Account.dc.html", "A-Tablet-Login.dc.html", "A-Tablet-Home.dc.html",
+    "I-Login.dc.html", "I-Register.dc.html", "I-Otp.dc.html", "I-Forgot.dc.html", "I-NewPassword.dc.html",
+    "I-BioEnable.dc.html", "I-BioUnlock.dc.html", "I-RoleNotice.dc.html", "I-Home.dc.html", "I-Account.dc.html",
+    "I-Pad-Login.dc.html", "I-Pad-Account.dc.html",
+    "I-Duo-Cover-Login.dc.html", "I-Duo-Open-Login.dc.html", "I-Duo-Open-Account.dc.html"
+  ],
+  "notes": {
+    "a-auth": { "x": 0, "y": -223, "text": "Android · Xác thực", "kind": "title1", "maxW": 2270, "page": "android" },
+    "a-shell": { "x": 0, "y": 967, "text": "Android · Khóa sinh trắc học, khung, tài khoản", "kind": "title1", "maxW": 2270, "page": "android" },
+    "a-large": { "x": 0, "y": 2157, "text": "Android · Màn hình gập và tablet", "kind": "title1", "maxW": 3560, "page": "android" },
+    "i-auth": { "x": 0, "y": -223, "text": "iOS · Xác thực", "kind": "title1", "maxW": 2270, "page": "ios" },
+    "i-shell": { "x": 0, "y": 967, "text": "iOS · Face ID, khung, tài khoản", "kind": "title1", "maxW": 2270, "page": "ios" },
+    "i-large": { "x": 0, "y": 2157, "text": "iOS · iPad", "kind": "title1", "maxW": 2440, "page": "ios" },
+    "i-duo": { "x": 0, "y": 3320, "text": "iOS · iPhone Duo (gập và mở)", "kind": "title1", "maxW": 2530, "page": "ios" }
+  },
+  "designSystems": []
+}

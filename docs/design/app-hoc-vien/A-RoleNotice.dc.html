@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Thông báo cho vai trò khác học viên</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px">
+  <div class="col pad grow center g24" style="justify-content: center">
+    <span class="hero-ic warn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 12.5-4.3"/><path d="m17 16 4 4M21 16l-4 4"/></svg></span>
+    <div class="col g12">
+      <h1 class="t-headline">Ứng dụng này dành cho học viên</h1>
+      <p class="t-body">Tài khoản <span class="strong">quantri.noidung</span> thuộc vai trò quản trị nên không vào thi trên ứng dụng được.</p>
+      <p class="t-body">Hãy dùng trang quản trị trên máy tính để làm việc.</p>
+    </div>
+  </div>
+  <div class="col pad g8" style="padding-bottom: 16px">
+    <a class="btn filled block" href="Main.dc.html">Đăng nhập bằng tài khoản khác</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>

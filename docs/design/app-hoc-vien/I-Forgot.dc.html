@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Quên mật khẩu</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios plain {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px">
+  <div class="nav">
+    <a class="circle" href="I-Login.dc.html" aria-label="Quay lại đăng nhập"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <span></span>
+  </div>
+  <sc-if value="{{ form }}" hint-placeholder-val="{{ true }}">
+    <div class="col pad grow g24" style="padding-top: 24px">
+      <div class="col g8">
+        <h1 class="t-large">Quên mật khẩu</h1>
+        <p class="t-body">Nhập email đã đăng ký. Nếu email đã được xác minh, bạn sẽ nhận liên kết đặt lại mật khẩu.</p>
+      </div>
+      <div class="field focus">
+        <label for="i-forgot-email">Email</label>
+        <input id="i-forgot-email" type="email" value="minhanh@example.com" autocomplete="email">
+      </div>
+      <button class="btn prominent block">Gửi hướng dẫn</button>
+      <div class="grow"></div>
+      <a class="btn text block" href="I-Login.dc.html">Quay lại đăng nhập</a>
+    </div>
+  </sc-if>
+  <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+    <div class="col pad grow g24" style="padding-top: 24px">
+      <span class="hero-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+      <div class="col g8">
+        <h1 class="t-large">Hãy kiểm tra hộp thư</h1>
+        <p class="t-body">Nếu email này đủ điều kiện khôi phục tài khoản, bạn sẽ nhận được hướng dẫn đặt lại mật khẩu.</p>
+      </div>
+      <div class="banner col g8">
+        <span>Liên kết có hiệu lực trong 1 giờ và chỉ dùng được một lần.</span>
+        <span>Bấm liên kết trên iPhone này để mở thẳng màn đặt mật khẩu mới trong ứng dụng.</span>
+        <span>Không thấy thư? Kiểm tra mục thư rác.</span>
+      </div>
+      <button class="btn gray block">Gửi lại sau 00:58</button>
+      <div class="grow"></div>
+      <a class="btn text block" href="I-Login.dc.html">Quay lại đăng nhập</a>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"sent":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const sent = this.props.sent ?? false;
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light', sent: sent, form: !sent };
+}
+}
+</script>
+</body>
+</html>

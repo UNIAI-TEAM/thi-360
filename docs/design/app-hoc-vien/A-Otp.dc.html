@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Đăng ký bước 2, nhập mã OTP</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px">
+  <div class="bar">
+    <a class="icon-btn" href="A-Register.dc.html" aria-label="Quay lại sửa thông tin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+    <h1 class="t-title">Xác minh email</h1>
+  </div>
+  <div class="col pad grow g24" style="padding-top: 24px">
+    <span class="hero-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+    <p class="t-body">Chúng tôi đã gửi mã 6 chữ số tới <span class="strong">minhanh@example.com</span>. Nhập mã bên dưới để tạo tài khoản.</p>
+    <div class="col g8">
+      <span class="t-label" id="a-otp-label">Mã xác minh</span>
+      <div class="otp" role="group" aria-labelledby="a-otp-label">
+        <input type="text" inputmode="numeric" maxlength="1" value="4" aria-label="Chữ số 1">
+        <input type="text" inputmode="numeric" maxlength="1" value="0" aria-label="Chữ số 2">
+        <input type="text" inputmode="numeric" maxlength="1" value="7" aria-label="Chữ số 3">
+        <input type="text" inputmode="numeric" maxlength="1" value="1" aria-label="Chữ số 4">
+        <input class="focus" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Chữ số 5">
+        <input type="text" inputmode="numeric" maxlength="1" value="" aria-label="Chữ số 6">
+      </div>
+      <span class="t-small">Mã có hiệu lực trong 10 phút. Tài khoản chỉ được tạo sau khi bạn xác minh mã.</span>
+    </div>
+    <button class="btn filled block">Xác minh</button>
+    <div class="col center g4">
+      <span class="t-small">Chưa nhận được mã?</span>
+      <span class="t-small strong">Gửi lại mã sau 00:42</span>
+    </div>
+    <div class="grow"></div>
+    <a class="btn text block" href="A-Register.dc.html">Quay lại sửa thông tin</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>

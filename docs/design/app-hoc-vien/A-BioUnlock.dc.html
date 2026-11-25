@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Màn khóa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px">
+  <div class="col pad center" style="padding-top: 56px">
+    <div class="brand">
+      <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="m9 12 3 3 8-9"/></svg></span>
+      <span class="wordmark">Thi 360</span>
+    </div>
+  </div>
+  <div class="col pad grow center g24" style="justify-content: center">
+    <span class="avatar lg" aria-hidden="true">MA</span>
+    <div class="col g4">
+      <h1 class="t-title">Trần Minh Anh</h1>
+      <p class="t-small">minhanh.tran</p>
+    </div>
+    <p class="t-body">Ứng dụng đã khóa. Quét vân tay hoặc khuôn mặt để tiếp tục.</p>
+  </div>
+  <div class="col pad g8" style="padding-bottom: 16px">
+    <a class="btn filled block" href="A-Home.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11v4a6 6 0 0 1-1.5 4"/><path d="M8 15v-4a4 4 0 0 1 8 0v3a10 10 0 0 1-1 4.5"/><path d="M5 17a12 12 0 0 0 .5-3.5V11a6.5 6.5 0 0 1 11-4.7"/><path d="M19 11v2a14 14 0 0 1-.4 3.4"/></svg>Mở khóa</a>
+    <a class="btn tonal block" href="Main.dc.html">Nhập mật khẩu</a>
+    <a class="btn text block" href="Main.dc.html">Đăng nhập bằng tài khoản khác</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>
