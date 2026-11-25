@@ -12,7 +12,8 @@ final class LocalePreferenceTests: XCTestCase {
             "-AppleLanguages", "(en)",
             "-AppleLocale", "en_US",
             "-uitest-defaults-suite", suite,
-            "-uitest-reset-preferences"
+            "-uitest-reset-preferences",
+            "-uitest-authenticated"
         ]
         app.launch()
 
@@ -49,7 +50,8 @@ final class LocalePreferenceTests: XCTestCase {
         relaunched.launchArguments = [
             "-AppleLanguages", "(en)",
             "-AppleLocale", "en_US",
-            "-uitest-defaults-suite", suite
+            "-uitest-defaults-suite", suite,
+            "-uitest-authenticated"
         ]
         relaunched.launch()
 

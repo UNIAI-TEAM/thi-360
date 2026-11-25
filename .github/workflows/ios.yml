@@ -62,20 +62,24 @@ jobs:
           xcodebuild -project Thi360.xcodeproj \
             -scheme Thi360Demo \
             -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation \
             build
 
-      - name: Run Thi360Demo ATS and config unit tests
+      - name: Run Thi360Demo ATS, config, and log redaction unit tests
         run: |
           xcodebuild -project Thi360.xcodeproj \
             -scheme Thi360Demo \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -skipPackagePluginValidation \
             test \
             -only-testing:Thi360Tests/TransportSecurityTests \
-            -only-testing:Thi360Tests/EnvironmentConfigTests
+            -only-testing:Thi360Tests/EnvironmentConfigTests \
+            -only-testing:Thi360Tests/LogRedactionTests
 
       - name: Run Thi360Dev unit and UI tests
         run: |
           xcodebuild -project Thi360.xcodeproj \
             -scheme Thi360Dev \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -skipPackagePluginValidation \
             test
