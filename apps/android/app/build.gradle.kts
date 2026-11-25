@@ -52,12 +52,14 @@ android {
             buildConfigField("String", "ENVIRONMENT", "\"dev\"")
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080\"")
             buildConfigField("String", "WEB_BASE_URL", "\"http://10.0.2.2:3000\"")
+            manifestPlaceholders["webHost"] = "10.0.2.2"
         }
         create("demo") {
             dimension = "environment"
             buildConfigField("String", "ENVIRONMENT", "\"demo\"")
             buildConfigField("String", "API_BASE_URL", "\"https://thi360.zone17.click\"")
             buildConfigField("String", "WEB_BASE_URL", "\"https://thi360.zone17.click\"")
+            manifestPlaceholders["webHost"] = "thi360.zone17.click"
         }
     }
 
