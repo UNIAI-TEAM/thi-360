@@ -393,8 +393,9 @@ public class AuthService {
             LoginChannel channel) {
         TokenResult tokens;
         try {
-            tokens = keycloakClient.passwordGrant(
-                    keycloakProperties.realm(), channel, account.getUsername(), password);
+            tokens = channel == LoginChannel.MOBILE
+                    ? keycloakClient.passwordGrant(keycloakProperties.realm(), channel, account.getUsername(), password)
+                    : keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), password);
         } catch (KeycloakAuthException ex) {
             if (ex.getReason() == AuthFailureReason.ACCOUNT_LOCKED) {
                 recordAudit(AuditEvent.failure(
@@ -412,7 +413,7 @@ public class AuthService {
         }
 
         if (account.getStatus() == UserStatus.INACTIVE) {
-            keycloakClient.logout(keycloakProperties.realm(), channel, tokens.refreshToken());
+            logoutAppRealm(channel, tokens.refreshToken());
             securityLog.atWarn()
                     .addKeyValue("event", "login.account_inactive")
                     .addKeyValue("userId", account.getId().toString())
@@ -422,13 +423,21 @@ public class AuthService {
             throw new ForbiddenException("ACCOUNT_INACTIVE", null);
         }
         if (account.getStatus() != UserStatus.ACTIVE) {
-            keycloakClient.logout(keycloakProperties.realm(), channel, tokens.refreshToken());
+            logoutAppRealm(channel, tokens.refreshToken());
             loginThrottle.recordFailure(normalizedIdentifier);
             recordAudit(AuditEvent.failure(
                     MODULE, "LOGIN_FAILED", "USER", account.getId().toString(), account.getUsername(), "INVALID_CREDENTIALS"));
             throw new UnauthenticatedException("INVALID_CREDENTIALS", null);
         }
         return tokens;
+    }
+
+    private void logoutAppRealm(LoginChannel channel, String refreshToken) {
+        if (channel == LoginChannel.MOBILE) {
+            keycloakClient.logout(keycloakProperties.realm(), channel, refreshToken);
+        } else {
+            keycloakClient.logout(keycloakProperties.realm(), refreshToken);
+        }
     }
 
     /**

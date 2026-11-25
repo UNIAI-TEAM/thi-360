@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -112,6 +113,8 @@ class MobileStudentOnlyIT extends AbstractKeycloakIntegrationTest {
 
         String platformId = admin.realm("master").users().searchByUsername("platform", true).getFirst().getId();
         int platformOnlineBefore = admin.realm("master").users().get(platformId).getUserSessions().size();
+        Set<String> platformRedisBefore = redisTemplate.opsForZSet().range("user-sess:" + platformId, 0, -1);
+        Set<String> expectedPlatformRedis = platformRedisBefore == null ? Set.of() : Set.copyOf(platformRedisBefore);
 
         mockMvc.perform(post("/api/v1/auth/mobile/login")
                         .header(ClientIpResolver.X_FORWARDED_FOR, IP_A)
@@ -140,7 +143,9 @@ class MobileStudentOnlyIT extends AbstractKeycloakIntegrationTest {
         assertThat(platformRes.getResponse().getContentAsString(StandardCharsets.UTF_8))
                 .doesNotContain("accessToken")
                 .doesNotContain("refreshToken");
-        assertThat(redisTemplate.opsForZSet().zCard("user-sess:" + platformId)).isIn(null, 0L);
+        Set<String> platformRedisAfter = redisTemplate.opsForZSet().range("user-sess:" + platformId, 0, -1);
+        assertThat(platformRedisAfter == null ? Set.<String>of() : platformRedisAfter)
+                .containsExactlyInAnyOrderElementsOf(expectedPlatformRedis);
         assertThat(admin.realm("master").users().get(platformId).getUserSessions().size())
                 .isEqualTo(platformOnlineBefore);
     }
