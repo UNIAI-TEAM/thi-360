@@ -11,7 +11,13 @@ describe("Bộ câu hỏi (AC-14)", () => {
     const { container } = render(<Live question={questionSet} children={[setChildA, setChildB]} />);
     const passage = screen.getByLabelText(t.setPassageCaption(9, 10));
     expect(passage.textContent).toContain("Ngữ liệu chung");
-    expect(passage).toHaveClass("lg:sticky");
+    expect(passage).toHaveClass(
+      "lg:sticky",
+      "lg:top-[var(--attempt-sticky-top,1rem)]",
+      "lg:max-h-[calc(100dvh-var(--attempt-sticky-top,1rem)-1.5rem)]",
+      "lg:overflow-y-auto",
+      "scroll-shadows-y",
+    );
     expect(passage.querySelector("[data-exam-content]")).not.toBeNull();
     // Dưới breakpoint lg lưới không có cột: các khối xếp dọc; từ lg chia ~46% ngữ liệu : ~54% câu hỏi (7fr:8fr), gap 16px.
     const grid = passage.parentElement!;

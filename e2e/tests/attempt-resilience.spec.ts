@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { createVerifiedAccount, submitLoginForm, WEB_URL } from "./helpers/mail";
 import {
   answerCurrentUnit,
+  answerUnitAt,
   ensureDsReady,
   getAttemptStateApi,
   parseTimerSeconds,
@@ -99,15 +100,13 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     const attemptId = await startAttemptFromPrepare(page, entitlementId);
 
     // Câu 1 đồng bộ bình thường
-    await answerCurrentUnit(page);
+    await answerUnitAt(page, 0);
     await waitForSavedStatus(page);
 
-    // Chuyển Câu 2, ngắt mạng thật và làm 2 câu
-    await page.getByRole("button", { name: "Câu sau" }).click();
+    // Ngắt mạng thật và làm tiếp Câu 2 + Câu 3 trên cùng luồng 1 màn hình
     await context.setOffline(true);
-    await answerCurrentUnit(page);
-    await page.getByRole("button", { name: "Câu sau" }).click();
-    await answerCurrentUnit(page);
+    await answerUnitAt(page, 1);
+    await answerUnitAt(page, 2);
 
     await expect(
       page.getByText(/Mất kết nối|Connection lost|Chưa lưu|Unsaved/).first(),
@@ -260,7 +259,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
 
     const { entitlementId } = await purchaseExamViaUi(page, "DS-HSA-PART-MATH-MINI");
     const attemptId = await startAttemptFromPrepare(page, entitlementId);
-    await answerCurrentUnit(page);
+    await answerUnitAt(page, 0);
     await waitForSavedStatus(page);
 
     const contextB = await browser.newContext();
@@ -279,8 +278,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
       await expect(pageB.getByRole("button", { name: "Nộp bài" })).toBeVisible({ timeout: 20_000 });
 
       // Phiên A thử sửa tiếp -> nhận 409 bị thu hồi và chuyển sang màn Lượt thi đã được tiếp tục ở thiết bị khác
-      await page.getByRole("button", { name: "Câu sau" }).click();
-      await answerCurrentUnit(page);
+      await answerUnitAt(page, 1);
       await expect(
         page.getByRole("heading", { name: "Lượt thi đã được tiếp tục ở thiết bị khác." }),
       ).toBeVisible({ timeout: 20_000 });
@@ -299,7 +297,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
 
     const { entitlementId } = await purchaseExamViaUi(page, "DS-HSA-PART-MATH-MINI");
     const attemptId = await startAttemptFromPrepare(page, entitlementId);
-    await answerCurrentUnit(page);
+    await answerUnitAt(page, 0);
     await waitForSavedStatus(page);
 
     const page2 = await context.newPage();
@@ -322,8 +320,7 @@ test.describe("Độ bền lượt thi, đồng hồ, ngoại tuyến & bảo v�
     await expect(tab2Fieldset).toBeEnabled({ timeout: 15_000 });
     await expect(tab2Fieldset.locator("input, button, select, textarea").first()).toBeEnabled();
 
-    await page2.getByRole("button", { name: "Câu sau" }).click();
-    await answerCurrentUnit(page2);
+    await answerUnitAt(page2, 1);
     await waitForSavedStatus(page2);
   });
 

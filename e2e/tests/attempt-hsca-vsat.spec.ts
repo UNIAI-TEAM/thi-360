@@ -243,7 +243,7 @@ async function readAudioStopLog(page: Page): Promise<AudioStopLog | null> {
 }
 
 async function startPlayAndCaptureAssetId(page: Page, attemptId: string): Promise<string> {
-  const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME });
+  const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME }).first();
   const playResPromise = page.waitForResponse(
     (res) =>
       res.url().includes(`/attempts/${attemptId}/audio/`) &&
@@ -277,7 +277,7 @@ async function setupHscaMiniAttempt(
   const { entitlementId } = await purchaseExamViaUi(page, "DS-HSCA-ANH-MINI");
   const attemptId = await startAttemptFromPrepare(page, entitlementId);
   await expect(page.locator('header [role="timer"]')).toBeVisible({ timeout: 25_000 });
-  const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME });
+  const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME }).first();
   await expect(audioRegion).toBeVisible({ timeout: 20_000 });
   await expect(audioRegion.getByRole("button", { name: "Nghe" })).toBeEnabled({ timeout: 20_000 });
   await expect(page.locator("audio[controls]")).toHaveCount(0);
@@ -541,7 +541,7 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
     const tracker = trackAudioNetwork(page, attemptId);
 
     try {
-      const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME });
+      const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME }).first();
       await expect(audioRegion.getByText("Còn 2/2 lần nghe", { exact: true })).toBeVisible();
 
       const playBtn = audioRegion.getByRole("button", { name: "Nghe" });
@@ -657,7 +657,7 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
     const tracker = trackAudioNetwork(page, attemptId);
 
     try {
-      const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME });
+      const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME }).first();
       await audioRegion.getByRole("button", { name: "Nghe" }).click();
       await waitForAudioActivelyPlaying(page);
       expect(tracker.starts.length).toBe(1);
@@ -756,7 +756,7 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
 
           const timer = page.locator('header [role="timer"]');
           await expect(timer).toBeVisible({ timeout: 15_000 });
-          const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME });
+          const audioRegion = page.getByRole("region", { name: AUDIO_REGION_NAME }).first();
           await expect(audioRegion.getByRole("button", { name: "Nghe" })).toBeEnabled({ timeout: 10_000 });
 
           await expect
@@ -807,7 +807,7 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
           await expect(takeoverBtnB).toBeVisible({ timeout: 20_000 });
 
           // Start audio on contextA while takeover dialog is already armed on contextB.
-          const audioRegionA = pageA.getByRole("region", { name: AUDIO_REGION_NAME });
+          const audioRegionA = pageA.getByRole("region", { name: AUDIO_REGION_NAME }).first();
           await audioRegionA.getByRole("button", { name: "Nghe" }).click();
           await waitForAudioActivelyPlaying(pageA);
 
@@ -982,9 +982,12 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
         await expect(sidebar.getByText(segName, { exact: true })).toBeVisible();
       }
 
-      // Check segment header + shared passage between Q8-9 (Phần I) and Q10-15 (Phần II).
-      await expect(page.locator("[data-segment-code=\"P1\"]")).toBeVisible();
-      await expect(page.locator("[data-segment-header]")).toContainText("Phần I");
+      // Check all 4 segment headers + shared passage between Q8-9 (Phần I) and Q10-15 (Phần II) on continuous 1-screen layout.
+      await expect(page.locator("[data-segment-header]")).toHaveCount(4);
+      await expect(page.locator('[data-segment-code="P1"]')).toContainText("Phần I");
+      await expect(page.locator('[data-segment-code="P2"]')).toContainText("Phần II");
+      await expect(page.locator('[data-segment-code="P3"]')).toContainText("Phần III");
+      await expect(page.locator('[data-segment-code="P4"]')).toContainText("Phần IV");
 
       const jumpDesktopQuestion = async (qNo: number) => {
         await sidebar
@@ -998,39 +1001,30 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
       await jumpDesktopQuestion(8);
       await expect(page.locator('[data-segment-code="P1"]')).toBeVisible();
       const passageUnitA = await page
-        .locator('main fieldset[data-attempt-question-fieldset] [data-exam-content]')
+        .getByLabel("Ngữ liệu chung cho câu 8–9")
+        .locator("[data-exam-content]")
         .first()
         .innerText();
       expect(passageUnitA.trim().length).toBeGreaterThan(20);
 
       await jumpDesktopQuestion(10);
       await expect(page.locator('[data-segment-code="P2"]')).toBeVisible();
-      await expect(page.locator("[data-segment-header]")).toContainText("Phần II");
       const passageUnitB = await page
-        .locator('main fieldset[data-attempt-question-fieldset] [data-exam-content]')
+        .getByLabel("Ngữ liệu chung cho câu 10–15")
+        .locator("[data-exam-content]")
         .first()
         .innerText();
       expect(passageUnitB.trim()).toBe(passageUnitA.trim());
 
       await jumpDesktopQuestion(16);
       await expect(page.locator('[data-segment-code="P3"]')).toBeVisible();
-      await expect(page.locator("[data-segment-header]")).toContainText("Phần III");
 
       await jumpDesktopQuestion(21);
       await expect(page.locator('[data-segment-code="P4"]')).toBeVisible();
-      await expect(page.locator("[data-segment-header]")).toContainText("Phần IV");
 
-      // Walk through all units from Q1 to Q25 and fill every unit.
+      // Answer all Q1..Q25 rendered on the continuous 1-screen part stream.
       await jumpDesktopQuestion(1);
-      const nextBtn = page.getByRole("button", { name: "Câu sau" });
-      for (let step = 0; step < 30; step += 1) {
-        await answerCurrentUnit(page, "answer");
-        if (await nextBtn.isEnabled()) {
-          await nextBtn.click();
-        } else {
-          break;
-        }
-      }
+      await answerCurrentUnit(page, "answer");
 
       await waitForSavedStatus(page);
       await submitExamAndOpenResult(page, attemptId);
@@ -1104,7 +1098,7 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
       await expect(
         page.getByRole("button", { name: /^(Nộp bài|Hoàn thành phần)$/ }),
       ).toBeVisible({ timeout: 25_000 });
-      await expect(page.getByRole("region", { name: AUDIO_REGION_NAME })).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByRole("region", { name: AUDIO_REGION_NAME }).first()).toBeVisible({ timeout: 20_000 });
     } finally {
       if (faultedExamId) {
         await setE2eAudioFault(faultedExamId, false).catch(() => undefined);

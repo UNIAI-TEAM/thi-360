@@ -552,7 +552,7 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
         await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(hscaMiniAttemptId)}`);
         await ensureActivePlayerSession(page, cell.lang);
         await expect(
-          page.getByRole("region", { name: cell.lang === "en" ? "Audio player" : "Trình phát audio" }),
+          page.getByRole("region", { name: cell.lang === "en" ? "Audio player" : "Trình phát audio" }).first(),
         ).toBeVisible({ timeout: 20_000 });
         await expectMatrixClean(page, "hsca-player-audio", cell, playerOverflowOpts);
 
@@ -576,7 +576,7 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
         await expect(page.getByText(cell.lang === "en" ? /^Question 8$/ : /^Câu 8$/).first()).toBeVisible({
           timeout: 10_000,
         });
-        await expect(page.locator("[data-segment-header]")).toBeVisible({ timeout: 20_000 });
+        await expect(page.locator("[data-segment-header]").first()).toBeVisible({ timeout: 20_000 });
         await page.evaluate(() => window.scrollTo(0, 0));
         await expectMatrixClean(page, "vsat-player-segments", cell, playerOverflowOpts);
 

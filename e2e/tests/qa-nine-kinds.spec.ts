@@ -47,17 +47,11 @@ async function startAttemptHandlingPreChoice(page: Page, entitlementId: string, 
   return attemptId;
 }
 
-async function answerOpenPartUnits(page: Page, maxUnits = 30): Promise<void> {
-  for (let i = 0; i < maxUnits; i += 1) {
-    const changed = await answerCurrentUnit(page, "42");
-    if (changed > 0) {
-      await waitForSavedStatus(page);
-    }
-    const nextBtn = page.getByRole("button", { name: "Câu sau" }).first();
-    if ((await nextBtn.count()) === 0 || !(await nextBtn.isVisible()) || !(await nextBtn.isEnabled())) {
-      break;
-    }
-    await nextBtn.click();
+async function answerOpenPartUnits(page: Page, _maxUnits = 30): Promise<void> {
+  void _maxUnits;
+  const changed = await answerCurrentUnit(page, "42");
+  if (changed > 0) {
+    await waitForSavedStatus(page);
   }
 }
 
@@ -297,7 +291,7 @@ test.describe("AC-24 chín kỳ thi E2E", () => {
         const { entitlementId } = await purchaseExamViaUi(page, "DS-HSCA-ANH-MINI");
         const attemptId = await startAttemptHandlingPreChoice(page, entitlementId);
 
-        const audioRegion = page.getByRole("region", { name: "Trình phát audio" });
+        const audioRegion = page.getByRole("region", { name: "Trình phát audio" }).first();
         await expect(audioRegion).toBeVisible({ timeout: 20_000 });
         await expect(page.locator("audio[controls]")).toHaveCount(0);
         await expect(audioRegion.getByRole("slider")).toHaveCount(0);

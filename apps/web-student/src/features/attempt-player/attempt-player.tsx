@@ -27,10 +27,13 @@ import {
   isAudioMime,
   orderById,
 } from "@thi360/ui/question";
+import { pickName } from "@thi360/web-kit/i18n";
 import { buildLoginUrl } from "@thi360/web-kit/redirect";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
   CloudOff,
   FileText,
@@ -39,15 +42,17 @@ import {
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type AfterStartChoiceView,
   AttemptApiError,
+  type ChoiceSubjectView,
   claimEditSession,
   confirmPartChoice,
   finishPart,
   loadAfterStartChoicesForAttempt,
   loadAttemptState,
+  loadAttemptSubjectsForAttempt,
   retryPartGeneration,
   saveAnswers,
   sendHeartbeat,
@@ -77,6 +82,7 @@ import {
   classifyItemCompletion,
   getEssayLimitStatus,
   getLeafItems,
+  parseChoiceMap,
   parseLastPosition,
   sanitizeItemAttachments,
   toApiAnswer,
@@ -87,7 +93,13 @@ import { PartNavigation } from "./part-navigation";
 import { QuestionNav, type QuestionNavItem } from "./question-nav";
 import { AttemptSaveQueue, type SaveStatusSnapshot } from "./save-queue";
 import { SegmentHeader } from "./segments/segment-header";
-import { buildSegmentedQuestionUnits } from "./segments/segment-units";
+import {
+  type AttemptDisplaySegmentView,
+  type SegmentedQuestionUnit,
+  buildSegmentedQuestionUnits,
+  groupUnitsByDisplaySegment,
+  groupUnitsBySubject,
+} from "./segments/segment-units";
 import {
   type ServerClockAnchor,
   createServerClockAnchor,
@@ -113,6 +125,7 @@ export interface AttemptPlayerDeps {
   confirmPartChoiceFn?: typeof confirmPartChoice;
   retryPartGenerationFn?: typeof retryPartGeneration;
   loadAfterStartChoicesFn?: (attemptId: string, userId: string) => Promise<AfterStartChoiceView[]>;
+  loadAttemptSubjectsFn?: (attemptId: string, userId: string) => Promise<ChoiceSubjectView[]>;
   loadDraftsFn?: typeof loadAttemptDrafts;
   saveItemDraftFn?: typeof saveItemDraft;
   deleteItemDraftFn?: typeof deleteItemDraft;
@@ -297,6 +310,62 @@ function makeUuid(): string {
   return `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+const KNOWN_SUBJECT_CODES = new Set([
+  "ANH",
+  "CNCN",
+  "CNNN",
+  "DIA",
+  "ECON_LAW",
+  "GDKTPL",
+  "HOA",
+  "INFORMATICS",
+  "LY",
+  "SCIENTIFIC_THINKING",
+  "SINH",
+  "SU",
+  "TECH_AGRICULTURE",
+  "TECH_INDUSTRY",
+  "TIENG_ANH",
+  "TIN",
+  "TOAN",
+  "VAN",
+  "VIETNAMESE",
+] as const);
+
+type KnownSubjectCode = typeof KNOWN_SUBJECT_CODES extends Set<infer T> ? T : never;
+
+function isKnownSubjectCode(code: string): code is KnownSubjectCode {
+  return (KNOWN_SUBJECT_CODES as ReadonlySet<string>).has(code);
+}
+
+function getUnitAttachments(unit: SegmentedQuestionUnit, attemptId: string): AttemptAttachmentView[] {
+  const seenAssetIds = new Set<string>();
+  const merged: AttemptAttachmentView[] = [];
+  const pushList = (list: AttemptAttachmentView[]) => {
+    for (const att of list) {
+      const assetKey = att.assetId || extractAttemptAssetId(att.url);
+      if (assetKey) {
+        if (seenAssetIds.has(assetKey)) continue;
+        seenAssetIds.add(assetKey);
+      }
+      merged.push(att);
+    }
+  };
+  pushList(unit.attachments);
+  for (const child of unit.childItems) {
+    const childAudio = filterAudioAttachments(sanitizeItemAttachments(child.attachments, attemptId));
+    pushList(childAudio);
+  }
+  return merged;
+}
+
+function unitHasEssay(unit: SegmentedQuestionUnit): boolean {
+  return (
+    unit.kitQuestion.body.type === "ESSAY" ||
+    unit.childKitQuestions.some((child) => child.body.type === "ESSAY")
+  );
+}
+
 function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
@@ -326,6 +395,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       confirmPartChoiceFn: deps.confirmPartChoiceFn ?? confirmPartChoice,
       retryPartGenerationFn: deps.retryPartGenerationFn ?? retryPartGeneration,
       loadAfterStartChoicesFn: deps.loadAfterStartChoicesFn ?? loadAfterStartChoicesForAttempt,
+      loadAttemptSubjectsFn: deps.loadAttemptSubjectsFn ?? loadAttemptSubjectsForAttempt,
       loadDraftsFn: deps.loadDraftsFn ?? loadAttemptDrafts,
       saveItemDraftFn: deps.saveItemDraftFn ?? saveItemDraft,
       deleteItemDraftFn: deps.deleteItemDraftFn ?? deleteItemDraft,
@@ -351,9 +421,13 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   const [attemptState, setAttemptState] = useState<AttemptStateResponse | null>(null);
   const [closedEndReason, setClosedEndReason] = useState<AttemptEndReason | null>(null);
   const [afterStartChoices, setAfterStartChoices] = useState<AfterStartChoiceView[]>([]);
+  const [extraChoiceSubjects, setExtraChoiceSubjects] = useState<ChoiceSubjectView[]>([]);
   const [serverClock, setServerClock] = useState<ServerClockAnchor | null>(null);
   const [selectedPartOrd, setSelectedPartOrd] = useState<number | null>(null);
   const [unitIndex, setUnitIndex] = useState(0);
+  const [currentLeafItemId, setCurrentLeafItemId] = useState<string | null>(null);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0);
   const [answersByItem, setAnswersByItem] = useState<Record<string, ApiAnswerValue | null>>({});
   const [flagsByItem, setFlagsByItem] = useState<Record<string, boolean>>({});
   const [audioSnapshotsByAsset, setAudioSnapshotsByAsset] = useState<
@@ -389,6 +463,8 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   const saveQueueRef = useRef<AttemptSaveQueue | null>(null);
   const editSessionRef = useRef<EditSessionController | null>(null);
   const tabLockRef = useRef<AttemptTabLock | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const programmaticScrollUntilRef = useRef(0);
   const choiceIdempotencyRef = useRef<{ key: string; target: string } | null>(null);
   const submitIdempotencyRef = useRef<string | null>(null);
   const expiredHandledDeadlineRef = useRef<string | null>(null);
@@ -719,6 +795,9 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
           );
           if (matchedUnitIdx >= 0) {
             setUnitIndex(matchedUnitIdx);
+            const matchedUnit = units[matchedUnitIdx];
+            const matchedLeaf = matchedUnit?.leafItems.find((c) => c.itemId === preferredItemId);
+            setCurrentLeafItemId(matchedLeaf?.itemId ?? matchedUnit?.leafItems[0]?.itemId ?? null);
           }
         }
 
@@ -791,6 +870,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       const targetPart = (fresh.parts ?? []).find((p) => p.partId === activePartId);
       if (!targetPart || targetPart.state !== "OPEN" || fresh.state !== "IN_PROGRESS") {
         setUnitIndex(0);
+        setCurrentLeafItemId(null);
         setFinishDialogOpen(false);
         setFinishDialogStatus("idle");
       } else {
@@ -985,49 +1065,51 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   const safeUnitIndex = units.length > 0 ? Math.min(unitIndex, units.length - 1) : 0;
   const activeUnit = units[safeUnitIndex] ?? null;
 
+  const activeLeafItemId = useMemo(() => {
+    if (!activeUnit) return "";
+    if (
+      currentLeafItemId &&
+      activeUnit.leafItems.some((leaf) => leaf.itemId === currentLeafItemId)
+    ) {
+      return currentLeafItemId;
+    }
+    return activeUnit.leafItems[0]?.itemId ?? activeUnit.id;
+  }, [activeUnit, currentLeafItemId]);
+
+  const activeLeafDisplayNo = useMemo(() => {
+    if (!activeUnit) return 1;
+    const matched = activeUnit.leafItems.find((leaf) => leaf.itemId === activeLeafItemId);
+    return matched?.displayNo ?? activeUnit.displayStart;
+  }, [activeLeafItemId, activeUnit]);
+
   const maxAudioPlays = attemptState?.audioPolicy?.maxPlays ?? 2;
 
-  const unitAttachments = useMemo(() => {
-    if (!activeUnit) return [];
-    const seenAssetIds = new Set<string>();
-    const merged: AttemptAttachmentView[] = [];
-    const pushList = (list: AttemptAttachmentView[]) => {
-      for (const att of list) {
-        const assetKey = att.assetId || extractAttemptAssetId(att.url);
-        if (assetKey) {
-          if (seenAssetIds.has(assetKey)) continue;
-          seenAssetIds.add(assetKey);
-        }
-        merged.push(att);
-      }
-    };
-    pushList(activeUnit.attachments);
-    for (const child of activeUnit.childItems) {
-      const childAudio = filterAudioAttachments(sanitizeItemAttachments(child.attachments, attemptId));
-      pushList(childAudio);
-    }
-    return merged;
-  }, [activeUnit, attemptId]);
+  const unitAttachmentsByIndex = useMemo(
+    () => units.map((unit) => getUnitAttachments(unit, attemptId)),
+    [attemptId, units],
+  );
 
   const activeSessionId = sessionSnap.sessionId ?? null;
   const audioAdaptersByAsset = useMemo(() => {
     const map: Record<string, AudioPlayAdapter> = {};
-    for (const att of unitAttachments) {
-      if (!isAudioMime(att.mime)) continue;
-      const assetId = att.assetId || extractAttemptAssetId(att.url);
-      if (assetId && !map[assetId]) {
-        map[assetId] = createAttemptAudioAdapter({
-          attemptId,
-          assetId,
-          maxPlays: maxAudioPlays,
-          getSessionId: () => activeSessionId,
-          reloadAttemptState: () => resolvedDeps.loadAttemptStateFn(attemptId),
-          audioApi: resolvedDeps.audioApi,
-        });
+    for (const unitAttachments of unitAttachmentsByIndex) {
+      for (const att of unitAttachments) {
+        if (!isAudioMime(att.mime)) continue;
+        const assetId = att.assetId || extractAttemptAssetId(att.url);
+        if (assetId && !map[assetId]) {
+          map[assetId] = createAttemptAudioAdapter({
+            attemptId,
+            assetId,
+            maxPlays: maxAudioPlays,
+            getSessionId: () => activeSessionId,
+            reloadAttemptState: () => resolvedDeps.loadAttemptStateFn(attemptId),
+            audioApi: resolvedDeps.audioApi,
+          });
+        }
       }
     }
     return map;
-  }, [activeSessionId, attemptId, maxAudioPlays, resolvedDeps, unitAttachments]);
+  }, [activeSessionId, attemptId, maxAudioPlays, resolvedDeps, unitAttachmentsByIndex]);
 
   const isSecondaryTab = tabRole === "secondary_readonly";
   const isEvicted = sessionSnap.status === "evicted";
@@ -1039,6 +1121,147 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     sessionSnap.status === "takeover_required" ||
     attemptState?.state !== "IN_PROGRESS";
   const isReadOnly = isSessionLocked || activePart?.state !== "OPEN";
+
+  useEffect(() => {
+    if (loadPhase !== "ready") return;
+    const el = headerRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const nextHeight = Math.ceil(el.getBoundingClientRect().height);
+      if (nextHeight > 0) {
+        setMeasuredHeaderHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+      }
+    };
+
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isHeaderCollapsed, isSecondaryTab, loadPhase, saveStatus.isOnline]);
+
+  const choiceSubjectsByCode = useMemo(() => {
+    const map = new Map<string, ChoiceSubjectView>();
+    for (const choice of afterStartChoices) {
+      for (const opt of choice.options ?? []) {
+        for (const sub of opt.subjects ?? []) {
+          if (sub.code && !map.has(sub.code)) {
+            map.set(sub.code, sub);
+          }
+        }
+      }
+    }
+    for (const sub of extraChoiceSubjects) {
+      if (sub.code && !map.has(sub.code)) {
+        map.set(sub.code, sub);
+      }
+    }
+    return map;
+  }, [afterStartChoices, extraChoiceSubjects]);
+
+  const hasDisplaySegments = Boolean(
+    activePart?.displaySegments && activePart.displaySegments.length > 0,
+  );
+
+  const activePartChoiceSubjects = useMemo(() => {
+    const rawChoices = attemptState?.choices as Record<string, unknown> | undefined;
+    const rawEntry =
+      (activePart?.ord != null ? rawChoices?.[String(activePart.ord)] : undefined) ??
+      (activePart?.choice as unknown);
+    return parseChoiceMap(rawEntry as Record<string, unknown> | undefined)?.subjectCodes;
+  }, [activePart?.choice, activePart?.ord, attemptState?.choices]);
+
+  const segmentUnitGroups = useMemo(
+    () => (hasDisplaySegments ? groupUnitsByDisplaySegment(units) : []),
+    [hasDisplaySegments, units],
+  );
+
+  const rawSubjectGroups = useMemo(
+    () => (hasDisplaySegments ? [] : groupUnitsBySubject(units, activePartChoiceSubjects)),
+    [activePartChoiceSubjects, hasDisplaySegments, units],
+  );
+
+  useEffect(() => {
+    if (rawSubjectGroups.length === 0) return;
+    const missingUnknownSubject = rawSubjectGroups.some((g) => {
+      const upper = g.subjectCode.trim().toUpperCase();
+      return !isKnownSubjectCode(upper) && !choiceSubjectsByCode.has(g.subjectCode) && !choiceSubjectsByCode.has(upper);
+    });
+    if (!missingUnknownSubject) return;
+
+    let active = true;
+    void resolvedDepsRef.current
+      .loadAttemptSubjectsFn(attemptId, userId)
+      .then((subjects) => {
+        if (active && subjects.length > 0) {
+          setExtraChoiceSubjects(subjects);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [attemptId, choiceSubjectsByCode, rawSubjectGroups, userId]);
+
+  const subjectUnitGroups = useMemo(() => {
+    return rawSubjectGroups.map((group) => {
+      const normalized = group.subjectCode.trim().toUpperCase();
+      let subjectName = group.subjectCode;
+      let isExamContent = false;
+
+      if (isKnownSubjectCode(normalized)) {
+        subjectName = t(`subjects.codes.${normalized}`);
+      } else {
+        const meta = choiceSubjectsByCode.get(group.subjectCode) ?? choiceSubjectsByCode.get(normalized);
+        if (meta) {
+          subjectName = pickName({ nameVi: meta.nameVi, nameEn: meta.nameEn }, locale) || group.subjectCode;
+          isExamContent = locale.startsWith("en") && Boolean(meta.nameVi) && !Boolean(meta.nameEn);
+        }
+      }
+
+      return {
+        ...group,
+        subjectName,
+        headingTitle: isExamContent ? subjectName : t("subjects.heading", { name: subjectName }),
+        isExamContent,
+      };
+    });
+  }, [choiceSubjectsByCode, locale, rawSubjectGroups, t]);
+
+  const navSegmentsConfig = useMemo<{
+    segments?: AttemptDisplaySegmentView[];
+    segmentsAreExamContent: boolean;
+    examContentSegmentCodes?: ReadonlySet<string>;
+  }>(() => {
+    if (hasDisplaySegments) {
+      return {
+        segments: activePart?.displaySegments,
+        segmentsAreExamContent: true,
+      };
+    }
+    if (subjectUnitGroups.length > 0) {
+      const examContentCodes = new Set<string>();
+      const synthesized: AttemptDisplaySegmentView[] = subjectUnitGroups.map((group, idx) => {
+        const code = `${group.subjectCode}-${idx}`;
+        if (group.isExamContent) {
+          examContentCodes.add(code);
+        }
+        return {
+          code,
+          name: group.subjectName,
+          fromPosition: group.fromDisplayNo,
+          toPosition: group.toDisplayNo,
+        };
+      });
+      return {
+        segments: synthesized,
+        segmentsAreExamContent: false,
+        examContentSegmentCodes: examContentCodes,
+      };
+    }
+    return { segments: undefined, segmentsAreExamContent: true };
+  }, [activePart?.displaySegments, hasDisplaySegments, subjectUnitGroups]);
 
   const dirtySet = useMemo(() => new Set(saveStatus.dirtyItemIds), [saveStatus.dirtyItemIds]);
 
@@ -1083,19 +1306,19 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
           completion: classifyItemCompletion(leaf, ans),
           flagged: getFlagged(id),
           unsaved: dirtySet.has(id),
-          isCurrent: uIdx === safeUnitIndex,
+          isCurrent: id === activeLeafItemId,
         });
       }
     });
     return items;
-  }, [dirtySet, getAnswer, getFlagged, safeUnitIndex, units]);
+  }, [activeLeafItemId, dirtySet, getAnswer, getFlagged, units]);
 
-  const pendingChildScrollRef = useRef<{ unitIndex: number; itemId: string } | null>(null);
-
-  const scrollChildQuestionIntoView = useCallback((itemId: string) => {
+  const scrollQuestionItemIntoView = useCallback((itemId: string, fallbackUnitIndex: number) => {
     if (typeof document === "undefined") return;
-    const headingEl = document.getElementById(`${itemId}-title`);
-    const targetEl = headingEl?.closest("section") ?? headingEl;
+    const headingEl = itemId ? document.getElementById(`${itemId}-title`) : null;
+    const sectionEl = headingEl?.closest("section") ?? headingEl;
+    const unitEl = document.getElementById(`attempt-unit-${fallbackUnitIndex}`);
+    const targetEl = sectionEl ?? unitEl;
     if (targetEl && typeof targetEl.scrollIntoView === "function") {
       const reduceMotion =
         typeof window !== "undefined" &&
@@ -1111,44 +1334,98 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     (nextIndex: number) => {
       if (units.length === 0) return;
       const clamped = Math.max(0, Math.min(nextIndex, units.length - 1));
-      setUnitIndex(clamped);
       const targetUnit = units[clamped];
-      const partId = activePart?.partId;
       const itemId = targetUnit?.leafItems[0]?.itemId ?? targetUnit?.id;
+      programmaticScrollUntilRef.current = Date.now() + 450;
+      setUnitIndex(clamped);
+      setCurrentLeafItemId(itemId ?? null);
+      const partId = activePart?.partId;
       if (partId && itemId) {
         saveQueueRef.current?.setPosition({ partId, itemId }, true);
       }
+      scrollQuestionItemIntoView(itemId ?? "", clamped);
     },
-    [activePart?.partId, units],
+    [activePart?.partId, scrollQuestionItemIntoView, units],
   );
 
   const handleSelectNavItem = useCallback(
     (item: QuestionNavItem) => {
-      const targetUnit = units[item.unitIndex];
-      if (!targetUnit || targetUnit.kind !== "QUESTION_SET" || targetUnit.childItems.length <= 1) {
-        pendingChildScrollRef.current = null;
-        return;
-      }
+      programmaticScrollUntilRef.current = Date.now() + 450;
+      setUnitIndex(item.unitIndex);
+      setCurrentLeafItemId(item.itemId);
       const partId = activePart?.partId;
       if (partId && item.itemId) {
         saveQueueRef.current?.setPosition({ partId, itemId: item.itemId }, true);
       }
-      if (item.unitIndex === safeUnitIndex) {
-        pendingChildScrollRef.current = null;
-        scrollChildQuestionIntoView(item.itemId);
-      } else {
-        pendingChildScrollRef.current = { unitIndex: item.unitIndex, itemId: item.itemId };
-      }
+      scrollQuestionItemIntoView(item.itemId, item.unitIndex);
     },
-    [activePart?.partId, safeUnitIndex, scrollChildQuestionIntoView, units],
+    [activePart?.partId, scrollQuestionItemIntoView],
   );
 
+  // Passive scroll listener to update active question ("Đang xem") while scrolling continuously
   useEffect(() => {
-    const pending = pendingChildScrollRef.current;
-    if (!pending || pending.unitIndex !== safeUnitIndex) return;
-    pendingChildScrollRef.current = null;
-    scrollChildQuestionIntoView(pending.itemId);
-  }, [safeUnitIndex, scrollChildQuestionIntoView]);
+    if (
+      typeof window === "undefined" ||
+      attemptState?.state !== "IN_PROGRESS" ||
+      activePart?.state !== "OPEN" ||
+      units.length === 0
+    ) {
+      return;
+    }
+
+    let rafId: number | null = null;
+
+    const updateActiveOnScroll = () => {
+      rafId = null;
+      if (Date.now() < programmaticScrollUntilRef.current) return;
+
+      const headerBottom = headerRef.current?.getBoundingClientRect().bottom ?? 84;
+      const anchorY = headerBottom + 32;
+
+      let chosenUnitIdx: number | null = null;
+      let chosenLeafId: string | null = null;
+      let hasMeasurableRects = false;
+
+      for (let uIdx = 0; uIdx < units.length; uIdx++) {
+        const unit = units[uIdx]!;
+        for (const leaf of unit.leafItems) {
+          const leafId = leaf.itemId ?? "";
+          const headingEl = leafId ? document.getElementById(`${leafId}-title`) : null;
+          const el =
+            headingEl?.closest("section") ??
+            headingEl ??
+            document.getElementById(`attempt-unit-${uIdx}`);
+          if (!el) continue;
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) continue;
+          hasMeasurableRects = true;
+          if (chosenUnitIdx === null || rect.top <= anchorY) {
+            chosenUnitIdx = uIdx;
+            chosenLeafId = leafId || unit.id;
+          }
+        }
+      }
+
+      if (!hasMeasurableRects || chosenUnitIdx === null) return;
+      setUnitIndex((prev) => (prev === chosenUnitIdx ? prev : chosenUnitIdx));
+      if (chosenLeafId) {
+        setCurrentLeafItemId((prev) => (prev === chosenLeafId ? prev : chosenLeafId));
+      }
+    };
+
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(updateActiveOnScroll);
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+    };
+  }, [activePart?.state, attemptState?.state, units]);
 
   // Global keyboard shortcuts (AC-29)
   useEffect(() => {
@@ -1186,7 +1463,9 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       if (isReadOnly) return;
 
       if (event.key === "f" || event.key === "F") {
-        const leaf = activeUnit?.leafItems[0];
+        const leaf =
+          activeUnit?.leafItems.find((item) => item.itemId === activeLeafItemId) ??
+          activeUnit?.leafItems[0];
         if (leaf?.itemId) {
           event.preventDefault();
           toggleItemFlag(leaf.itemId);
@@ -1218,6 +1497,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
+    activeLeafItemId,
     activePart?.state,
     activeUnit,
     attemptState?.state,
@@ -1629,6 +1909,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       }
       await reloadServerState();
       setUnitIndex(0);
+      setCurrentLeafItemId(null);
       setFinishDialogOpen(false);
       setFinishDialogStatus("idle");
     } catch (error) {
@@ -1716,12 +1997,6 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       (c) => c.ord === activePart?.ord || (activePart?.partCode && c.partCode === activePart.partCode),
     ) ?? null;
 
-  const activeQuestionHasEssay = Boolean(
-    activeUnit &&
-      (activeUnit.kitQuestion.body.type === "ESSAY" ||
-        activeUnit.childKitQuestions.some((child) => child.body.type === "ESSAY")),
-  );
-
   const saveStatusReasonText =
     saveStatus.reason === "rate_limited"
       ? t("saveStatus.reasons.rate_limited", { seconds: saveStatus.retryAfterSeconds ?? 5 })
@@ -1757,48 +2032,226 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     activeAudioClosedReason = "PART_CLOSED";
   }
 
-  return (
-    <div className="flex min-h-dvh flex-col bg-page text-text">
-      <header className="sticky top-0 z-20 border-b border-border bg-surface">
-        <div className="mx-auto flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
-          <div className="w-full min-w-0 space-y-1 md:w-auto md:flex-1">
-            {attemptState.examName ? (
-              <h1 className="line-clamp-2 text-title font-bold text-text" data-exam-content="">
-                {attemptState.examName}
-              </h1>
-            ) : null}
-            <PartNavigation
-              parts={parts}
-              currentPartOrd={activePart?.ord ?? null}
-              navigationMode={attemptState.navigationMode ?? "SEQUENTIAL"}
-              choiceMap={choiceTitleMap}
-              disabled={isSessionLocked}
-              onSelectPart={(ord) => {
-                setSelectedPartOrd(ord);
-                setUnitIndex(0);
-                const targetPart = parts.find((p) => p.ord === ord);
-                const targetUnits = targetPart
-                  ? buildSegmentedQuestionUnits(
-                      targetPart.items,
-                      attemptId,
-                      targetPart.displaySegments,
-                    )
-                  : [];
-                const targetItemId = targetUnits[0]?.leafItems[0]?.itemId ?? targetUnits[0]?.id;
-                if (targetPart?.partId && targetItemId) {
-                  const hadDirtyItems = (saveQueueRef.current?.getDirtyItemIds().length ?? 0) > 0;
-                  saveQueueRef.current?.setPosition({ partId: targetPart.partId, itemId: targetItemId }, true);
-                  if (!hadDirtyItems) {
-                    void saveQueueRef.current?.flushNow();
-                  }
-                } else if (saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
-                  void saveQueueRef.current.flushNow();
-                }
-              }}
-            />
-          </div>
+  const stickyTopCss =
+    measuredHeaderHeight > 0
+      ? `${measuredHeaderHeight + 16}px`
+      : isHeaderCollapsed
+        ? "3.75rem"
+        : "5.25rem";
 
-          <div className="flex flex-wrap items-center gap-2">
+  const activePartChipLabel = activePart
+    ? choiceTitleMap[activePart.ord ?? 0]?.name?.trim() ||
+      activePart.partName?.trim() ||
+      activePart.partCode?.trim() ||
+      `#${activePart.ord ?? 1}`
+    : null;
+
+  function renderUnitCard(unit: SegmentedQuestionUnit, uIdx: number) {
+    const attachments = unitAttachmentsByIndex[uIdx] ?? [];
+    const hasEssayInUnit = unitHasEssay(unit);
+
+    return (
+      <div
+        key={unit.id}
+        id={`attempt-unit-${uIdx}`}
+        data-attempt-unit=""
+        data-unit-index={uIdx}
+        className="rounded-2xl border border-border bg-surface p-4 shadow-xs scroll-mt-[calc(var(--attempt-sticky-top,5.5rem)+0.5rem)] [&_section]:scroll-mt-[calc(var(--attempt-sticky-top,5.5rem)+0.5rem)] sm:p-5"
+      >
+        {attachments.length > 0 ? (
+          <div
+            aria-label={t("player.attachmentsLabel")}
+            className="mb-4 space-y-2 rounded-xl border border-border bg-subtle p-3.5"
+          >
+            {attachments.map((att, idx) => {
+              const safeUrl = att.url;
+              if (!safeUrl) return null;
+              if (isAudioMime(att.mime)) {
+                const resolvedAssetId = att.assetId || extractAttemptAssetId(safeUrl);
+                const adapter = resolvedAssetId ? audioAdaptersByAsset[resolvedAssetId] : undefined;
+                if (!resolvedAssetId || !adapter) return null;
+                const initialAudioState =
+                  audioSnapshotsByAsset[resolvedAssetId] ??
+                  toAudioPlaybackSnapshot(undefined, maxAudioPlays);
+                return (
+                  <AttemptAudioPlayer
+                    key={`${resolvedAssetId}:${sessionSnap.sessionId ?? "pending"}`}
+                    assetId={resolvedAssetId}
+                    fileName={att.fileName}
+                    initialState={initialAudioState}
+                    maxPlays={maxAudioPlays}
+                    adapter={adapter}
+                    disabled={isReadOnly || isSessionClaimPending || !sessionSnap.sessionId}
+                    initializing={isSessionClaimPending}
+                    closedReason={activeAudioClosedReason}
+                    stopSignal={audioStopSignal}
+                    isOnline={saveStatus.isOnline}
+                    onStateChange={(snap) =>
+                      setAudioSnapshotsByAsset((prev) => ({
+                        ...prev,
+                        [resolvedAssetId]: snap,
+                      }))
+                    }
+                    onClosed={(reason) => {
+                      if (reason === "TIME_UP") {
+                        setClosedEndReason("TIME_UP");
+                      }
+                      void reloadServerStateRef.current().catch(() => undefined);
+                    }}
+                    onSessionRevoked={() => {
+                      setAudioStopSignal((n) => n + 1);
+                      editSessionRef.current?.markEvicted();
+                    }}
+                    onUnauthorized={() => void handleAttemptUnauthorizedRef.current()}
+                  />
+                );
+              }
+              return (
+                <a
+                  key={att.assetId ?? idx}
+                  href={safeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "inline-flex items-center gap-2 text-caption font-medium text-primary-text hover:underline",
+                    focusRing,
+                  )}
+                >
+                  <FileText className="size-4 shrink-0" aria-hidden="true" />
+                  <span>{att.fileName ?? safeUrl}</span>
+                </a>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {unit.kind === "QUESTION_SET" ? (
+          <Question
+            mode="answer"
+            question={unit.kitQuestion}
+            value={buildQuestionSetKitValue(unit.childItems, getAnswer)}
+            flaggedIds={Object.fromEntries(
+              unit.childItems
+                .map((child) => child.itemId)
+                .filter((id): id is string => Boolean(id))
+                .map((id) => [id, getFlagged(id)]),
+            )}
+            onToggleChildFlag={toggleItemFlag}
+            renderEditor={
+              hasEssayInUnit
+                ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
+                : undefined
+            }
+            onChange={(nextValue) => {
+              if (!nextValue || typeof nextValue !== "object" || !("children" in nextValue)) {
+                return;
+              }
+              const childMap = nextValue.children ?? {};
+              for (const child of unit.childItems) {
+                const cid = child.itemId;
+                const cType = child.questionType;
+                if (!cid || !cType || cType === "QUESTION_SET") continue;
+                const nextKitChild = childMap[cid];
+                const nextApiAns = toApiAnswer(cType, nextKitChild);
+                const prevApiAns = getAnswer(cid);
+                if (JSON.stringify(prevApiAns) !== JSON.stringify(nextApiAns)) {
+                  recordAnswerUpdate(cid, cType, nextApiAns);
+                }
+              }
+            }}
+          >
+            {unit.childKitQuestions}
+          </Question>
+        ) : (
+          <Question
+            mode="answer"
+            question={unit.kitQuestion}
+            value={toKitAnswer(getAnswer(unit.id))}
+            flagged={getFlagged(unit.id)}
+            onToggleFlag={() => toggleItemFlag(unit.id)}
+            renderEditor={
+              hasEssayInUnit
+                ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
+                : undefined
+            }
+            onChange={(nextValue) => {
+              const qType = unit.parentItem.questionType;
+              if (!qType || qType === "QUESTION_SET") return;
+              recordAnswerUpdate(unit.id, qType, toApiAnswer(qType, nextValue));
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ "--attempt-sticky-top": stickyTopCss } as CSSProperties}
+      className="flex min-h-dvh flex-col bg-page text-text"
+    >
+      <header ref={headerRef} className="sticky top-0 z-20 border-b border-border bg-surface">
+        <div className="mx-auto flex w-full flex-wrap items-center justify-between gap-2 px-4 py-2 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
+          {isHeaderCollapsed ? (
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {activePartChipLabel ? (
+                <span
+                  data-testid="attempt-active-part-chip"
+                  className="inline-flex max-w-[200px] items-center gap-1.5 truncate rounded-lg border border-primary-600 bg-primary-50 px-2.5 py-1 text-caption font-semibold text-primary-800 sm:max-w-xs"
+                >
+                  <span className="truncate" data-exam-content="">
+                    {activePartChipLabel}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="w-full min-w-0 space-y-1 md:w-auto md:flex-1">
+              {attemptState.examName ? (
+                <h1
+                  className="line-clamp-1 text-label font-bold text-text sm:text-body"
+                  data-exam-content=""
+                >
+                  {attemptState.examName}
+                </h1>
+              ) : null}
+              <PartNavigation
+                parts={parts}
+                currentPartOrd={activePart?.ord ?? null}
+                navigationMode={attemptState.navigationMode ?? "SEQUENTIAL"}
+                choiceMap={choiceTitleMap}
+                disabled={isSessionLocked}
+                onSelectPart={(ord) => {
+                  setSelectedPartOrd(ord);
+                  setUnitIndex(0);
+                  setCurrentLeafItemId(null);
+                  const targetPart = parts.find((p) => p.ord === ord);
+                  const targetUnits = targetPart
+                    ? buildSegmentedQuestionUnits(
+                        targetPart.items,
+                        attemptId,
+                        targetPart.displaySegments,
+                      )
+                    : [];
+                  const targetItemId = targetUnits[0]?.leafItems[0]?.itemId ?? targetUnits[0]?.id;
+                  if (targetPart?.partId && targetItemId) {
+                    const hadDirtyItems = (saveQueueRef.current?.getDirtyItemIds().length ?? 0) > 0;
+                    saveQueueRef.current?.setPosition(
+                      { partId: targetPart.partId, itemId: targetItemId },
+                      true,
+                    );
+                    if (!hadDirtyItems) {
+                      void saveQueueRef.current?.flushNow();
+                    }
+                  } else if (saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
+                    void saveQueueRef.current.flushNow();
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {remainingMs !== null && durationParts ? (
               <div
                 role="timer"
@@ -1817,7 +2270,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                       })
                 }
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-label font-semibold tabular-nums",
+                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-label font-semibold tabular-nums",
                   isTimerUrgent
                     ? "border-danger bg-danger-bg text-danger"
                     : "border-border bg-subtle text-text",
@@ -1879,6 +2332,25 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                 {t("header.submit")}
               </Button>
             ) : null}
+
+            <button
+              type="button"
+              data-testid="attempt-header-collapse"
+              aria-expanded={!isHeaderCollapsed}
+              aria-label={t(isHeaderCollapsed ? "header.expandHeader" : "header.collapseHeader")}
+              title={t(isHeaderCollapsed ? "header.expandHeader" : "header.collapseHeader")}
+              onClick={() => setIsHeaderCollapsed((prev) => !prev)}
+              className={cn(
+                "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-subtle text-text-secondary transition-colors hover:border-border-strong hover:bg-surface hover:text-text pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+                focusRing,
+              )}
+            >
+              {isHeaderCollapsed ? (
+                <ChevronDown className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronUp className="size-4" aria-hidden="true" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -1904,7 +2376,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         ) : null}
       </header>
 
-      <main className="mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-4 lg:py-6 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
+      <main className="mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-4 lg:py-5 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
         {activePart && isChoiceOrGeneratingState(activePart.state) ? (
           <PartChoiceView
             part={activePart}
@@ -1919,166 +2391,92 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
             onConfirmChoice={handleConfirmPartChoice}
             onRetryGeneration={handleRetryGeneration}
           />
-        ) : activeUnit ? (
+        ) : units.length > 0 ? (
           <QuestionNav
             items={navItems}
-            segments={activePart?.displaySegments}
+            segments={navSegmentsConfig.segments}
+            segmentsAreExamContent={navSegmentsConfig.segmentsAreExamContent}
+            examContentSegmentCodes={navSegmentsConfig.examContentSegmentCodes}
             currentUnitIndex={safeUnitIndex}
             totalUnits={units.length}
-            currentDisplayNumber={activeUnit.displayStart}
+            currentDisplayNumber={activeLeafDisplayNo}
             totalDisplayItems={navItems.length}
-            onSelectUnit={goToUnit}
+            onSelectUnit={(nextUnitIdx) => setUnitIndex(nextUnitIdx)}
             onSelectItem={handleSelectNavItem}
-            onPrev={() => goToUnit(safeUnitIndex - 1)}
-            onNext={() => goToUnit(safeUnitIndex + 1)}
-            canPrev={safeUnitIndex > 0}
-            canNext={safeUnitIndex < units.length - 1}
             footer={<p className="text-caption text-text-muted">{t("player.shortcutHint")}</p>}
           >
-            {activeUnit.segment ? (
-              <SegmentHeader
-                segment={activeUnit.segment}
-                isSegmentStart={activeUnit.isSegmentStart}
-                positionOffset={activeUnit.positionOffset}
-              />
-            ) : null}
-
-            <div className="rounded-2xl border border-border bg-surface p-4 shadow-xs sm:p-5">
-              {unitAttachments.length > 0 ? (
-                <div
-                  aria-label={t("player.attachmentsLabel")}
-                  className="mb-4 space-y-2 rounded-xl border border-border bg-subtle p-3.5"
-                >
-                  {unitAttachments.map((att, idx) => {
-                    const safeUrl = att.url;
-                    if (!safeUrl) return null;
-                    if (isAudioMime(att.mime)) {
-                      const resolvedAssetId = att.assetId || extractAttemptAssetId(safeUrl);
-                      const adapter = resolvedAssetId
-                        ? audioAdaptersByAsset[resolvedAssetId]
-                        : undefined;
-                      if (!resolvedAssetId || !adapter) return null;
-                      const initialAudioState =
-                        audioSnapshotsByAsset[resolvedAssetId] ??
-                        toAudioPlaybackSnapshot(undefined, maxAudioPlays);
-                      return (
-                        <AttemptAudioPlayer
-                          key={`${resolvedAssetId}:${sessionSnap.sessionId ?? "pending"}`}
-                          assetId={resolvedAssetId}
-                          fileName={att.fileName}
-                          initialState={initialAudioState}
-                          maxPlays={maxAudioPlays}
-                          adapter={adapter}
-                          disabled={
-                            isReadOnly || isSessionClaimPending || !sessionSnap.sessionId
-                          }
-                          initializing={isSessionClaimPending}
-                          closedReason={activeAudioClosedReason}
-                          stopSignal={audioStopSignal}
-                          isOnline={saveStatus.isOnline}
-                          onStateChange={(snap) =>
-                            setAudioSnapshotsByAsset((prev) => ({
-                              ...prev,
-                              [resolvedAssetId]: snap,
-                            }))
-                          }
-                          onClosed={(reason) => {
-                            if (reason === "TIME_UP") {
-                              setClosedEndReason("TIME_UP");
-                            }
-                            void reloadServerStateRef.current().catch(() => undefined);
-                          }}
-                          onSessionRevoked={() => {
-                            setAudioStopSignal((n) => n + 1);
-                            editSessionRef.current?.markEvicted();
-                          }}
-                          onUnauthorized={() => void handleAttemptUnauthorizedRef.current()}
-                        />
-                      );
-                    }
-                    return (
-                      <a
-                        key={att.assetId ?? idx}
-                        href={safeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          "inline-flex items-center gap-2 text-caption font-medium text-primary-text hover:underline",
-                          focusRing,
-                        )}
+            <fieldset
+              disabled={isReadOnly}
+              aria-disabled={isReadOnly || undefined}
+              data-attempt-question-fieldset=""
+              className="flex min-w-0 flex-col gap-5"
+            >
+              {segmentUnitGroups.length > 0
+                ? segmentUnitGroups.map((group) =>
+                    group.segment ? (
+                      <section
+                        key={group.key}
+                        data-segment-group={group.segment.code ?? ""}
+                        className="flex flex-col gap-4 rounded-2xl border border-border bg-subtle/45 p-3.5 sm:p-4"
                       >
-                        <FileText className="size-4 shrink-0" aria-hidden="true" />
-                        <span>{att.fileName ?? safeUrl}</span>
-                      </a>
-                    );
-                  })}
-                </div>
-              ) : null}
+                        <SegmentHeader
+                          segment={group.segment}
+                          isSegmentStart={true}
+                          positionOffset={group.positionOffset}
+                        />
+                        {group.units.map(({ unit, unitIndex: uIdx }) => renderUnitCard(unit, uIdx))}
+                      </section>
+                    ) : (
+                      group.units.map(({ unit, unitIndex: uIdx }) => renderUnitCard(unit, uIdx))
+                    ),
+                  )
+                : subjectUnitGroups.length > 0
+                  ? subjectUnitGroups.map((group, groupIdx) => {
+                      const headingId = `attempt-subject-${group.subjectCode}-${groupIdx}`;
+                      return (
+                        <section
+                          key={group.key}
+                          data-subject-group={group.subjectCode}
+                          aria-labelledby={headingId}
+                          className="flex flex-col gap-4 rounded-2xl border border-border-primary/80 bg-primary-50/25 p-3.5 sm:p-5"
+                        >
+                          <div
+                            data-subject-header={group.subjectCode}
+                            className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-border bg-surface px-4 py-3 shadow-xs"
+                          >
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <span
+                                aria-hidden="true"
+                                className="h-5 w-1 shrink-0 rounded-full bg-primary-600"
+                              />
+                              <h2
+                                id={headingId}
+                                {...(group.isExamContent ? { "data-exam-content": "" } : {})}
+                                className="min-w-0 text-title font-bold text-text"
+                              >
+                                {group.headingTitle}
+                              </h2>
+                            </div>
 
-              <fieldset
-                disabled={isReadOnly}
-                aria-disabled={isReadOnly || undefined}
-                data-attempt-question-fieldset=""
-                className="min-w-0 [&_section]:scroll-mt-28"
-              >
-                {activeUnit.kind === "QUESTION_SET" ? (
-                  <Question
-                    mode="answer"
-                    question={activeUnit.kitQuestion}
-                    value={buildQuestionSetKitValue(activeUnit.childItems, getAnswer)}
-                    flaggedIds={Object.fromEntries(
-                      activeUnit.childItems
-                        .map((child) => child.itemId)
-                        .filter((id): id is string => Boolean(id))
-                        .map((id) => [id, getFlagged(id)]),
-                    )}
-                    onToggleChildFlag={toggleItemFlag}
-                    renderEditor={
-                      activeQuestionHasEssay
-                        ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
-                        : undefined
-                    }
-                    onChange={(nextValue) => {
-                      if (!nextValue || typeof nextValue !== "object" || !("children" in nextValue)) {
-                        return;
-                      }
-                      const childMap = nextValue.children ?? {};
-                      for (const child of activeUnit.childItems) {
-                        const cid = child.itemId;
-                        const cType = child.questionType;
-                        if (!cid || !cType || cType === "QUESTION_SET") continue;
-                        const nextKitChild = childMap[cid];
-                        const nextApiAns = toApiAnswer(cType, nextKitChild);
-                        const prevApiAns = getAnswer(cid);
-                        if (JSON.stringify(prevApiAns) !== JSON.stringify(nextApiAns)) {
-                          recordAnswerUpdate(cid, cType, nextApiAns);
-                        }
-                      }
-                    }}
-                  >
-                    {activeUnit.childKitQuestions}
-                  </Question>
-                ) : (
-                  <Question
-                    mode="answer"
-                    question={activeUnit.kitQuestion}
-                    value={toKitAnswer(getAnswer(activeUnit.id))}
-                    flagged={getFlagged(activeUnit.id)}
-                    onToggleFlag={() => toggleItemFlag(activeUnit.id)}
-                    renderEditor={
-                      activeQuestionHasEssay
-                        ? (props) => <LazyEssayEditor {...props} readOnly={isReadOnly || props.readOnly} />
-                        : undefined
-                    }
-                    onChange={(nextValue) => {
-                      const qType = activeUnit.parentItem.questionType;
-                      if (!qType || qType === "QUESTION_SET") return;
-                      recordAnswerUpdate(activeUnit.id, qType, toApiAnswer(qType, nextValue));
-                    }}
-                  />
-                )}
-              </fieldset>
-            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-caption font-medium text-text-secondary tabular-nums">
+                              <span className="inline-flex h-6 items-center rounded-full border border-border bg-subtle px-2.5">
+                                {t("subjects.range", {
+                                  from: group.fromDisplayNo,
+                                  to: group.toDisplayNo,
+                                })}
+                              </span>
+                              <span className="inline-flex h-6 items-center rounded-full border border-border bg-subtle px-2.5">
+                                {t("subjects.questionCount", { count: group.questionCount })}
+                              </span>
+                            </div>
+                          </div>
+
+                          {group.units.map(({ unit, unitIndex: uIdx }) => renderUnitCard(unit, uIdx))}
+                        </section>
+                      );
+                    })
+                  : units.map((unit, uIdx) => renderUnitCard(unit, uIdx))}
+            </fieldset>
           </QuestionNav>
         ) : (
           <div className="rounded-2xl border border-border bg-surface p-8 text-center text-body text-text-muted">

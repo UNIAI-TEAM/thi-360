@@ -299,3 +299,57 @@ export async function loadAfterStartChoicesForAttempt(
   const prepare = await fetchPrepare(entitlementId);
   return prepare.afterStartChoices ?? [];
 }
+
+export async function loadAttemptSubjectsForAttempt(
+  attemptId: string,
+  userId: string,
+  deps: {
+    loadStartContext?: typeof loadAttemptStartContext;
+    loadExams?: MyExamsLoader;
+    loadPrepare?: AttemptPrepareLoader;
+  } = {},
+): Promise<ChoiceSubjectView[]> {
+  const loadStart = deps.loadStartContext ?? loadAttemptStartContext;
+  const fetchExams = deps.loadExams ?? loadMyExams;
+  const fetchPrepare = deps.loadPrepare ?? loadAttemptPrepare;
+
+  let entitlementId: string | null = null;
+  try {
+    const startCtx = await loadStart(userId, attemptId);
+    if (startCtx?.entitlementId) {
+      entitlementId = startCtx.entitlementId;
+    }
+  } catch {
+    // Fallback to my-exams below.
+  }
+
+  if (!entitlementId) {
+    const myExams = await fetchExams();
+    const matched = myExams.items.find((card) => card.activeAttemptId === attemptId);
+    entitlementId = matched?.entitlementId ?? null;
+  }
+
+  if (!entitlementId) {
+    return [];
+  }
+
+  const prepare = await fetchPrepare(entitlementId);
+  const byCode = new Map<string, ChoiceSubjectView>();
+  for (const opt of prepare.preChoice?.options ?? []) {
+    for (const sub of opt.subjects ?? []) {
+      if (sub.code && !byCode.has(sub.code)) {
+        byCode.set(sub.code, sub);
+      }
+    }
+  }
+  for (const choice of prepare.afterStartChoices ?? []) {
+    for (const opt of choice.options ?? []) {
+      for (const sub of opt.subjects ?? []) {
+        if (sub.code && !byCode.has(sub.code)) {
+          byCode.set(sub.code, sub);
+        }
+      }
+    }
+  }
+  return Array.from(byCode.values());
+}

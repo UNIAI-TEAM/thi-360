@@ -144,10 +144,12 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     expect(leftColumn).toContainElement(controls);
     expect(leftColumn).toContainElement(screen.getByText("Gợi ý phím tắt"));
 
-    // Compact mobile trigger keeps full accessible name while showing compact label
+    // Compact mobile trigger keeps full accessible name while showing compact label; Prev/Next buttons removed (UNI-2813)
     const gridBtn = screen.getByRole("button", { name: "Danh sách câu 17/4" });
     expect(gridBtn).toHaveTextContent("17/4");
-    expect(controls).toHaveClass("rounded-xl", "border", "flex", "items-center", "justify-between");
+    expect(controls).toHaveClass("rounded-xl", "border", "flex", "items-center", "justify-between", "lg:hidden");
+    expect(screen.queryByRole("button", { name: "Câu trước" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Câu sau" })).not.toBeInTheDocument();
   });
 
   it("đổi màu ô/viền đỏ (danger tokens) cho câu đánh dấu cần xem lại ở cả 3 mức hoàn thành và chú thích (UNI-2794)", () => {
@@ -227,10 +229,10 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
     expect(aside).toHaveClass(
       "lg:sticky",
-      "lg:top-28",
+      "lg:top-[var(--attempt-sticky-top,7rem)]",
       "lg:w-[282px]",
       "min-[1440px]:w-[300px]",
-      "lg:max-h-[calc(100dvh-8rem)]",
+      "lg:max-h-[calc(100dvh-var(--attempt-sticky-top,7rem)-1.5rem)]",
       "lg:overflow-y-auto",
       "scroll-shadows-y",
     );
@@ -239,5 +241,29 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     await user.click(screen.getByRole("button", { name: /^19,/ }));
     expect(onSelectUnit).toHaveBeenCalledWith(3);
     expect(onSelectItem).toHaveBeenCalledWith(expect.objectContaining({ itemId: "q-19", unitIndex: 3 }));
+  });
+
+  it("nhóm theo môn học không gắn data-exam-content khi tên môn đã dịch theo giao diện (UNI-2813)", () => {
+    renderWithProviders(
+      <QuestionNav
+        items={SAMPLE_ITEMS}
+        segments={[
+          { code: "LY-0", name: "Vật lí", fromPosition: 16, toPosition: 17 },
+          { code: "CUSTOM-1", name: "Chuyên đề riêng", fromPosition: 18, toPosition: 19 },
+        ]}
+        segmentsAreExamContent={false}
+        examContentSegmentCodes={new Set(["CUSTOM-1"])}
+        currentUnitIndex={0}
+        totalUnits={4}
+        currentDisplayNumber={16}
+        totalDisplayItems={4}
+        onSelectUnit={vi.fn()}
+      />,
+    );
+
+    const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+    expect(aside.querySelector('[role="group"] > div')).not.toHaveAttribute("data-exam-content");
+    expect(screen.getByText("Vật lí")).not.toHaveAttribute("data-exam-content");
+    expect(screen.getByText("Chuyên đề riêng")).toHaveAttribute("data-exam-content", "");
   });
 });
