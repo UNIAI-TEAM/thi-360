@@ -13,9 +13,9 @@ describe("Bộ câu hỏi (AC-14)", () => {
     expect(passage.textContent).toContain("Ngữ liệu chung");
     expect(passage).toHaveClass("lg:sticky");
     expect(passage.querySelector("[data-exam-content]")).not.toBeNull();
-    // Dưới breakpoint lg lưới không có cột: các khối xếp dọc.
+    // Dưới breakpoint lg lưới không có cột: các khối xếp dọc; từ lg chia ~46% ngữ liệu : ~54% câu hỏi (7fr:8fr), gap 16px.
     const grid = passage.parentElement!;
-    expect(grid.className).toContain("lg:grid-cols-");
+    expect(grid).toHaveClass("gap-4", "lg:grid-cols-[minmax(0,7fr)_minmax(0,8fr)]");
     expect(grid.className).not.toMatch(/(^|\s)grid-cols-/);
     expect(screen.getByRole("heading", { name: t.questionLabel(9) })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: t.questionLabel(10) })).toBeInTheDocument();

@@ -1760,7 +1760,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   return (
     <div className="flex min-h-dvh flex-col bg-page text-text">
       <header className="sticky top-0 z-20 border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
           <div className="w-full min-w-0 space-y-1 md:w-auto md:flex-1">
             {attemptState.examName ? (
               <h1 className="line-clamp-2 text-title font-bold text-text" data-exam-content="">
@@ -1904,7 +1904,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
         ) : null}
       </header>
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-4 lg:p-6">
+      <main className="mx-auto flex w-full flex-1 flex-col gap-6 px-4 py-4 lg:py-6 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
         {activePart && isChoiceOrGeneratingState(activePart.state) ? (
           <PartChoiceView
             part={activePart}
@@ -1943,7 +1943,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
               />
             ) : null}
 
-            <div className="rounded-2xl border border-border bg-surface p-5 shadow-xs sm:p-6">
+            <div className="rounded-2xl border border-border bg-surface p-4 shadow-xs sm:p-5">
               {unitAttachments.length > 0 ? (
                 <div
                   aria-label={t("player.attachmentsLabel")}

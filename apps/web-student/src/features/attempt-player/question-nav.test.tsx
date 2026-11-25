@@ -228,10 +228,13 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     expect(aside).toHaveClass(
       "lg:sticky",
       "lg:top-28",
+      "lg:w-[282px]",
+      "min-[1440px]:w-[300px]",
       "lg:max-h-[calc(100dvh-8rem)]",
       "lg:overflow-y-auto",
       "scroll-shadows-y",
     );
+    expect(aside.parentElement).toHaveClass("gap-5", "min-[1440px]:gap-6");
 
     await user.click(screen.getByRole("button", { name: /^19,/ }));
     expect(onSelectUnit).toHaveBeenCalledWith(3);
