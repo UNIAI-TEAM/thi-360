@@ -89,6 +89,45 @@ final class SessionStore {
         }
     }
 
+    var currentUsername: String? {
+        (try? tokenStore.read())?.username
+    }
+
+    func adoptSession(_ tokens: SessionTokens) async throws {
+        await apiClient.refresher.invalidate()
+        try tokenStore.write(tokens)
+        connectivityState = .online
+        state = tokens.mustChangePassword ? .mustChangePassword : .active
+        logger.log(.info, category: "session", message: "Mobile session established")
+    }
+
+    func completeForcedPasswordChange() async throws {
+        if let stored = try tokenStore.read() {
+            let updated = SessionTokens(
+                accessToken: stored.accessToken,
+                refreshToken: stored.refreshToken,
+                accessExpiresIn: stored.accessExpiresIn,
+                refreshExpiresIn: stored.refreshExpiresIn,
+                mustChangePassword: false,
+                username: stored.username,
+                issuedAt: stored.issuedAt
+            )
+            try tokenStore.write(updated)
+        }
+        connectivityState = .online
+        if state == .mustChangePassword {
+            state = .active
+        }
+        logger.log(.info, category: "session", message: "Forced password change completed")
+    }
+
+    func clearLocalSession(reason: SignedOutReason = .none) async {
+        await apiClient.refresher.invalidate()
+        try? tokenStore.clear()
+        connectivityState = .online
+        state = .signedOut(reason: reason)
+    }
+
     func acknowledgeRoleNotice() {
         if case .signedOut(.studentOnly) = state {
             state = .signedOut(reason: .none)
@@ -153,7 +192,7 @@ final class SessionStore {
         let defaults: UserDefaults
         let keychainService: String
         let serverURL: URL
-        let authenticatedOverride: Bool
+        let initialStateOverride: SessionState?
         let resetSession: Bool
 
         if environment.isDev {
@@ -178,13 +217,21 @@ final class SessionStore {
                 serverURL = environment.apiBaseURL
             }
 
-            authenticatedOverride = arguments.contains("-uitest-authenticated")
+            if arguments.contains("-uitest-locked") {
+                initialStateOverride = .locked
+            } else if arguments.contains("-uitest-must-change-password") {
+                initialStateOverride = .mustChangePassword
+            } else if arguments.contains("-uitest-authenticated") {
+                initialStateOverride = .active
+            } else {
+                initialStateOverride = nil
+            }
             resetSession = arguments.contains("-uitest-reset-session")
         } else {
             defaults = .standard
             keychainService = KeychainTokenStore.defaultService
             serverURL = environment.apiBaseURL
-            authenticatedOverride = false
+            initialStateOverride = nil
             resetSession = false
         }
 
@@ -209,8 +256,8 @@ final class SessionStore {
             apiClient: client,
             firstRunCleaner: cleaner,
             logger: logger,
-            initialStateOverride: authenticatedOverride ? .active : nil,
-            skipsLaunchValidation: authenticatedOverride
+            initialStateOverride: initialStateOverride,
+            skipsLaunchValidation: initialStateOverride != nil
         )
     }
 

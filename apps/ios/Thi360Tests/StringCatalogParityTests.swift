@@ -43,6 +43,10 @@ final class StringCatalogParityTests: XCTestCase {
             files.contains { $0.lastPathComponent == "Auth.xcstrings" },
             "Auth.xcstrings must exist"
         )
+        XCTAssertTrue(
+            files.contains { $0.lastPathComponent == "Recovery.xcstrings" },
+            "Recovery.xcstrings must exist"
+        )
 
         let decoder = JSONDecoder()
 
@@ -99,6 +103,15 @@ final class StringCatalogParityTests: XCTestCase {
                     let expectedEn = catalog.strings[key]?.localizations?["en"]?.stringUnit?.value
                     XCTAssertEqual(AuthStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
                     XCTAssertEqual(AuthStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
+                }
+            }
+
+            if file.lastPathComponent == "Recovery.xcstrings" {
+                for key in allKeys.sorted() {
+                    let expectedVi = catalog.strings[key]?.localizations?["vi"]?.stringUnit?.value
+                    let expectedEn = catalog.strings[key]?.localizations?["en"]?.stringUnit?.value
+                    XCTAssertEqual(RecoveryStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
+                    XCTAssertEqual(RecoveryStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
                 }
             }
         }

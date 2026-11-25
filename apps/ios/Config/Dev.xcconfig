@@ -4,5 +4,6 @@ INFOPLIST_FILE = Thi360/Resources/Info-Dev.plist
 THI360_ENV = dev
 THI360_API_BASE_URL = http:/$()/localhost:8080
 THI360_WEB_BASE_URL = http:/$()/localhost:3000
+THI360_WEB_APPLINKS_HOST = localhost
 
 #include? "Local.xcconfig"

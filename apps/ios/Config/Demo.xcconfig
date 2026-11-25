@@ -4,3 +4,4 @@ INFOPLIST_FILE = Thi360/Resources/Info-Demo.plist
 THI360_ENV = demo
 THI360_API_BASE_URL = https:/$()/thi360.zone17.click
 THI360_WEB_BASE_URL = https:/$()/thi360.zone17.click
+THI360_WEB_APPLINKS_HOST = thi360.zone17.click
