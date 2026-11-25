@@ -7239,7 +7239,13 @@
       "countMismatch": "The total is {total} questions; the scope has {count, number}.",
       "REQUIRED": "Required",
       "REFERENCE": "Reference",
-      "basisNote": "Compared per code when a trial paper is generated."
+      "basisNote": "Compared per code when a trial paper is generated.",
+      "goToQuota": "Go to quota",
+      "goToQuotaAria": "Go to quota: {issue}",
+      "deviationHintSingle": "Tip: Turn on «Apply when generating» (Required) on this target to enforce exact counts, or adjust the reference target in Exam-level targets.",
+      "deviationHintMulti": "Tip: Turn on «Apply when generating» in {dimension, select, DIFFICULTY {2B · Difficulty} other {2A · Grade}} inside each subject in scope, or adjust the reference target in Exam-level targets.",
+      "jumpToSubject": "Open subject:",
+      "openSubjectAria": "Open settings for subject {subject}"
     },
     "reviewExam": {
       "title": "Review exam · {subject} · {count, number} questions",

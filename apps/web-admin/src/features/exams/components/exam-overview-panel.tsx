@@ -6,7 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import { ratePercent } from "../allocation";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
-import { bucketCounts, canRequireQuota, hasChoicePath, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
+import { bucketCounts, canRequireQuota, examQuotaAnchor, hasChoicePath, pointsRows, quotaScope, quotaUnitOf } from "../exam-overview";
 import { hsaQuotaAwaitsExpert } from "../hsa-enforcement";
 import { sum } from "../matrix";
 import type { ExamPart, ExamQuota, ExamStructureSummary, StructureCombination } from "../types";
@@ -168,7 +168,17 @@ export function ExamOverviewPanel({
           const quotaHeadingId = `${quotasId}-${quota.id}-title`;
           const quotaTitle = quota.name ? <ExamName>{quota.name}</ExamName> : t(quota.dimension === "GRADE" ? "gradeName" : "difficultyName");
           return (
-            <section key={quota.id} aria-labelledby={quotaHeadingId} className="flex flex-col gap-3 rounded-md border border-border bg-subtle/20 p-4">
+            <section
+              key={quota.id}
+              id={examQuotaAnchor(quota.id)}
+              data-exam-quota-id={quota.id}
+              tabIndex={-1}
+              aria-labelledby={quotaHeadingId}
+              className={cn(
+                "flex scroll-mt-24 flex-col gap-3 rounded-md border border-border bg-subtle/20 p-4 transition-colors duration-150 motion-reduce:transition-none data-[quota-highlight]:border-primary-600 data-[quota-highlight]:bg-primary-50",
+                focusRing,
+              )}
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <h4 id={quotaHeadingId} className="text-label font-semibold text-text">

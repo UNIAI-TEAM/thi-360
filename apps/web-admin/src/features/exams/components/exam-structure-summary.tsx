@@ -8,7 +8,7 @@ import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
 import { type StructureIssue, sum } from "../matrix";
 import { structureIssueBlockField } from "./block-form-fields";
 import type { ExamCheckResult } from "../review-types";
-import type { ExamPart, ExamStructureSummary, ExamStructureSummaryRow } from "../types";
+import type { ExamPart, ExamQuota, ExamStructureSummary, ExamStructureSummaryRow, StructureCombination } from "../types";
 import { AllocationGap } from "./allocation-gap";
 import type { StructureSelection } from "./exam-structure-draft";
 import { issueTarget } from "./exam-structure-issues";
@@ -115,6 +115,8 @@ export interface ExamStructureAlertsBannerProps {
   checkResult: ExamCheckResult | null;
   names: CheckResultNames;
   parts?: ExamPart[];
+  quotas?: readonly ExamQuota[];
+  combinations?: readonly StructureCombination[];
   onSelect: (selection: StructureSelection) => void;
 }
 
@@ -125,6 +127,8 @@ export function ExamStructureAlertsBanner({
   checkResult,
   names,
   parts,
+  quotas,
+  combinations,
   onSelect,
 }: ExamStructureAlertsBannerProps) {
   const structureT = useTranslations("exams.structure");
@@ -160,7 +164,14 @@ export function ExamStructureAlertsBanner({
         </section>
       )}
       {checkResult && (
-        <ExamStructureCheckResult result={checkResult} names={names} parts={parts} onSelect={onSelect} />
+        <ExamStructureCheckResult
+          result={checkResult}
+          names={names}
+          parts={parts}
+          quotas={quotas}
+          combinations={combinations}
+          onSelect={onSelect}
+        />
       )}
     </div>
   );

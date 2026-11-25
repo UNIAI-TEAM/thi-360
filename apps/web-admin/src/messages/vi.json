@@ -7239,7 +7239,13 @@
       "countMismatch": "Tổng là {total} câu, tập câu có {count, number} câu.",
       "REQUIRED": "Bắt buộc",
       "REFERENCE": "Tham khảo",
-      "basisNote": "Đối chiếu theo từng mã khi sinh thử."
+      "basisNote": "Đối chiếu theo từng mã khi sinh thử.",
+      "goToQuota": "Đi tới chỉ tiêu",
+      "goToQuotaAria": "Đi tới chỉ tiêu: {issue}",
+      "deviationHintSingle": "Gợi ý: Bật «Áp dụng khi sinh đề» (mức Bắt buộc) trên chỉ tiêu này để ép rút đúng số câu, hoặc điều chỉnh lại tỷ lệ tham khảo ở Chỉ tiêu cấp bài.",
+      "deviationHintMulti": "Gợi ý: Bật «Áp dụng khi sinh đề» ở bảng {dimension, select, DIFFICULTY {2B · Độ khó} other {2A · Khối lớp}} của từng môn thuộc phạm vi, hoặc điều chỉnh lại tỷ lệ tham khảo ở Chỉ tiêu cấp bài.",
+      "jumpToSubject": "Mở nhanh môn:",
+      "openSubjectAria": "Mở thiết lập môn {subject}"
     },
     "reviewExam": {
       "title": "Bài ôn · {subject} · {count, number} câu",

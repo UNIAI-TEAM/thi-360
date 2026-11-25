@@ -2,15 +2,17 @@
 
 import { Button, StatusChip } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { issueBlockField } from "../check";
+import { extractExamQuotaId, findExamQuotaForIssue, focusExamQuotaWhenReady } from "../exam-overview";
 import { focusMapidRuleWhenReady } from "../mapid-rules";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
-import type { ExamPart } from "../types";
+import type { ExamPart, ExamQuota, StructureCombination } from "../types";
 import { requestBlockFieldFocus } from "./block-field-focus";
 import type { StructureSelection } from "./exam-structure-draft";
 import { ExamContentText } from "./exam-content-text";
-import { useIssueText } from "./exam-review-shared";
+import { ExamQuotaDeviationHint, ExamQuotaScopePrefix } from "./exam-quota-deviation";
+import { labelBeforeName, useIssueText } from "./exam-review-shared";
 
 export interface CheckResultNames {
   subject: (code: string) => string;
@@ -21,6 +23,8 @@ export interface ExamStructureCheckResultProps {
   names: CheckResultNames;
   /** Cấu trúc đang sửa: để gọi quy tắc MAPID của vấn đề bằng câu mô tả của nó. */
   parts?: ExamPart[];
+  quotas?: readonly ExamQuota[];
+  combinations?: readonly StructureCombination[];
   onSelect: (selection: StructureSelection) => void;
 }
 
@@ -50,10 +54,19 @@ function groupBySubject(issues: readonly CheckIssue[]): IssueGroup[] {
   return [...groups.values()];
 }
 
-export function ExamStructureCheckResult({ result, names, parts, onSelect }: ExamStructureCheckResultProps) {
+export function ExamStructureCheckResult({
+  result,
+  names,
+  parts,
+  quotas,
+  combinations,
+  onSelect,
+}: ExamStructureCheckResultProps) {
   const t = useTranslations("exams.structure.check");
   const structureT = useTranslations("exams.structure");
   const tMapid = useTranslations("exams.mapidRules.issue");
+  const tQuota = useTranslations("exams.examQuota");
+  const idPrefix = useId();
   const exam = useMemo(() => (parts ? { parts } : undefined), [parts]);
   const issueText = useIssueText(exam);
   const issueContent = useIssueText(exam, true);
@@ -67,27 +80,51 @@ export function ExamStructureCheckResult({ result, names, parts, onSelect }: Exa
 
   const renderList = (list: readonly CheckIssue[], testId: string) => (
     <ul data-testid={testId} className="flex flex-col gap-2">
-      {groupBySubject(list).map((group) => (
+      {groupBySubject(list).map((group, groupIndex) => (
         <li key={group.key} className="flex flex-col gap-1">
           <span className="text-label font-semibold text-text">
             {group.subjectCode ? names.subject(group.subjectCode) : t("wholeExam")}
           </span>
           <ul className="flex flex-col gap-1.5 border-l border-border pl-3">
-            {group.issues.map((issue) => {
+            {group.issues.map((issue, issueIndex) => {
               const target = checkIssueTarget(issue);
               const text = issueText(issue);
               const ruleId = issue.ruleId ?? null;
               const sectionId = issue.sectionId ?? null;
+              const isQuotaDeviation = issue.code === "EXAM_QUOTA_DEVIATION";
+              const matchedQuota = isQuotaDeviation ? findExamQuotaForIssue(issue, quotas) : null;
+              const quotaId = isQuotaDeviation ? (matchedQuota?.id ?? extractExamQuotaId(issue)) : null;
+              const messageId = `${idPrefix}-${testId}-${groupIndex}-${issueIndex}-msg`;
+              const actionId = `${idPrefix}-${testId}-${groupIndex}-${issueIndex}-go`;
               return (
                 <li key={issue.key} className="flex flex-wrap items-start justify-between gap-2 text-body text-text">
-                  <span className="min-w-0 flex-1">
-                    <ExamContentText text={issueContent(issue)} />
+                  <div className="min-w-0 flex-1">
+                    <span id={messageId}>
+                      {isQuotaDeviation && (
+                        <ExamQuotaScopePrefix
+                          quota={matchedQuota}
+                          parts={parts}
+                          combinations={combinations}
+                          subjectName={names.subject}
+                        />
+                      )}
+                      <ExamContentText text={issueContent(issue)} />
+                    </span>
                     {issue.affectedCodes && issue.affectedCodes.length > 0 && (
                       <span className="ml-1.5 text-caption text-text-muted">
                         {t("codes", { codes: issue.affectedCodes.join(", ") })}
                       </span>
                     )}
-                  </span>
+                    {isQuotaDeviation && (
+                      <ExamQuotaDeviationHint
+                        issue={issue}
+                        quota={matchedQuota}
+                        parts={parts}
+                        subjectName={names.subject}
+                        onSelectSection={(targetSectionId) => onSelect({ kind: "section", sectionId: targetSectionId })}
+                      />
+                    )}
+                  </div>
                   {ruleId && sectionId ? (
                     <Button
                       type="button"
@@ -100,6 +137,21 @@ export function ExamStructureCheckResult({ result, names, parts, onSelect }: Exa
                       }}
                     >
                       {tMapid("goToRule")}
+                    </Button>
+                  ) : isQuotaDeviation ? (
+                    <Button
+                      id={actionId}
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      aria-label={labelBeforeName(tQuota, "goToQuotaAria", "issue")}
+                      aria-labelledby={`${actionId} ${messageId}`}
+                      onClick={() => {
+                        onSelect({ kind: "exam" });
+                        if (quotaId) void focusExamQuotaWhenReady(quotaId);
+                      }}
+                    >
+                      {tQuota("goToQuota")}
                     </Button>
                   ) : (
                     target && (

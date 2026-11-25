@@ -1,7 +1,8 @@
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import type { BlockField } from "./components/block-form-fields";
+import { extractExamQuotaId, findExamQuotaForIssue } from "./exam-overview";
 import type { CheckIssue, ExamCheckResult, ExamPathRef, PathChoice } from "./review-types";
-import type { ExamDetail, ExamPart, ExamSection, ExamSectionState, QuestionBlock, StructureCombination } from "./types";
+import type { ExamDetail, ExamPart, ExamQuota, ExamSection, ExamSectionState, QuestionBlock, StructureCombination } from "./types";
 
 /** Giới hạn dài hơn khi người dùng chọn "Kiểm tra lại với thời gian dài hơn" (mẫu gửi server). */
 export const EXTENDED_CHECK_TIME_LIMIT_SECONDS = 120;
@@ -222,6 +223,17 @@ export function issueRuleHref(examId: string, issue: Pick<CheckIssue, "ruleId" |
   if (!issue.ruleId || !issue.sectionId) return null;
   const base = `/exams/${encodeURIComponent(examId)}/structure`;
   return `${base}?section=${encodeURIComponent(issue.sectionId)}&rule=${encodeURIComponent(issue.ruleId)}`;
+}
+
+export function issueQuotaHref(
+  examId: string,
+  issue: Pick<CheckIssue, "code" | "key" | "dimension" | "gradeCode" | "difficultyCode">,
+  quotas?: readonly ExamQuota[],
+): string | null {
+  if (issue.code !== "EXAM_QUOTA_DEVIATION") return null;
+  const quotaId = findExamQuotaForIssue(issue, quotas)?.id ?? extractExamQuotaId(issue);
+  const base = `/exams/${encodeURIComponent(examId)}/structure?exam=1`;
+  return quotaId ? `${base}&quota=${encodeURIComponent(quotaId)}` : base;
 }
 
 /** Môn theo id, tìm trong phần chung, `subjectPool` và môn của mọi lựa chọn. */

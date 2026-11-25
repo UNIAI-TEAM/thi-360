@@ -1,4 +1,5 @@
 import { activeGroupCounts, apportionByPercent, blockPointsEach, countOf, subjectChoiceCounts, sum } from "./matrix";
+import type { CheckIssue } from "./review-types";
 import type { ExamPart, ExamQuota, ExamSection, MatrixUnit, StructureCombination } from "./types";
 
 /** Môn học viên làm trên một đường của phần, kèm số câu của môn trên đường đó (`null`: môn không khai số câu). */
@@ -122,4 +123,135 @@ export function bucketCounts(quota: ExamQuota, total: number): number[] {
 
 export function canRequireQuota(quota: Pick<ExamQuota, "subjectCodes">): boolean {
   return quota.subjectCodes?.length === 1;
+}
+
+export function examQuotaAnchor(quotaId: string): string {
+  return `exam-quota-${quotaId}`;
+}
+
+/**
+ * Tach `quota.id` tu `issue.key` cua `EXAM_QUOTA_DEVIATION`:
+ * `ExamCheckIssues.key` tao `EXAM_QUOTA_DEVIATION|exam|<7 truong KEY_FIELDS>`, sau do `ExamCheckDistribution` noi `|<quota.id><signature>`.
+ */
+export function extractExamQuotaId(issue: Pick<CheckIssue, "code" | "key">): string | null {
+  if (issue.code !== "EXAM_QUOTA_DEVIATION" || !issue.key) return null;
+  const segments = issue.key.split("|");
+  if (segments[0] !== "EXAM_QUOTA_DEVIATION") return null;
+  if (segments[1] === "exam") {
+    const quotaIndex = segments[9]?.startsWith("slot:") ? 10 : 9;
+    const raw = (segments[quotaIndex] ?? "").split("@")[0]?.trim() ?? "";
+    return raw || null;
+  }
+  if (segments.length >= 2 && segments[1] && segments[1] !== "exam") {
+    const raw = segments[1].split("@")[0]?.trim() ?? "";
+    return raw || null;
+  }
+  return null;
+}
+
+export function findExamQuotaForIssue(
+  issue: Pick<CheckIssue, "code" | "key" | "dimension" | "gradeCode" | "difficultyCode">,
+  quotas: readonly ExamQuota[] | undefined,
+): ExamQuota | null {
+  if (issue.code !== "EXAM_QUOTA_DEVIATION" || !quotas || quotas.length === 0) return null;
+  const quotaId = extractExamQuotaId(issue);
+  if (quotaId) {
+    const exact = quotas.find((quota) => quota.id === quotaId);
+    if (exact) return exact;
+  }
+  const byKey = quotas.find(
+    (quota) =>
+      Boolean(quota.id) &&
+      (issue.key.endsWith(`|${quota.id}`) || issue.key.includes(`|${quota.id}|`) || issue.key.includes(`|${quota.id}@`)),
+  );
+  if (byKey) return byKey;
+
+  const ordered = [
+    ...quotas.filter((quota) => quota.enforcement === "REFERENCE"),
+    ...quotas.filter((quota) => quota.enforcement !== "REFERENCE"),
+  ];
+  const bucketCode = issue.dimension === "DIFFICULTY" ? issue.difficultyCode : issue.gradeCode;
+  if (bucketCode) {
+    const byBucket = ordered.find(
+      (quota) =>
+        (!issue.dimension || quota.dimension === issue.dimension) &&
+        quota.buckets.some((bucket) => bucket.codes.join("+") === bucketCode),
+    );
+    if (byBucket) return byBucket;
+  }
+  if (issue.dimension) {
+    const byDimension = ordered.find((quota) => quota.dimension === issue.dimension);
+    if (byDimension) return byDimension;
+  }
+  return null;
+}
+
+export interface QuotaSectionTarget {
+  sectionId: string;
+  subjectCode: string;
+  partId: string;
+  partName: string;
+}
+
+export function findQuotaSections(
+  parts: readonly ExamPart[],
+  quota: Pick<ExamQuota, "subjectCodes" | "excludeSubjectCodes">,
+): QuotaSectionTarget[] {
+  const included = (subjectCode: string) =>
+    (quota.subjectCodes?.length ? quota.subjectCodes.includes(subjectCode) : true) &&
+    !(quota.excludeSubjectCodes ?? []).includes(subjectCode);
+  const seenSubjects = new Set<string>();
+  const targets: QuotaSectionTarget[] = [];
+  for (const part of parts) {
+    const allSections = [
+      ...(part.sections ?? []),
+      ...(part.subjectPool ?? []),
+      ...(part.options ?? []).flatMap((option) => option.sections ?? []),
+    ];
+    for (const section of allSections) {
+      if (!included(section.subjectCode) || seenSubjects.has(section.subjectCode)) continue;
+      seenSubjects.add(section.subjectCode);
+      targets.push({ sectionId: section.id, subjectCode: section.subjectCode, partId: part.id, partName: part.name ?? "" });
+    }
+  }
+  return targets;
+}
+
+const quotaHighlightTimers = new WeakMap<HTMLElement, number>();
+
+export function focusExamQuota(quotaId: string, root: ParentNode = document): boolean {
+  const selector = `[data-exam-quota-id="${CSS.escape(quotaId)}"]`;
+  const section = root.querySelector<HTMLElement>(selector);
+  if (!section) return false;
+  section.scrollIntoView({ behavior: "smooth", block: "center" });
+  const control =
+    section.querySelector<HTMLElement>(
+      'button[role="switch"]:not(:disabled), input[type="radio"][value="REQUIRED"]:not(:disabled)',
+    ) ??
+    section.querySelector<HTMLElement>('input:not([type="radio"]):not(:disabled):not([readonly])') ??
+    section.querySelector<HTMLElement>("input:not(:disabled), button:not(:disabled)") ??
+    section;
+  control.focus({ preventScroll: true });
+  section.setAttribute("data-quota-highlight", "");
+  window.clearTimeout(quotaHighlightTimers.get(section));
+  quotaHighlightTimers.set(
+    section,
+    window.setTimeout(() => {
+      section.removeAttribute("data-quota-highlight");
+      quotaHighlightTimers.delete(section);
+    }, 3000),
+  );
+  return true;
+}
+
+export function focusExamQuotaWhenReady(quotaId: string, root: ParentNode = document, frames = 30): Promise<boolean> {
+  const { promise, resolve } = Promise.withResolvers<boolean>();
+  let left = frames;
+  const look = () => {
+    if (focusExamQuota(quotaId, root)) resolve(true);
+    else if (--left <= 0) resolve(false);
+    else requestAnimationFrame(look);
+  };
+  requestAnimationFrame(look);
+  return promise;
 }
