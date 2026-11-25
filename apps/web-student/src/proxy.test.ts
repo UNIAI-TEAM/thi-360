@@ -214,6 +214,45 @@ describe("web-student proxy.ts", () => {
       expect(student.headers.get("location")).toBe("http://localhost:3000/home");
     });
   });
+
+  describe("đường công khai cho app mobile (WEB-1, UNI-2799)", () => {
+    it("matcher khớp cả ba đường dẫn bảng màu mobile và xác minh deep link", () => {
+      const matcher = new RegExp(`^${config.matcher[0]}$`);
+      expect(matcher.test("/mobile/appearance-tokens.json")).toBe(true);
+      expect(matcher.test("/.well-known/assetlinks.json")).toBe(true);
+      expect(matcher.test("/.well-known/apple-app-site-association")).toBe(true);
+    });
+
+    it.each([
+      "/mobile/appearance-tokens.json",
+      "/mobile/appearance-tokens.json?v=1",
+      "/.well-known/assetlinks.json",
+      "/.well-known/apple-app-site-association",
+    ])("cho phép truy cập %s không cần đăng nhập và không gọi backend refresh dù có thi360_rt", async (path) => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const response = await proxy(
+        new NextRequest(`http://localhost:3000${path}`, {
+          headers: { cookie: "thi360_rt=refresh-token" },
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["/mobile", "http%3A%2F%2Flocalhost%3A3000%2Fmobile"],
+      ["/mobile/other", "http%3A%2F%2Flocalhost%3A3000%2Fmobile%2Fother"],
+      ["/.well-known", "http%3A%2F%2Flocalhost%3A3000%2F.well-known"],
+      ["/home", "http%3A%2F%2Flocalhost%3A3000%2Fhome"],
+      ["/account/profile", "http%3A%2F%2Flocalhost%3A3000%2Faccount%2Fprofile"],
+      ["/exams", "http%3A%2F%2Flocalhost%3A3000%2Fexams"],
+    ])("đường cần phiên %s vẫn chuyển 307 sang /login kèm callbackUrl", async (path, encoded) => {
+      const response = await proxy(new NextRequest(`http://localhost:3000${path}`));
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe(`http://localhost:3000/login?callbackUrl=${encoded}`);
+    });
+  });
 });
 
 describe("web-student proxy.ts tự làm mới phiên khi thi360_ctx hết hạn (UNI-2574)", () => {

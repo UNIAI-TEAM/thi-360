@@ -2,11 +2,11 @@ name: Web
 
 on:
   push:
-    branches: [develop]
-    paths: ["apps/**", "packages/**", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "turbo.json", ".github/workflows/web.yml"]
+    branches: [develop, "integration/**"]
+    paths: ["apps/web-admin/**", "apps/web-student/**", "packages/**", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "turbo.json", ".github/workflows/web.yml"]
   pull_request:
-    branches: [develop]
-    paths: ["apps/**", "packages/**", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "turbo.json", ".github/workflows/web.yml"]
+    branches: [develop, "integration/**"]
+    paths: ["apps/web-admin/**", "apps/web-student/**", "packages/**", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "turbo.json", ".github/workflows/web.yml"]
 
 permissions:
   contents: read

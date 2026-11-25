@@ -215,7 +215,7 @@ App học viên dùng cùng cấu hình này qua một route của web học vi�
 
 ### 5.9 App học viên: đăng nhập, phiên và màu (đã chốt, chưa có mã)
 
-Nguồn: đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (R-3 đến R-12) và kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (mục B1).
+Nguồn: đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (R-3 đến R-14) và kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (mục B1).
 
 ```
 App ──POST /api/v1/auth/mobile/login──► thi360-api
@@ -227,11 +227,11 @@ App ──mọi request sau đó: `Authorization: Bearer <accessToken>`──►
 ```
 
 - **API riêng cho app:** `POST /api/v1/auth/mobile/login`, `mobile/refresh`, `mobile/logout`, `mobile/register/verify`. Token trả trong thân phản hồi, không đặt cookie. Các endpoint còn lại (`me`, hồ sơ, đăng ký, gửi lại mã, quên và đặt lại mật khẩu, đổi mật khẩu) dùng chung với web. Backend đã nhận `Authorization: Bearer` và miễn kiểm XSRF cho request loại này từ trước.
-- **Kênh đăng nhập:** bản ghi phiên ở Redis có `LoginChannel { WEB, MOBILE }`. Kênh quyết định client Keycloak dùng khi làm mới và đăng xuất. Phiên mobile tính chung trong giới hạn 5 phiên của một tài khoản.
+- **Kênh đăng nhập:** bản ghi phiên ở Redis có `LoginChannel { WEB, MOBILE }`. Kênh quyết định client Keycloak dùng khi làm mới và đăng xuất, và việc kiểm 403 `APP_STUDENT_ONLY` (kèm thu hồi phiên) khi làm mới nếu tài khoản vừa được gán vai trò `MANAGE`. Phiên mobile tính chung trong giới hạn 5 phiên của một tài khoản.
 - **Thời hạn phiên mobile:** client `thi360-mobile` dùng offline token nên không đổi thời hạn phiên của web. Phiên hết sau 7 ngày không dùng và tối đa 30 ngày kể từ lúc đăng nhập; hạn 30 ngày của bản ghi phiên ở Redis là lớp chặn thứ hai cho mốc tối đa.
 - **Ngôn ngữ thư:** `mobile/login`, đăng ký và gửi lại mã đọc `Accept-Language` (`vi` hoặc `en`) khi request không có cookie `thi360_locale`.
 - **Trên máy:** token chỉ nằm trong kho bảo mật của hệ điều hành (Android: mã hóa bằng khóa trong Keystore; iOS: Keychain chỉ dùng trên máy đó). Mọi màn đọc một máy trạng thái phiên chung (`SignedOut`, `MustChangePassword`, `Active`, `Locked`); không màn nào tự giữ token. Khi đã bật sinh trắc học, app tự khóa sau 5 phút rời app hoặc khi mở nguội.
-- **Màu theo cấu hình admin:** web học viên có route công khai `GET /mobile/appearance-tokens.json`, là nơi duy nhất chạy `deriveTokens` cho app. Route đọc `GET /api/v1/appearance` rồi trả `version`, `mode`, `presetId` và hai bảng màu `light`, `dark`; `ETag` là `version`, `Cache-Control: no-cache`. Backend lỗi hoặc `presetId` lạ thì trả 503 và app giữ bảng màu đang dùng. Không port công thức màu sang Kotlin hay Swift.
+- **Màu theo cấu hình admin:** web học viên có route công khai `GET /mobile/appearance-tokens.json`, là nơi duy nhất chạy `deriveTokens` cho app. Route đọc `GET /api/v1/appearance` rồi trả `version`, `mode`, `presetId` và hai bảng màu `light`, `dark` (`Palette` 17 màu); `ETag` là `version`, `Cache-Control: no-cache`, trả 304 khi `If-None-Match` khớp. Backend lỗi hoặc `presetId` lạ thì trả 503 và app giữ bảng màu đang dùng. Không port công thức màu sang Kotlin hay Swift.
 - **Deep link đặt lại mật khẩu:** web học viên phục vụ `/.well-known/assetlinks.json` và `/.well-known/apple-app-site-association`, chỉ khai đường dẫn `/reset-password`. Máy đã cài app thì liên kết trong thư mở app; chưa cài thì mở trang web như hiện nay. Đợt đầu chỉ bật trên tên miền demo.
 - **Hợp đồng dùng chung:** `contracts/mobile/` giữ tệp mẫu của từng phản hồi (`auth/`, `api/`, `appearance/`). Bên sở hữu có test khẳng định tệp khớp phản hồi thật; hai app dùng các tệp này làm dữ liệu cho máy chủ giả trong test.
 
@@ -287,5 +287,5 @@ Backend chấp nhận token của cả hai nguồn phát hành; token của `mas
   - Mã OTP xác minh email và mã đặt lại mật khẩu chỉ lưu dạng HMAC-SHA256 dùng pepper phía máy chủ (`THI360_TOKEN_PEPPER` qua `TokenPepperProperties`, bắt buộc ngoài `dev`/`test`/`e2e`); không ghi mật khẩu, token, link reset vào log hay nhật ký.
   - `/api/v1/test/**` chỉ đăng ký khi bật profile `e2e` (tắt thì `TestApiAbsentSecurityConfig` trả `404` trước chuỗi xác thực) và `E2eProfileGuard` chặn khởi động nếu `e2e` đi cùng `prod` (lưu ý `E2eProfileGuard` và `VnpayModeStartupGuard` chỉ kích hoạt chốt chặn môi trường thật khi profile `prod` được bật).
   - Trang giả lập `/mock-vnpay` chỉ mở khi `THI360_VNPAY_MODE=MOCK` trong `(dev | test | e2e) & !prod` (`MockVnpayPageCondition`); `VnpayModeStartupGuard`, `VnpayRealModeStartupGuard` và `DevEmailCodeGuard` chặn cấu hình thử nghiệm lọt sang môi trường thật (khi bật profile `prod`).
-- **App học viên (đã chốt, chưa có mã):** API mobile từ chối tài khoản có vai trò `MANAGE` và tài khoản realm `master` bằng 403 `APP_STUDENT_ONLY`; `mobile/login` dùng chung chính sách chặn đăng nhập sai và giới hạn tần suất với `/auth/login`; token trên máy chỉ nằm trong kho bảo mật của hệ điều hành và không vào bản sao lưu.
+- **App học viên (đã chốt, chưa có mã):** API mobile từ chối tài khoản có vai trò `MANAGE` và tài khoản realm `master` bằng 403 `APP_STUDENT_ONLY` (kể cả khi làm mới phiên nếu tài khoản được gán vai trò quản trị); `mobile/login` dùng chung chính sách chặn đăng nhập sai và giới hạn tần suất với `/auth/login`, `mobile/register/verify` dùng chung giới hạn tần suất nhóm đăng ký với `/auth/register/verify`; token trên máy chỉ nằm trong kho bảo mật của hệ điều hành và không vào bản sao lưu.
 - Bí mật nằm trong biến môi trường, không commit (`.env` nằm trong `.gitignore`, có `.env.example`).

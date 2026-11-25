@@ -77,6 +77,15 @@ Chạy từ thư mục gốc (Node 22 trên PATH). Ba bộ độc lập; CI ch�
 
 Kiểm tra không lệch OpenAPI sau `verify`: `diff -u packages/api-client/openapi.json backend/target/openapi.json` rồi `pnpm --filter @thi360/api-client generate && git diff --exit-code packages/api-client` đều phải sạch. Trên Windows có DB dùng chung xem mục trên: `THI360_DB_PORT=54320 SPRING_FLYWAY_OUT_OF_ORDER=true E2E_USE_BUILT=1 pnpm --filter @thi360/e2e test`.
 
+## App học viên (Android & iOS)
+
+Ứng dụng di động cho cổng thi học viên được viết native riêng cho từng nền tảng (đợt đầu gồm khung điều hướng và xác thực, `UNI-2785`):
+
+- **Android** (`apps/android/README.md`, tạo trong task `AND-1`): Kotlin, Jetpack Compose, Material 3, hỗ trợ từ Android 8.0 (API 26).
+- **iOS** (`apps/ios/README.md`, tạo trong task `IOS-1`): Swift, SwiftUI, hỗ trợ từ iOS 17, sinh dự án bằng XcodeGen trên macOS.
+- **Hợp đồng dùng chung** (`contracts/mobile/`, tạo trong `BE-1`, `WEB-1`): tệp mẫu phản hồi `auth/`, `api/`, `appearance/` và bản lọc OpenAPI `contracts/mobile/openapi-mobile.json` để sinh client lúc build.
+- **Tài liệu đợt chạy:** [Đặc tả](docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md), [Kế hoạch](docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md), [Bản thiết kế 28 màn](docs/design/app-hoc-vien/README.md); quy ước giao diện app nằm ở `DESIGN.md` mục 11 và kiến trúc xác thực/phiên/màu ở `ARCHITECTURE.md` mục 5.9.
+
 ## Đăng nhập dev (tài khoản mẫu)
 
 Khi chạy backend với profile `dev` (`api,worker,dev`), `DevDataInitializer` tự tạo sẵn các tài khoản sau (chỉ ở môi trường dev). Đăng nhập tại http://localhost:3000/login (một nơi đăng nhập cho cả web học viên và web admin):
@@ -187,10 +196,13 @@ Trên máy chủ Keycloak thật (dùng chung với các dự án khác), ứng 
 backend/            Spring Boot (modular monolith)
 apps/web-admin/     Next.js, trang quản trị
 apps/web-student/   Next.js, trang học viên
+apps/android/       app học viên Android (Kotlin + Compose, API 26+; tạo trong đợt app học viên)
+apps/ios/           app học viên iOS (Swift + SwiftUI, iOS 17+, XcodeGen; tạo trong đợt app học viên)
 packages/ui/        token và thành phần giao diện dùng chung (`@thi360/ui`)
 packages/web-kit/   proxy, phiên và tiện ích Next.js dùng chung (`@thi360/web-kit`)
 packages/api-client/  client sinh từ OpenAPI
 packages/config/    cấu hình TypeScript dùng chung
+contracts/mobile/   hợp đồng dùng chung giữa backend, web và hai app (`auth/`, `api/`, `appearance/`, `openapi-mobile.json`; tạo trong đợt app học viên)
 e2e/                bộ kiểm thử đầu-cuối Playwright (`@thi360/e2e`)
 infra/              Docker Compose, realm Keycloak
 docs/               spec, plan

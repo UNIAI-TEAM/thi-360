@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Thi 360</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_my_exams">My exams</string>
+    <string name="nav_history">History</string>
+    <string name="nav_account">Account</string>
+    <string name="nav_primary_description">Main navigation</string>
+    <string name="placeholder_empty_title">No content yet</string>
+    <string name="placeholder_empty_description">Content for this section will be added in a future update.</string>
+    <string name="account_placeholder_description">Full account details will be added in a future update. You can switch language and appearance right here.</string>
+    <string name="account_section_display">Display</string>
+    <string name="account_language_label">Language</string>
+    <string name="account_language_vi">Tiếng Việt</string>
+    <string name="account_language_en">English</string>
+    <string name="account_theme_label">Appearance</string>
+    <string name="account_theme_light">Light</string>
+    <string name="account_theme_dark">Dark</string>
+    <string name="account_detail_title">Account details</string>
+    <string name="account_detail_placeholder">Select an item from the left column to view details.</string>
+</resources>
