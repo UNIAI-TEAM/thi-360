@@ -47,6 +47,16 @@ final class StateRestorationTests: XCTestCase {
             let switchedRegular = app.otherElements["shell.layout.phoneTwoPaneBook"].waitForExistence(timeout: 5)
                 || app.otherElements["shell.layout.iPadSidebar"].waitForExistence(timeout: 5)
             XCTAssertTrue(switchedRegular, "Layout must transition from compact to regular")
+
+            if app.otherElements["shell.layout.phoneTwoPaneBook"].exists {
+                let leftTabBar = app.otherElements["shell.duo.leftTabBar"]
+                XCTAssertTrue(leftTabBar.waitForExistence(timeout: 5), "iPhone regular book mode must render tab bar in left half")
+                XCTAssertLessThanOrEqual(
+                    leftTabBar.frame.maxX,
+                    app.windows.firstMatch.frame.midX + 2,
+                    "Left tab bar must remain within the left half of the two-pane book layout"
+                )
+            }
         } else {
             XCTAssertTrue(
                 app.otherElements["shell.layout.compactTabBar"].waitForExistence(timeout: 5),

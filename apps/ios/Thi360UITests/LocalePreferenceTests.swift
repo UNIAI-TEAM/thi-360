@@ -24,6 +24,14 @@ final class LocalePreferenceTests: XCTestCase {
 
         let englishButton = app.buttons["shell.account.locale.en"]
         XCTAssertTrue(englishButton.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(round(englishButton.frame.width * 100) / 100, 44)
+        XCTAssertGreaterThanOrEqual(round(englishButton.frame.height * 100) / 100, 44)
+
+        let darkButton = app.buttons["shell.account.theme.dark"]
+        XCTAssertTrue(darkButton.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(round(darkButton.frame.width * 100) / 100, 44)
+        XCTAssertGreaterThanOrEqual(round(darkButton.frame.height * 100) / 100, 44)
+
         englishButton.tap()
 
         XCTAssertTrue(app.staticTexts["Account"].waitForExistence(timeout: 5))

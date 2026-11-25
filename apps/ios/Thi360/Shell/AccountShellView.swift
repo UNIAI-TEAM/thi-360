@@ -64,16 +64,20 @@ struct AccountShellView: View {
 
     private var languageRow: some View {
         let picker = HStack(spacing: 4) {
-            localeOptionButton(
-                target: .vi,
+            segmentedOptionButton(
                 title: ShellStrings.text("shell.account.languageVi", locale: locale),
+                isSelected: preferences.locale == .vi,
                 identifier: "shell.account.locale.vi"
-            )
-            localeOptionButton(
-                target: .en,
+            ) {
+                preferences.locale = .vi
+            }
+            segmentedOptionButton(
                 title: ShellStrings.text("shell.account.languageEn", locale: locale),
+                isSelected: preferences.locale == .en,
                 identifier: "shell.account.locale.en"
-            )
+            ) {
+                preferences.locale = .en
+            }
         }
         .padding(3)
         .background(
@@ -115,16 +119,20 @@ struct AccountShellView: View {
 
     private var appearanceRow: some View {
         let picker = HStack(spacing: 4) {
-            themeOptionButton(
-                target: .light,
+            segmentedOptionButton(
                 title: ShellStrings.text("shell.account.appearanceLight", locale: locale),
+                isSelected: effectiveTheme == .light,
                 identifier: "shell.account.theme.light"
-            )
-            themeOptionButton(
-                target: .dark,
+            ) {
+                preferences.themeMode = .light
+            }
+            segmentedOptionButton(
                 title: ShellStrings.text("shell.account.appearanceDark", locale: locale),
+                isSelected: effectiveTheme == .dark,
                 identifier: "shell.account.theme.dark"
-            )
+            ) {
+                preferences.themeMode = .dark
+            }
         }
         .padding(3)
         .background(
@@ -176,50 +184,28 @@ struct AccountShellView: View {
         .accessibilityHidden(true)
     }
 
-    private func localeOptionButton(target: AppLocale, title: String, identifier: String) -> some View {
-        let isSelected = preferences.locale == target
-        return Button {
-            preferences.locale = target
-        } label: {
+    private func segmentedOptionButton(
+        title: String,
+        isSelected: Bool,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
             Text(title)
                 .font(.footnote.weight(isSelected ? .semibold : .medium))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(isSelected ? palette.onPrimaryColor : palette.textSecondaryColor)
                 .padding(.horizontal, 10)
-                .frame(minHeight: 38)
+                .frame(minWidth: 44, minHeight: 38)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .fill(isSelected ? palette.primaryFillColor : Color.clear)
                 )
+                .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .frame(minHeight: 44)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-        .accessibilityIdentifier(identifier)
-    }
-
-    private func themeOptionButton(target: ThemeMode, title: String, identifier: String) -> some View {
-        let isSelected = effectiveTheme == target
-        return Button {
-            preferences.themeMode = target
-        } label: {
-            Text(title)
-                .font(.footnote.weight(isSelected ? .semibold : .medium))
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(isSelected ? palette.onPrimaryColor : palette.textSecondaryColor)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 38)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isSelected ? palette.primaryFillColor : Color.clear)
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .frame(minHeight: 44)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityIdentifier(identifier)
     }
