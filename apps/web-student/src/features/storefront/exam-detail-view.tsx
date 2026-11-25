@@ -137,6 +137,15 @@ export function ExamDetailView({ product }: { product: ProductDetail }) {
   const storefront = useTranslations("storefront");
   const questions = rangeText(product.questionCount);
   const minutes = rangeText(product.durationMinutes);
+  const durationLabel =
+    minutes !== null
+      ? storefront("units.minutes", { value: minutes, count: product.durationMinutes?.max ?? 0 })
+      : null;
+  const timingBehavior =
+    product.scoring.timing === "PER_PART" || product.scoring.timing === "SHARED"
+      ? t(`how.timing${product.scoring.timing}`)
+      : null;
+  const timingText = [durationLabel, timingBehavior].filter(Boolean).join(" · ");
   const fixedTypes = mergeAnswerTypes(product.parts.flatMap((part) => part.answerTypes));
   const hasEssay = allAnswerGroups(product).some(
     (group) => (group.childAnswerType ?? group.questionType) === ESSAY_TYPE,
@@ -351,10 +360,10 @@ export function ExamDetailView({ product }: { product: ProductDetail }) {
                   <dd>{t("how.maxScore", { score: String(maxScore) })}</dd>
                 </div>
               )}
-              {product.scoring.timing && (product.scoring.timing === "PER_PART" || product.scoring.timing === "SHARED") && (
+              {timingText && (
                 <div className="flex flex-col gap-1">
                   <dt className="text-field-label text-text-muted">{t("how.timing")}</dt>
-                  <dd>{t(`how.timing${product.scoring.timing}`)}</dd>
+                  <dd>{timingText}</dd>
                 </div>
               )}
               <div className="flex flex-col gap-1">
