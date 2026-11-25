@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Thi 360</string>
+    <string name="nav_home">Trang chủ</string>
+    <string name="nav_my_exams">Bài thi của tôi</string>
+    <string name="nav_history">Lịch sử</string>
+    <string name="nav_account">Tài khoản</string>
+    <string name="nav_primary_description">Điều hướng chính</string>
+    <string name="placeholder_empty_title">Chưa có nội dung</string>
+    <string name="placeholder_empty_description">Nội dung mục này sẽ được bổ sung ở đợt sau.</string>
+    <string name="account_placeholder_description">Thông tin tài khoản đầy đủ sẽ được bổ sung ở đợt sau. Bạn có thể đổi ngôn ngữ và chế độ hiển thị ngay tại đây.</string>
+    <string name="account_section_display">Hiển thị</string>
+    <string name="account_language_label">Ngôn ngữ</string>
+    <string name="account_language_vi">Tiếng Việt</string>
+    <string name="account_language_en">English</string>
+    <string name="account_theme_label">Giao diện</string>
+    <string name="account_theme_light">Sáng</string>
+    <string name="account_theme_dark">Tối</string>
+    <string name="account_detail_title">Chi tiết tài khoản</string>
+    <string name="account_detail_placeholder">Chọn một mục ở cột bên trái để xem chi tiết.</string>
+</resources>
