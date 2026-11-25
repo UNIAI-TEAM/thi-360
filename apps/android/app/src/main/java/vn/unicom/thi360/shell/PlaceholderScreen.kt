@@ -247,7 +247,7 @@ private fun AccountPreferencesColumn(
 ) {
     val colors = Thi360Theme.colors
     val selectedLocale = preferences.effectiveLocale
-    val selectedMode = preferences.effectiveThemeMode()
+    val selectedMode = Thi360Theme.themeMode
     val buttonColors = SegmentedButtonDefaults.colors(
         activeContainerColor = colors.primaryContainer,
         activeContentColor = colors.primaryText,

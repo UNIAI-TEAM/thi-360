@@ -2,9 +2,12 @@ package vn.unicom.thi360
 
 import androidx.compose.ui.graphics.Color
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.theme.BrandPalette
+import vn.unicom.thi360.core.theme.contrastRatio
+import vn.unicom.thi360.core.theme.toMaterialColorScheme
 
 class BrandPaletteTest {
 
@@ -51,5 +54,24 @@ class BrandPaletteTest {
         assertEquals(Color(0xFF3A444C), dark.borderStrong)
         assertEquals(Color(0xFFF87171), dark.dangerText)
         assertEquals(Color(0xFF2E1517), dark.dangerBg)
+    }
+
+    @Test
+    fun materialColorSchemeMeetsWcagContrastForErrorAndPrimaryRoles() {
+        val lightScheme = BrandPalette.Default.colorsFor(ThemeMode.LIGHT)
+            .toMaterialColorScheme(ThemeMode.LIGHT)
+        assertEquals(Color(0xFFFFFFFF), lightScheme.onError)
+        assertTrue(contrastRatio(lightScheme.onError, lightScheme.error) >= 4.5f)
+        assertTrue(contrastRatio(lightScheme.onErrorContainer, lightScheme.errorContainer) >= 4.5f)
+        assertTrue(contrastRatio(lightScheme.onPrimary, lightScheme.primary) >= 4.5f)
+        assertTrue(contrastRatio(lightScheme.onSecondaryContainer, lightScheme.secondaryContainer) >= 4.5f)
+
+        val darkScheme = BrandPalette.Default.colorsFor(ThemeMode.DARK)
+            .toMaterialColorScheme(ThemeMode.DARK)
+        assertEquals(Color(0xFF11181C), darkScheme.onError)
+        assertTrue(contrastRatio(darkScheme.onError, darkScheme.error) >= 4.5f)
+        assertTrue(contrastRatio(darkScheme.onErrorContainer, darkScheme.errorContainer) >= 4.5f)
+        assertTrue(contrastRatio(darkScheme.onPrimary, darkScheme.primary) >= 4.5f)
+        assertTrue(contrastRatio(darkScheme.onSecondaryContainer, darkScheme.secondaryContainer) >= 4.5f)
     }
 }

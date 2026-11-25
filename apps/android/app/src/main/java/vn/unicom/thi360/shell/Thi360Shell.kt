@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -57,6 +58,7 @@ fun Thi360App(
     navController: NavHostController = rememberNavController(),
     startDestination: String = Destination.Home.route,
     accountContent: (@Composable (isTwoPaneWidth: Boolean) -> Unit)? = null,
+    extraDestinations: NavGraphBuilder.() -> Unit = {},
 ) {
     Thi360Theme(
         preferences = preferences,
@@ -69,6 +71,7 @@ fun Thi360App(
             onSelectThemeMode = onSelectThemeMode,
             startDestination = startDestination,
             accountContent = accountContent,
+            extraDestinations = extraDestinations,
         )
     }
 }
@@ -81,6 +84,7 @@ private data class ShellPaneInput(
     val onSelectThemeMode: (ThemeMode) -> Unit,
     val startDestination: String,
     val accountContent: (@Composable (Boolean) -> Unit)?,
+    val extraDestinations: NavGraphBuilder.() -> Unit,
 )
 
 @Composable
@@ -92,12 +96,18 @@ fun Thi360Shell(
     modifier: Modifier = Modifier,
     startDestination: String = Destination.Home.route,
     accountContent: (@Composable (isTwoPaneWidth: Boolean) -> Unit)? = null,
+    extraDestinations: NavGraphBuilder.() -> Unit = {},
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = Destination.fromRoute(backStackEntry?.destination?.route ?: startDestination)
+    val currentNavDestination = backStackEntry?.destination
+    val activeShellDestination = if (currentNavDestination != null) {
+        currentNavDestination.shellDestination()
+    } else {
+        Destination.fromRouteOrNull(startDestination)
+    }
 
     val navigateTo: (Destination) -> Unit = { target ->
-        if (target != currentDestination) {
+        if (currentNavDestination?.route != target.route) {
             navController.navigate(target.route) {
                 popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
@@ -110,28 +120,17 @@ fun Thi360Shell(
 
     val navContent = remember(navController) {
         movableContentOf<ShellPaneInput> { input ->
-            if (input.accountContent != null) {
-                AppNavHost(
-                    navController = navController,
-                    navLayout = input.layout,
-                    isTwoPaneWidth = input.isTwoPane,
-                    preferences = input.preferences,
-                    onSelectLocale = input.onSelectLocale,
-                    onSelectThemeMode = input.onSelectThemeMode,
-                    startDestination = input.startDestination,
-                    accountContent = input.accountContent,
-                )
-            } else {
-                AppNavHost(
-                    navController = navController,
-                    navLayout = input.layout,
-                    isTwoPaneWidth = input.isTwoPane,
-                    preferences = input.preferences,
-                    onSelectLocale = input.onSelectLocale,
-                    onSelectThemeMode = input.onSelectThemeMode,
-                    startDestination = input.startDestination,
-                )
-            }
+            AppNavHost(
+                navController = navController,
+                navLayout = input.layout,
+                isTwoPaneWidth = input.isTwoPane,
+                preferences = input.preferences,
+                onSelectLocale = input.onSelectLocale,
+                onSelectThemeMode = input.onSelectThemeMode,
+                startDestination = input.startDestination,
+                accountContent = input.accountContent,
+                extraDestinations = input.extraDestinations,
+            )
         }
     }
 
@@ -153,25 +152,96 @@ fun Thi360Shell(
             onSelectThemeMode = onSelectThemeMode,
             startDestination = startDestination,
             accountContent = accountContent,
+            extraDestinations = extraDestinations,
         )
 
-        when (navLayout) {
-            NavLayout.BottomBar -> {
-                Scaffold(
-                    containerColor = colors.bgPage,
-                    contentWindowInsets = WindowInsets.safeDrawing,
-                    bottomBar = {
-                        NavigationBar(
-                            containerColor = colors.bgSurface,
-                            tonalElevation = 0.dp,
+        if (activeShellDestination == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
+            ) {
+                navContent(paneInput)
+            }
+        } else {
+            when (navLayout) {
+                NavLayout.BottomBar -> {
+                    Scaffold(
+                        containerColor = colors.bgPage,
+                        contentWindowInsets = WindowInsets.safeDrawing,
+                        bottomBar = {
+                            NavigationBar(
+                                containerColor = colors.bgSurface,
+                                tonalElevation = 0.dp,
+                                modifier = Modifier
+                                    .testTag(ShellTestTags.BOTTOM_BAR)
+                                    .semantics { contentDescription = navDescription },
+                            ) {
+                                Destination.entries.forEach { destination ->
+                                    val selected = destination == activeShellDestination
+                                    val label = stringResource(destination.labelRes)
+                                    NavigationBarItem(
+                                        selected = selected,
+                                        onClick = { navigateTo(destination) },
+                                        icon = {
+                                            Icon(
+                                                painter = painterResource(destination.iconRes),
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        label = {
+                                            Text(
+                                                text = label,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = colors.primaryText,
+                                            selectedTextColor = colors.primaryText,
+                                            indicatorColor = colors.primaryContainer,
+                                            unselectedIconColor = colors.textMuted,
+                                            unselectedTextColor = colors.textMuted,
+                                        ),
+                                        modifier = Modifier.testTag(ShellTestTags.navItem(destination)),
+                                    )
+                                }
+                            }
+                        },
+                    ) { innerPadding ->
+                        Box(
                             modifier = Modifier
-                                .testTag(ShellTestTags.BOTTOM_BAR)
+                                .fillMaxSize()
+                                .padding(innerPadding),
+                        ) {
+                            navContent(paneInput)
+                        }
+                    }
+                }
+
+                NavLayout.Rail -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.safeDrawing),
+                    ) {
+                        NavigationRail(
+                            containerColor = colors.bgPage,
+                            header = {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                BrandMark(sizeDp = 36)
+                                Spacer(modifier = Modifier.height(8.dp))
+                            },
+                            modifier = Modifier
+                                .width(96.dp)
+                                .fillMaxHeight()
+                                .testTag(ShellTestTags.NAV_RAIL)
                                 .semantics { contentDescription = navDescription },
                         ) {
                             Destination.entries.forEach { destination ->
-                                val selected = destination == currentDestination
+                                val selected = destination == activeShellDestination
                                 val label = stringResource(destination.labelRes)
-                                NavigationBarItem(
+                                NavigationRailItem(
                                     selected = selected,
                                     onClick = { navigateTo(destination) },
                                     icon = {
@@ -183,11 +253,13 @@ fun Thi360Shell(
                                     label = {
                                         Text(
                                             text = label,
-                                            maxLines = 1,
+                                            maxLines = 2,
+                                            textAlign = TextAlign.Center,
                                             overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(horizontal = 4.dp),
                                         )
                                     },
-                                    colors = NavigationBarItemDefaults.colors(
+                                    colors = NavigationRailItemDefaults.colors(
                                         selectedIconColor = colors.primaryText,
                                         selectedTextColor = colors.primaryText,
                                         indicatorColor = colors.primaryContainer,
@@ -198,79 +270,17 @@ fun Thi360Shell(
                                 )
                             }
                         }
-                    },
-                ) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
-                    ) {
-                        navContent(paneInput)
-                    }
-                }
-            }
 
-            NavLayout.Rail -> {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .windowInsetsPadding(WindowInsets.safeDrawing),
-                ) {
-                    NavigationRail(
-                        containerColor = colors.bgPage,
-                        header = {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            BrandMark(sizeDp = 36)
-                            Spacer(modifier = Modifier.height(8.dp))
-                        },
-                        modifier = Modifier
-                            .width(96.dp)
-                            .fillMaxHeight()
-                            .testTag(ShellTestTags.NAV_RAIL)
-                            .semantics { contentDescription = navDescription },
-                    ) {
-                        Destination.entries.forEach { destination ->
-                            val selected = destination == currentDestination
-                            val label = stringResource(destination.labelRes)
-                            NavigationRailItem(
-                                selected = selected,
-                                onClick = { navigateTo(destination) },
-                                icon = {
-                                    Icon(
-                                        painter = painterResource(destination.iconRes),
-                                        contentDescription = null,
-                                    )
-                                },
-                                label = {
-                                    Text(
-                                        text = label,
-                                        maxLines = 2,
-                                        textAlign = TextAlign.Center,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(horizontal = 4.dp),
-                                    )
-                                },
-                                colors = NavigationRailItemDefaults.colors(
-                                    selectedIconColor = colors.primaryText,
-                                    selectedTextColor = colors.primaryText,
-                                    indicatorColor = colors.primaryContainer,
-                                    unselectedIconColor = colors.textMuted,
-                                    unselectedTextColor = colors.textMuted,
-                                ),
-                                modifier = Modifier.testTag(ShellTestTags.navItem(destination)),
-                            )
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .padding(top = 16.dp, end = 16.dp, bottom = 16.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            color = colors.bgSurface,
+                        ) {
+                            navContent(paneInput)
                         }
-                    }
-
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(top = 16.dp, end = 16.dp, bottom = 16.dp),
-                        shape = RoundedCornerShape(28.dp),
-                        color = colors.bgSurface,
-                    ) {
-                        navContent(paneInput)
                     }
                 }
             }

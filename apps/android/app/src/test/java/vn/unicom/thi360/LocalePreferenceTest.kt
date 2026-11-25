@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -32,6 +33,7 @@ import vn.unicom.thi360.core.preferences.DataStoreAppPreferencesRepository
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.theme.BrandPalette
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.shell.AccountShellPlaceholder
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
@@ -93,6 +95,35 @@ class LocalePreferenceTest {
         }
 
         assertEquals(BrandPalette.DefaultLightColors.bgPage, resolvedBgPage)
+    }
+
+    @Test
+    @Config(qualifiers = "en-w412dp-h915dp")
+    fun unsetThemeModeFollowsBrandPaletteDefaultDarkMode() {
+        var resolvedBgPage = BrandPalette.DefaultLightColors.bgPage
+        val darkDefaultPalette = BrandPalette.Default.copy(defaultMode = ThemeMode.DARK)
+        val prefs = AppPreferences(locale = null, themeMode = null)
+
+        composeRule.setContent {
+            Thi360App(
+                preferences = prefs,
+                brandPalette = darkDefaultPalette,
+                startDestination = Destination.Account.route,
+                accountContent = { twoPane ->
+                    resolvedBgPage = Thi360Theme.colors.bgPage
+                    AccountShellPlaceholder(
+                        isTwoPaneWidth = twoPane,
+                        preferences = prefs,
+                        onSelectLocale = {},
+                        onSelectThemeMode = {},
+                    )
+                },
+            )
+        }
+
+        assertEquals(BrandPalette.DefaultDarkColors.bgPage, resolvedBgPage)
+        composeRule.onNodeWithTag(ShellTestTags.THEME_OPTION_DARK).assertIsSelected()
+        composeRule.onNodeWithTag(ShellTestTags.THEME_OPTION_LIGHT).assertIsNotSelected()
     }
 
     @Test

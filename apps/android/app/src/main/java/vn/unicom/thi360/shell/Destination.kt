@@ -2,6 +2,8 @@ package vn.unicom.thi360.shell
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hierarchy
 import vn.unicom.thi360.R
 
 const val COMPACT_WIDTH_BREAKPOINT_DP = 600
@@ -18,10 +20,13 @@ enum class Destination(
     Account("account", R.string.nav_account, R.drawable.ic_nav_account);
 
     companion object {
-        fun fromRoute(route: String?): Destination =
-            entries.firstOrNull { it.route == route } ?: Home
+        fun fromRouteOrNull(route: String?): Destination? =
+            entries.firstOrNull { it.route == route }
     }
 }
+
+fun NavDestination?.shellDestination(): Destination? =
+    this?.hierarchy?.firstNotNullOfOrNull { Destination.fromRouteOrNull(it.route) }
 
 enum class NavLayout {
     BottomBar,

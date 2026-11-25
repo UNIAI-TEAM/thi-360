@@ -6,9 +6,34 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
+import vn.unicom.thi360.core.theme.BrandPalette
+
+@Composable
+fun AppRoot(
+    preferences: AppPreferences,
+    onSelectLocale: (AppLocale) -> Unit,
+    onSelectThemeMode: (ThemeMode) -> Unit,
+    brandPalette: BrandPalette = BrandPalette.Default,
+    navController: NavHostController = rememberNavController(),
+    startDestination: String = Destination.Home.route,
+    accountContent: (@Composable (isTwoPaneWidth: Boolean) -> Unit)? = null,
+    extraDestinations: NavGraphBuilder.() -> Unit = {},
+) {
+    Thi360App(
+        preferences = preferences,
+        brandPalette = brandPalette,
+        onSelectLocale = onSelectLocale,
+        onSelectThemeMode = onSelectThemeMode,
+        navController = navController,
+        startDestination = startDestination,
+        accountContent = accountContent,
+        extraDestinations = extraDestinations,
+    )
+}
 
 @Composable
 fun AppNavHost(
@@ -20,14 +45,7 @@ fun AppNavHost(
     onSelectThemeMode: (ThemeMode) -> Unit,
     modifier: Modifier = Modifier,
     startDestination: String = Destination.Home.route,
-    accountContent: @Composable (isTwoPaneWidth: Boolean) -> Unit = { twoPane ->
-        AccountShellPlaceholder(
-            isTwoPaneWidth = twoPane,
-            preferences = preferences,
-            onSelectLocale = onSelectLocale,
-            onSelectThemeMode = onSelectThemeMode,
-        )
-    },
+    accountContent: (@Composable (isTwoPaneWidth: Boolean) -> Unit)? = null,
     extraDestinations: NavGraphBuilder.() -> Unit = {},
 ) {
     val showCompactBrandHeader = navLayout == NavLayout.BottomBar
@@ -56,7 +74,16 @@ fun AppNavHost(
             )
         }
         composable(Destination.Account.route) {
-            accountContent(isTwoPaneWidth)
+            if (accountContent != null) {
+                accountContent(isTwoPaneWidth)
+            } else {
+                AccountShellPlaceholder(
+                    isTwoPaneWidth = isTwoPaneWidth,
+                    preferences = preferences,
+                    onSelectLocale = onSelectLocale,
+                    onSelectThemeMode = onSelectThemeMode,
+                )
+            }
         }
         extraDestinations()
     }
