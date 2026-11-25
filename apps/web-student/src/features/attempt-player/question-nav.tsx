@@ -27,6 +27,7 @@ export interface QuestionNavProps {
   currentDisplayNumber: number;
   totalDisplayItems: number;
   onSelectUnit: (unitIndex: number) => void;
+  onSelectItem?: (item: QuestionNavItem) => void;
   onPrev: () => void;
   onNext: () => void;
   canPrev: boolean;
@@ -41,6 +42,7 @@ interface QuestionNavGridProps {
   filter: QuestionNavFilter;
   onChangeFilter: (filter: QuestionNavFilter) => void;
   onSelectUnit: (unitIndex: number) => void;
+  onSelectItem?: (item: QuestionNavItem) => void;
 }
 
 function QuestionNavGrid({
@@ -49,6 +51,7 @@ function QuestionNavGrid({
   filter,
   onChangeFilter,
   onSelectUnit,
+  onSelectItem,
 }: QuestionNavGridProps) {
   const t = useTranslations("attempt.nav");
   const segT = useTranslations("attempt.segments");
@@ -99,7 +102,10 @@ function QuestionNavGrid({
         data-unsaved={item.unsaved ? "true" : "false"}
         aria-current={item.isCurrent ? "step" : undefined}
         aria-label={buildItemAriaLabel(item)}
-        onClick={() => onSelectUnit(item.unitIndex)}
+        onClick={() => {
+          onSelectUnit(item.unitIndex);
+          onSelectItem?.(item);
+        }}
         className={cn(
           "relative inline-flex h-9 items-center justify-center rounded-lg border text-label font-semibold tabular-nums transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
           item.flagged
@@ -278,6 +284,7 @@ export function QuestionNav({
   currentDisplayNumber,
   totalDisplayItems,
   onSelectUnit,
+  onSelectItem,
   onPrev,
   onNext,
   canPrev,
@@ -355,7 +362,7 @@ export function QuestionNav({
   const sidebar = !isDrawerOpen ? (
     <aside
       aria-label={t("gridLabel")}
-      className="hidden w-72 shrink-0 rounded-xl border border-border bg-surface p-4 lg:block"
+      className="hidden w-72 shrink-0 rounded-xl border border-border bg-surface p-4 lg:sticky lg:top-28 lg:block lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto scroll-shadows-y"
     >
       <QuestionNavGrid
         items={items}
@@ -363,6 +370,7 @@ export function QuestionNav({
         filter={filter}
         onChangeFilter={setFilter}
         onSelectUnit={onSelectUnit}
+        onSelectItem={onSelectItem}
       />
     </aside>
   ) : null;
@@ -382,6 +390,7 @@ export function QuestionNav({
             onSelectUnit(unitIndex);
             setIsDrawerOpen(false);
           }}
+          onSelectItem={onSelectItem}
         />
         <div className="flex justify-end pt-2">
           <Button
