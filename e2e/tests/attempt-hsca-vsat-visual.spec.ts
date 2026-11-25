@@ -560,9 +560,11 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
         await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(hscaHoaAttemptId)}`);
         await ensureActivePlayerSession(page, cell.lang);
         await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
-        const symbolGroup = page.getByRole("group", {
-          name: cell.lang === "en" ? "Symbol input bar" : "Thanh chèn ký hiệu",
-        });
+        const symbolGroup = page
+          .getByRole("group", {
+            name: cell.lang === "en" ? "Symbol input bar" : "Thanh chèn ký hiệu",
+          })
+          .first();
         if (!(await symbolGroup.isVisible().catch(() => false)) && hoaShortDisplayNo > 1) {
           await jumpToQuestionDisplayNo(page, hoaShortDisplayNo, cell);
         }
