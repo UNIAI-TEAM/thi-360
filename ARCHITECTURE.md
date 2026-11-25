@@ -1,6 +1,6 @@
 # ARCHITECTURE — Thi 360
 
-> Cập nhật: 2026-11-22 · Trạng thái: đã cập nhật hết đợt 3 (QA UNI-2744). Mục nào đổi thì sửa file này trong cùng PR.
+> Cập nhật: 2026-11-25 · Trạng thái: đã cập nhật hết đợt 3 (QA UNI-2744); phần app học viên native (UNI-2785) ghi theo đặc tả và kế hoạch đã duyệt, **chưa có mã**. Mục nào đổi thì sửa file này trong cùng PR.
 
 ## 1. Tổng quan
 
@@ -9,7 +9,7 @@ Một backend chia module (modular monolith), chạy hai vai trò từ cùng m�
 ```
  Web học viên (Next.js) ─┐   thi360.vn: landing, storefront, thanh toán, đăng nhập duy nhất, phòng thi & kết quả
  Web admin (Next.js) ────┼─ HTTPS / nginx ─► thi360-api (Spring Boot) ◄──► Keycloak (chỉ lo xác thực)
- App Android/iOS (sau) ──┘                        │
+ App học viên (native) ──┘                        │
                                     ┌─────────────┼─────────────┐
                                 PostgreSQL      Redis        MinIO/S3
                               (schema theo    (phiên, cache   (tệp import,
@@ -21,6 +21,8 @@ Một backend chia module (modular monolith), chạy hai vai trò từ cùng m�
                              dọn tài sản/ảnh bìa/avatar, hết hạn đơn/querydr/đối soát VNPAY,
                              dọn/đóng lượt thi quá hạn & thử lại sinh đề
 ```
+
+**App học viên** là hai app native riêng cho Android và iOS, chỉ phục vụ cổng thi và chỉ học viên đăng nhập được. Đợt đầu gồm khung điều hướng và xác thực (mục 5.9); đặc tả ở `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md`, kế hoạch ở `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md`.
 
 **Vì sao gộp thay vì microservice như reap:** các luồng chính cần transaction qua nhiều module (thanh toán → cấp quyền → nhật ký; bắt đầu thi → giữ lượt → tạo snapshot). Trong một cơ sở dữ liệu đó là một transaction. Team nhỏ nên không vận hành Eureka, config server, Kafka. Khi cần chịu tải thì chạy thêm bản API và worker.
 
@@ -40,8 +42,9 @@ Một backend chia module (modular monolith), chạy hai vai trò từ cùng m�
 | Web | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, TanStack Query, TanStack Table, react-hook-form + zod, next-intl, lucide-react, dnd-kit, `@tiptap/react` | Hai app riêng: `web-admin` (soạn nội dung/câu hỏi bằng Tiptap + MathLive), `web-student` (trình soạn bài tự luận bằng Tiptap) |
 | UI kit | `packages/ui`: thành phần tự viết trên Radix UI + class-variance-authority, token theo `DESIGN.md`; `@thi360/ui/question` & `@thi360/ui/rich-text` (`katex` + `mhchem`) | Dùng chung giữa `web-admin` và `web-student`, **không dùng MUI** |
 | Web kit | `packages/web-kit`: proxy `/api/[...path]`, ký/đọc cookie `thi360_ctx`, làm mới phiên, kiểm tra `callbackUrl`, cookie tùy chọn, `pickName` | Chia sẻ hạ tầng Next.js giữa hai web |
-| Client API | `packages/api-client` sinh từ OpenAPI | Web và mobile dùng chung |
-| Mobile (sau) | React Native (Expo) | Chưa làm trong đợt 3 |
+| Client API | `packages/api-client` sinh từ OpenAPI | Hai web dùng trực tiếp. App sinh client lúc build từ `contracts/mobile/openapi-mobile.json`, là bản lọc của cùng tài liệu OpenAPI (chỉ các thao tác app gọi, không có thao tác dùng tham số cookie); mã sinh cho app không commit |
+| App Android | Kotlin, Jetpack Compose, Material 3; Android 8.0 (API 26) trở lên; client sinh bằng OpenAPI Generator (`kotlin`, `jvm-retrofit2`, `kotlinx_serialization`) | Đã chốt 2026-11-25, chưa có mã. Hai bản `dev` và `demo` |
+| App iOS | Swift, SwiftUI; iOS 17 trở lên; dự án tạo bằng XcodeGen; client sinh bằng `swift-openapi-generator` | Đã chốt 2026-11-25, chưa có mã. Hai scheme `Thi360Dev` và `Thi360Demo`; build trên máy macOS |
 | Kiểm thử | JUnit 5, Testcontainers (PostgreSQL, Redis, Keycloak, MinIO), GreenMail, Vitest, Playwright (`e2e/`) | |
 | Vận hành | Docker Compose (dev), nginx, GitHub Actions, Prometheus + Grafana, Sentry | |
 
@@ -68,12 +71,16 @@ thi-360/
 │       └── test/java/...
 ├── apps/
 │   ├── web-admin/             Next.js, trang quản trị
-│   └── web-student/           Next.js, đầy đủ trang công khai, mua bài, làm bài, kết quả, lịch sử, hồ sơ & tài khoản
+│   ├── web-student/           Next.js, đầy đủ trang công khai, mua bài, làm bài, kết quả, lịch sử, hồ sơ & tài khoản
+│   ├── android/               app học viên Android (Kotlin + Compose); chưa có, tạo trong đợt app học viên
+│   └── ios/                   app học viên iOS (Swift + SwiftUI, `project.yml` của XcodeGen); chưa có, tạo trong đợt app học viên
 ├── packages/
 │   ├── ui/                    token, thành phần giao diện, `@thi360/ui/question`, `@thi360/ui/rich-text`
 │   ├── web-kit/               proxy, cookie `thi360_ctx`, làm mới phiên, điều hướng, `pickName` dùng chung cho hai web
 │   ├── api-client/            sinh từ OpenAPI, không sửa tay
 │   └── config/                eslint, tsconfig, tailwind preset
+├── contracts/
+│   └── mobile/                hợp đồng dùng chung giữa backend, web và hai app: `auth/`, `api/`, `appearance/`, `openapi-mobile.json`; chưa có, tạo trong đợt app học viên
 ├── e2e/                       kiểm thử đầu-cuối Playwright (`@thi360/e2e`)
 ├── infra/
 │   ├── docker-compose.yml     postgres, redis, keycloak, minio, mailpit
@@ -82,6 +89,7 @@ thi-360/
 ├── docs/
 │   ├── specs/                 đặc tả theo đợt
 │   ├── plans/                 kế hoạch, mỗi task là một sub-issue UniAI
+│   ├── design/                bản thiết kế theo màn (`app-hoc-vien/`: 28 màn Android và iOS)
 │   └── adr/                   quyết định kiến trúc
 └── scripts/                   uniai.sh, hook git
 ```
@@ -189,6 +197,8 @@ Mọi trang (kể cả đăng nhập, web học viên) ─► GET /api/v1/appear
 
 Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không cần build lại.
 
+App học viên dùng cùng cấu hình này qua một route của web học viên (mục 5.9); công thức suy ra màu chỉ nằm ở `packages/ui`.
+
 ### 5.7 Thương mại, VNPAY & Cấp quyền
 
 - **Bảng chiếu storefront & idempotency:** khi bài thi công bố hoặc ngừng bán (`ExamPublished` / `ExamDiscontinued`), `OutboxRelay` đẩy sự kiện tới `StorefrontEventHandler` để cập nhật bảng chiếu `commerce.storefront_product` (đọc từ `PublishedExamPort.findServing` với `projection_hash`, không tin nội dung thô từ payload) và cập nhật trạng thái bộ đề (`UNAVAILABLE` nếu có bài ngừng bán). Các lệnh tạo đơn và tạo hoàn tiền dùng bean `IdempotentCommand` qua bảng `shared.idempotency_key`.
@@ -203,6 +213,28 @@ Token trong `packages/ui` đều là biến CSS, nên đổi cấu hình không 
 - **Phiên làm bài duy nhất & điều hướng:** `EditSessionService` (cài đặt `AttemptSessionChecker`) giữ khóa phiên soạn duy nhất (`edit_session_id`), hỗ trợ tiếp quản thiết bị (`claimSession`, trả `409 ATTEMPT_OPEN_ELSEWHERE` cho tab mới chưa tiếp quản và `409 ATTEMPT_SESSION_REVOKED` cho tab/thiết bị cũ bị thu hồi). `AttemptNavigationPolicy` quyết định chế độ điều hướng: `THPTQG` (dùng thời lượng chung hoặc 1 phần) mở `FREE`, mọi kỳ thi khác chạy `SEQUENTIAL`. Ở profile `e2e`, `TestClockController` điều khiển `MutableClock` để kiểm thử đóng bài/phần theo hạn nộp.
 - **Audio giới hạn lượt & Chấm điểm:** `AttemptAudioService` khóa dòng `attempt_audio_play` để giới hạn tối đa 2 lần nghe, đo thời lượng MP3 bằng `javazoom:jlayer` lưu ở `audio_asset_duration`, cấp lease (`attempt.audio.lease-duration`) và kiểm chống tua theo `seek-tolerance`. Khi nộp bài hoặc `AttemptDeadlineWorker` đóng quá hạn, `AttemptGradingService` chạy trong `REQUIRES_NEW` qua `ItemGrader` + `ExactRational` + `ScoreAggregator`: câu tự động ra `CORRECT`/`PARTIAL`/`WRONG`/`BLANK`, câu Tự luận giữ `PENDING_REVIEW` đưa lượt sang `PENDING_REVIEW` (hoặc `SCORED` nếu không còn câu chờ chấm; lỗi ghi `GRADING_ERROR`). Hàng chờ chấm ẩn danh (`EssayGradingService` + `essay_grade`) giấu danh tính học viên; `AttemptSegmentResultBuilder` và `ScoreAggregator` tính điểm từng phân đoạn cho H-SCA/V-SAT và điểm luyện tập + 2 tiểu mục Tư duy khoa học cho V-ACT.
 
+### 5.9 App học viên: đăng nhập, phiên và màu (đã chốt, chưa có mã)
+
+Nguồn: đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (R-3 đến R-12) và kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (mục B1).
+
+```
+App ──POST /api/v1/auth/mobile/login──► thi360-api
+                                        │ 1. các bước của đăng nhập web (mục 5.1), đổi token ở client Keycloak `thi360-mobile`
+                                        │ 2. tài khoản có vai trò `MANAGE` hoặc thuộc realm `master` → 403 `APP_STUDENT_ONLY`
+                                        │ 3. ghi phiên vào Redis với kênh `MOBILE`, ghi audit LOGIN
+App ◄── thân phản hồi: accessToken, refreshToken, accessExpiresIn, refreshExpiresIn, mustChangePassword ─┘
+App ──mọi request sau đó: `Authorization: Bearer <accessToken>`──► thi360-api
+```
+
+- **API riêng cho app:** `POST /api/v1/auth/mobile/login`, `mobile/refresh`, `mobile/logout`, `mobile/register/verify`. Token trả trong thân phản hồi, không đặt cookie. Các endpoint còn lại (`me`, hồ sơ, đăng ký, gửi lại mã, quên và đặt lại mật khẩu, đổi mật khẩu) dùng chung với web. Backend đã nhận `Authorization: Bearer` và miễn kiểm XSRF cho request loại này từ trước.
+- **Kênh đăng nhập:** bản ghi phiên ở Redis có `LoginChannel { WEB, MOBILE }`. Kênh quyết định client Keycloak dùng khi làm mới và đăng xuất. Phiên mobile tính chung trong giới hạn 5 phiên của một tài khoản.
+- **Thời hạn phiên mobile:** client `thi360-mobile` dùng offline token nên không đổi thời hạn phiên của web. Phiên hết sau 7 ngày không dùng và tối đa 30 ngày kể từ lúc đăng nhập; hạn 30 ngày của bản ghi phiên ở Redis là lớp chặn thứ hai cho mốc tối đa.
+- **Ngôn ngữ thư:** `mobile/login`, đăng ký và gửi lại mã đọc `Accept-Language` (`vi` hoặc `en`) khi request không có cookie `thi360_locale`.
+- **Trên máy:** token chỉ nằm trong kho bảo mật của hệ điều hành (Android: mã hóa bằng khóa trong Keystore; iOS: Keychain chỉ dùng trên máy đó). Mọi màn đọc một máy trạng thái phiên chung (`SignedOut`, `MustChangePassword`, `Active`, `Locked`); không màn nào tự giữ token. Khi đã bật sinh trắc học, app tự khóa sau 5 phút rời app hoặc khi mở nguội.
+- **Màu theo cấu hình admin:** web học viên có route công khai `GET /mobile/appearance-tokens.json`, là nơi duy nhất chạy `deriveTokens` cho app. Route đọc `GET /api/v1/appearance` rồi trả `version`, `mode`, `presetId` và hai bảng màu `light`, `dark`; `ETag` là `version`, `Cache-Control: no-cache`. Backend lỗi hoặc `presetId` lạ thì trả 503 và app giữ bảng màu đang dùng. Không port công thức màu sang Kotlin hay Swift.
+- **Deep link đặt lại mật khẩu:** web học viên phục vụ `/.well-known/assetlinks.json` và `/.well-known/apple-app-site-association`, chỉ khai đường dẫn `/reset-password`. Máy đã cài app thì liên kết trong thư mở app; chưa cài thì mở trang web như hiện nay. Đợt đầu chỉ bật trên tên miền demo.
+- **Hợp đồng dùng chung:** `contracts/mobile/` giữ tệp mẫu của từng phản hồi (`auth/`, `api/`, `appearance/`). Bên sở hữu có test khẳng định tệp khớp phản hồi thật; hai app dùng các tệp này làm dữ liệu cho máy chủ giả trong test.
+
 ## 6. Đồng bộ với Keycloak
 
 Keycloak có hai realm:
@@ -211,6 +243,8 @@ Keycloak có hai realm:
 |---|---|---|
 | `thi-360` | Mọi tài khoản Thi 360 (học viên, quản trị viên) | Tạo, vô hiệu, xóa user qua service account; xác thực đăng nhập |
 | `master` | Chỉ tài khoản `PLATFORM_ADMIN` (realm role `PLATFORM_ADMIN`) | Chỉ xác thực đăng nhập. Không tạo, không sửa |
+
+Realm `thi-360` có client `thi360-api` cho web; đợt app học viên thêm client `thi360-mobile` cho app (mục 5.9).
 
 Backend chấp nhận token của cả hai nguồn phát hành; token của `master` phải có role `PLATFORM_ADMIN`. Khi đăng nhập, máy chủ chọn realm theo việc tên đăng nhập có trong `user_account` hay không (spec mục 15.1a).
 
@@ -234,6 +268,9 @@ Backend chấp nhận token của cả hai nguồn phát hành; token của `mas
 | A7 | Giao diện là cấu hình toàn hệ thống lưu ở máy chủ, áp bằng biến CSS | Giữ khả năng tùy chỉnh như reap mà không phụ thuộc MUI |
 | A8 | Nhật ký phân vùng theo quý, lưu trữ theo năm | Lưu vĩnh viễn nhưng bảng chính vẫn gọn |
 | A10 | Hai realm: `thi-360` cho mọi tài khoản ứng dụng, `master` chỉ cho `PLATFORM_ADMIN` | Người khởi tạo tách khỏi dữ liệu người dùng; đánh đổi là backend phải xác thực với hai realm |
+| A11 | App học viên là hai app native riêng (Kotlin + Compose, Swift + SwiftUI), thay cho khung đa nền tảng dùng chung một codebase ghi trước đây | Người yêu cầu chốt 2026-11-25 để dễ tùy biến theo từng nền tảng, kể cả tablet và màn hình gập; đánh đổi là hai codebase giao diện, bù bằng hợp đồng chung ở `contracts/mobile/` và client sinh từ OpenAPI |
+| A12 | App dùng API đăng nhập riêng trả token trong thân, client Keycloak riêng `thi360-mobile` với offline token | Phiên app sống 7 ngày không dùng, tối đa 30 ngày, mà không đổi thời hạn phiên của web; đánh đổi là backend giữ hai kênh đăng nhập |
+| A13 | Bảng màu của app do một route của web học viên suy ra, app không port công thức màu | Một nơi tính màu cho mọi client; đánh đổi là app cần web học viên chạy để nhận màu mới, khi không có thì giữ bảng đang dùng |
 | A9 | Hai web trên hai tên miền, một nơi đăng nhập, cookie phiên dùng chung tên miền cha | Người dùng đăng nhập một lần; đánh đổi là hai web không còn tách phiên, bù bằng `HttpOnly`, XSRF, kiểm tra `Origin` cho API quản trị, CSP |
 
 ## 8. Bảo mật
@@ -250,4 +287,5 @@ Backend chấp nhận token của cả hai nguồn phát hành; token của `mas
   - Mã OTP xác minh email và mã đặt lại mật khẩu chỉ lưu dạng HMAC-SHA256 dùng pepper phía máy chủ (`THI360_TOKEN_PEPPER` qua `TokenPepperProperties`, bắt buộc ngoài `dev`/`test`/`e2e`); không ghi mật khẩu, token, link reset vào log hay nhật ký.
   - `/api/v1/test/**` chỉ đăng ký khi bật profile `e2e` (tắt thì `TestApiAbsentSecurityConfig` trả `404` trước chuỗi xác thực) và `E2eProfileGuard` chặn khởi động nếu `e2e` đi cùng `prod` (lưu ý `E2eProfileGuard` và `VnpayModeStartupGuard` chỉ kích hoạt chốt chặn môi trường thật khi profile `prod` được bật).
   - Trang giả lập `/mock-vnpay` chỉ mở khi `THI360_VNPAY_MODE=MOCK` trong `(dev | test | e2e) & !prod` (`MockVnpayPageCondition`); `VnpayModeStartupGuard`, `VnpayRealModeStartupGuard` và `DevEmailCodeGuard` chặn cấu hình thử nghiệm lọt sang môi trường thật (khi bật profile `prod`).
+- **App học viên (đã chốt, chưa có mã):** API mobile từ chối tài khoản có vai trò `MANAGE` và tài khoản realm `master` bằng 403 `APP_STUDENT_ONLY`; `mobile/login` dùng chung chính sách chặn đăng nhập sai và giới hạn tần suất với `/auth/login`; token trên máy chỉ nằm trong kho bảo mật của hệ điều hành và không vào bản sao lưu.
 - Bí mật nằm trong biến môi trường, không commit (`.env` nằm trong `.gitignore`, có `.env.example`).
