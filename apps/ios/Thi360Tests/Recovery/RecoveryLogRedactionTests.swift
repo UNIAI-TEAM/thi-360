@@ -54,7 +54,7 @@ final class RecoveryLogRedactionTests: XCTestCase {
                 return MockClientTransport.emptyResponse(statusCode: 204)
             }
             if request.path.hasSuffix("/api/v1/auth/change-password") {
-                return MockClientTransport.emptyResponse(statusCode: 200)
+                return MockClientTransport.emptyResponse(statusCode: 204)
             }
             return MockClientTransport.emptyResponse(statusCode: 500)
         }

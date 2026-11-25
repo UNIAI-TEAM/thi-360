@@ -681,23 +681,6 @@
         }
       }
     },
-    "recovery.otp.codePlaceholder" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "6 digits"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "6 chữ số"
-          }
-        }
-      }
-    },
     "recovery.otp.codeRequired" : {
       "extractionState" : "manual",
       "localizations" : {

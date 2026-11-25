@@ -496,7 +496,7 @@ struct RegisterView: View {
                 .accessibilityHidden(true)
 
                 TextField(
-                    RecoveryStrings.text("recovery.otp.codePlaceholder", locale: locale),
+                    "",
                     text: Binding(
                         get: { viewModel.otpCode },
                         set: { viewModel.updateOtpInput($0) }

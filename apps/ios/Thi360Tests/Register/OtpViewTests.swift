@@ -174,8 +174,14 @@ final class OtpViewTests: XCTestCase {
         let view = RegisterView(viewModel: vm, preferences: preferences, onBackToLogin: {})
             .environment(\.brandPalette, .defaultLight)
         let size = CGSize(width: 390, height: 844)
-        let (window, _) = RecoveryViewTestHelper.host(view, size: size, sizeClass: .compact, themeMode: .light)
+        let (window, controller) = RecoveryViewTestHelper.host(view, size: size, sizeClass: .compact, themeMode: .light)
         defer { window.isHidden = true }
+        let otpFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
+        XCTAssertEqual(otpFields.count, 1)
+        XCTAssertTrue(
+            (otpFields.first?.placeholder ?? "").isEmpty,
+            "Hidden OTP TextField must not set a visible placeholder that overlaps the first digit box"
+        )
         _ = try RecoveryViewTestHelper.captureSnapshot(window: window, size: size, name: "otp-iphone17-390x844-light", in: self)
     }
 

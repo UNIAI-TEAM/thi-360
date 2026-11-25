@@ -14,7 +14,7 @@ final class ForcedPasswordChangeTests: XCTestCase {
             }
             if request.path.hasSuffix("/api/v1/auth/change-password") {
                 XCTAssertEqual(request.header(.authorization), "Bearer fixture-access-token")
-                return MockClientTransport.emptyResponse(statusCode: 200)
+                return MockClientTransport.emptyResponse(statusCode: 204)
             }
             return MockClientTransport.emptyResponse(statusCode: 500)
         }

@@ -21,7 +21,7 @@ final class ChangePasswordTests: XCTestCase {
         ) { request in
             if request.path.hasSuffix("/api/v1/auth/change-password") {
                 await gate.enterAndWait()
-                return MockClientTransport.emptyResponse(statusCode: 200)
+                return MockClientTransport.emptyResponse(statusCode: 204)
             }
             return MockClientTransport.emptyResponse(statusCode: 500)
         }
@@ -126,5 +126,38 @@ final class ChangePasswordTests: XCTestCase {
         vm3.confirmPassword = "NewStrongPass2!"
         await vm3.submit()
         XCTAssertEqual(vm3.newPasswordError, .newPasswordSameAsUsername)
+    }
+
+    func testChangePasswordAcceptsBoth204NoContentAnd200Ok() async throws {
+        let initialTokens = SessionTokens(
+            accessToken: "voluntary-access",
+            refreshToken: "voluntary-refresh",
+            accessExpiresIn: 300,
+            refreshExpiresIn: 604_800,
+            mustChangePassword: false,
+            username: "minhanh.tran"
+        )
+
+        for statusCode in [204, 200] {
+            let (sessionStore, _, _, _) = SessionTestFactory.makeStack(initialTokens: initialTokens) { request in
+                if request.path.hasSuffix("/api/v1/auth/change-password") {
+                    return MockClientTransport.emptyResponse(statusCode: statusCode)
+                }
+                return MockClientTransport.emptyResponse(statusCode: 500)
+            }
+
+            let vm = NewPasswordViewModel(mode: .voluntary(username: "minhanh.tran"), sessionStore: sessionStore)
+            vm.oldPassword = "OldPassword1!"
+            vm.newPassword = "NewStrongPass2!"
+            vm.confirmPassword = "NewStrongPass2!"
+
+            await vm.submit()
+
+            XCTAssertTrue(vm.didComplete, "HTTP \(statusCode) from /api/v1/auth/change-password must succeed")
+            XCTAssertEqual(vm.banner, .changedSuccess)
+            XCTAssertEqual(vm.oldPassword, "")
+            XCTAssertEqual(vm.newPassword, "")
+            XCTAssertEqual(vm.confirmPassword, "")
+        }
     }
 }

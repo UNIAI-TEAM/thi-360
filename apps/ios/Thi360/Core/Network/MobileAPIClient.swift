@@ -479,6 +479,8 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
             switch output {
             case .ok:
                 return
+            case let .undocumented(statusCode, _) where statusCode == 204:
+                return
             case let .badRequest(response):
                 throw await Self.decodeAnyBody(statusCode: 400, body: try response.body.any)
             case let .unauthorized(response):
