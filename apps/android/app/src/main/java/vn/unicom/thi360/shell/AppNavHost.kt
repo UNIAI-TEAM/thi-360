@@ -4,12 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -48,7 +51,7 @@ fun AppRoot(
     onSelectLocale: (AppLocale) -> Unit,
     onSelectThemeMode: (ThemeMode) -> Unit,
     brandPalette: BrandPalette = BrandPalette.Default,
-    navController: NavHostController = rememberNavController(),
+    navController: NavHostController? = null,
     startDestination: String? = null,
     accountContent: (@Composable (isTwoPaneWidth: Boolean) -> Unit)? = null,
     extraDestinations: NavGraphBuilder.() -> Unit = {},
@@ -64,7 +67,7 @@ fun AppRoot(
             brandPalette = brandPalette,
             onSelectLocale = onSelectLocale,
             onSelectThemeMode = onSelectThemeMode,
-            navController = navController,
+            navController = navController ?: rememberNavController(),
             startDestination = startDestination,
             accountContent = accountContent,
             extraDestinations = extraDestinations,
@@ -95,68 +98,86 @@ fun AppRoot(
         }
     }
 
-    val initialDestination = remember(activeSessionManager, startDestination) {
-        routeForSessionState(
-            state = activeSessionManager.state.value,
-            authenticatedFallback = startDestination ?: Destination.Home.route,
-        )
-    }
-
-    LaunchedEffect(sessionState, navController) {
-        val currentRoute = navController.currentDestination?.route
-        val targetRoute = when (sessionState) {
-            is SessionState.SignedOut -> routeForSessionState(
-                state = sessionState,
-                authenticatedFallback = Destination.Home.route,
-            )
-
-            is SessionState.Active, is SessionState.MustChangePassword -> {
-                if (currentRoute == LoginRoutes.LOGIN || currentRoute == LoginRoutes.ROLE_NOTICE) {
-                    startDestination ?: Destination.Home.route
-                } else {
-                    null
+    // Separate signed-out auth NavHost from authenticated Thi360App so shell graph startDestination
+    // stays pinned to Home (preserving tab saveState/restoreState) and sign-out disposes prior tab state.
+    if (sessionState is SessionState.SignedOut) {
+        val authNavController = rememberNavController()
+        val initialAuthRoute = remember(activeSessionManager) {
+            routeForSignedOut(sessionState.reason)
+        }
+        LaunchedEffect(sessionState.reason, authNavController) {
+            val targetRoute = routeForSignedOut(sessionState.reason)
+            if (authNavController.currentDestination?.route != targetRoute) {
+                authNavController.navigate(targetRoute) {
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
                 }
             }
-
-            is SessionState.Locked -> null
         }
 
-        if (targetRoute != null && currentRoute != targetRoute) {
-            navController.navigate(targetRoute) {
-                popUpTo(0) { inclusive = true }
-                launchSingleTop = true
+        Thi360Theme(
+            preferences = preferences,
+            brandPalette = brandPalette,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Thi360Theme.colors.bgPage)
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
+            ) {
+                NavHost(
+                    navController = authNavController,
+                    startDestination = initialAuthRoute,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    composable(LoginRoutes.LOGIN) {
+                        val currentSignOutReason =
+                            (sessionStateHolder.value as? SessionState.SignedOut)?.reason
+                                ?: SignOutReason.None
+                        LoginScreen(
+                            sessionManager = activeSessionManager,
+                            signOutReason = currentSignOutReason,
+                            onSelectLocale = { latestSelectLocale(it) },
+                            onForgotPasswordClick = { latestForgotPasswordClick() },
+                            onRegisterClick = { latestRegisterClick() },
+                        )
+                    }
+                    composable(LoginRoutes.ROLE_NOTICE) {
+                        val studentOnly =
+                            (sessionStateHolder.value as? SessionState.SignedOut)?.reason
+                                as? SignOutReason.StudentOnly
+                        RoleNoticeScreen(
+                            username = studentOnly?.username.orEmpty(),
+                            onSwitchAccount = { activeSessionManager.acknowledgeRoleNotice() },
+                            onSelectLocale = { latestSelectLocale(it) },
+                        )
+                    }
+                    extraDestinations()
+                }
+            }
+        }
+        return
+    }
+
+    val shellNavController = navController ?: rememberNavController()
+    DisposableEffect(shellNavController) {
+        onDispose {
+            if (navController != null) {
+                Destination.entries.forEach { destination ->
+                    shellNavController.clearBackStack(destination.route)
+                }
+                shellNavController.popBackStack(
+                    destinationId = shellNavController.graph.id,
+                    inclusive = true,
+                )
             }
         }
     }
 
-    val isOffline = when (val state = sessionState) {
-        is SessionState.Active -> state.isOffline
-        is SessionState.MustChangePassword -> state.isOffline
-        is SessionState.SignedOut, is SessionState.Locked -> false
-    }
-
-    val authDestinations: NavGraphBuilder.() -> Unit = {
-        composable(LoginRoutes.LOGIN) {
-            val currentSignOutReason = (sessionStateHolder.value as? SessionState.SignedOut)?.reason
-                ?: SignOutReason.None
-            LoginScreen(
-                sessionManager = activeSessionManager,
-                signOutReason = currentSignOutReason,
-                onSelectLocale = { latestSelectLocale(it) },
-                onForgotPasswordClick = { latestForgotPasswordClick() },
-                onRegisterClick = { latestRegisterClick() },
-            )
-        }
-        composable(LoginRoutes.ROLE_NOTICE) {
-            val studentOnly = (sessionStateHolder.value as? SessionState.SignedOut)?.reason
-                as? SignOutReason.StudentOnly
-            RoleNoticeScreen(
-                username = studentOnly?.username.orEmpty(),
-                onSwitchAccount = { activeSessionManager.acknowledgeRoleNotice() },
-                onSelectLocale = { latestSelectLocale(it) },
-            )
-        }
-        extraDestinations()
+    val isOffline = when (sessionState) {
+        is SessionState.Active -> sessionState.isOffline
+        is SessionState.MustChangePassword -> sessionState.isOffline
+        is SessionState.Locked -> false
     }
 
     // Keep Thi360App at a stable slot in Column so toggling isOffline never unmounts the NavHost.
@@ -194,32 +215,28 @@ fun AppRoot(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .consumeWindowInsets(
+                    if (isOffline) WindowInsets.statusBars else WindowInsets(0, 0, 0, 0),
+                ),
         ) {
             Thi360App(
                 preferences = preferences,
                 brandPalette = brandPalette,
                 onSelectLocale = onSelectLocale,
                 onSelectThemeMode = onSelectThemeMode,
-                navController = navController,
-                startDestination = initialDestination,
+                navController = shellNavController,
+                startDestination = startDestination ?: Destination.Home.route,
                 accountContent = accountContent,
-                extraDestinations = authDestinations,
+                extraDestinations = extraDestinations,
             )
         }
     }
 }
 
-private fun routeForSessionState(
-    state: SessionState,
-    authenticatedFallback: String,
-): String = when (state) {
-    is SessionState.SignedOut -> when (state.reason) {
-        is SignOutReason.StudentOnly -> LoginRoutes.ROLE_NOTICE
-        SignOutReason.None, SignOutReason.Expired, SignOutReason.PasswordReset -> LoginRoutes.LOGIN
-    }
-
-    is SessionState.Active, is SessionState.MustChangePassword, is SessionState.Locked -> authenticatedFallback
+private fun routeForSignedOut(reason: SignOutReason): String = when (reason) {
+    is SignOutReason.StudentOnly -> LoginRoutes.ROLE_NOTICE
+    SignOutReason.None, SignOutReason.Expired, SignOutReason.PasswordReset -> LoginRoutes.LOGIN
 }
 
 @Composable

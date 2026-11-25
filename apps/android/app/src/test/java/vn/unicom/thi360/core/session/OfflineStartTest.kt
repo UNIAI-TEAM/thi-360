@@ -1,11 +1,14 @@
 package vn.unicom.thi360.core.session
 
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -135,5 +138,78 @@ class OfflineStartTest {
         assertEquals(RefreshOutcome.Expired, sessionManager.retryConnection())
         assertEquals(SessionState.SignedOut(SignOutReason.Expired), sessionManager.state.value)
         assertNull(tokenStore.read())
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun offlineRetryButtonPreservesAccessibleLabelWhileRetrying() {
+        val tokenStore = InMemoryTokenStore(
+            Tokens(
+                accessToken = "stored-access",
+                refreshToken = "stored-refresh",
+                accessExpiresIn = 300,
+                refreshExpiresIn = 604800,
+                mustChangePassword = false,
+                username = "student.offline",
+            ),
+        )
+        var attempt = 0
+        val retryStarted = CompletableDeferred<Unit>()
+        val releaseRetry = CompletableDeferred<ApiResult<Tokens>>()
+        val gateway = object : MobileAuthGateway {
+            override suspend fun login(identifier: String, password: String): ApiResult<Tokens> =
+                error("unused")
+
+            override suspend fun refresh(refreshToken: String): ApiResult<Tokens> {
+                attempt++
+                return if (attempt == 1) {
+                    ApiResult.NetworkFailure(IOException("Offline"))
+                } else {
+                    retryStarted.complete(Unit)
+                    releaseRetry.await()
+                }
+            }
+
+            override suspend fun logout(refreshToken: String): ApiResult<Unit> = ApiResult.Success(Unit)
+        }
+        val sessionManager = SessionManager(tokenStore = tokenStore, authGateway = gateway)
+
+        composeRule.setContent {
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = sessionManager,
+            )
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            sessionManager.state.value == SessionState.Active(username = "student.offline", isOffline = true)
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(LoginTestTags.OFFLINE_RETRY_BUTTON).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) { retryStarted.isCompleted }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(LoginTestTags.OFFLINE_RETRY_BUTTON)
+            .assertIsNotEnabled()
+            .assertContentDescriptionEquals("Thử lại")
+
+        releaseRetry.complete(
+            ApiResult.Success(
+                Tokens(
+                    accessToken = "reconnected-access",
+                    refreshToken = "reconnected-refresh",
+                    accessExpiresIn = 300,
+                    refreshExpiresIn = 604800,
+                    mustChangePassword = false,
+                    username = "student.offline",
+                ),
+            ),
+        )
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            sessionManager.state.value == SessionState.Active(username = "student.offline", isOffline = false)
+        }
     }
 }

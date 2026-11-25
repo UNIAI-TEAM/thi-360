@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -72,11 +73,17 @@ fun OfflineSessionBanner(
                     color = colors.textMuted,
                 )
             }
+            val retryLabel = stringResource(R.string.offline_retry)
             TextButton(
                 onClick = onRetry,
                 enabled = !isRetrying,
                 modifier = Modifier
                     .heightIn(min = 48.dp)
+                    .semantics {
+                        if (isRetrying) {
+                            contentDescription = retryLabel
+                        }
+                    }
                     .testTag(LoginTestTags.OFFLINE_RETRY_BUTTON),
             ) {
                 if (isRetrying) {
@@ -87,7 +94,7 @@ fun OfflineSessionBanner(
                     )
                 } else {
                     Text(
-                        text = stringResource(R.string.offline_retry),
+                        text = retryLabel,
                         color = colors.primaryText,
                     )
                 }

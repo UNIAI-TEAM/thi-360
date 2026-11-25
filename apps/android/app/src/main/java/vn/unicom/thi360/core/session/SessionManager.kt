@@ -37,8 +37,13 @@ class SessionManager(
     private val authGateway: MobileAuthGateway,
 ) : TokenRefresher {
 
+    private data class InFlightRefresh(
+        val refreshToken: String,
+        val deferred: CompletableDeferred<RefreshOutcome>,
+    )
+
     private val refreshMutex = Mutex()
-    private var inFlightRefresh: CompletableDeferred<RefreshOutcome>? = null
+    private var inFlightRefresh: InFlightRefresh? = null
 
     private val _state = MutableStateFlow(initialStateFrom(tokenStore.read()))
     val state: StateFlow<SessionState> = _state.asStateFlow()
@@ -51,8 +56,11 @@ class SessionManager(
             is ApiResult.Success -> {
                 val resolvedUsername = result.data.username ?: trimmedIdentifier
                 val stored = result.data.copy(username = resolvedUsername)
-                tokenStore.write(stored)
-                _state.value = stateForTokens(stored, isOffline = false)
+                refreshMutex.withLock {
+                    inFlightRefresh = null
+                    tokenStore.write(stored)
+                    _state.value = stateForTokens(stored, isOffline = false)
+                }
                 LoginOutcome.Authenticated
             }
 
@@ -60,9 +68,12 @@ class SessionManager(
                 if (result.statusCode == HTTP_FORBIDDEN &&
                     result.error?.code == CODE_APP_STUDENT_ONLY
                 ) {
-                    _state.value = SessionState.SignedOut(
-                        SignOutReason.StudentOnly(username = trimmedIdentifier),
-                    )
+                    refreshMutex.withLock {
+                        inFlightRefresh = null
+                        _state.value = SessionState.SignedOut(
+                            SignOutReason.StudentOnly(username = trimmedIdentifier),
+                        )
+                    }
                     LoginOutcome.StudentOnly(trimmedIdentifier)
                 } else {
                     LoginOutcome.Error(AuthErrorMessage.fromApiErrorCode(result.error?.code))
@@ -75,8 +86,7 @@ class SessionManager(
 
     override suspend fun refreshSession(failedAccessToken: String?): RefreshOutcome {
         var existingDeferred: CompletableDeferred<RefreshOutcome>? = null
-        var ownedDeferred: CompletableDeferred<RefreshOutcome>? = null
-        var refreshTokenToUse: String? = null
+        var ownedInFlight: InFlightRefresh? = null
         var storedUsername: String? = null
 
         refreshMutex.withLock {
@@ -88,26 +98,27 @@ class SessionManager(
                 return RefreshOutcome.Refreshed(stored)
             }
             val currentInFlight = inFlightRefresh
-            if (currentInFlight != null) {
-                existingDeferred = currentInFlight
+            if (currentInFlight != null && currentInFlight.refreshToken == stored.refreshToken) {
+                existingDeferred = currentInFlight.deferred
             } else {
-                val created = CompletableDeferred<RefreshOutcome>()
+                val created = InFlightRefresh(
+                    refreshToken = stored.refreshToken,
+                    deferred = CompletableDeferred(),
+                )
                 inFlightRefresh = created
-                ownedDeferred = created
-                refreshTokenToUse = stored.refreshToken
+                ownedInFlight = created
                 storedUsername = stored.username
             }
         }
 
         existingDeferred?.let { return it.await() }
 
-        val deferred = checkNotNull(ownedDeferred)
-        val tokenToRefresh = checkNotNull(refreshTokenToUse)
+        val owned = checkNotNull(ownedInFlight)
         // Run the single-flight refresh non-cancellably so one cancelled caller cannot strand concurrent waiters.
         return withContext(NonCancellable) {
             val outcome = try {
                 executeSingleFlightRefresh(
-                    refreshToken = tokenToRefresh,
+                    refreshToken = owned.refreshToken,
                     fallbackUsername = storedUsername,
                 )
             } catch (cancelled: CancellationException) {
@@ -116,12 +127,12 @@ class SessionManager(
                 RefreshOutcome.TransientFailure
             } finally {
                 refreshMutex.withLock {
-                    if (inFlightRefresh === deferred) {
+                    if (inFlightRefresh === owned) {
                         inFlightRefresh = null
                     }
                 }
             }
-            deferred.complete(outcome)
+            owned.deferred.complete(outcome)
             outcome
         }
     }
@@ -132,7 +143,10 @@ class SessionManager(
     ): RefreshOutcome = when (val result = authGateway.refresh(refreshToken)) {
         is ApiResult.Success -> {
             refreshMutex.withLock {
-                val stillStored = tokenStore.read() ?: return RefreshOutcome.SignedOut
+                val stillStored = tokenStore.read()
+                if (stillStored == null || stillStored.refreshToken != refreshToken) {
+                    return RefreshOutcome.SignedOut
+                }
                 val resolvedUsername = result.data.username ?: stillStored.username ?: fallbackUsername
                 val updated = result.data.copy(username = resolvedUsername)
                 tokenStore.write(updated)
@@ -158,35 +172,55 @@ class SessionManager(
                 result.statusCode == HTTP_FORBIDDEN &&
                     result.error?.code == CODE_APP_STUDENT_ONLY -> {
                     refreshMutex.withLock {
-                        val username = tokenStore.read()?.username ?: fallbackUsername.orEmpty()
+                        val stillStored = tokenStore.read()
+                        if (stillStored == null || stillStored.refreshToken != refreshToken) {
+                            return RefreshOutcome.SignedOut
+                        }
+                        val username = stillStored.username ?: fallbackUsername.orEmpty()
                         tokenStore.clear()
                         _state.value = SessionState.SignedOut(SignOutReason.StudentOnly(username))
+                        RefreshOutcome.StudentOnly
                     }
-                    RefreshOutcome.StudentOnly
                 }
 
                 result.statusCode == HTTP_UNAUTHORIZED -> {
                     refreshMutex.withLock {
+                        val stillStored = tokenStore.read()
+                        if (stillStored == null || stillStored.refreshToken != refreshToken) {
+                            return RefreshOutcome.SignedOut
+                        }
                         tokenStore.clear()
                         _state.value = SessionState.SignedOut(SignOutReason.Expired)
+                        RefreshOutcome.Expired
                     }
-                    RefreshOutcome.Expired
                 }
 
                 else -> {
-                    markOfflineIfSignedIn()
-                    RefreshOutcome.TransientFailure
+                    refreshMutex.withLock {
+                        val stillStored = tokenStore.read()
+                        if (stillStored == null || stillStored.refreshToken != refreshToken) {
+                            return RefreshOutcome.SignedOut
+                        }
+                        markOfflineIfSignedInLocked()
+                        RefreshOutcome.TransientFailure
+                    }
                 }
             }
         }
 
         is ApiResult.NetworkFailure -> {
-            markOfflineIfSignedIn()
-            RefreshOutcome.Offline
+            refreshMutex.withLock {
+                val stillStored = tokenStore.read()
+                if (stillStored == null || stillStored.refreshToken != refreshToken) {
+                    return RefreshOutcome.SignedOut
+                }
+                markOfflineIfSignedInLocked()
+                RefreshOutcome.Offline
+            }
         }
     }
 
-    private fun markOfflineIfSignedIn() {
+    private fun markOfflineIfSignedInLocked() {
         _state.value = when (val current = _state.value) {
             is SessionState.Active -> current.copy(isOffline = true)
             is SessionState.MustChangePassword -> current.copy(isOffline = true)
@@ -209,6 +243,7 @@ class SessionManager(
 
     suspend fun adoptSession(tokens: Tokens) {
         refreshMutex.withLock {
+            inFlightRefresh = null
             tokenStore.write(tokens)
             _state.value = stateForTokens(tokens, isOffline = false)
         }
@@ -225,6 +260,7 @@ class SessionManager(
 
     suspend fun clearSession(reason: SignOutReason = SignOutReason.None) {
         refreshMutex.withLock {
+            inFlightRefresh = null
             tokenStore.clear()
             _state.value = SessionState.SignedOut(reason)
         }
@@ -232,6 +268,7 @@ class SessionManager(
 
     suspend fun logout() {
         val refreshToken = refreshMutex.withLock {
+            inFlightRefresh = null
             val existing = tokenStore.read()?.refreshToken
             tokenStore.clear()
             _state.value = SessionState.SignedOut(SignOutReason.None)

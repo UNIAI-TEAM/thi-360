@@ -1,14 +1,23 @@
 package vn.unicom.thi360.feature.login
 
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -173,5 +182,101 @@ class LoginFlowTest {
         stack.sessionManager.clearSession(SignOutReason.PasswordReset)
         assertEquals(SessionState.SignedOut(SignOutReason.PasswordReset), stack.sessionManager.state.value)
         assertNull(store.read())
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun signedOutLoginPreservesTabStateBoundsBackStackAndClearsSavedStateAcrossSignOut() {
+        val store = InMemoryTokenStore()
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = store,
+            localeProvider = { AppLocale.VI },
+        )
+        val userALogin = ContractFixtureLoader.readAuthFixture("login-200.json")
+            .replace("student.demo", "student.alpha")
+        val userBLogin = ContractFixtureLoader.readAuthFixture("login-200.json")
+            .replace("student.demo", "student.beta")
+        server.enqueue(ContractFixtureLoader.jsonResponse(200, userALogin))
+        server.enqueue(okhttp3.mockwebserver.MockResponse().setResponseCode(204))
+        server.enqueue(ContractFixtureLoader.jsonResponse(200, userBLogin))
+
+        var observedNavController: NavHostController? = null
+
+        composeRule.setContent {
+            val navController = rememberNavController()
+            observedNavController = navController
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                navController = navController,
+                sessionManager = stack.sessionManager,
+                accountContent = {
+                    var draft by rememberSaveable { mutableStateOf("") }
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier.testTag("account_draft_input"),
+                    )
+                },
+            )
+        }
+
+        // Cold signed-out login as User A.
+        composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.alpha")
+        composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("StudentPass1!")
+        composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            stack.sessionManager.state.value is SessionState.Active
+        }
+        composeRule.waitForIdle()
+
+        // Home -> Account (type draft) -> MyExams -> Account -> Home.
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("account_draft_input").performTextInput("alpha-draft-note")
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("account_draft_input").assertTextContains("alpha-draft-note")
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
+        composeRule.waitForIdle()
+
+        val controller = checkNotNull(observedNavController)
+        val routesAfterSwitching = controller.currentBackStack.value
+            .mapNotNull { it.destination.route }
+        assertEquals(
+            "Back stack must not accumulate duplicate shell tab entries",
+            routesAfterSwitching.distinct(),
+            routesAfterSwitching,
+        )
+        assertEquals(Destination.Home.route, controller.graph.startDestinationRoute)
+
+        // Sign out User A and sign in as User B -> User A's Account draft must not survive.
+        runBlocking { stack.sessionManager.logout() }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.beta")
+        composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("StudentPass2!")
+        composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            stack.sessionManager.state.value == SessionState.Active(username = "student.beta", isOffline = false)
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag("account_draft_input").assertTextContains("", substring = false)
     }
 }

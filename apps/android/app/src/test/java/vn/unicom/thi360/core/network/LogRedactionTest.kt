@@ -1,5 +1,6 @@
 package vn.unicom.thi360.core.network
 
+import android.util.Log
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -7,18 +8,22 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.shadows.ShadowLog
 import vn.unicom.thi360.BuildConfig
 import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.preferences.AppLocale
-import vn.unicom.thi360.core.storage.Tokens
 
+@RunWith(RobolectricTestRunner::class)
 class LogRedactionTest {
 
     private lateinit var server: MockWebServer
 
     @Before
     fun setUp() {
+        ShadowLog.clear()
         server = MockWebServer()
         server.start()
     }
@@ -48,6 +53,12 @@ class LogRedactionTest {
                 ContractFixtureLoader.readAuthFixture("login-401-invalid-credentials.json"),
             ),
         )
+        server.enqueue(
+            ContractFixtureLoader.jsonResponse(
+                503,
+                """{"code":"SERVICE_UNAVAILABLE","message":"Temporarily unavailable"}""",
+            ),
+        )
         server.enqueue(ContractFixtureLoader.jsonResponse(200, refreshFixture))
         server.enqueue(
             ContractFixtureLoader.jsonResponse(
@@ -56,38 +67,52 @@ class LogRedactionTest {
             ),
         )
 
-        val capturedLogs = mutableListOf<String>()
-        val recordingLogger = object : AppLogger {
-            override fun debug(tag: String, message: String) {
-                capturedLogs += "D/$tag: $message"
-            }
-
-            override fun warn(tag: String, message: String) {
-                capturedLogs += "W/$tag: $message"
-            }
-        }
-
         val env = if (BuildConfig.FLAVOR == "demo") Environment.DEMO else AppEnvironment.environment
         val tokenStore = InMemoryTokenStore()
+        // Exercise the production default AndroidAppLogger writing to android.util.Log.
         val stack = Thi360ApiFactory.createSessionStack(
             baseUrl = server.url("/").toString(),
             environment = env,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
-            logger = recordingLogger,
         )
 
+        stack.sessionManager.login("student.demo", secretPassword)
         stack.sessionManager.login("student.demo", secretPassword)
         stack.sessionManager.login("student.demo", secretPassword)
         stack.sessionManager.refreshSession()
         stack.authenticatedAuthApi.me()
 
-        val tokensString = tokenStore.read().toString()
-        val redactedSample = LogRedactor.redact(
+        AndroidAppLogger.warn(
+            "Thi360Auth",
             """Authorization: Bearer $secretAccessToken {"password":"$secretPassword","refreshToken":"$secretRefreshToken"} /reset-password?token=resetSecret123""",
         )
 
-        val allOutputs = capturedLogs + listOf(tokensString, redactedSample)
+        val shadowLogs = ShadowLog.getLogs()
+        val httpLogs = shadowLogs.filter { it.tag == "Thi360Http" }
+        assertTrue("Expected Thi360Http log entries for >= 400 responses", httpLogs.isNotEmpty())
+        assertTrue(
+            "Expected 503 response to emit a WARN entry via AndroidAppLogger",
+            httpLogs.any { it.type == Log.WARN && it.msg.contains("-> 503") },
+        )
+        assertTrue(
+            "Expected 401 response to emit an HTTP log entry via AndroidAppLogger",
+            httpLogs.any { it.msg.contains("-> 401") },
+        )
+        if (env == Environment.DEMO) {
+            assertTrue(
+                "Demo flavor must suppress < 400 HTTP success logs",
+                httpLogs.none { it.msg.contains("-> 200") },
+            )
+        }
+
+        val redactedAuthLog = shadowLogs.last { it.tag == "Thi360Auth" }.msg
+        val tokensString = tokenStore.read().toString()
+
+        val allOutputs = shadowLogs.flatMap { item ->
+            listOfNotNull(item.msg, item.throwable?.stackTraceToString())
+        } + listOf(tokensString)
+
         val forbiddenSecrets = listOf(
             secretPassword,
             secretAccessToken,
@@ -101,6 +126,6 @@ class LogRedactionTest {
             }
         }
         assertTrue(tokensString.contains("[REDACTED]"))
-        assertTrue(redactedSample.contains("[REDACTED]"))
+        assertTrue(redactedAuthLog.contains("[REDACTED]"))
     }
 }

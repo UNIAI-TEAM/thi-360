@@ -4,13 +4,16 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -26,6 +29,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.config.Environment
+import vn.unicom.thi360.core.network.ApiError
+import vn.unicom.thi360.core.network.ApiResult
 import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
@@ -183,5 +188,161 @@ class TokenRefreshTest {
         composeRule.onNodeWithTag(LoginTestTags.NOTICE_BANNER)
             .assertTextContains("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+    }
+
+    @Test
+    fun inFlightRefreshNeverClobbersLogoutOrPasswordReset() = runTest {
+        val scenarios = listOf(
+            Triple(
+                "logout + 401",
+                SignOutReason.None,
+                ApiResult.HttpFailure(401, ApiError(code = "SESSION_REVOKED")),
+            ),
+            Triple(
+                "logout + 200",
+                SignOutReason.None,
+                ApiResult.Success(
+                    Tokens(
+                        accessToken = "stale-new-access",
+                        refreshToken = "stale-new-refresh",
+                        accessExpiresIn = 300,
+                        refreshExpiresIn = 604800,
+                        mustChangePassword = false,
+                        username = "userA",
+                    ),
+                ),
+            ),
+            Triple(
+                "logout + IOException",
+                SignOutReason.None,
+                ApiResult.NetworkFailure(IOException("Timeout")),
+            ),
+            Triple(
+                "passwordReset + 401",
+                SignOutReason.PasswordReset,
+                ApiResult.HttpFailure(401, ApiError(code = "SESSION_REVOKED")),
+            ),
+        )
+
+        for ((label, expectedReason, delayedResult) in scenarios) {
+            val refreshStarted = CompletableDeferred<Unit>()
+            val releaseRefresh = CompletableDeferred<ApiResult<Tokens>>()
+            val store = InMemoryTokenStore(
+                Tokens(
+                    accessToken = "userA-access",
+                    refreshToken = "userA-refresh",
+                    accessExpiresIn = 300,
+                    refreshExpiresIn = 604800,
+                    mustChangePassword = false,
+                    username = "userA",
+                ),
+            )
+            val gateway = object : MobileAuthGateway {
+                override suspend fun login(identifier: String, password: String): ApiResult<Tokens> =
+                    error("unused")
+
+                override suspend fun refresh(refreshToken: String): ApiResult<Tokens> {
+                    refreshStarted.complete(Unit)
+                    return releaseRefresh.await()
+                }
+
+                override suspend fun logout(refreshToken: String): ApiResult<Unit> =
+                    ApiResult.Success(Unit)
+            }
+            val manager = SessionManager(tokenStore = store, authGateway = gateway)
+
+            val refreshJob = async { manager.refreshSession() }
+            refreshStarted.await()
+
+            if (expectedReason == SignOutReason.None) {
+                manager.logout()
+            } else {
+                manager.clearSession(expectedReason)
+            }
+
+            releaseRefresh.complete(delayedResult)
+            assertEquals("$label: stale refresh must return SignedOut", RefreshOutcome.SignedOut, refreshJob.await())
+            assertNull("$label: TokenStore must remain cleared", store.read())
+            assertEquals(
+                "$label: SignOutReason must be preserved",
+                SessionState.SignedOut(expectedReason),
+                manager.state.value,
+            )
+        }
+    }
+
+    @Test
+    fun inFlightRefreshForPreviousUserNeverOverwritesOrWipesNewUser() = runTest {
+        val userBTokens = Tokens(
+            accessToken = "userB-access",
+            refreshToken = "userB-refresh",
+            accessExpiresIn = 300,
+            refreshExpiresIn = 604800,
+            mustChangePassword = false,
+            username = "userB",
+        )
+        val userBRefreshedTokens = userBTokens.copy(
+            accessToken = "userB-access-2",
+            refreshToken = "userB-refresh-2",
+        )
+
+        for (userAResult in listOf(
+            ApiResult.Success(
+                Tokens(
+                    accessToken = "userA-access-new",
+                    refreshToken = "userA-refresh-new",
+                    accessExpiresIn = 300,
+                    refreshExpiresIn = 604800,
+                    mustChangePassword = false,
+                    username = "userA",
+                ),
+            ),
+            ApiResult.HttpFailure(401, ApiError(code = "SESSION_REVOKED")),
+            ApiResult.NetworkFailure(IOException("Offline")),
+        )) {
+            val userARefreshStarted = CompletableDeferred<Unit>()
+            val releaseUserARefresh = CompletableDeferred<ApiResult<Tokens>>()
+            val store = InMemoryTokenStore(
+                Tokens(
+                    accessToken = "userA-access",
+                    refreshToken = "userA-refresh",
+                    accessExpiresIn = 300,
+                    refreshExpiresIn = 604800,
+                    mustChangePassword = false,
+                    username = "userA",
+                ),
+            )
+            val gateway = object : MobileAuthGateway {
+                override suspend fun login(identifier: String, password: String): ApiResult<Tokens> =
+                    ApiResult.Success(userBTokens)
+
+                override suspend fun refresh(refreshToken: String): ApiResult<Tokens> =
+                    if (refreshToken == "userA-refresh") {
+                        userARefreshStarted.complete(Unit)
+                        releaseUserARefresh.await()
+                    } else {
+                        ApiResult.Success(userBRefreshedTokens)
+                    }
+
+                override suspend fun logout(refreshToken: String): ApiResult<Unit> =
+                    ApiResult.Success(Unit)
+            }
+            val manager = SessionManager(tokenStore = store, authGateway = gateway)
+
+            val staleUserARefresh = async { manager.refreshSession() }
+            userARefreshStarted.await()
+
+            manager.logout()
+            assertEquals(LoginOutcome.Authenticated, manager.login("userB", "PassB1!"))
+
+            // A concurrent refresh for User B must NOT join User A's in-flight deferred.
+            val userBOutcome = manager.refreshSession()
+            assertEquals(RefreshOutcome.Refreshed(userBRefreshedTokens), userBOutcome)
+
+            releaseUserARefresh.complete(userAResult)
+            assertEquals(RefreshOutcome.SignedOut, staleUserARefresh.await())
+            assertEquals(userBRefreshedTokens, store.read())
+            assertEquals(SessionState.Active(username = "userB", isOffline = false), manager.state.value)
+        }
     }
 }

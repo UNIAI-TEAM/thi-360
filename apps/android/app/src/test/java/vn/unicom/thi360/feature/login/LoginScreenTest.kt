@@ -7,16 +7,22 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import kotlinx.coroutines.CompletableDeferred
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -280,5 +286,66 @@ class LoginScreenTest {
             composeRule.onNodeWithText("UNMAPPED_INTERNAL_999", substring = true).assertDoesNotExist()
             composeRule.onNodeWithText("Raw stack detail", substring = true).assertDoesNotExist()
         }
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp", fontScale = 2.0f)
+    fun registerPromptWrapsWithoutCrushingAt360dpAnd200PercentFontScale() {
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(),
+            localeProvider = { AppLocale.VI },
+        )
+
+        composeRule.setContent {
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+            )
+        }
+
+        val registerNode = composeRule.onNodeWithTag(LoginTestTags.REGISTER_LINK)
+        registerNode.performScrollTo()
+        registerNode.assertIsDisplayed()
+        val width = registerNode.getUnclippedBoundsInRoot().width
+        assertTrue(
+            "Expected non-crushed register button width at 200% font scale, got $width",
+            width >= 100.dp,
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "w1280dp-h800dp")
+    fun identifierSurvivesActivityRecreationWithoutPersistingPassword() {
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(),
+            localeProvider = { AppLocale.VI },
+        )
+        val restorationTester = StateRestorationTester(composeRule)
+
+        restorationTester.setContent {
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+            )
+        }
+
+        composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("tablet.student")
+        composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("SecretPass1!")
+
+        restorationTester.emulateSavedInstanceStateRestore()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD)
+            .assertTextContains("tablet.student")
+        composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD)
+            .assertTextContains("", substring = false)
     }
 }

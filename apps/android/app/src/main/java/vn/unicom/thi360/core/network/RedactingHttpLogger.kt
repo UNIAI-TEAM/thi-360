@@ -79,7 +79,7 @@ class RedactingHttpLoggingInterceptor(
         statusCode: Int,
         elapsedMs: Long,
     ) {
-        val line = "$method $path -> $statusCode (${elapsedMs}ms)"
+        val line = LogRedactor.redact("$method $path -> $statusCode (${elapsedMs}ms)")
         if (environment == Environment.DEMO && statusCode < 400) {
             return
         }

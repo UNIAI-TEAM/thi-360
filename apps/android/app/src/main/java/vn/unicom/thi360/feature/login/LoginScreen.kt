@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -45,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -185,12 +187,15 @@ fun LoginScreen(
     modifier: Modifier = Modifier,
     initialIdentifier: String = "",
 ) {
+    var savedIdentifier by rememberSaveable(initialIdentifier) {
+        mutableStateOf(initialIdentifier)
+    }
     val scope = rememberCoroutineScope()
     val controller = remember(sessionManager, initialIdentifier) {
         LoginController(
             sessionManager = sessionManager,
             scope = scope,
-            initialIdentifier = initialIdentifier,
+            initialIdentifier = savedIdentifier,
         )
     }
     LaunchedEffect(controller.passwordState.text) {
@@ -202,7 +207,10 @@ fun LoginScreen(
         uiState = controller.uiState,
         passwordState = controller.passwordState,
         signOutReason = signOutReason,
-        onIdentifierChanged = controller::onIdentifierChanged,
+        onIdentifierChanged = { value ->
+            savedIdentifier = value
+            controller.onIdentifierChanged(value)
+        },
         onTogglePasswordVisibility = controller::onTogglePasswordVisibility,
         onSubmit = controller::submit,
         onSelectLocale = onSelectLocale,
@@ -728,12 +736,12 @@ internal fun LanguageToggleIconButton(
 @Composable
 private fun RegisterPromptRow(onRegisterClick: () -> Unit) {
     val colors = Thi360Theme.colors
-    Row(
+    FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp),
         horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = stringResource(R.string.login_no_account),
