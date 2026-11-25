@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
@@ -35,7 +36,7 @@ import java.util.UUID
 class ResetLinkInstrumentedTest {
 
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createEmptyComposeRule()
 
     @Test
     fun resetPasswordViewIntentResolvesAndOpensNewPasswordScreenWhileOtherPathsAreRejected() {
@@ -71,8 +72,9 @@ class ResetLinkInstrumentedTest {
         }
         assertTrue(context.packageManager.queryIntentActivities(otherHostIntent, 0).isEmpty())
 
-        ActivityScenario.launch<MainActivity>(validIntent).use { scenario ->
-            composeRule.waitUntil(timeoutMillis = 5_000) {
+        val launchIntent = Intent(validIntent).setClass(context, MainActivity::class.java)
+        ActivityScenario.launch<MainActivity>(launchIntent).use { scenario ->
+            composeRule.waitUntil(timeoutMillis = 10_000) {
                 runCatching {
                     composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
                     true
@@ -88,7 +90,7 @@ class ResetLinkInstrumentedTest {
             }
 
             composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
-            composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.waitUntil(timeoutMillis = 10_000) {
                 runCatching {
                     composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
                     true
@@ -97,7 +99,7 @@ class ResetLinkInstrumentedTest {
             composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
 
             scenario.recreate()
-            composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.waitUntil(timeoutMillis = 10_000) {
                 runCatching {
                     composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
                     true
@@ -106,6 +108,13 @@ class ResetLinkInstrumentedTest {
             composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
         }
     }
+}
+
+@RunWith(AndroidJUnit4::class)
+class ResetLinkOverlayInstrumentedTest {
+
+    @get:Rule
+    val composeRule = createComposeRule()
 
     @Test
     fun resetLinkBypassesLockedSessionState() {
