@@ -5,6 +5,9 @@ struct AdaptiveShellView: View {
     @Bindable var router: AppRouter
     @Bindable var preferences: AppPreferences
     let idiom: UIUserInterfaceIdiom
+    var sessionStore: SessionStore? = nil
+    var accountViewModel: AccountViewModel? = nil
+    var serverDefaultThemeMode: ThemeMode = .light
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.brandPalette) private var palette
@@ -76,6 +79,36 @@ struct AdaptiveShellView: View {
                 .padding(.horizontal, 12)
 
                 Spacer(minLength: 0)
+
+                if let profile = accountViewModel?.loadedProfile {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(palette.primaryContainerStrongColor)
+                                .frame(width: 36, height: 36)
+                            Text(profile.initials)
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(palette.primaryTextColor)
+                        }
+                        .accessibilityHidden(true)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(profile.displayName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(palette.textColor)
+                                .lineLimit(1)
+                            Text(profile.username)
+                                .font(.caption)
+                                .foregroundStyle(palette.textMutedColor)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("shell.ipad.sidebarProfile")
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(palette.bgPageColor.ignoresSafeArea())
@@ -131,12 +164,25 @@ struct AdaptiveShellView: View {
     private var leftBookPaneContent: some View {
         switch router.selectedDestination {
         case .account:
-            AccountShellView(
-                router: router,
-                preferences: preferences,
-                effectiveSizeClass: effectiveSizeClass,
-                showsInlineProbe: false
-            )
+            if let accountViewModel {
+                AccountView(
+                    viewModel: accountViewModel,
+                    router: router,
+                    preferences: preferences,
+                    effectiveSizeClass: effectiveSizeClass,
+                    serverDefaultThemeMode: serverDefaultThemeMode,
+                    isTwoPaneBook: true,
+                    showsInlineProbe: false,
+                    onOpenChangePassword: {}
+                )
+            } else {
+                AccountShellView(
+                    router: router,
+                    preferences: preferences,
+                    effectiveSizeClass: effectiveSizeClass,
+                    showsInlineProbe: false
+                )
+            }
         case .home, .myExams, .history:
             duoLeftOverviewPane(for: router.selectedDestination)
         }
@@ -177,11 +223,20 @@ struct AdaptiveShellView: View {
     private var rightBookPaneContent: some View {
         switch router.selectedDestination {
         case .account:
-            AccountDetailShellView(
-                router: router,
-                preferences: preferences,
-                effectiveSizeClass: effectiveSizeClass
-            )
+            if let sessionStore, accountViewModel != nil {
+                AccountDuoDetailView(
+                    router: router,
+                    preferences: preferences,
+                    sessionStore: sessionStore,
+                    effectiveSizeClass: effectiveSizeClass
+                )
+            } else {
+                AccountDetailShellView(
+                    router: router,
+                    preferences: preferences,
+                    effectiveSizeClass: effectiveSizeClass
+                )
+            }
         case .home, .myExams, .history:
             PlaceholderDestinationView(
                 destination: router.selectedDestination,
@@ -201,11 +256,26 @@ struct AdaptiveShellView: View {
                 showsBrandHeader: showsBrandHeader
             )
         case .account:
-            AccountShellView(
-                router: router,
-                preferences: preferences,
-                effectiveSizeClass: effectiveSizeClass
-            )
+            if let accountViewModel {
+                AccountView(
+                    viewModel: accountViewModel,
+                    router: router,
+                    preferences: preferences,
+                    effectiveSizeClass: effectiveSizeClass,
+                    serverDefaultThemeMode: serverDefaultThemeMode,
+                    isTwoPaneBook: false,
+                    showsInlineProbe: true,
+                    onOpenChangePassword: {
+                        router.isPresentingChangePassword = true
+                    }
+                )
+            } else {
+                AccountShellView(
+                    router: router,
+                    preferences: preferences,
+                    effectiveSizeClass: effectiveSizeClass
+                )
+            }
         }
     }
 

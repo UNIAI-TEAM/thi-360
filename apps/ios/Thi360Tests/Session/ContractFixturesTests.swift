@@ -166,4 +166,14 @@ final class ContractFixturesTests: XCTestCase {
         XCTAssertEqual(profile.email, "student.demo@thi360.vn")
         XCTAssertEqual(transport.recordedRequests.count, 3)
     }
+
+    func testAppearanceContractFixtureDecodesAndMatchesBuiltInDefaultPalette() throws {
+        let appearanceData = try ContractFixtureLoader.loadData(relativePath: "appearance/tokens-thi360-green.json")
+        let payload = try XCTUnwrap(AppearanceTokensPayload.decodeValidated(from: appearanceData))
+        XCTAssertEqual(payload.version, 0)
+        XCTAssertEqual(payload.mode, .light)
+        XCTAssertEqual(payload.presetId, "thi360-green")
+        XCTAssertTrue(payload.light.equalsIgnoringHexCase(BrandPalette.defaultLight))
+        XCTAssertTrue(payload.dark.equalsIgnoringHexCase(BrandPalette.defaultDark))
+    }
 }

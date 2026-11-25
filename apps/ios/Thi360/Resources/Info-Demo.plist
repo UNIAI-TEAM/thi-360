@@ -11,6 +11,8 @@
 		<string>vi</string>
 		<string>en</string>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Thi 360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn.</string>
 	<key>THI360_API_BASE_URL</key>
 	<string>$(THI360_API_BASE_URL)</string>
 	<key>THI360_ENV</key>

@@ -188,15 +188,18 @@ struct FirstRunKeychainCleaner: @unchecked Sendable {
     private let userDefaults: UserDefaults
     private let flagKey: String
     private let tokenStore: any TokenStore
+    private let additionalCleanup: (@Sendable () -> Void)?
 
     init(
         userDefaults: UserDefaults = .standard,
         flagKey: String = FirstRunKeychainCleaner.defaultFlagKey,
-        tokenStore: any TokenStore
+        tokenStore: any TokenStore,
+        additionalCleanup: (@Sendable () -> Void)? = nil
     ) {
         self.userDefaults = userDefaults
         self.flagKey = flagKey
         self.tokenStore = tokenStore
+        self.additionalCleanup = additionalCleanup
     }
 
     @discardableResult
@@ -206,6 +209,7 @@ struct FirstRunKeychainCleaner: @unchecked Sendable {
         }
         // iOS preserves Keychain entries across app uninstall/reinstall while wiping UserDefaults.
         try tokenStore.clear()
+        additionalCleanup?()
         userDefaults.set(true, forKey: flagKey)
         return true
     }

@@ -72,13 +72,16 @@ jobs:
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
             -skipPackagePluginValidation \
             test \
+            -only-testing:Thi360Tests/BundleInfoTests \
             -only-testing:Thi360Tests/TransportSecurityTests \
             -only-testing:Thi360Tests/EnvironmentConfigTests \
             -only-testing:Thi360Tests/LogRedactionTests \
             -only-testing:Thi360Tests/EntitlementsTests \
             -only-testing:Thi360Tests/ResetLinkRoutingTests \
             -only-testing:Thi360Tests/ResetTokenHandlingTests \
-            -only-testing:Thi360Tests/RecoveryLogRedactionTests
+            -only-testing:Thi360Tests/RecoveryLogRedactionTests \
+            -only-testing:Thi360Tests/AppearanceFallbackTests \
+            -only-testing:Thi360Tests/BiometricInvalidationStateTests
 
       - name: Run Thi360Dev unit and UI tests
         run: |

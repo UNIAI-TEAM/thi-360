@@ -81,6 +81,26 @@ struct BrandPalette: Codable, Equatable, Sendable {
         ]
     }
 
+    var hasValidHexColors: Bool {
+        allHexValues.allSatisfy(Self.isValidHex)
+    }
+
+    static func isValidHex(_ value: String) -> Bool {
+        let chars = Array(value)
+        guard chars.count == 7, chars[0] == "#" else { return false }
+        for ch in chars.dropFirst() {
+            let isHex = (ch >= "0" && ch <= "9") || (ch >= "a" && ch <= "f") || (ch >= "A" && ch <= "F")
+            if !isHex { return false }
+        }
+        return true
+    }
+
+    func equalsIgnoringHexCase(_ other: BrandPalette) -> Bool {
+        zip(allHexValues, other.allHexValues).allSatisfy {
+            $0.caseInsensitiveCompare($1) == .orderedSame
+        }
+    }
+
     var primaryFillColor: Color { Color(hex: primaryFill) }
     var onPrimaryColor: Color { Color(hex: onPrimary) }
     var primaryTextColor: Color { Color(hex: primaryText) }

@@ -47,6 +47,14 @@ final class StringCatalogParityTests: XCTestCase {
             files.contains { $0.lastPathComponent == "Recovery.xcstrings" },
             "Recovery.xcstrings must exist"
         )
+        XCTAssertTrue(
+            files.contains { $0.lastPathComponent == "Account.xcstrings" },
+            "Account.xcstrings must exist"
+        )
+        XCTAssertTrue(
+            files.contains { $0.lastPathComponent == "InfoPlist.xcstrings" },
+            "InfoPlist.xcstrings must exist"
+        )
 
         let decoder = JSONDecoder()
 
@@ -113,6 +121,21 @@ final class StringCatalogParityTests: XCTestCase {
                     XCTAssertEqual(RecoveryStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
                     XCTAssertEqual(RecoveryStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
                 }
+            }
+
+            if file.lastPathComponent == "Account.xcstrings" {
+                for key in allKeys.sorted() {
+                    let expectedVi = catalog.strings[key]?.localizations?["vi"]?.stringUnit?.value
+                    let expectedEn = catalog.strings[key]?.localizations?["en"]?.stringUnit?.value
+                    XCTAssertEqual(AccountStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
+                    XCTAssertEqual(AccountStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
+                }
+            }
+
+            if file.lastPathComponent == "InfoPlist.xcstrings" {
+                XCTAssertTrue(allKeys.contains("NSFaceIDUsageDescription"), "InfoPlist.xcstrings must localize NSFaceIDUsageDescription")
+                let bundleValue = Bundle.main.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String
+                XCTAssertFalse((bundleValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "Bundle Info.plist must include NSFaceIDUsageDescription")
             }
         }
     }

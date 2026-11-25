@@ -28,6 +28,8 @@ final class AppRouter {
     @ObservationIgnored private var cachedVoluntaryPasswordVM: NewPasswordViewModel?
     @ObservationIgnored private var cachedResetPasswordVM: NewPasswordViewModel?
     @ObservationIgnored private var cachedResetLinkID: UUID?
+    @ObservationIgnored private var cachedAccountVM: AccountViewModel?
+    @ObservationIgnored private var cachedLockVM: LockViewModel?
 
     init(
         initialDestination: Destination = .home,
@@ -44,6 +46,10 @@ final class AppRouter {
     var activeResetLink: ResetLink? {
         guard case let .resetPassword(link) = recoveryOverlay else { return nil }
         return link
+    }
+
+    var cachedAccountDisplayName: String? {
+        cachedAccountVM?.loadedProfile?.displayName
     }
 
     func toggleForcedSizeClass(current: UserInterfaceSizeClass?) {
@@ -135,10 +141,64 @@ final class AppRouter {
         return viewModel
     }
 
+    func accountViewModel(
+        sessionStore: SessionStore,
+        biometricManager: BiometricManager
+    ) -> AccountViewModel {
+        if let existing = cachedAccountVM,
+           existing.sessionStore === sessionStore,
+           existing.biometricManager === biometricManager
+        {
+            return existing
+        }
+        let viewModel = AccountViewModel(
+            sessionStore: sessionStore,
+            biometricManager: biometricManager
+        )
+        cachedAccountVM = viewModel
+        return viewModel
+    }
+
+    func lockViewModel(
+        sessionStore: SessionStore,
+        biometricManager: BiometricManager
+    ) -> LockViewModel {
+        if let existing = cachedLockVM,
+           existing.sessionStore === sessionStore,
+           existing.biometricManager === biometricManager
+        {
+            return existing
+        }
+        let viewModel = LockViewModel(
+            sessionStore: sessionStore,
+            biometricManager: biometricManager
+        )
+        cachedLockVM = viewModel
+        return viewModel
+    }
+
     func dismissChangePassword() {
         cachedVoluntaryPasswordVM?.clearSensitiveInputs()
         cachedVoluntaryPasswordVM = nil
         isPresentingChangePassword = false
+    }
+
+    func resetForSessionCleared() {
+        dismissChangePassword()
+        cachedAccountVM?.resetForSessionChange()
+        cachedAccountVM = nil
+        cachedLockVM?.reset()
+        cachedLockVM = nil
+        selectedDestination = .home
+    }
+
+    func resetForSessionReplaced() {
+        dismissChangePassword()
+        cachedAccountVM?.resetForSessionChange()
+        cachedAccountVM = nil
+        cachedLockVM?.reset()
+        cachedLockVM = nil
+        selectedDestination = .home
     }
 
     static func makeForCurrentProcess(
@@ -173,40 +233,85 @@ struct AppRootView: View {
     @Bindable var router: AppRouter
     @Bindable var preferences: AppPreferences
     var sessionStore: SessionStore? = nil
+    var appearanceRepository: AppearanceRepository? = nil
+    var biometricManager: BiometricManager? = nil
     var paletteSet: BrandPaletteSet = .defaultThi360Green
     var idiomOverride: UIUserInterfaceIdiom?
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.scenePhase) private var scenePhase
+
+    private var resolvedPaletteSet: BrandPaletteSet {
+        appearanceRepository?.current ?? paletteSet
+    }
 
     private var effectiveThemeMode: ThemeMode {
-        preferences.effectiveThemeMode(serverDefault: paletteSet.defaultMode)
+        preferences.effectiveThemeMode(serverDefault: resolvedPaletteSet.defaultMode)
     }
 
     private var activePalette: BrandPalette {
-        paletteSet.palette(for: effectiveThemeMode)
+        resolvedPaletteSet.palette(for: effectiveThemeMode)
     }
 
     private var resolvedIdiom: UIUserInterfaceIdiom {
         idiomOverride ?? UIDevice.current.userInterfaceIdiom
     }
 
+    private var resolvedBiometricManager: BiometricManager? {
+        biometricManager ?? sessionStore?.biometricManager
+    }
+
+    private var showsPrivacyShield: Bool {
+        guard let sessionStore, sessionStore.state.isAuthenticated else { return false }
+        if resolvedBiometricManager?.isPrivacyShieldVisible == true {
+            return true
+        }
+        return sessionStore.state == .locked && scenePhase != .active
+    }
+
     var body: some View {
-        rootContent
-            .environment(\.brandPalette, activePalette)
-            .environment(\.locale, preferences.locale.locale)
-            .tint(activePalette.primaryFillColor)
-            .preferredColorScheme(effectiveThemeMode.colorScheme)
-            .onChange(of: sessionStore?.state) { _, newState in
-                guard let newState else { return }
-                if newState.isAuthenticated {
-                    router.signedOutRoute = .login
-                } else {
-                    router.dismissChangePassword()
+        ZStack {
+            rootContent
+
+            if showsPrivacyShield {
+                PrivacyShieldView(locale: preferences.locale)
+                    .zIndex(100)
+            }
+        }
+        .environment(\.brandPalette, activePalette)
+        .environment(\.locale, preferences.locale.locale)
+        .tint(activePalette.primaryFillColor)
+        .preferredColorScheme(effectiveThemeMode.colorScheme)
+        .onChange(of: sessionStore?.state) { _, newState in
+            guard let newState else { return }
+            if newState.isAuthenticated {
+                router.signedOutRoute = .login
+            } else {
+                router.resetForSessionCleared()
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if let sessionStore, let manager = resolvedBiometricManager {
+                let shouldLock = manager.handleScenePhaseChange(newPhase, sessionState: sessionStore.state)
+                if shouldLock {
+                    sessionStore.lockSession()
                 }
             }
-            .task {
-                await sessionStore?.validateSessionOnLaunch()
+            if newPhase == .active {
+                Task {
+                    await appearanceRepository?.refreshOnForegroundIfNeeded()
+                }
             }
+        }
+        .task {
+            async let appearanceTask: Void = {
+                _ = await appearanceRepository?.refreshOnLaunch()
+            }()
+            async let sessionTask: Void = {
+                await sessionStore?.validateSessionOnLaunch()
+            }()
+            _ = await (appearanceTask, sessionTask)
+        }
     }
 
     @ViewBuilder
@@ -251,47 +356,71 @@ struct AppRootView: View {
                 }
 
             case .active:
-                VStack(spacing: 0) {
-                    if sessionStore.connectivityState == .offline {
-                        OfflineStatusBanner(
-                            locale: preferences.locale,
-                            isRetrying: sessionStore.isRetryingConnection,
-                            onRetry: { Task { await sessionStore.retryConnection() } }
-                        )
-                    }
-                    if router.isPresentingChangePassword {
-                        let effectiveSizeClass = router.stateProbeEnabled
-                            ? (router.forcedSizeClassForUITest ?? horizontalSizeClass)
-                            : horizontalSizeClass
-                        NewPasswordView(
-                            viewModel: router.voluntaryChangePasswordViewModel(sessionStore: sessionStore),
-                            preferences: preferences,
-                            onClose: { router.dismissChangePassword() },
-                            stateProbeToggleAction: router.stateProbeEnabled
-                                ? { router.toggleForcedSizeClass(current: effectiveSizeClass) }
-                                : nil
-                        )
-                        .environment(\.horizontalSizeClass, effectiveSizeClass)
-                    } else {
-                        AdaptiveShellView(
-                            router: router,
-                            preferences: preferences,
-                            idiom: resolvedIdiom
-                        )
+                if let manager = resolvedBiometricManager, manager.isPromptingEnable {
+                    BiometricEnableView(
+                        biometricManager: manager,
+                        preferences: preferences,
+                        sessionStore: sessionStore
+                    )
+                } else {
+                    VStack(spacing: 0) {
+                        if sessionStore.connectivityState == .offline {
+                            OfflineStatusBanner(
+                                locale: preferences.locale,
+                                isRetrying: sessionStore.isRetryingConnection,
+                                onRetry: { Task { await sessionStore.retryConnection() } }
+                            )
+                        }
+                        if router.isPresentingChangePassword {
+                            let effectiveSizeClass = router.stateProbeEnabled
+                                ? (router.forcedSizeClassForUITest ?? horizontalSizeClass)
+                                : horizontalSizeClass
+                            NewPasswordView(
+                                viewModel: router.voluntaryChangePasswordViewModel(sessionStore: sessionStore),
+                                preferences: preferences,
+                                onClose: { router.dismissChangePassword() },
+                                stateProbeToggleAction: router.stateProbeEnabled
+                                    ? { router.toggleForcedSizeClass(current: effectiveSizeClass) }
+                                    : nil
+                            )
+                            .environment(\.horizontalSizeClass, effectiveSizeClass)
+                        } else {
+                            AdaptiveShellView(
+                                router: router,
+                                preferences: preferences,
+                                idiom: resolvedIdiom,
+                                sessionStore: sessionStore,
+                                accountViewModel: resolvedBiometricManager.map {
+                                    router.accountViewModel(sessionStore: sessionStore, biometricManager: $0)
+                                },
+                                serverDefaultThemeMode: resolvedPaletteSet.defaultMode
+                            )
+                        }
                     }
                 }
 
             case .locked:
-                LockedGateView(
-                    locale: preferences.locale,
-                    onSignOut: { Task { await sessionStore.signOut() } }
-                )
+                if let manager = resolvedBiometricManager {
+                    LockFlowHostView(
+                        router: router,
+                        sessionStore: sessionStore,
+                        biometricManager: manager,
+                        preferences: preferences,
+                        idiom: resolvedIdiom
+                    )
+                } else {
+                    LockedGateView(
+                        locale: preferences.locale,
+                        onSignOut: { Task { await sessionStore.signOut() } }
+                    )
+                }
             }
         } else {
             AdaptiveShellView(
                 router: router,
                 preferences: preferences,
-                idiom: resolvedIdiom
+                idiom: resolvedIdiom,
+                serverDefaultThemeMode: resolvedPaletteSet.defaultMode
             )
         }
     }
@@ -324,6 +453,76 @@ struct AppRootView: View {
                 }
             )
         }
+    }
+}
+
+private struct LockFlowHostView: View {
+    @Bindable var router: AppRouter
+    let sessionStore: SessionStore
+    let biometricManager: BiometricManager
+    @Bindable var preferences: AppPreferences
+    let idiom: UIUserInterfaceIdiom
+
+    var body: some View {
+        let lockVM = router.lockViewModel(sessionStore: sessionStore, biometricManager: biometricManager)
+        if lockVM.isShowingPasswordFallback {
+            LockPasswordFallbackHostView(
+                sessionStore: sessionStore,
+                preferences: preferences,
+                idiom: idiom,
+                prefilledIdentifier: lockVM.lockedUsername,
+                onBackToLock: { lockVM.closePasswordFallback() },
+                onForgotPassword: { router.recoveryOverlay = .forgotPassword }
+            )
+        } else {
+            LockView(
+                viewModel: lockVM,
+                preferences: preferences,
+                displayName: router.cachedAccountDisplayName
+            )
+        }
+    }
+}
+
+private struct LockPasswordFallbackHostView: View {
+    @Bindable var preferences: AppPreferences
+    let idiom: UIUserInterfaceIdiom
+    let onBackToLock: () -> Void
+    let onForgotPassword: () -> Void
+
+    @State private var viewModel: LoginViewModel
+
+    init(
+        sessionStore: SessionStore,
+        preferences: AppPreferences,
+        idiom: UIUserInterfaceIdiom,
+        prefilledIdentifier: String,
+        onBackToLock: @escaping () -> Void,
+        onForgotPassword: @escaping () -> Void
+    ) {
+        self.preferences = preferences
+        self.idiom = idiom
+        self.onBackToLock = onBackToLock
+        self.onForgotPassword = onForgotPassword
+        _viewModel = State(
+            initialValue: LoginViewModel(
+                sessionStore: sessionStore,
+                prefilledIdentifier: prefilledIdentifier,
+                initialReason: .none,
+                isLockPasswordFallback: true
+            )
+        )
+    }
+
+    var body: some View {
+        LoginView(
+            viewModel: viewModel,
+            preferences: preferences,
+            idiom: idiom,
+            onForgotPassword: onForgotPassword,
+            onRegister: {},
+            onBackToLock: onBackToLock
+        )
     }
 }
 
