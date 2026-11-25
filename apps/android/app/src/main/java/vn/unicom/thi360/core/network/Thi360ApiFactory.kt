@@ -113,6 +113,8 @@ object Thi360ApiFactory {
         tokenStore: TokenStore,
         localeProvider: () -> AppLocale,
         logger: AppLogger = AndroidAppLogger,
+        onSessionCleared: () -> Unit = {},
+        startLocked: Boolean = false,
     ): Thi360SessionStack {
         val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
         val acceptLanguageInterceptor = AcceptLanguageInterceptor(localeProvider)
@@ -139,6 +141,8 @@ object Thi360ApiFactory {
         val sessionManager = SessionManager(
             tokenStore = tokenStore,
             authGateway = authGateway,
+            onSessionCleared = onSessionCleared,
+            startLocked = startLocked,
         )
 
         val authenticatedOkHttpClient = OkHttpClient.Builder()

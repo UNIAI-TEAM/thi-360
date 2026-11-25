@@ -82,6 +82,10 @@ class BackupRulesTest {
             "backup_rules.xml must explicitly exclude ${KeystoreTokenStore.BACKUP_RELATIVE_PATH}",
             ("root" to KeystoreTokenStore.BACKUP_RELATIVE_PATH) in legacyRules,
         )
+        assertTrue(
+            "backup_rules.xml must explicitly exclude ${vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH}",
+            ("root" to vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH) in legacyRules,
+        )
         assertTrue(("root" to ".") in legacyRules)
         assertTrue(("sharedpref" to ".") in legacyRules)
 
@@ -93,8 +97,16 @@ class BackupRulesTest {
             ("root" to KeystoreTokenStore.BACKUP_RELATIVE_PATH) in cloudBackup,
         )
         assertTrue(
+            "data_extraction_rules.xml cloud-backup must explicitly exclude ${vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH}",
+            ("root" to vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH) in cloudBackup,
+        )
+        assertTrue(
             "data_extraction_rules.xml device-transfer must explicitly exclude ${KeystoreTokenStore.BACKUP_RELATIVE_PATH}",
             ("root" to KeystoreTokenStore.BACKUP_RELATIVE_PATH) in deviceTransfer,
+        )
+        assertTrue(
+            "data_extraction_rules.xml device-transfer must explicitly exclude ${vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH}",
+            ("root" to vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH) in deviceTransfer,
         )
     }
 

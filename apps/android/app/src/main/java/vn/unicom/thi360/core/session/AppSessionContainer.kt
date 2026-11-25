@@ -1,7 +1,9 @@
 package vn.unicom.thi360.core.session
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import java.util.concurrent.atomic.AtomicReference
+import vn.unicom.thi360.Thi360Application
 import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.network.Thi360SessionStack
@@ -32,16 +34,31 @@ object AppSessionContainer {
             if (current != null && cachedAppContext === appContext) {
                 current
             } else {
+                val tokenStore = KeystoreTokenStore.create(appContext)
+                val biometricController = (appContext as? Thi360Application)?.biometricController
+                val startLocked = biometricController?.shouldStartLocked(
+                    hasStoredSession = tokenStore.read() != null,
+                ) ?: false
                 Thi360ApiFactory.createSessionStack(
                     baseUrl = AppEnvironment.apiBaseUrl,
                     environment = AppEnvironment.environment,
-                    tokenStore = KeystoreTokenStore.create(appContext),
+                    tokenStore = tokenStore,
                     localeProvider = { currentLocale.get() },
+                    onSessionCleared = { biometricController?.clearForSessionEnd() },
+                    startLocked = startLocked,
                 ).also {
                     cachedAppContext = appContext
                     stack = it
                 }
             }
+        }
+    }
+
+    @VisibleForTesting
+    internal fun setTestStack(context: Context, testStack: Thi360SessionStack?) {
+        synchronized(this) {
+            cachedAppContext = if (testStack != null) context.applicationContext else null
+            stack = testStack
         }
     }
 }

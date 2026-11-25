@@ -50,6 +50,7 @@ class StringKeyParityTest {
 
         assertTrue("Expected at least one strings*.xml file", viFiles.isNotEmpty())
         assertTrue("Expected strings_recovery.xml in values", viFiles.contains("strings_recovery.xml"))
+        assertTrue("Expected strings_account.xml in values", viFiles.contains("strings_account.xml"))
         assertEquals("String resource file sets must match between values and values-en", viFiles, enFiles)
 
         for (fileName in viFiles) {

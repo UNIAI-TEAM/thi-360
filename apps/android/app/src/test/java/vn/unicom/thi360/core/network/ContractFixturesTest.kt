@@ -244,5 +244,10 @@ class ContractFixturesTest {
         assertEquals("WRONG_OLD_PASSWORD", changeWrong.error?.code)
         val changeReq = server.takeRequest()
         assertEquals("Bearer bearer-change-pw", changeReq.getHeader("Authorization"))
+
+        val appearanceRaw = ContractFixtureLoader.readAppearanceFixture("tokens-thi360-green.json")
+        val appearanceParsed = vn.unicom.thi360.core.appearance.AppearanceTokensParser.parse(appearanceRaw)
+        assertNotNull("Appearance contract fixture must parse cleanly", appearanceParsed)
+        assertEquals(vn.unicom.thi360.core.theme.BrandPalette.Default, appearanceParsed!!.palette)
     }
 }
