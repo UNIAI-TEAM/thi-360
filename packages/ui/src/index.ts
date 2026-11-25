@@ -138,6 +138,7 @@ export {
   type TreeViewProps,
 } from "./components/tree-view";
 export {
+  buildMobileAppearanceTokens,
   buildScale,
   buildThemeVars,
   checkPaletteWarnings,
@@ -171,6 +172,7 @@ export {
   TEXT_CONTRAST_RATIO,
   THEME_STYLE_ELEMENT_ID,
   themeStyleTag,
+  toMobilePalette,
   UI_CONTRAST_RATIO,
   WHITE_COLOR,
   type AppearanceConfig,
@@ -181,8 +183,12 @@ export {
   type CustomPaletteColors,
   type DerivedTokens,
   type DeriveTokensInput,
+  type MobileAppearanceTokens,
+  type MobileAppearanceTokensInput,
+  type MobilePalette,
   type OklabColor,
   type OklchColor,
+  type Palette,
   type PresetId,
   type PresetPalette,
   type ScaleStep,
