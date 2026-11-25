@@ -15,7 +15,8 @@ final class StateRestorationTests: XCTestCase {
         app.launchArguments = [
             "-uitest-defaults-suite", suite,
             "-uitest-reset-preferences",
-            "-uitest-state-probe"
+            "-uitest-state-probe",
+            "-uitest-authenticated"
         ]
         app.launch()
 

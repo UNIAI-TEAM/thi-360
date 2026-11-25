@@ -48,6 +48,7 @@ final class AppRouter {
 struct AppRootView: View {
     @Bindable var router: AppRouter
     @Bindable var preferences: AppPreferences
+    var sessionStore: SessionStore? = nil
     var paletteSet: BrandPaletteSet = .defaultThi360Green
     var idiomOverride: UIUserInterfaceIdiom?
 
@@ -59,15 +60,122 @@ struct AppRootView: View {
         paletteSet.palette(for: effectiveThemeMode)
     }
 
+    private var resolvedIdiom: UIUserInterfaceIdiom {
+        idiomOverride ?? UIDevice.current.userInterfaceIdiom
+    }
+
     var body: some View {
-        AdaptiveShellView(
-            router: router,
-            preferences: preferences,
-            idiom: idiomOverride ?? UIDevice.current.userInterfaceIdiom
+        rootContent
+            .environment(\.brandPalette, activePalette)
+            .environment(\.locale, preferences.locale.locale)
+            .tint(activePalette.primaryFillColor)
+            .preferredColorScheme(effectiveThemeMode.colorScheme)
+            .task {
+                await sessionStore?.validateSessionOnLaunch()
+            }
+    }
+
+    @ViewBuilder
+    private var rootContent: some View {
+        if let sessionStore {
+            switch sessionStore.state {
+            case let .signedOut(reason):
+                switch reason {
+                case let .studentOnly(username):
+                    RoleNoticeView(
+                        username: username,
+                        preferences: preferences,
+                        onSwitchAccount: {
+                            sessionStore.acknowledgeRoleNotice()
+                        }
+                    )
+                case .none, .expired, .passwordReset:
+                    LoginFlowHostView(
+                        sessionStore: sessionStore,
+                        preferences: preferences,
+                        idiom: resolvedIdiom,
+                        reason: reason
+                    )
+                }
+
+            case .mustChangePassword:
+                VStack(spacing: 0) {
+                    if sessionStore.connectivityState == .offline {
+                        OfflineStatusBanner(
+                            locale: preferences.locale,
+                            isRetrying: sessionStore.isRetryingConnection,
+                            onRetry: { Task { await sessionStore.retryConnection() } }
+                        )
+                    }
+                    MustChangePasswordGateView(
+                        locale: preferences.locale,
+                        onSignOut: { Task { await sessionStore.signOut() } }
+                    )
+                }
+
+            case .active:
+                VStack(spacing: 0) {
+                    if sessionStore.connectivityState == .offline {
+                        OfflineStatusBanner(
+                            locale: preferences.locale,
+                            isRetrying: sessionStore.isRetryingConnection,
+                            onRetry: { Task { await sessionStore.retryConnection() } }
+                        )
+                    }
+                    AdaptiveShellView(
+                        router: router,
+                        preferences: preferences,
+                        idiom: resolvedIdiom
+                    )
+                }
+
+            case .locked:
+                LockedGateView(
+                    locale: preferences.locale,
+                    onSignOut: { Task { await sessionStore.signOut() } }
+                )
+            }
+        } else {
+            AdaptiveShellView(
+                router: router,
+                preferences: preferences,
+                idiom: resolvedIdiom
+            )
+        }
+    }
+}
+
+private struct LoginFlowHostView: View {
+    let sessionStore: SessionStore
+    @Bindable var preferences: AppPreferences
+    let idiom: UIUserInterfaceIdiom
+    let reason: SignedOutReason
+
+    @State private var viewModel: LoginViewModel
+
+    init(
+        sessionStore: SessionStore,
+        preferences: AppPreferences,
+        idiom: UIUserInterfaceIdiom,
+        reason: SignedOutReason
+    ) {
+        self.sessionStore = sessionStore
+        self.preferences = preferences
+        self.idiom = idiom
+        self.reason = reason
+        _viewModel = State(
+            initialValue: LoginViewModel(sessionStore: sessionStore, initialReason: reason)
         )
-        .environment(\.brandPalette, activePalette)
-        .environment(\.locale, preferences.locale.locale)
-        .tint(activePalette.primaryFillColor)
-        .preferredColorScheme(effectiveThemeMode.colorScheme)
+    }
+
+    var body: some View {
+        LoginView(
+            viewModel: viewModel,
+            preferences: preferences,
+            idiom: idiom
+        )
+        .onChange(of: reason) { _, newReason in
+            viewModel.updateSignedOutReason(newReason)
+        }
     }
 }
