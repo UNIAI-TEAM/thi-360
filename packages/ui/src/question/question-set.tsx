@@ -63,7 +63,7 @@ export function QuestionSet({
           <RichTextView html={question.stem} />
         </div>
       )}
-      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,8fr)]">
         <aside
           aria-label={strings.setPassageCaption(from, to)}
           className="rounded-xl border border-border bg-surface p-4 text-title text-text lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto"
