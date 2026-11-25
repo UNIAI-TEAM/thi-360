@@ -26,3 +26,4 @@ jobs:
           cache: maven
       - run: ./mvnw -B -ntp verify
       - run: diff -u ../packages/api-client/openapi.json target/openapi.json
+      - run: diff -u ../contracts/mobile/openapi-mobile.json target/openapi-mobile.json

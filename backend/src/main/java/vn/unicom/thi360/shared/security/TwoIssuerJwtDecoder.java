@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -70,15 +71,15 @@ public class TwoIssuerJwtDecoder implements JwtDecoder {
         }
 
         String issuer = extractUnverifiedIssuer(token);
-        String expectedClientId = resolveExpectedClientId(issuer);
-        if (expectedClientId == null) {
+        IssuerPolicy policy = resolveIssuerPolicy(issuer);
+        if (policy == null) {
             throw new BadJwtException("Untrusted JWT issuer");
         }
 
         ConcurrentHashMap<String, JwtDecoder> targetMap = validateTimestamps ? decoders : expiryTolerantDecoders;
         JwtDecoder delegate = targetMap.computeIfAbsent(
                 issuer,
-                key -> createDecoder(key, expectedClientId, validateTimestamps));
+                key -> createDecoder(key, policy, validateTimestamps));
         Jwt jwt = delegate.decode(token);
 
         if (platformIssuer.equals(issuer) && !hasPlatformAdminRole(jwt)) {
@@ -87,12 +88,15 @@ public class TwoIssuerJwtDecoder implements JwtDecoder {
         return jwt;
     }
 
-    private String resolveExpectedClientId(String issuer) {
+    private IssuerPolicy resolveIssuerPolicy(String issuer) {
         if (appIssuer.equals(issuer)) {
-            return keycloakProperties.clientId();
+            Set<String> allowedAzp = Set.of(keycloakProperties.clientId(), keycloakProperties.mobileClientId());
+            return new IssuerPolicy(keycloakProperties.clientId(), allowedAzp);
         }
         if (platformIssuer.equals(issuer)) {
-            return keycloakProperties.platformClientId();
+            return new IssuerPolicy(
+                    keycloakProperties.platformClientId(),
+                    Set.of(keycloakProperties.platformClientId()));
         }
         return null;
     }
@@ -127,7 +131,7 @@ public class TwoIssuerJwtDecoder implements JwtDecoder {
         }
     }
 
-    private JwtDecoder createDecoder(String issuer, String expectedClientId, boolean validateTimestamps) {
+    private JwtDecoder createDecoder(String issuer, IssuerPolicy policy, boolean validateTimestamps) {
         String jwkSetUri = issuer + "/protocol/openid-connect/certs";
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
         List<OAuth2TokenValidator<Jwt>> validators = new ArrayList<>();
@@ -137,8 +141,8 @@ public class TwoIssuerJwtDecoder implements JwtDecoder {
             validators.add(timestampValidator);
         }
         validators.add(new JwtIssuerValidator(issuer));
-        validators.add(audienceValidator(expectedClientId));
-        validators.add(authorizedPartyValidator(expectedClientId));
+        validators.add(audienceValidator(policy.expectedAudience()));
+        validators.add(authorizedPartyValidator(policy.allowedAuthorizedParties()));
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(validators));
         return decoder;
     }
@@ -156,10 +160,10 @@ public class TwoIssuerJwtDecoder implements JwtDecoder {
         };
     }
 
-    private static OAuth2TokenValidator<Jwt> authorizedPartyValidator(String expectedClientId) {
+    private static OAuth2TokenValidator<Jwt> authorizedPartyValidator(Set<String> allowedClientIds) {
         return jwt -> {
             String azp = jwt.getClaimAsString("azp");
-            if (expectedClientId.equals(azp)) {
+            if (azp != null && allowedClientIds.contains(azp)) {
                 return OAuth2TokenValidatorResult.success();
             }
             return OAuth2TokenValidatorResult.failure(new OAuth2Error(
@@ -167,5 +171,8 @@ public class TwoIssuerJwtDecoder implements JwtDecoder {
                     "JWT azp does not match expected authorized client",
                     null));
         };
+    }
+
+    private record IssuerPolicy(String expectedAudience, Set<String> allowedAuthorizedParties) {
     }
 }

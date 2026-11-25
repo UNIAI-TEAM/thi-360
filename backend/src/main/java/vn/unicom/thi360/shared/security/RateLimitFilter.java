@@ -41,9 +41,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Logger securityLog = LoggerFactory.getLogger("thi360.security");
-    private static final String LOGIN_PATH = "/api/v1/auth/login";
     private static final String IMPORT_UPLOAD_PATH = "/api/v1/admin/import-batches";
     private static final String QUESTION_IMPORT_UPLOAD_PATH = "/api/v1/admin/question-imports/uploads";
+    private static final List<String> LOGIN_SEGMENTS = List.of("api", "v1", "auth", "login");
+    private static final List<String> MOBILE_LOGIN_SEGMENTS = List.of("api", "v1", "auth", "mobile", "login");
     public static final String KEY_PREFIX = "rl:login:ip:";
     public static final String UPLOAD_KEY_PREFIX = "rl:upload:ip:";
     public static final String PUBLIC_KEY_PREFIX = "rl:public:ip:";
@@ -107,11 +108,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return true;
         }
         if (RegistrationRoute.matches(request)) {
-            // Đăng ký chạy ở bộ lọc đứng trước xác thực, đúng một lần mỗi yêu cầu.
             return !loginOnly;
         }
-        return loginOnly ? !LOGIN_PATH.equals(path)
-                : LOGIN_PATH.equals(path) || resolvePolicy(path) == null;
+        boolean login = isLoginRoute(request);
+        return loginOnly ? !login
+                : login || resolveUploadPolicy(path) == null;
     }
 
     @Override
@@ -124,11 +125,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
             limitRegistration(request, response, filterChain);
             return;
         }
-        RateLimitPolicy policy = isReadMethod(request.getMethod())
-                ? publicPolicy(request)
-                : resolvePolicy(extractPath(request));
-        if (policy == null && !isReadMethod(request.getMethod())) {
-            policy = passwordResetPolicy(request);
+        RateLimitPolicy policy;
+        if (isReadMethod(request.getMethod())) {
+            policy = publicPolicy(request);
+        } else if (isLoginRoute(request)) {
+            policy = loginPolicy();
+        } else {
+            policy = resolveUploadPolicy(extractPath(request));
+            if (policy == null) {
+                policy = passwordResetPolicy(request);
+            }
         }
         if (policy == null) {
             filterChain.doFilter(request, response);
@@ -343,16 +349,25 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private RateLimitPolicy resolvePolicy(String path) {
-        if (LOGIN_PATH.equals(path)) {
-            return new RateLimitPolicy(
-                    KEY_PREFIX,
-                    securityProperties.rateLimit().loginPerIpLimit(),
-                    securityProperties.rateLimit().loginPerIpWindow(),
-                    "rate_limit.login_ip_exceeded",
-                    "Per-IP login rate limit exceeded",
-                    false);
+    private static boolean isLoginRoute(HttpServletRequest request) {
+        if (!"POST".equalsIgnoreCase(request.getMethod())) {
+            return false;
         }
+        List<String> segments = decodedSegments(request);
+        return LOGIN_SEGMENTS.equals(segments) || MOBILE_LOGIN_SEGMENTS.equals(segments);
+    }
+
+    private RateLimitPolicy loginPolicy() {
+        return new RateLimitPolicy(
+                KEY_PREFIX,
+                securityProperties.rateLimit().loginPerIpLimit(),
+                securityProperties.rateLimit().loginPerIpWindow(),
+                "rate_limit.login_ip_exceeded",
+                "Per-IP login rate limit exceeded",
+                false);
+    }
+
+    private RateLimitPolicy resolveUploadPolicy(String path) {
         if (IMPORT_UPLOAD_PATH.equals(path) || (IMPORT_UPLOAD_PATH + "/").equals(path)
                 || QUESTION_IMPORT_UPLOAD_PATH.equals(path)
                 || (QUESTION_IMPORT_UPLOAD_PATH + "/").equals(path)) {
@@ -389,6 +404,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         private static final List<String> START = List.of("api", "v1", "auth", "register");
         private static final List<String> RESEND = List.of("api", "v1", "auth", "register", "resend");
         private static final List<String> VERIFY = List.of("api", "v1", "auth", "register", "verify");
+        private static final List<String> MOBILE_VERIFY = List.of("api", "v1", "auth", "mobile", "register", "verify");
 
         private RegistrationRoute() {}
 
@@ -397,7 +413,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 return false;
             }
             List<String> segments = decodedSegments(request);
-            return START.equals(segments) || RESEND.equals(segments) || VERIFY.equals(segments);
+            return START.equals(segments)
+                    || RESEND.equals(segments)
+                    || VERIFY.equals(segments)
+                    || MOBILE_VERIFY.equals(segments);
         }
     }
 

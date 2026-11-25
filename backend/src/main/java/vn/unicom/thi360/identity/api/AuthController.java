@@ -5,7 +5,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -66,7 +65,7 @@ public class AuthController {
                 request.identifier(),
                 request.password(),
                 request.callbackUrl(),
-                readCookie(httpRequest, AuthService.LOCALE_COOKIE),
+                RequestLocaleResolver.readCookie(httpRequest, AuthService.LOCALE_COOKIE),
                 response);
         return new LoginResponse(result.redirectTo(), result.mustChangePassword());
     }
@@ -87,7 +86,7 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request,
             HttpServletRequest httpRequest) {
         return selfRegistrationService.startRegistration(
-                request, readCookie(httpRequest, AuthService.LOCALE_COOKIE));
+                request, RequestLocaleResolver.resolveCookieOrAcceptLanguage(httpRequest));
     }
 
     @PostMapping(value = "/auth/register/resend", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -107,7 +106,7 @@ public class AuthController {
             @Valid @RequestBody RegisterResendRequest request,
             HttpServletRequest httpRequest) {
         return selfRegistrationService.resendCode(
-                request.registrationId(), readCookie(httpRequest, AuthService.LOCALE_COOKIE));
+                request.registrationId(), RequestLocaleResolver.resolveCookieOrAcceptLanguage(httpRequest));
     }
 
     @PostMapping(value = "/auth/register/verify", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -186,18 +185,5 @@ public class AuthController {
                 result.access(),
                 result.permissions(),
                 result.homeUrl());
-    }
-
-    private static String readCookie(HttpServletRequest request, String name) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) {
-            return null;
-        }
-        for (Cookie cookie : cookies) {
-            if (name.equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
     }
 }

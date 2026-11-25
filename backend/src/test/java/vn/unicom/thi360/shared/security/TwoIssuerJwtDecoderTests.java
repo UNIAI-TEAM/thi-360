@@ -81,6 +81,10 @@ class TwoIssuerJwtDecoderTests {
         Jwt decodedApp = decoder.decode(validApp);
         assertThat(decodedApp.getIssuer().toString()).isEqualTo(appIssuer);
 
+        String validMobile = sign(signingKey, claims(appIssuer, "app-client", "thi360-mobile", FIXED_NOW.plusSeconds(60), null));
+        Jwt decodedMobile = decoder.decode(validMobile);
+        assertThat(decodedMobile.getClaimAsString("azp")).isEqualTo("thi360-mobile");
+
         String expiredApp = sign(signingKey, claims(appIssuer, "app-client", "app-client", FIXED_NOW.minusSeconds(120), null));
         assertThatThrownBy(() -> decoder.decode(expiredApp)).isInstanceOf(JwtException.class);
         Jwt decodedExpiredApp = decoder.decodeAllowingExpired(expiredApp);

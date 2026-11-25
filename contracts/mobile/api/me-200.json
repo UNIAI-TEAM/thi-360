@@ -1,0 +1,9 @@
+{
+  "id": "019320a0-0000-7000-8000-000000000001",
+  "username": "student.demo",
+  "fullName": "Nguyễn Văn An",
+  "realm": "APP",
+  "access": "EXAM",
+  "permissions": [],
+  "homeUrl": "http://localhost:3000/home"
+}

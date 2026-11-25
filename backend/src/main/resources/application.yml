@@ -91,6 +91,9 @@ thi360:
     realm: ${THI360_KC_REALM:}
     client-id: ${THI360_KC_CLIENT_ID:thi360-api}
     client-secret: ${THI360_KC_CLIENT_SECRET:thi360-api-dev-only}
+    mobile-client-id: ${THI360_KC_MOBILE_CLIENT_ID:thi360-mobile}
+    mobile-client-secret: ${THI360_KC_MOBILE_CLIENT_SECRET:thi360-mobile-dev-only}
+    mobile-offline-idle-timeout: ${THI360_KC_MOBILE_OFFLINE_IDLE_TIMEOUT:PT168H}
     platform-realm: ${THI360_KC_PLATFORM_REALM:master}
     platform-role: ${THI360_KC_PLATFORM_ROLE:PLATFORM_ADMIN}
     platform-client-id: ${THI360_KC_PLATFORM_CLIENT_ID:thi360-platform}
