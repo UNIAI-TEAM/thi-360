@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="login_title">Đăng nhập</string>
+    <string name="login_headline">Luyện thi đánh giá năng lực HSA và QDA</string>
+    <string name="login_feature_1">Thi thử theo đúng cấu trúc đề</string>
+    <string name="login_feature_2">Biết điểm ngay sau khi nộp bài</string>
+    <string name="login_feature_3">Xem lời giải và phần cần luyện thêm</string>
+    <string name="login_identifier_label">Tên đăng nhập hoặc email</string>
+    <string name="login_identifier_required">Vui lòng nhập tên đăng nhập hoặc email.</string>
+    <string name="login_password_label">Mật khẩu</string>
+    <string name="login_password_required">Vui lòng nhập mật khẩu.</string>
+    <string name="login_show_password">Hiện mật khẩu</string>
+    <string name="login_hide_password">Ẩn mật khẩu</string>
+    <string name="login_forgot_link">Quên mật khẩu?</string>
+    <string name="login_submit">Đăng nhập</string>
+    <string name="login_submitting">Đang đăng nhập…</string>
+    <string name="login_no_account">Chưa có tài khoản?</string>
+    <string name="login_register_link">Đăng ký</string>
+    <string name="login_switch_language">Đổi ngôn ngữ</string>
+    <string name="login_error_invalid_credentials">Tên đăng nhập hoặc mật khẩu không đúng.</string>
+    <string name="login_error_account_inactive">Tài khoản đã ngừng hoạt động. Vui lòng liên hệ quản trị viên.</string>
+    <string name="login_error_throttled">Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại sau 15 phút.</string>
+    <string name="login_error_rate_limited">Quá nhiều yêu cầu từ địa chỉ của bạn. Vui lòng thử lại sau ít phút.</string>
+    <string name="login_error_network">Không có kết nối mạng. Vui lòng kiểm tra kết nối và thử lại.</string>
+    <string name="login_error_generic">Không thể đăng nhập. Vui lòng thử lại.</string>
+    <string name="login_notice_session_expired">Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.</string>
+    <string name="login_notice_password_reset">Đã đặt lại mật khẩu. Hãy đăng nhập bằng mật khẩu mới.</string>
+    <string name="role_notice_title">Ứng dụng này dành cho học viên</string>
+    <string name="role_notice_body_with_username">Tài khoản %1$s thuộc vai trò quản trị nên không vào thi trên ứng dụng được.</string>
+    <string name="role_notice_body_generic">Tài khoản này thuộc vai trò quản trị nên không vào thi trên ứng dụng được.</string>
+    <string name="role_notice_guidance">Hãy dùng trang quản trị trên máy tính để làm việc.</string>
+    <string name="role_notice_switch_account">Đăng nhập bằng tài khoản khác</string>
+    <string name="offline_banner_title">Không có kết nối mạng</string>
+    <string name="offline_banner_description">Kiểm tra kết nối mạng để đồng bộ phiên đăng nhập.</string>
+    <string name="offline_retry">Thử lại</string>
+</resources>

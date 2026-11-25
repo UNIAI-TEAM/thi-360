@@ -5,14 +5,22 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import org.junit.Assert.assertTrue
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import vn.unicom.thi360.core.config.Environment
+import vn.unicom.thi360.core.network.InMemoryTokenStore
+import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.core.storage.Tokens
+import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
@@ -23,11 +31,46 @@ class PlaceholderScreensTest {
     @get:Rule
     val composeRule = createComposeRule()
 
+    private lateinit var server: MockWebServer
+
+    @Before
+    fun setUp() {
+        server = MockWebServer()
+        server.start()
+    }
+
+    @After
+    fun tearDown() {
+        server.shutdown()
+    }
+
     @Test
     @Config(qualifiers = "w412dp-h915dp")
     fun placeholderDestinationsShowVietnameseTitlesAndEmptyStateOffline() {
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/").toString(),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(
+                Tokens(
+                    accessToken = "active-access",
+                    refreshToken = "active-refresh",
+                    accessExpiresIn = 300,
+                    refreshExpiresIn = 604800,
+                    mustChangePassword = false,
+                    username = "student.demo",
+                ),
+            ),
+            localeProvider = { AppLocale.VI },
+        )
+
         composeRule.setContent {
-            Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+            )
         }
 
         val expected = listOf(
@@ -46,10 +89,11 @@ class PlaceholderScreensTest {
                 .assertTextEquals("Chưa có nội dung")
         }
 
-        val hasRetrofit = runCatching { Class.forName("retrofit2.Retrofit") }.isSuccess
-        val hasOkHttp = runCatching { Class.forName("okhttp3.OkHttpClient") }.isSuccess
-        assertTrue("AND-1 placeholder shell must not depend on Retrofit", !hasRetrofit)
-        assertTrue("AND-1 placeholder shell must not depend on OkHttp", !hasOkHttp)
+        assertEquals(
+            "Opening placeholder tabs must trigger zero business API requests",
+            0,
+            server.requestCount,
+        )
     }
 
     @Test
