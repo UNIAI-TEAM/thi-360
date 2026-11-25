@@ -1894,4 +1894,84 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
     expect(await screen.findByText("Câu chờ phiên sửa")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "Nộp bài" })).toBeEnabled());
   });
+
+  it("cuộn mượt tới đúng câu con khi bấm số câu trong câu chùm dài từ cột Danh sách câu hỏi ghim cố định (UNI-2793)", async () => {
+    const user = userEvent.setup();
+    const scrollSpy = vi.fn();
+    const prevScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollSpy;
+
+    try {
+      const setAttemptState: AttemptStateResponse = {
+        attemptId: "att-qset-scroll",
+        state: "IN_PROGRESS",
+        navigationMode: "FREE",
+        timing: "SHARED",
+        deadlineAt: "2026-11-21T11:00:00Z",
+        examName: "SP2E Tiếng Anh 2026",
+        serverNow: "2026-11-21T10:00:00Z",
+        parts: [
+          {
+            ord: 1,
+            partId: "part-eng",
+            partName: "Phần I · Tiếng Anh",
+            state: "OPEN",
+            items: [
+              {
+                itemId: "qset-1",
+                questionType: "QUESTION_SET",
+                content: "Đọc đoạn văn sau và trả lời câu hỏi",
+                questionBody: {
+                  type: "QUESTION_SET",
+                  passage: "<p>Long reading passage</p>",
+                },
+              },
+              {
+                ...makeOpenMcqItem("child-1", 1, "Câu con thứ nhất"),
+                parentItemId: "qset-1",
+              },
+              {
+                ...makeOpenMcqItem("child-2", 2, "Câu con thứ hai"),
+                parentItemId: "qset-1",
+              },
+              makeOpenMcqItem("standalone-3", 3, "Câu độc lập thứ ba"),
+            ],
+          },
+        ],
+      };
+
+      renderWithProviders(
+        <AttemptPlayer
+          attemptId="att-qset-scroll"
+          userId="user-1"
+          deps={makeBaseDeps({
+            loadAttemptStateFn: vi.fn(async () => setAttemptState),
+          })}
+        />,
+      );
+
+      expect(await screen.findByText("Câu con thứ hai")).toBeInTheDocument();
+      const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+      expect(aside).toHaveClass("lg:sticky", "lg:top-28");
+
+      // Clicking child 2 while already viewing QUESTION_SET (unitIndex = 0) scrolls child-2 section into view
+      scrollSpy.mockClear();
+      await user.click(within(aside).getByRole("button", { name: /^2,/ }));
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      const scrolledEl = scrollSpy.mock.instances[0] as HTMLElement;
+      expect(scrolledEl.getAttribute("aria-labelledby")).toBe("child-2-title");
+
+      // Navigate to standalone question 3 (unitIndex = 1), then click child 2 -> switches unit AND scrolls to child-2
+      await user.click(within(aside).getByRole("button", { name: /^3,/ }));
+      expect(await screen.findByText("Câu độc lập thứ ba")).toBeInTheDocument();
+
+      scrollSpy.mockClear();
+      await user.click(within(aside).getByRole("button", { name: /^2,/ }));
+      expect(await screen.findByText("Câu con thứ hai")).toBeInTheDocument();
+      await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
+      expect((scrollSpy.mock.instances[0] as HTMLElement).getAttribute("aria-labelledby")).toBe("child-2-title");
+    } finally {
+      Element.prototype.scrollIntoView = prevScrollIntoView;
+    }
+  });
 });

@@ -1090,6 +1090,23 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     return items;
   }, [dirtySet, getAnswer, getFlagged, safeUnitIndex, units]);
 
+  const pendingChildScrollRef = useRef<{ unitIndex: number; itemId: string } | null>(null);
+
+  const scrollChildQuestionIntoView = useCallback((itemId: string) => {
+    if (typeof document === "undefined") return;
+    const headingEl = document.getElementById(`${itemId}-title`);
+    const targetEl = headingEl?.closest("section") ?? headingEl;
+    if (targetEl && typeof targetEl.scrollIntoView === "function") {
+      const reduceMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      targetEl.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    }
+  }, []);
+
   const goToUnit = useCallback(
     (nextIndex: number) => {
       if (units.length === 0) return;
@@ -1104,6 +1121,34 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
     },
     [activePart?.partId, units],
   );
+
+  const handleSelectNavItem = useCallback(
+    (item: QuestionNavItem) => {
+      const targetUnit = units[item.unitIndex];
+      if (!targetUnit || targetUnit.kind !== "QUESTION_SET" || targetUnit.childItems.length <= 1) {
+        pendingChildScrollRef.current = null;
+        return;
+      }
+      const partId = activePart?.partId;
+      if (partId && item.itemId) {
+        saveQueueRef.current?.setPosition({ partId, itemId: item.itemId }, true);
+      }
+      if (item.unitIndex === safeUnitIndex) {
+        pendingChildScrollRef.current = null;
+        scrollChildQuestionIntoView(item.itemId);
+      } else {
+        pendingChildScrollRef.current = { unitIndex: item.unitIndex, itemId: item.itemId };
+      }
+    },
+    [activePart?.partId, safeUnitIndex, scrollChildQuestionIntoView, units],
+  );
+
+  useEffect(() => {
+    const pending = pendingChildScrollRef.current;
+    if (!pending || pending.unitIndex !== safeUnitIndex) return;
+    pendingChildScrollRef.current = null;
+    scrollChildQuestionIntoView(pending.itemId);
+  }, [safeUnitIndex, scrollChildQuestionIntoView]);
 
   // Global keyboard shortcuts (AC-29)
   useEffect(() => {
@@ -1883,6 +1928,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
             currentDisplayNumber={activeUnit.displayStart}
             totalDisplayItems={navItems.length}
             onSelectUnit={goToUnit}
+            onSelectItem={handleSelectNavItem}
             onPrev={() => goToUnit(safeUnitIndex - 1)}
             onNext={() => goToUnit(safeUnitIndex + 1)}
             canPrev={safeUnitIndex > 0}
@@ -1973,7 +2019,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
                 disabled={isReadOnly}
                 aria-disabled={isReadOnly || undefined}
                 data-attempt-question-fieldset=""
-                className="min-w-0"
+                className="min-w-0 [&_section]:scroll-mt-28"
               >
                 {activeUnit.kind === "QUESTION_SET" ? (
                   <Question
