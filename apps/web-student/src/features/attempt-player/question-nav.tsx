@@ -362,7 +362,7 @@ export function QuestionNav({
   const sidebar = !isDrawerOpen ? (
     <aside
       aria-label={t("gridLabel")}
-      className="hidden w-72 shrink-0 rounded-xl border border-border bg-surface p-4 lg:sticky lg:top-28 lg:block lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto scroll-shadows-y"
+      className="hidden shrink-0 rounded-xl border border-border bg-surface p-4 lg:sticky lg:top-28 lg:block lg:w-[282px] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto min-[1440px]:w-[300px] scroll-shadows-y"
     >
       <QuestionNavGrid
         items={items}
@@ -409,7 +409,7 @@ export function QuestionNav({
 
   if (children !== undefined) {
     return (
-      <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:items-start">
+      <div className="flex flex-1 flex-col gap-5 lg:flex-row lg:items-start min-[1440px]:gap-6">
         <div className="min-w-0 flex-1 space-y-4">
           {children}
           {controlsBar}

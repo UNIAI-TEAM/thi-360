@@ -15,20 +15,27 @@
 - **Máy build iOS `devin-mac`** (phiên Devin Cloud nối vào Orca, tự ngủ khi rảnh): Xcode 27.1, runtime iOS 27.1, simulator iPhone Duo (màn ngoài 466×678 điểm, màn trong 669×951 điểm), AGY CLI.
 - **Tiếp theo:** chờ người yêu cầu ra lệnh bắt đầu triển khai (cổng G3); khi đó xác nhận roster và kiểm nhánh gốc rồi mới mở lane. Chưa viết mã.
 
+### Hoàn tất sửa 3 lỗi giao diện Cổng học viên (`UNI-2795` / `UNI-1710`, `UNI-2796` / `UNI-1711`, `UNI-2797` / `UNI-1712`) (2026-11-25)
+
+- **`UNI-2795` (`uniworkos UNI-1710` — Độ rộng hiển thị từng khối khi làm bài theo từng màn hình, nhánh `fix/UNI-2795-attempt-player-widths`):**
+  - Điều chỉnh container `<header>` và `<main>` của `AttemptPlayer` (`apps/web-student/src/features/attempt-player/attempt-player.tsx`), chiều rộng/khoảng cách của `QuestionNav` (`question-nav.tsx`) và `padding` thẻ câu hỏi (`20px`): màn `1366 × 768` dùng full-width trừ `padding-x: 16px` (`1317px` lòng trong = khối trái `1015px` + `gap: 20px` + sidebar `282px`); màn `1920 × 1080+` (`min-[1440px]`) căn giữa với `padding-x: 24px`, khối trái `1092px`, `gap: 24px`, sidebar `300px`.
+  - Chuyển lưới 2 cột câu chùm đọc hiểu trong `QuestionSet` (`packages/ui/src/question/question-set.tsx`) sang `gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,8fr)]` (`gap: 16px`, cột Passage ~`46%` : cột Câu hỏi & Đáp án ~`54%`).
+- **`UNI-2796` (`uniworkos UNI-1711` — Điều chỉnh hiển thị khi xem chi tiết bài thi, nhánh `fix/UNI-2796-exam-detail-display`):**
+  - Bổ sung tổng thời lượng làm bài kèm quy tắc đồng hồ (`{minutes} phút · ...`) tại mục `Thời gian` của khối `Cách làm và cách chấm` trong `ExamDetailView` (`apps/web-student/src/features/storefront/exam-detail-view.tsx`).
+  - Đổi tiêu đề đầu mục `Quyền sau khi mua` thành `Quyền lợi sử dụng` (`vi.json`) / `Usage benefits` (`en.json`).
+- **`UNI-2797` (`uniworkos UNI-1712` — Thay đổi hiển thị danh sách bài thi, nhánh `fix/UNI-2797-catalog-card-display`):**
+  - Đồng bộ nút thao tác trên thẻ danh mục (`variant === "card"` tại `apps/web-student/src/features/storefront/access-action.tsx`) về 2 dạng xếp dọc toàn chiều ngang (`w-full`): **Đã mua** (còn lượt `CAN_START` / đang làm `IN_PROGRESS`: 3 nút `Vào bài thi`/`Tiếp tục`, `Mua thêm lượt`, `Xem chi tiết`) và **Chưa mua** (`guest`, `NONE`, và đã hết lượt `EXHAUSTED`: 2 nút `Mua bài thi`/`Mua bộ đề` + `Xem chi tiết`).
+  - Tách `FormatChip` (`product-card.tsx`) thành 2 tag thông tin riêng biệt (hình thức bài thi và tên phần/môn đi kèm) để không bị gãy thành 2 cột bên trong một chip tròn.
+
 ### Hoàn tất sửa 2 lỗi giao diện Màn làm bài học viên `QuestionNav` (`UNI-2793` / `UNI-1708` & `UNI-2794` / `UNI-1709`) (2026-11-25)
 
-- **`UNI-2793` (`uniworkos UNI-1708` — Ghim cột `Danh sách câu hỏi` khi cuộn, worktree `.tmp-uniai/wt-2793`, nhánh `fix/UNI-2793-pin-question-nav`):**
-  - Gắn `lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto scroll-shadows-y` cho `<aside>` của `QuestionNav` (`apps/web-student/src/features/attempt-player/question-nav.tsx`) để cột danh sách câu luôn cố định bên dưới thanh header khi cuộn qua câu dài / câu chùm nhiều câu con và tự cuộn dọc nội bộ với bóng mờ khi đề 50–150 câu.
-  - Bổ sung `onSelectItem` tùy chọn + `[&_section]:scroll-mt-28` trong `AttemptPlayer` (`attempt-player.tsx`) để bấm vào câu con cụ thể của câu chùm (`QUESTION_SET`) cuộn mượt tới đúng tiêu đề câu con với khoảng bù dưới header cố định.
-  - Đã kiểm chứng xanh toàn bộ trên `@thi360/web-student`: Vitest `71/71` tệp (`506/506` test), `typecheck`, `eslint`, `next build`, `git diff --check`.
-- **`UNI-2794` (`uniworkos UNI-1709` — Đổi màu ô/viền đỏ cho câu đánh dấu cần xem lại, worktree `.tmp-uniai/wt-2794`, nhánh `fix/UNI-2794-flagged-question-color`):**
-  - Chuyển các ô có `flagged = true` trên `QuestionNavGrid` (`question-nav.tsx`) sang bộ token đỏ ngữ nghĩa (`danger` trong `DESIGN.md`, đạt chuẩn tương phản Sáng/Tối) đồng thời giữ phân biệt rõ 3 mức hoàn thành (`blank`: `border-danger bg-danger-bg text-danger`; `partial`: `border-danger border-dashed bg-danger-bg text-danger`; `complete`: `border-danger bg-danger-solid text-on-danger`) kèm cờ `fill-current` và cập nhật ô mẫu chú thích `Đánh dấu xem lại` (`dt[data-legend="flagged"]`).
-  - Đã kiểm chứng xanh toàn bộ trên `@thi360/web-student`: Vitest `71/71` tệp (`505/505` test), `typecheck`, `eslint`, `next build`, `git diff --check`.
-- **Làm gì tiếp:** Chờ người dùng xác nhận để commit, push, mở PR vào `develop` (cho `UNI-2776`, `UNI-2793`, `UNI-2794`) và triển khai lên bản Demo.
+- **`UNI-2793` (`uniworkos UNI-1708` — PR #195, `def20c58`):** ghim cột `Danh sách câu hỏi` khi cuộn trên màn rộng kèm cuộn dọc nội bộ và cuộn mượt tới câu con trong `QUESTION_SET`.
+- **`UNI-2794` (`uniworkos UNI-1709` — PR #196, `8735b45a`):** đổi màu ô/viền đỏ (`danger` semantic tokens) cho câu đánh dấu cần xem lại ở cả 3 mức hoàn thành và ô mẫu chú thích.
+- Đã vượt 6/6 cổng CI, squash-merge vào `develop` và triển khai lên Demo (`https://thi360.zone17.click`, `demo-smoke.sh` xanh).
 
 ### Hoàn tất thiết kế lại Biểu mẫu Ma trận môn `v3` (`MatrixForm`) từ đầu tới cuối (2026-11-25)
 
-- **Đã triển khai xong trên worktree `.tmp-uniai/wt-matrix-v3` (nhánh `feature/UNI-2776-subject-matrix-v3`, chờ người dùng duyệt commit/push/PR):**
+- **Đã hoàn thành & lên Demo (`UNI-2776` — PR #194, `aea43b40`):**
   - **Bước 1 — `1 · Cấu trúc thành phần câu hỏi` (`MatrixStructureBlock`, `matrix-form-model.ts`, `fit.ts`, `matrix-blocking.ts`):**
     - Thay lưới 4 ô trừ ngược gây rối bằng **bảng thành phần cộng thẳng từ trên xuống** (`Vị trí câu`, `Tên nhóm trên đề`, `Loại câu hỏi`, `Quy cách lấy câu`, `Số câu`, `Tỷ lệ`, `Thao tác`), dòng chân bảng `Tổng cộng (N dòng thành phần)` kèm `StatusChip` (`Khớp {total} câu` / `Thiếu {count} câu` / `Vượt {count} câu`) và dải gom theo định dạng `Tóm tắt theo định dạng`.
     - Cho phép **thêm/xóa/đổi tên/đổi loại/đảo thứ tự `↑/↓`** các dòng loại câu động theo từng môn (đủ 8 `QUESTION_TYPES`, gắn nhãn `Chấm tay` cho `ESSAY`, khóa xóa khi chỉ còn 1 dòng) và nút **`↺ Mặc định của môn`** khôi phục từ template chuẩn cùng kỳ thi (kể cả sau khi đã lưu cấu hình tùy biến).
@@ -37,11 +44,7 @@
       - Khi tắt (mặc định): hiển thị khoảng vị trí tuần tự (`1–32`, `33–47`, `48–50`), cho phép đổi thứ tự `↑/↓` và hiện dòng hướng dẫn đảo riêng từng nhóm.
       - Khi bật (`mixBlocks: true`): đổi cột vị trí sang `⇄ Trộn chung`, khóa `↑/↓`, đổi sang thông báo trộn chung toàn môn; **Backend** (`ExamSection`, `PaperOrdering`, `AttemptPaperAssembler`, `PreviewPaperOrdering`, `ExamPreviewService`, `ExamStructurePresentation`) trộn xen kẽ câu đơn lẻ và nguyên cụm câu chùm (giữ nguyên thứ tự câu con bên trong chùm) trên cả đề thi học viên lẫn Đề xem trước / Làm thử, và bỏ dải `positionRange` cố định khi `mixBlocks = true`.
   - **Bước 2 & Bước 3 (`MatrixDistributionBlock`, `MatrixScopeBlock`, `MatrixFormHsa`):** đồng bộ thẻ bảng đôi có viền `2A · Khối lớp` & `2B · Độ khó` kèm dòng tổng cuối bảng (`Đã khai x/y` hoặc `Tổng tỷ lệ x%`), thẻ `3 · Phạm vi và chỉ tiêu chủ đề` / `MAPID`, tự gắn `deletedGroupName` cho quy tắc `mapidRules` mồ côi khi xóa hoặc đặt lại dòng.
-  - **Kiểm chứng toàn diện (57 tệp thay đổi, `git diff --check` sạch):**
-    - **Backend:** Pass `22/22` unit test mới cho `mixBlocks`/ordering + `1.269/1.269` unit test không cần Docker.
-    - **OpenAPI & `@thi360/api-client`:** cập nhật `packages/api-client/openapi.json` (LF thuần) và chạy `pnpm --filter @thi360/api-client generate` xanh.
-    - **Frontend (`@thi360/web-admin`) & E2E (`@thi360/e2e`):** Pass `302/302` tệp Vitest (`3.141/3.141` test, gồm kiểm tra song ngữ `vi`/`en`, `source-scan`, token giao diện và 13 bộ test `MatrixForm`), `typecheck`, `eslint`, `next build`, cùng `typecheck` + `eslint` cho 6 tệp Playwright E2E đã cập nhật.
-- **Làm gì tiếp:** Chờ người dùng xác nhận để commit, push mở PR vào `develop`, kiểm tra cổng CI (gồm Testcontainers + E2E) và triển khai lên bản Demo.
+  - **Kiểm chứng & Triển khai:** Pass 7/7 cổng CI trên PR #194, squash-merge vào `develop` (`aea43b40`), chạy `deploy-develop.sh` + `demo-smoke.sh` xanh trên VPS `bro` (`8735b45a`).
 
 ### Hoàn tất nâng cấp khung Master–Detail liền khối cho tab Cấu trúc & Ma trận `/exams/[id]/structure` (2026-11-24)
 
