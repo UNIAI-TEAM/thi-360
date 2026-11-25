@@ -2,9 +2,83 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
-## Trạng thái hiện tại (2026-11-22)
+### Hoàn tất sửa 2 lỗi giao diện Màn làm bài học viên `QuestionNav` (`UNI-2793` / `UNI-1708` & `UNI-2794` / `UNI-1709`) (2026-11-25)
 
-**Giai đoạn:** Đợt 1 (PBI-01, PBI-02 — PR #25 `14f983c`, 105/105 điểm), Đợt 2 + 2B (PBI-03, PBI-04 Ngân hàng câu hỏi, Bài thi 9 kỳ thi, Bộ soạn thảo — PR #63, #80, #120 `1774c74d`, 83/83 điểm đợt 2B) đã merge vào `develop`. **Đợt 3 (PBI-05..09 Thương mại, PBI-10..13 Lượt thi, H-SCA/V-SAT, 44/44 task = 138/138 điểm = 100%)** cùng **Form theo môn (FTM, 6/6 task = 24/24 điểm = 100%)** đã hoàn tất trọn vẹn trên `integration/dot-3` (nghiệm thu cuối `QA` `UNI-2744` PR #184 `3c5f95d8`, báo cáo tại `.thi360-dev/dot-3/qa-report.md`) và đang mở PR gộp vào `develop` kèm dựng lại bản demo (`https://thi360.zone17.click`, `https://admin.thi360.zone17.click`). Các mục bên dưới giữ nguyên nhật ký chi tiết theo từng đợt.
+- **`UNI-2793` (`uniworkos UNI-1708` — Ghim cột `Danh sách câu hỏi` khi cuộn, worktree `.tmp-uniai/wt-2793`, nhánh `fix/UNI-2793-pin-question-nav`):**
+  - Gắn `lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto scroll-shadows-y` cho `<aside>` của `QuestionNav` (`apps/web-student/src/features/attempt-player/question-nav.tsx`) để cột danh sách câu luôn cố định bên dưới thanh header khi cuộn qua câu dài / câu chùm nhiều câu con và tự cuộn dọc nội bộ với bóng mờ khi đề 50–150 câu.
+  - Bổ sung `onSelectItem` tùy chọn + `[&_section]:scroll-mt-28` trong `AttemptPlayer` (`attempt-player.tsx`) để bấm vào câu con cụ thể của câu chùm (`QUESTION_SET`) cuộn mượt tới đúng tiêu đề câu con với khoảng bù dưới header cố định.
+  - Đã kiểm chứng xanh toàn bộ trên `@thi360/web-student`: Vitest `71/71` tệp (`506/506` test), `typecheck`, `eslint`, `next build`, `git diff --check`.
+- **`UNI-2794` (`uniworkos UNI-1709` — Đổi màu ô/viền đỏ cho câu đánh dấu cần xem lại, worktree `.tmp-uniai/wt-2794`, nhánh `fix/UNI-2794-flagged-question-color`):**
+  - Chuyển các ô có `flagged = true` trên `QuestionNavGrid` (`question-nav.tsx`) sang bộ token đỏ ngữ nghĩa (`danger` trong `DESIGN.md`, đạt chuẩn tương phản Sáng/Tối) đồng thời giữ phân biệt rõ 3 mức hoàn thành (`blank`: `border-danger bg-danger-bg text-danger`; `partial`: `border-danger border-dashed bg-danger-bg text-danger`; `complete`: `border-danger bg-danger-solid text-on-danger`) kèm cờ `fill-current` và cập nhật ô mẫu chú thích `Đánh dấu xem lại` (`dt[data-legend="flagged"]`).
+  - Đã kiểm chứng xanh toàn bộ trên `@thi360/web-student`: Vitest `71/71` tệp (`505/505` test), `typecheck`, `eslint`, `next build`, `git diff --check`.
+- **Làm gì tiếp:** Chờ người dùng xác nhận để commit, push, mở PR vào `develop` (cho `UNI-2776`, `UNI-2793`, `UNI-2794`) và triển khai lên bản Demo.
+
+### Hoàn tất thiết kế lại Biểu mẫu Ma trận môn `v3` (`MatrixForm`) từ đầu tới cuối (2026-11-25)
+
+- **Đã triển khai xong trên worktree `.tmp-uniai/wt-matrix-v3` (nhánh `feature/UNI-2776-subject-matrix-v3`, chờ người dùng duyệt commit/push/PR):**
+  - **Bước 1 — `1 · Cấu trúc thành phần câu hỏi` (`MatrixStructureBlock`, `matrix-form-model.ts`, `fit.ts`, `matrix-blocking.ts`):**
+    - Thay lưới 4 ô trừ ngược gây rối bằng **bảng thành phần cộng thẳng từ trên xuống** (`Vị trí câu`, `Tên nhóm trên đề`, `Loại câu hỏi`, `Quy cách lấy câu`, `Số câu`, `Tỷ lệ`, `Thao tác`), dòng chân bảng `Tổng cộng (N dòng thành phần)` kèm `StatusChip` (`Khớp {total} câu` / `Thiếu {count} câu` / `Vượt {count} câu`) và dải gom theo định dạng `Tóm tắt theo định dạng`.
+    - Cho phép **thêm/xóa/đổi tên/đổi loại/đảo thứ tự `↑/↓`** các dòng loại câu động theo từng môn (đủ 8 `QUESTION_TYPES`, gắn nhãn `Chấm tay` cho `ESSAY`, khóa xóa khi chỉ còn 1 dòng) và nút **`↺ Mặc định của môn`** khôi phục từ template chuẩn cùng kỳ thi (kể cả sau khi đã lưu cấu hình tùy biến).
+    - **Câu chùm linh hoạt & cỡ tùy ý (`QUESTION_SET`):** chuyển nhanh giữa **`Cố định cỡ`** (`[setCount] chùm × [setSize] câu/chùm` nhập số nguyên dương tùy ý `1, 2, 3, 4, 5...`, tự tính `questionCount = setCount × setSize`) và **`Linh hoạt cỡ`** (`setCount = null, setSize = null`, sửa trực tiếp tổng câu con). Bảo toàn đầy đủ `MatrixSetSource` (`Nguồn chùm`), `DiaMaterialSection` của HSA Địa lí và nhập 2 cột `%` của V-ACT.
+    - **Công tắc `Trộn lẫn giữa các loại câu` (`ExamSection.mixBlocks`) + Banner thông báo quy tắc đảo câu (`data-testid="matrix-shuffle-banner"`):**
+      - Khi tắt (mặc định): hiển thị khoảng vị trí tuần tự (`1–32`, `33–47`, `48–50`), cho phép đổi thứ tự `↑/↓` và hiện dòng hướng dẫn đảo riêng từng nhóm.
+      - Khi bật (`mixBlocks: true`): đổi cột vị trí sang `⇄ Trộn chung`, khóa `↑/↓`, đổi sang thông báo trộn chung toàn môn; **Backend** (`ExamSection`, `PaperOrdering`, `AttemptPaperAssembler`, `PreviewPaperOrdering`, `ExamPreviewService`, `ExamStructurePresentation`) trộn xen kẽ câu đơn lẻ và nguyên cụm câu chùm (giữ nguyên thứ tự câu con bên trong chùm) trên cả đề thi học viên lẫn Đề xem trước / Làm thử, và bỏ dải `positionRange` cố định khi `mixBlocks = true`.
+  - **Bước 2 & Bước 3 (`MatrixDistributionBlock`, `MatrixScopeBlock`, `MatrixFormHsa`):** đồng bộ thẻ bảng đôi có viền `2A · Khối lớp` & `2B · Độ khó` kèm dòng tổng cuối bảng (`Đã khai x/y` hoặc `Tổng tỷ lệ x%`), thẻ `3 · Phạm vi và chỉ tiêu chủ đề` / `MAPID`, tự gắn `deletedGroupName` cho quy tắc `mapidRules` mồ côi khi xóa hoặc đặt lại dòng.
+  - **Kiểm chứng toàn diện (57 tệp thay đổi, `git diff --check` sạch):**
+    - **Backend:** Pass `22/22` unit test mới cho `mixBlocks`/ordering + `1.269/1.269` unit test không cần Docker.
+    - **OpenAPI & `@thi360/api-client`:** cập nhật `packages/api-client/openapi.json` (LF thuần) và chạy `pnpm --filter @thi360/api-client generate` xanh.
+    - **Frontend (`@thi360/web-admin`) & E2E (`@thi360/e2e`):** Pass `302/302` tệp Vitest (`3.141/3.141` test, gồm kiểm tra song ngữ `vi`/`en`, `source-scan`, token giao diện và 13 bộ test `MatrixForm`), `typecheck`, `eslint`, `next build`, cùng `typecheck` + `eslint` cho 6 tệp Playwright E2E đã cập nhật.
+- **Làm gì tiếp:** Chờ người dùng xác nhận để commit, push mở PR vào `develop`, kiểm tra cổng CI (gồm Testcontainers + E2E) và triển khai lên bản Demo.
+
+### Hoàn tất nâng cấp khung Master–Detail liền khối cho tab Cấu trúc & Ma trận `/exams/[id]/structure` (2026-11-24)
+
+- **Đã hoàn thành & lên Demo (`UNI-2776` — PR #193, `31856a31`):**
+  - **Khung làm việc Master–Detail liền khối (`ExamStructureView`, `ExamStructureList`, `SubjectChoiceNav`):** gom cây điều hướng `Cấu trúc` bên trái, vùng chi tiết bên phải và thanh công cụ bám dính đầu khung (`data-testid="structure-toolbar"`: `Hủy thay đổi`, `Lưu`, `Kiểm tra toàn bài`, `Tiếp tục`) vào 1 khối duy nhất thay vì tách thành nhiều Card rời rạc và đẩy nút thao tác lên tiêu đề trang.
+  - **Thu gọn Tổng hợp toàn bài về đúng màn `Tổng quan bài` (`ExamOverviewPanel`, `ExamStructureSummaryTable`, `ExamStructureStatusStrip`, `ExamStructureAlertsBanner`):** chuyển bảng cây 40–50 dòng của toàn bài vào màn **Tổng quan bài (`?exam=1`)** kết hợp cùng `Điểm theo môn` và `Chỉ tiêu cấp bài`; khi đang sửa từng Phần/Môn chỉ hiện dải trạng thái 1 dòng kèm nút nhảy nhanh `Xem bảng tổng hợp`, và chỉ mở dải cảnh báo khi thực sự có lỗi hoặc kết quả kiểm tra.
+  - **Gộp Header + Bảng dòng & mở `RowEditor` ngay dưới dòng đang sửa (`RowListForm`, `RowEditor`, `SubjectFormHeader`):** loại bỏ Card tiêu đề rỗng đứng riêng và mở khung `Sửa dòng` inline ngay bên dưới dòng được chọn (`data-form-row-editor-row`) thay vì nhảy xuống đáy bảng.
+  - **Làm phẳng viền lồng nhau & chỉnh lưới biểu mẫu (`MatrixForm`, `MatrixStructureBlock`, `EnforcementControl`, `ExamStructurePartPanel`, `SubjectChoiceOptions`, `PracticeReviewSubjectPanel`, `ScoringExamples`):** bỏ Card-trong-Card, tách dải thông số chỉ đọc từ Bước 1 (`Thông số từ Thông tin chung`), căn ngang chip + công tắc `Áp dụng khi sinh đề`, mở rộng cột `Số nhóm` và gắn liền `Ví dụ chấm` / `Khung tham chiếu` bằng đường chia vùng.
+  - **Kiểm chứng & Triển khai:** Pass `142/142` file unit test (`1.646` test), `typecheck`, `eslint`, `next build`, **6/6 cổng CI** trên PR #193, squash-merge vào `develop` (`31856a31`), chạy `deploy-develop.sh` + `demo-smoke.sh` xanh trên VPS `bro` và kiểm chứng thị giác bằng 11 ảnh chụp Playwright trực tiếp trên `https://admin.thi360.zone17.click/exams/[id]/structure`.
+
+### Hoàn tất Refactor & Nâng cấp Layout Cấu hình Bài thi `/exams` + Auth v2 (2026-11-23)
+
+- **Đã hoàn thành & lên Demo (`UNI-2775` — PR #191, `6c4fb0b5`):**
+  - Xóa độ trễ 60s đồng bộ màu tùy chỉnh hệ thống ở trang học viên (`cache: "no-store"` tại `apps/web-student/src/app/layout.tsx`) và dựng đầy đủ 5 lớp studio 3D của thiết kế Option 2 (`AuthBackground`) theo semantic CSS tokens Sáng/Tối. Đã merge vào `develop` (`6c4fb0b5`) và triển khai trên `https://thi360.zone17.click/login`.
+- **Đã hoàn thành & lên Demo (`UNI-2776`, sub-issues `UNI-2777..UNI-2781` — PR #192, `8a1cba87`):**
+  - **Hợp nhất luồng & dọn kiến trúc (`-5.059 net prod LOC`, 269 tệp thay đổi `+7.416 / -11.613`, không đụng `backend/` hay `packages/api-client/`):**
+    - Tách các thành phần dùng chung lên `@thi360/ui` (`packages/ui/src/components/nav-tabs.tsx`, `packages/ui/src/essay-editor/tiptap-essay-editor.tsx`, `packages/ui/src/question/wire-parsers.ts`) và cho cả `web-admin` lẫn `web-student` (`attempt-player`) dùng chung.
+    - Xóa nhánh dead wizard 4 bước & trùng lặp 3 màn Thông tin chung; hợp nhất `/exams/new` và `/exams/[id]` về **1 vỏ `ExamEditorLayout`** (khóa tĩnh Tab 2..5 khi đang tạo mới, thanh tóm tắt `<dl>` có viền, `tabular-nums`) + **1 biểu mẫu `ExamGeneralForm` (`mode: "create" | "edit"`)**, kèm redirect server `/exams/new?exam=<id>` → `/exams/<id>`.
+    - Xử lý trọn vẹn **6 lỗi nghiệp vụ biên tập `B-01..B-06`** (phân quyền `EXAM.CREATE` / `EXAM.MODIFY` / `EXAM.PUBLISH` / `EXAM.DELETE`, payload cập nhật khớp schema từng kỳ thi, cảnh báo rời trang/đổi kỳ thi khi đang sửa dở, chặn `+ Thêm nhóm` ngoài chế độ dự phòng `MD`, đồng bộ `useDiscontinueExam` giữa header và tab Phiên bản). Giữ nguyên nhánh dự phòng `MD` của `BlockEditor` và `PreviewAudioPlayer`.
+  - **Nâng cấp UI/UX màn cấu hình bài thi (Tab 1..5 & Danh sách):**
+    - **Tab 1 (`ExamGeneralForm`):** bố cục `@container` 2 cột với cột phải `Tóm tắt` + `Tình trạng` bám dính (`sticky`), tách thẻ Định danh/Hướng dẫn và thẻ Kỳ thi (`KindSelect`)/Phạm vi đối tượng, thanh nhấn `bg-primary-600` ở chế độ sửa đối xứng với huy hiệu bước `1..3` khi tạo mới.
+    - **Tab 2 (`ExamStructureView`, `ExamOverviewPanel`, `PracticeReviewSubjectPanel`):** bỏ thanh `<dl>` trùng lặp và liên kết thừa `edit-overview-link`, cây cấu trúc bám dính bên trái, thẻ con hạn ngạch có viền rõ ràng.
+    - **Tab 3 & 4 (`ExamReviewCheck`, `ExamPreviewPanel`, `ExamPreviewComplianceBanner`, `ExamPreviewAllocation`):** gom gọn 8 nhóm kiểm tra (mặc định thu gọn chi tiết khối, tự bung qua `flushSync` khi xem trùng lặp), rút gọn hộp tuân thủ ở tab Đề xem trước thành banner 1 dòng và gộp bảng đối chiếu hạn ngạch môn sang tab `Đối chiếu phân bổ`.
+    - **Tab 5 (`ExamVersionsView`) & Danh sách (`ExamListingView`):** dải thông tin `VersionHeroCard` đồng bộ cấu trúc và thẻ xem trước bên phải bám dính trên màn danh sách.
+  - **Kiểm chứng & Triển khai:** Pass toàn bộ **6/6 cổng CI** trên PR #192 (`link`, `api-client-drift`, `build`, `e2e (1..3)`), squash-merge vào `develop` (`8a1cba87`), và chạy `deploy-develop.sh` xanh trên VPS `bro` (`https://admin.thi360.zone17.click/exams`, `demo-smoke.sh` xanh). Tài liệu spec/plan/evidence lưu tại `D:/.Vietants_Project/.thi360-dev/exams-refactor/`.
+
+### Hoàn thiện các điểm mở sau Đợt 3 & nâng cấp giao diện Auth (2026-11-22 / 2026-11-23)
+
+- Đã hoàn thành trọn vẹn 5/5 issue mở sau Đợt 3, toàn bộ CI xanh và đã squash-merge vào `develop` (`13af543b`):
+  - **UNI-2772** (PR #186, `a141facb`): nâng mức tối thiểu mặc định `THI360_VNPAY_MIN_AMOUNT` từ `5000` lên `10000` (`10.000đ`, TM Q12).
+  - **UNI-2771** (PR #187, `6c0868b4`): tối ưu `PaperSolver` / `PathSearch` với bitmask và pre-pruning để `PaperGenerationPerfIT` chạy `< 30s` (~5s thực tế).
+  - **UNI-2773** (PR #188, `16b8ba63`): bắt buộc xác minh OTP 6 chữ số qua email trước khi tạo tài khoản ở màn Đăng ký (`POST /api/v1/public/auth/register/request-otp` & `verify-otp`, mã hóa mật khẩu tạm `AES-256-GCM` qua `PendingPasswordCipher`, migration `V202611220100`, bước OTP 2 bước trên `web-student`, TM Q13).
+  - **UNI-2775** (PR #189, `b4da6a56`): áp dụng nền **Option 2 — Geometric Orbital Rings & Soft Mesh** (`AuthBackground` dùng semantic CSS tokens Sáng/Tối) cho toàn bộ 6 màn xác thực học viên (`/login`, `/register`, `/forgot-password`, `/reset-password`, `/change-password`, `/verify-email`).
+  - **UNI-2774** (PR #190, `13af543b`): nối màn Lớp học (`/classes/[id]`) với nguồn quyền thi `CLASS` (TM Q10, C12, C15 — bảng `commerce.class_exam_assignments` migration `V202611220200`, sự kiện đồng bộ thêm/xóa học viên qua `ApplicationModuleListener`, 3 endpoint admin có `@RequirePermission` + `AuditRecorder`, tab Bài thi được giao trên `web-admin`, thẻ `entitlementSource = CLASS` trên `web-student` `/home` & `/prepare/[entitlementId]`, E2E `class-exam-assignment.spec.ts`).
+- Bản demo (`https://thi360.zone17.click`, `https://admin.thi360.zone17.click`): đã chạy `deploy-develop.sh` thành công trên VPS `bro` ở commit `13af543b` (backup DB `3.38 MB`, Flyway `202611220200` `95|0`, `demo-smoke.sh` xanh toàn bộ).
+
+### Skill điều phối AGY qua file (2026-11-21, ngữ cảnh phiên UNI-2622)
+
+- Theo yêu cầu riêng của người dùng, tạo `.agents/skills/zone17-skip-agy/`: Advisor X ghi handoff; relay Y mở worktree và CLI AGY trống, nhập prompt/Enter, chuyển câu hỏi, câu trả lời và `work_done`; lead dùng subagent native theo role. Không sửa skill cook-plan hiện có.
+- Tài liệu và mẫu đi kèm quy định hub SSH dùng chung ngoài worktree, host map, thông điệp bất biến, checkbox tổng hợp, một relay giữ lock, biên nhận và phục hồi khi chưa chắc đã gửi prompt. Cần chọn hub thực tế và đường đánh thức đúng Advisor trước khi chạy unattended.
+- Đã chạy `quick_validate.py` bằng Python 3.12: `Skill is valid!`; kiểm tra YAML, JSON ví dụ, liên kết tương đối và `git diff --check` đều qua. Chưa khởi chạy relay/scheduler, chưa tạo hub trên VPS, chưa kiểm chứng round trip liên server. Không commit/push/PR hoặc đổi trạng thái issue.
+
+### Kiểm tra AGY CLI tương tác (2026-11-21, ngữ cảnh UNI-2622)
+
+- Theo yêu cầu của người dùng, tạo worktree thử nghiệm detached từ `develop` tại `.git/agent-worktrees/agy-interactive`, mở Antigravity CLI trống qua Orca rồi nhập prompt và Enter. Đã thấy phản hồi `AGY interactive OK`; phiên đang chờ nhập tiếp.
+- Terminal: `term_619ca97d-2466-47a9-909a-1e7f634cca47`. Chỉ kiểm tra luồng tương tác, chưa giao việc triển khai; không commit, push, mở PR hoặc đổi trạng thái issue.
+
+## Trạng thái hiện tại (2026-11-24)
+
+**Giai đoạn:** Đợt 1 (PBI-01, PBI-02 — PR #25 `14f983c`, 105/105 điểm), Đợt 2 + 2B (PBI-03, PBI-04 Ngân hàng câu hỏi, Bài thi 9 kỳ thi, Bộ soạn thảo — PR #63, #80, #120 `1774c74d`, 83/83 điểm đợt 2B), **Đợt 3 (PBI-05..09 Thương mại, PBI-10..13 Lượt thi, H-SCA/V-SAT, 44/44 task = 138/138 điểm = 100%)**, **Form theo môn (FTM, 6/6 task = 24/24 điểm = 100%)** (PR #185 `a4f3854a`), cùng **các đợt hoàn thiện & refactor sau Đợt 3 (`UNI-2771`..`UNI-2781`, PR #186..#193 `31856a31`)** đều đã merge vào `develop` và triển khai lên bản demo (`https://thi360.zone17.click`, `https://admin.thi360.zone17.click`). Các mục bên dưới giữ nguyên nhật ký chi tiết theo từng đợt.
 
 ### Sau đợt 1 (2026-11-14)
 
