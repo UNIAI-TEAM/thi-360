@@ -66,8 +66,15 @@ export function QuestionSet({
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,8fr)]">
         <aside
           aria-label={strings.setPassageCaption(from, to)}
-          className="rounded-xl border border-border bg-surface p-4 text-title text-text lg:sticky lg:top-4 lg:max-h-[75vh] lg:overflow-y-auto"
+          className="rounded-xl border border-border bg-surface p-4 text-title text-text lg:sticky lg:top-[var(--attempt-sticky-top,1rem)] lg:max-h-[calc(100dvh-var(--attempt-sticky-top,1rem)-1.5rem)] lg:overflow-y-auto scroll-shadows-y"
         >
+          <div
+            aria-hidden="true"
+            className="mb-2.5 hidden items-center gap-2 border-b border-border pb-2 text-caption font-semibold tracking-wide text-text-secondary uppercase lg:flex"
+          >
+            <span className="h-3.5 w-1 shrink-0 rounded-full bg-primary-600" />
+            <span>{strings.questionRangeLabel(from, to)}</span>
+          </div>
           <div data-exam-content>
             <RichTextView html={question.body.passage} blankNumberStart={numberStart} />
           </div>

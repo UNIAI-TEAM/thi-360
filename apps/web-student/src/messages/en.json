@@ -331,6 +331,8 @@
       "takeoverHere": "Continue here"
     },
     "header": {
+      "collapseHeader": "Collapse top bar",
+      "expandHeader": "Expand top bar",
       "finishPart": "Finish section",
       "submit": "Submit exam"
     },
@@ -430,6 +432,32 @@
       "maxPoints": "{points} pts",
       "range": "Questions {from}–{to}",
       "ungrouped": "Other questions"
+    },
+    "subjects": {
+      "codes": {
+        "ANH": "English",
+        "CNCN": "Technology (industrial)",
+        "CNNN": "Technology (agricultural)",
+        "DIA": "Geography",
+        "ECON_LAW": "Economic and Legal Education",
+        "GDKTPL": "Economic and Legal Education",
+        "HOA": "Chemistry",
+        "INFORMATICS": "Informatics",
+        "LY": "Physics",
+        "SCIENTIFIC_THINKING": "Scientific thinking",
+        "SINH": "Biology",
+        "SU": "History",
+        "TECH_AGRICULTURE": "Technology (agricultural)",
+        "TECH_INDUSTRY": "Technology (industrial)",
+        "TIENG_ANH": "English",
+        "TIN": "Informatics",
+        "TOAN": "Mathematics",
+        "VAN": "Literature",
+        "VIETNAMESE": "Vietnamese"
+      },
+      "heading": "{name}",
+      "questionCount": "{count, plural, one {# question} other {# questions}}",
+      "range": "Questions {from}–{to}"
     },
     "tabLock": {
       "badge": "Read-only",

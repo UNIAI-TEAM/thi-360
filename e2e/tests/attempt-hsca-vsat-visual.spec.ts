@@ -75,6 +75,7 @@ async function ensureActivePlayerSession(page: Page, lang: MatrixLang): Promise<
   const readyAction = page.getByRole("button", {
     name: lang === "en" ? /^(Submit exam|Finish section)$/ : /^(Nộp bài|Hoàn thành phần)$/,
   });
+  const enabledReadyAction = readyAction.and(page.locator(":enabled"));
   const takeoverBtn = page.getByRole("button", {
     name: lang === "en" ? "Continue here" : "Tiếp tục tại đây",
   });
@@ -83,7 +84,7 @@ async function ensureActivePlayerSession(page: Page, lang: MatrixLang): Promise<
     .poll(
       async () => {
         if (await takeoverBtn.isVisible()) return "takeover";
-        if ((await readyAction.isVisible()) && (await readyAction.isEnabled())) return "ready";
+        if (await enabledReadyAction.isVisible()) return "ready";
         return "pending";
       },
       { timeout: 25_000 },
@@ -473,6 +474,7 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
 
       // Advance DS-HSCA-HOA through Part 1 and Part 2 to reach Part 3 (SHORT_ANSWER + SymbolInputBar).
       await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(hscaHoaAttemptId)}`);
+      await ensureActivePlayerSession(page, "vi");
       await expect(page.locator('header [role="timer"]')).toBeVisible({ timeout: 25_000 });
       for (let round = 0; round < 3; round += 1) {
         const hoaState = (await getAttemptStateApi(page.request, hscaHoaAttemptId)) as AttemptStateWithItemsPayload;
@@ -552,7 +554,7 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
         await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(hscaMiniAttemptId)}`);
         await ensureActivePlayerSession(page, cell.lang);
         await expect(
-          page.getByRole("region", { name: cell.lang === "en" ? "Audio player" : "Trình phát audio" }),
+          page.getByRole("region", { name: cell.lang === "en" ? "Audio player" : "Trình phát audio" }).first(),
         ).toBeVisible({ timeout: 20_000 });
         await expectMatrixClean(page, "hsca-player-audio", cell, playerOverflowOpts);
 
@@ -560,9 +562,11 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
         await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(hscaHoaAttemptId)}`);
         await ensureActivePlayerSession(page, cell.lang);
         await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 20_000 });
-        const symbolGroup = page.getByRole("group", {
-          name: cell.lang === "en" ? "Symbol input bar" : "Thanh chèn ký hiệu",
-        });
+        const symbolGroup = page
+          .getByRole("group", {
+            name: cell.lang === "en" ? "Symbol input bar" : "Thanh chèn ký hiệu",
+          })
+          .first();
         if (!(await symbolGroup.isVisible().catch(() => false)) && hoaShortDisplayNo > 1) {
           await jumpToQuestionDisplayNo(page, hoaShortDisplayNo, cell);
         }
@@ -576,7 +580,7 @@ test.describe("Ma trận giao diện FS-7 · AC-15 (8 màn hình × 8 ô = 64 �
         await expect(page.getByText(cell.lang === "en" ? /^Question 8$/ : /^Câu 8$/).first()).toBeVisible({
           timeout: 10_000,
         });
-        await expect(page.locator("[data-segment-header]")).toBeVisible({ timeout: 20_000 });
+        await expect(page.locator("[data-segment-header]").first()).toBeVisible({ timeout: 20_000 });
         await page.evaluate(() => window.scrollTo(0, 0));
         await expectMatrixClean(page, "vsat-player-segments", cell, playerOverflowOpts);
 

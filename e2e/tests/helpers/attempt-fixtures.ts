@@ -391,15 +391,12 @@ async function waitForEssayEditorIfPresent(fieldset: Locator): Promise<void> {
   }
 }
 
-export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<number> {
-  const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
-  await expect(fieldset).toBeVisible({ timeout: 15_000 });
-  await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 15_000 });
-  await waitForEssayEditorIfPresent(fieldset);
+async function answerWithinScope(page: Page, scope: Locator, textAnswer = "42"): Promise<number> {
+  await waitForEssayEditorIfPresent(scope);
 
   let interactions = 0;
 
-  const radioGroups = fieldset.locator('[role="radiogroup"]');
+  const radioGroups = scope.locator('[role="radiogroup"]');
   const rgCount = await radioGroups.count();
   for (let i = 0; i < rgCount; i += 1) {
     const group = radioGroups.nth(i);
@@ -421,7 +418,7 @@ export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<
     }
   }
 
-  const choiceContainers = fieldset.locator("[data-question-options]");
+  const choiceContainers = scope.locator("[data-question-options]");
   const ccCount = await choiceContainers.count();
   for (let i = 0; i < ccCount; i += 1) {
     const container = choiceContainers.nth(i);
@@ -447,7 +444,7 @@ export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<
     }
   }
 
-  const comboboxes = fieldset.locator('button[role="combobox"]:not([disabled])');
+  const comboboxes = scope.locator('button[role="combobox"]:not([disabled])');
   const cbCount = await comboboxes.count();
   for (let i = 0; i < cbCount; i += 1) {
     const combo = comboboxes.nth(i);
@@ -462,7 +459,7 @@ export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<
     interactions += 1;
   }
 
-  const textInputs = fieldset.locator(
+  const textInputs = scope.locator(
     'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([type="file"]):not(:disabled)',
   );
   const inputCount = await textInputs.count();
@@ -474,7 +471,7 @@ export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<
     }
   }
 
-  const essayEditors = fieldset.locator('[contenteditable="true"]');
+  const essayEditors = scope.locator('[contenteditable="true"]');
   const essayCount = await essayEditors.count();
   for (let i = 0; i < essayCount; i += 1) {
     const editor = essayEditors.nth(i);
@@ -486,6 +483,22 @@ export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<
   }
 
   return interactions;
+}
+
+export async function answerCurrentUnit(page: Page, textAnswer = "42"): Promise<number> {
+  const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
+  await expect(fieldset).toBeVisible({ timeout: 15_000 });
+  await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 15_000 });
+  return answerWithinScope(page, fieldset, textAnswer);
+}
+
+export async function answerUnitAt(page: Page, unitIndex: number, textAnswer = "42"): Promise<number> {
+  const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]");
+  await expect(fieldset).toBeVisible({ timeout: 15_000 });
+  await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 15_000 });
+  const unitCard = fieldset.locator(`[data-attempt-unit][data-unit-index="${unitIndex}"]`);
+  await expect(unitCard).toBeVisible({ timeout: 15_000 });
+  return answerWithinScope(page, unitCard, textAnswer);
 }
 
 export async function readAttemptDraftsIdb(page: Page): Promise<AttemptDraftIdbSnapshot> {

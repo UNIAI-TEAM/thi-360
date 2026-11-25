@@ -768,11 +768,16 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
     );
 
     expect(await screen.findByText("Điền số câu 1")).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("textbox")).toBeEnabled());
+    expect(screen.getByText("Điền số câu 2")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByRole("textbox")[0]).toBeEnabled());
 
-    // Type in SHORT_ANSWER (800ms debounce) then immediately click Next -> flushes immediately with position!
-    await user.type(screen.getByRole("textbox"), "42");
-    await user.click(screen.getByRole("button", { name: "Câu sau" }));
+    const part1Inputs = screen.getAllByRole("textbox");
+    expect(part1Inputs).toHaveLength(2);
+    const navAside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+
+    // Type in SHORT_ANSWER Q1 (800ms debounce) then immediately click Q2 in QuestionNav -> flushes immediately with position!
+    await user.type(part1Inputs[0]!, "42");
+    await user.click(within(navAside).getByRole("button", { name: /^2,/ }));
 
     await waitFor(() =>
       expect(saveAnswersFn).toHaveBeenCalledWith(
@@ -786,7 +791,7 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
     );
 
     // Type in Q2 then immediately switch tab to Phần 2 -> flushes Q2 AND persists Phần 2 position!
-    await user.type(screen.getByRole("textbox"), "99");
+    await user.type(part1Inputs[1]!, "99");
     await user.click(screen.getByRole("tab", { name: /Phần 2/ }));
 
     await waitFor(() =>
@@ -1951,27 +1956,227 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
       );
 
       expect(await screen.findByText("Câu con thứ hai")).toBeInTheDocument();
-      const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
-      expect(aside).toHaveClass("lg:sticky", "lg:top-28");
+      expect(screen.getByText("Câu độc lập thứ ba")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Câu trước" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Câu sau" })).not.toBeInTheDocument();
 
-      // Clicking child 2 while already viewing QUESTION_SET (unitIndex = 0) scrolls child-2 section into view
+      const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+      expect(aside).toHaveClass("lg:sticky", "lg:top-[var(--attempt-sticky-top,7rem)]");
+
+      // Clicking child 2 scrolls child-2 section into view and updates aria-current="step"
       scrollSpy.mockClear();
       await user.click(within(aside).getByRole("button", { name: /^2,/ }));
+      expect(within(aside).getByRole("button", { name: /^2,/ })).toHaveAttribute("aria-current", "step");
       expect(scrollSpy).toHaveBeenCalledTimes(1);
       const scrolledEl = scrollSpy.mock.instances[0] as HTMLElement;
       expect(scrolledEl.getAttribute("aria-labelledby")).toBe("child-2-title");
 
-      // Navigate to standalone question 3 (unitIndex = 1), then click child 2 -> switches unit AND scrolls to child-2
+      // Clicking standalone question 3 scrolls standalone-3 section into view and updates aria-current="step"
+      scrollSpy.mockClear();
       await user.click(within(aside).getByRole("button", { name: /^3,/ }));
-      expect(await screen.findByText("Câu độc lập thứ ba")).toBeInTheDocument();
+      expect(within(aside).getByRole("button", { name: /^3,/ })).toHaveAttribute("aria-current", "step");
+      expect(scrollSpy).toHaveBeenCalledTimes(1);
+      expect((scrollSpy.mock.instances[0] as HTMLElement).getAttribute("aria-labelledby")).toBe("standalone-3-title");
 
+      // Clicking child 2 again scrolls back to child-2 section
       scrollSpy.mockClear();
       await user.click(within(aside).getByRole("button", { name: /^2,/ }));
-      expect(await screen.findByText("Câu con thứ hai")).toBeInTheDocument();
       await waitFor(() => expect(scrollSpy).toHaveBeenCalledTimes(1));
       expect((scrollSpy.mock.instances[0] as HTMLElement).getAttribute("aria-labelledby")).toBe("child-2-title");
     } finally {
       Element.prototype.scrollIntoView = prevScrollIntoView;
     }
+  });
+
+  it("hỗ trợ thu gọn/mở rộng thanh đầu trang, cập nhật --attempt-sticky-top và giữ đồng hồ + trạng thái lưu + nút Nộp bài (UNI-2813)", async () => {
+    const user = userEvent.setup();
+    const stateOpen: AttemptStateResponse = {
+      attemptId: "att-collapse-hdr",
+      state: "IN_PROGRESS",
+      navigationMode: "SEQUENTIAL",
+      timing: "PER_PART",
+      examName: "Đề HSA đầy đủ 2026",
+      serverNow: "2026-11-21T10:00:00Z",
+      parts: [
+        {
+          ord: 1,
+          partId: "part-1",
+          partName: "Phần 1 · Tư duy định lượng",
+          state: "OPEN",
+          deadlineAt: "2026-11-21T11:15:00Z",
+          items: [makeOpenMcqItem("q-1", 1, "Câu hỏi kiểm tra thu gọn header")],
+        },
+      ],
+    };
+
+    const { container } = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-collapse-hdr"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn: vi.fn(async () => stateOpen) })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu hỏi kiểm tra thu gọn header")).toBeInTheDocument();
+    const rootWrapper = container.firstElementChild as HTMLElement;
+    expect(rootWrapper.style.getPropertyValue("--attempt-sticky-top")).toBe("5.25rem");
+
+    expect(screen.getByRole("heading", { name: "Đề HSA đầy đủ 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Các phần của bài thi" })).toBeInTheDocument();
+
+    const collapseBtn = screen.getByTestId("attempt-header-collapse");
+    expect(collapseBtn).toHaveAttribute("aria-expanded", "true");
+    expect(collapseBtn).toHaveAttribute("aria-label", "Thu gọn thanh đầu trang");
+
+    await user.click(collapseBtn);
+    expect(collapseBtn).toHaveAttribute("aria-expanded", "false");
+    expect(collapseBtn).toHaveAttribute("aria-label", "Mở rộng thanh đầu trang");
+    expect(rootWrapper.style.getPropertyValue("--attempt-sticky-top")).toBe("3.75rem");
+
+    expect(screen.queryByRole("heading", { name: "Đề HSA đầy đủ 2026" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Các phần của bài thi" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("attempt-active-part-chip")).toHaveTextContent("Phần 1 · Tư duy định lượng");
+    expect(screen.getByRole("timer")).toBeInTheDocument();
+    expect(screen.getByText("Đã lưu")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nộp bài" })).toBeInTheDocument();
+
+    await user.click(collapseBtn);
+    expect(collapseBtn).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("heading", { name: "Đề HSA đầy đủ 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Các phần của bài thi" })).toBeInTheDocument();
+  });
+
+  it("gom nhóm và hiển thị Header môn học song ngữ cho phần nhiều môn (HSA Phần 3 Khoa học 3 môn) cả trên màn làm bài và QuestionNav (UNI-2813)", async () => {
+    const enMessages = (await import("@/messages/en.json")).default;
+    const multiSubjectState: AttemptStateResponse = {
+      attemptId: "att-hsa-p3-sci",
+      state: "IN_PROGRESS",
+      navigationMode: "SEQUENTIAL",
+      timing: "PER_PART",
+      examName: "Đề HSA tổng hợp",
+      serverNow: "2026-11-21T10:00:00Z",
+      choices: {
+        "3": { optionCode: "SCIENCE", subjectCodes: ["LY", "HOA", "SINH"] },
+      } as unknown as AttemptStateResponse["choices"],
+      parts: [
+        {
+          ord: 1,
+          partId: "p1",
+          partName: "Phần 1",
+          state: "CLOSED",
+          items: [],
+        },
+        {
+          ord: 2,
+          partId: "p2",
+          partName: "Phần 2",
+          state: "CLOSED",
+          items: [],
+        },
+        {
+          ord: 3,
+          partId: "p3",
+          partCode: "PART_3",
+          partName: "Phần 3 · Khoa học",
+          state: "OPEN",
+          deadlineAt: "2026-11-21T11:00:00Z",
+          items: [
+            { ...makeOpenMcqItem("ly-101", 101, "Câu Vật lí 101"), componentCode: "LY" },
+            { ...makeOpenMcqItem("ly-102", 102, "Câu Vật lí 102"), componentCode: "LY" },
+            { ...makeOpenMcqItem("hoa-103", 103, "Câu Hóa học 103"), componentCode: "HOA" },
+            { ...makeOpenMcqItem("hoa-104", 104, "Câu Hóa học 104"), componentCode: "HOA" },
+            { ...makeOpenMcqItem("sinh-105", 105, "Câu Sinh học 105"), componentCode: "SINH" },
+          ],
+        },
+      ],
+    };
+
+    const viView = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-hsa-p3-sci"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn: vi.fn(async () => multiSubjectState) })}
+      />,
+    );
+
+    expect(await screen.findByText("Câu Vật lí 101")).toBeInTheDocument();
+    expect(screen.getByText("Câu Hóa học 103")).toBeInTheDocument();
+    expect(screen.getByText("Câu Sinh học 105")).toBeInTheDocument();
+
+    const subjectGroups = document.querySelectorAll("[data-subject-group]");
+    expect(subjectGroups).toHaveLength(3);
+
+    const lyGroup = document.querySelector('[data-subject-group="LY"]') as HTMLElement;
+    const hoaGroup = document.querySelector('[data-subject-group="HOA"]') as HTMLElement;
+    const sinhGroup = document.querySelector('[data-subject-group="SINH"]') as HTMLElement;
+
+    expect(within(lyGroup).getByRole("heading", { level: 2, name: "Môn Vật lí" })).not.toHaveAttribute(
+      "data-exam-content",
+    );
+    expect(within(lyGroup).getByText("Câu 101–102")).toBeInTheDocument();
+    expect(within(lyGroup).getByText("2 câu")).toBeInTheDocument();
+
+    expect(within(hoaGroup).getByRole("heading", { level: 2, name: "Môn Hóa học" })).toBeInTheDocument();
+    expect(within(hoaGroup).getByText("Câu 103–104")).toBeInTheDocument();
+
+    expect(within(sinhGroup).getByRole("heading", { level: 2, name: "Môn Sinh học" })).toBeInTheDocument();
+    expect(within(sinhGroup).getByText("Câu 105–105")).toBeInTheDocument();
+    expect(within(sinhGroup).getByText("1 câu")).toBeInTheDocument();
+
+    const navAside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+    expect(within(navAside).getByRole("group", { name: "Vật lí" })).toBeInTheDocument();
+    expect(within(navAside).getByRole("group", { name: "Hóa học" })).toBeInTheDocument();
+    expect(within(navAside).getByRole("group", { name: "Sinh học" })).toBeInTheDocument();
+    viView.unmount();
+
+    // English locale renders translated subject titles without data-exam-content
+    const enView = renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-hsa-p3-sci"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn: vi.fn(async () => multiSubjectState) })}
+      />,
+      { locale: "en", messages: enMessages },
+    );
+
+    expect(await screen.findByText("Câu Vật lí 101")).toBeInTheDocument();
+    const enLyGroup = document.querySelector('[data-subject-group="LY"]') as HTMLElement;
+    expect(within(enLyGroup).getByRole("heading", { level: 2, name: "Physics" })).not.toHaveAttribute(
+      "data-exam-content",
+    );
+    expect(within(enLyGroup).getByText("Questions 101–102")).toBeInTheDocument();
+    expect(within(enLyGroup).getByText("2 questions")).toBeInTheDocument();
+    const enNavAside = screen.getByRole("complementary", { name: "Question list" });
+    expect(within(enNavAside).getByRole("group", { name: "Physics" })).toBeInTheDocument();
+    expect(within(enNavAside).getByRole("group", { name: "Chemistry" })).toBeInTheDocument();
+    expect(within(enNavAside).getByRole("group", { name: "Biology" })).toBeInTheDocument();
+    enView.unmount();
+
+    // Single-subject part does NOT render redundant subject wrapper
+    const singleSubjectState: AttemptStateResponse = {
+      ...multiSubjectState,
+      choices: undefined,
+      parts: [
+        {
+          ord: 1,
+          partId: "p-math",
+          partName: "Phần 1 · Toán",
+          state: "OPEN",
+          items: [
+            { ...makeOpenMcqItem("m-1", 1, "Câu Toán 1"), componentCode: "TOAN" },
+            { ...makeOpenMcqItem("m-2", 2, "Câu Toán 2"), componentCode: "TOAN" },
+          ],
+        },
+      ],
+    };
+    renderWithProviders(
+      <AttemptPlayer
+        attemptId="att-single-subj"
+        userId="user-1"
+        deps={makeBaseDeps({ loadAttemptStateFn: vi.fn(async () => singleSubjectState) })}
+      />,
+    );
+    expect(await screen.findByText("Câu Toán 1")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-subject-group]")).toHaveLength(0);
   });
 });
