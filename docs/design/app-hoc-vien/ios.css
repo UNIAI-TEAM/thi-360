@@ -1,0 +1,137 @@
+/* Thi 360 · iOS. Thành phần hệ thống theo Human Interface Guidelines, màu nhấn là màu chủ đạo #047857. */
+html,body{margin:0;overflow:hidden}
+.ios{
+  --bg:#F2F2F7;--plain:#FFFFFF;--cell:#FFFFFF;
+  --label:#111114;--label2:#6B6B72;--sep:#C6C6C8;
+  --tint:#047857;--on-tint:#FFFFFF;--tint-soft:#DCFCE7;--on-tint-soft:#064E3B;
+  --fill:#E9E9EE;--field:#F2F2F7;--red:#D70015;
+  --glass:rgba(255,255,255,.8);--shadow:0 8px 24px rgba(0,0,0,.12);
+  box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;position:relative;
+  background:var(--bg);color:var(--label);
+  font-family:-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;font-size:17px;line-height:22px;letter-spacing:-.01em;
+}
+.ios.dark{
+  --bg:#000000;--plain:#000000;--cell:#1C1C1E;
+  --label:#FFFFFF;--label2:#AEAEB2;--sep:#38383A;
+  --tint:#55B38F;--on-tint:#11181C;--tint-soft:#0B4F3A;--on-tint-soft:#BFEFD8;
+  --fill:#2C2C2E;--field:#1C1C1E;--red:#FF6961;
+  --glass:rgba(28,28,30,.8);--shadow:0 8px 24px rgba(0,0,0,.5);
+}
+.ios.plain{background:var(--plain)}
+.ios *{box-sizing:border-box}
+.ios svg{flex:none;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ios h1,.ios h2,.ios p{margin:0}
+.ios a{color:var(--tint);text-decoration:none}
+
+/* bố cục */
+.ios .safe-top{padding-top:59px}
+.ios .safe-bottom{padding-bottom:34px}
+.ios .col{display:flex;flex-direction:column}
+.ios .row{display:flex;align-items:center}
+.ios .grow{flex:1 1 0;min-height:0;min-width:0}
+.ios .pad{padding-left:20px;padding-right:20px}
+.ios .g4{gap:4px}.ios .g6{gap:6px}.ios .g8{gap:8px}.ios .g12{gap:12px}.ios .g16{gap:16px}.ios .g20{gap:20px}.ios .g24{gap:24px}.ios .g32{gap:32px}
+.ios .center{align-items:center;text-align:center}
+.ios .between{justify-content:space-between}
+.ios .end{justify-content:flex-end}
+
+/* chữ */
+.ios .t-large{font-size:34px;line-height:41px;font-weight:700;letter-spacing:-.02em}
+.ios .t-title2{font-size:22px;line-height:28px;font-weight:700;letter-spacing:-.015em}
+.ios .t-headline{font-size:17px;line-height:22px;font-weight:600}
+.ios .t-body{font-size:17px;line-height:22px}
+.ios .t-sub{font-size:15px;line-height:20px;color:var(--label2)}
+.ios .t-foot{font-size:13px;line-height:18px;color:var(--label2)}
+.ios .strong{font-weight:600;color:var(--label)}
+
+/* thương hiệu */
+.ios .brand{display:flex;align-items:center;gap:10px}
+.ios .logo{width:44px;height:44px;border-radius:12px;background:var(--tint);color:var(--on-tint);display:flex;align-items:center;justify-content:center}
+.ios .logo.sm{width:30px;height:30px;border-radius:8px}
+.ios .logo.sm svg{width:18px;height:18px}
+.ios .wordmark{font-family:"Be Vietnam Pro",Inter,sans-serif;font-weight:700;font-size:22px;line-height:28px;letter-spacing:0}
+
+/* thanh điều hướng */
+.ios .nav{display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 16px;flex:none;position:relative}
+.ios .nav .t-headline{position:absolute;left:72px;right:72px;text-align:center}
+.ios .circle{width:44px;height:44px;border-radius:22px;border:0;background:var(--fill);color:var(--label);display:flex;align-items:center;justify-content:center;padding:0;font:inherit}
+.ios.plain .circle{background:var(--field)}
+
+/* ô nhập */
+.ios .field{display:flex;flex-direction:column;gap:6px;position:relative}
+.ios .field label{font-size:13px;line-height:18px;font-weight:600;color:var(--label2);padding-left:4px}
+.ios .field input{width:100%;height:50px;border:0;border-radius:14px;background:var(--field);color:var(--label);font:inherit;padding:0 16px;outline:none}
+.ios .on-cell .field input{background:var(--bg)}
+.ios .field.trail input{padding-right:50px}
+.ios .field input::placeholder{color:var(--label2);opacity:1}
+.ios .field.focus input{box-shadow:0 0 0 2px var(--tint)}
+.ios .field .trail-btn{position:absolute;right:3px;bottom:3px;width:44px;height:44px;border:0;background:transparent;color:var(--label2);display:flex;align-items:center;justify-content:center;padding:0}
+.ios .hint{font-size:13px;line-height:18px;color:var(--label2);padding-left:4px}
+
+/* nút */
+.ios .btn{height:50px;border-radius:25px;border:0;padding:0 20px;font:inherit;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.ios .btn.prominent{background:var(--tint);color:var(--on-tint)}
+.ios .btn.gray{background:var(--fill);color:var(--tint)}
+.ios.plain .btn.gray{background:var(--field)}
+.ios .btn.text{background:transparent;color:var(--tint);font-weight:400;height:44px;padding:0 8px}
+.ios .btn.block{width:100%}
+
+/* công tắc, hộp kiểm */
+.ios .sw{flex:none;width:51px;height:31px;border-radius:16px;border:0;background:var(--tint);position:relative;padding:0}
+.ios .sw::after{content:"";position:absolute;top:2px;right:2px;width:27px;height:27px;border-radius:14px;background:#FFFFFF;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.ios .check{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:20px;min-height:44px;padding:2px 0}
+.ios .check .box{flex:none;width:22px;height:22px;border-radius:11px;background:var(--tint);color:var(--on-tint);display:flex;align-items:center;justify-content:center}
+.ios .check .box svg{width:14px;height:14px;stroke-width:3}
+
+/* điều kiện mật khẩu */
+.ios .rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px;font-size:13px;line-height:18px;color:var(--label2);padding:0 4px}
+.ios .rules span{display:flex;align-items:center;gap:6px}
+.ios .rules svg{width:14px;height:14px;stroke-width:2.6}
+.ios .rules .ok{color:var(--tint)}
+
+/* thông báo */
+.ios .banner{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;font-size:15px;line-height:20px;background:var(--field);color:var(--label)}
+.ios .banner.err{color:var(--red)}
+.ios .banner svg{width:20px;height:20px}
+
+/* OTP */
+.ios .otp{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.ios .otp input{width:100%;height:58px;border:0;border-radius:14px;background:var(--field);color:var(--label);font:inherit;font-size:26px;font-weight:600;text-align:center;outline:none;padding:0}
+.ios .otp input.focus{box-shadow:0 0 0 2px var(--tint)}
+
+/* hình minh họa, avatar */
+.ios .hero-ic{width:92px;height:92px;border-radius:24px;background:var(--tint-soft);color:var(--on-tint-soft);display:flex;align-items:center;justify-content:center}
+.ios .hero-ic svg{width:48px;height:48px;stroke-width:1.5}
+.ios .hero-ic.warn{background:var(--fill);color:var(--label2)}
+.ios .avatar{flex:none;width:36px;height:36px;border-radius:18px;background:var(--tint-soft);color:var(--on-tint-soft);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+.ios .avatar.lg{width:76px;height:76px;border-radius:38px;font-size:28px}
+
+/* danh sách nhóm */
+.ios .sec{font-size:13px;line-height:18px;font-weight:600;color:var(--label2);padding:0 16px 6px}
+.ios .group{background:var(--cell);border-radius:22px;overflow:hidden}
+.ios .cell{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 16px;color:var(--label);background:transparent;border:0;width:100%;font:inherit;text-align:left;text-decoration:none}
+.ios .cell + .cell{border-top:1px solid var(--sep)}
+.ios .cell .val{color:var(--label2)}
+.ios .cell .chev{color:var(--label2);width:16px;height:16px;stroke-width:2.4}
+.ios .cell.red{color:var(--red);justify-content:center}
+.ios .tile{flex:none;width:30px;height:30px;border-radius:8px;background:var(--tint-soft);color:var(--on-tint-soft);display:flex;align-items:center;justify-content:center}
+.ios .tile svg{width:18px;height:18px}
+.ios .badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;line-height:18px;font-weight:600;color:var(--tint)}
+.ios .badge svg{width:14px;height:14px;stroke-width:2.6}
+.ios .seg{display:flex;background:var(--fill);border-radius:10px;padding:2px;flex:none}
+.ios .seg button{border:0;background:transparent;color:var(--label);font:inherit;font-size:14px;font-weight:500;height:30px;padding:0 14px;border-radius:8px}
+.ios .seg button.on{background:var(--cell);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.ios.dark .seg button.on{background:#636366}
+
+/* trạng thái rỗng */
+.ios .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:32px 24px;color:var(--label2)}
+.ios .empty svg{width:44px;height:44px;stroke-width:1.5}
+
+/* thanh tab nổi và sidebar */
+.ios .tabbar{position:absolute;left:20px;right:20px;bottom:24px;height:64px;border-radius:32px;padding:4px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border:1px solid var(--sep);box-shadow:var(--shadow)}
+.ios .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;line-height:13px;font-weight:500;color:var(--label2);border-radius:28px;white-space:nowrap;min-width:0}
+.ios .tab.on{color:var(--tint);background:var(--fill);font-weight:600}
+.ios .sidebar{width:320px;flex:none;display:flex;flex-direction:column;gap:4px;padding:28px 16px 20px;background:var(--bg);border-right:1px solid var(--sep)}
+.ios .side-i{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:var(--label)}
+.ios .side-i svg{color:var(--tint)}
+.ios .side-i.on{background:var(--fill);font-weight:600}

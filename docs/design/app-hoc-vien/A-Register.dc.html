@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Đăng ký bước 1</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px">
+  <div class="bar">
+    <a class="icon-btn" href="Main.dc.html" aria-label="Quay lại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+    <h1 class="t-title">Đăng ký</h1>
+  </div>
+  <div class="col pad grow g20" style="padding-top: 12px">
+    <div class="tf">
+      <label for="a-reg-name">Họ và tên</label>
+      <input id="a-reg-name" type="text" value="Trần Minh Anh" autocomplete="name">
+    </div>
+    <div class="tf">
+      <label for="a-reg-user">Tên đăng nhập</label>
+      <input id="a-reg-user" type="text" value="minhanh.tran" autocomplete="username">
+      <span class="sup">4–30 ký tự: chữ không dấu, chữ số và . @ _ -</span>
+    </div>
+    <div class="tf">
+      <label for="a-reg-email">Email</label>
+      <input id="a-reg-email" type="email" value="minhanh@example.com" autocomplete="email">
+      <span class="sup">Bạn sẽ nhận mã xác minh 6 chữ số qua email này.</span>
+    </div>
+    <div class="col g8">
+      <div class="tf trail focus">
+        <label for="a-reg-pw">Mật khẩu</label>
+        <input id="a-reg-pw" type="password" value="Matkhau1" autocomplete="new-password">
+        <button class="icon-btn trail-btn" aria-label="Hiện mật khẩu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+      <div class="rules" aria-label="Yêu cầu mật khẩu">
+        <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Từ 8 đến 64 ký tự</span>
+        <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Có chữ hoa</span>
+        <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Có chữ thường</span>
+        <span class="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Có chữ số</span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>Có ký tự đặc biệt</span>
+      </div>
+    </div>
+    <label class="check">
+      <span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>
+      <span>Tôi đã đọc và đồng ý với <a href="#">Điều khoản sử dụng</a> của Thi 360.</span>
+    </label>
+    <a class="btn filled block" href="A-Otp.dc.html">Đăng ký</a>
+    <div class="grow"></div>
+    <div class="row g4" style="justify-content: center; min-height: 48px">
+      <span class="t-small">Đã có tài khoản?</span>
+      <a class="btn text" href="Main.dc.html">Đăng nhập</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iPhone Duo gập, màn ngoài · Đăng nhập</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios plain {{theme}} safe-top safe-bottom" style="width: 466px; height: 678px">
+  <div class="nav">
+    <div class="brand" style="gap: 8px">
+      <span class="logo sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="m9 12 3 3 8-9"/></svg></span>
+      <span class="wordmark" style="font-size: 18px">Thi 360</span>
+    </div>
+    <button class="circle" aria-label="Đổi ngôn ngữ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></button>
+  </div>
+  <div class="col grow g20" style="padding: 16px 28px 0">
+    <div class="col g4">
+      <h1 class="t-large">Đăng nhập</h1>
+      <p class="t-sub">Luyện thi đánh giá năng lực HSA và QDA</p>
+    </div>
+    <div class="col g16">
+      <div class="field">
+        <label for="idc-login-id">Tên đăng nhập hoặc email</label>
+        <input id="idc-login-id" type="text" value="minhanh.tran" autocomplete="username">
+      </div>
+      <div class="field trail focus">
+        <label for="idc-login-pw">Mật khẩu</label>
+        <input id="idc-login-pw" type="password" value="matkhau123" autocomplete="current-password">
+        <button class="trail-btn" aria-label="Hiện mật khẩu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+      <div class="row end" style="margin-top: -8px">
+        <a class="btn text" href="I-Forgot.dc.html">Quên mật khẩu?</a>
+      </div>
+      <a class="btn prominent block" href="I-Duo-Open-Account.dc.html">Đăng nhập</a>
+    </div>
+    <div class="grow"></div>
+    <div class="row g4" style="justify-content: center; min-height: 44px">
+      <span class="t-sub">Chưa có tài khoản?</span>
+      <a class="btn text" href="I-Register.dc.html" style="font-weight: 600">Đăng ký</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":466,"height":678}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>

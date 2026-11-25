@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iPhone Duo mở, hai nửa màn · Đăng nhập</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios plain {{theme}}" style="width: 952px; height: 670px; flex-direction: row">
+  <div class="col g24" style="width: 476px; flex: none; padding: 56px 40px 40px; background: var(--tint-soft); color: var(--on-tint-soft); justify-content: center">
+    <div class="brand">
+      <span class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="m9 12 3 3 8-9"/></svg></span>
+      <span class="wordmark">Thi 360</span>
+    </div>
+    <h2 class="t-large">Luyện thi đánh giá năng lực HSA và QDA</h2>
+    <div class="col g12">
+      <div class="row g12"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>Thi thử theo đúng cấu trúc đề</span></div>
+      <div class="row g12"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>Biết điểm ngay sau khi nộp bài</span></div>
+      <div class="row g12"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span>Xem lời giải và phần cần luyện thêm</span></div>
+    </div>
+  </div>
+  <div class="col grow" style="padding: 20px 40px 24px">
+    <div class="row end">
+      <button class="circle" aria-label="Đổi ngôn ngữ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></button>
+    </div>
+    <div class="col grow g24" style="justify-content: center">
+      <h1 class="t-large">Đăng nhập</h1>
+      <div class="col g16">
+        <div class="field">
+          <label for="ido-login-id">Tên đăng nhập hoặc email</label>
+          <input id="ido-login-id" type="text" value="minhanh.tran" autocomplete="username">
+        </div>
+        <div class="field trail focus">
+          <label for="ido-login-pw">Mật khẩu</label>
+          <input id="ido-login-pw" type="password" value="matkhau123" autocomplete="current-password">
+          <button class="trail-btn" aria-label="Hiện mật khẩu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        <div class="row end" style="margin-top: -8px"><a class="btn text" href="I-Forgot.dc.html">Quên mật khẩu?</a></div>
+        <a class="btn prominent block" href="I-Duo-Open-Account.dc.html">Đăng nhập</a>
+      </div>
+      <div class="row g4" style="justify-content: center">
+        <span class="t-sub">Chưa có tài khoản?</span>
+        <a class="btn text" href="I-Register.dc.html" style="font-weight: 600">Đăng ký</a>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":952,"height":670}}'>
+class Component extends DCLogic {
+renderVals() {
+return { theme: (this.props.dark ?? false) ? 'dark' : 'light' };
+}
+}
+</script>
+</body>
+</html>
