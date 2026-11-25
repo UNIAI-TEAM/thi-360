@@ -13,6 +13,7 @@ import {
   API_URL,
   advanceTestClock,
   answerCurrentUnit,
+  answerUnitAt,
   ensureDsReady,
   getAttemptStateApi,
   getMyExams,
@@ -820,8 +821,8 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
           await takeoverBtnB.click();
           await sessionTakeoverPromise;
 
-          // Trigger server revocation detection from contextA right away.
-          await answerCurrentUnit(pageA);
+          // Trigger server revocation detection from contextA right away (single unit only — fieldset unmounts on 409).
+          await answerUnitAt(pageA, 0);
 
           await expect(
             pageA.getByRole("heading", { name: "Lượt thi đã được tiếp tục ở thiết bị khác." }),
