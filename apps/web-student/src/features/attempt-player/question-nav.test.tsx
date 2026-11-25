@@ -149,4 +149,55 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     expect(gridBtn).toHaveTextContent("17/4");
     expect(controls).toHaveClass("rounded-xl", "border", "flex", "items-center", "justify-between");
   });
+
+  it("đổi màu ô/viền đỏ (danger tokens) cho câu đánh dấu cần xem lại ở cả 3 mức hoàn thành và chú thích (UNI-2794)", () => {
+    const items: QuestionNavItem[] = [
+      { itemId: "q-1", displayNo: 1, unitIndex: 0, completion: "complete", flagged: false, unsaved: false, isCurrent: false },
+      { itemId: "q-2", displayNo: 2, unitIndex: 1, completion: "blank", flagged: true, unsaved: false, isCurrent: false },
+      { itemId: "q-3", displayNo: 3, unitIndex: 2, completion: "partial", flagged: true, unsaved: false, isCurrent: true },
+      { itemId: "q-4", displayNo: 4, unitIndex: 3, completion: "complete", flagged: true, unsaved: false, isCurrent: false },
+    ];
+
+    const { container } = renderWithProviders(
+      <QuestionNav
+        items={items}
+        currentUnitIndex={2}
+        totalUnits={4}
+        currentDisplayNumber={3}
+        totalDisplayItems={4}
+        onSelectUnit={vi.fn()}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        canPrev={true}
+        canNext={true}
+      />,
+    );
+
+    const btnUnflaggedAnswered = screen.getByRole("button", { name: /^1,/ });
+    const btnFlaggedBlank = screen.getByRole("button", { name: /^2,/ });
+    const btnFlaggedPartial = screen.getByRole("button", { name: /^3,/ });
+    const btnFlaggedComplete = screen.getByRole("button", { name: /^4,/ });
+
+    // Unflagged answered tile keeps primary green tokens
+    expect(btnUnflaggedAnswered).toHaveClass("border-primary-600", "bg-primary-fill", "text-on-primary");
+    expect(btnUnflaggedAnswered).not.toHaveClass("border-danger");
+
+    // Blank + flagged: red tinted cell & solid red border
+    expect(btnFlaggedBlank).toHaveClass("border-danger", "bg-danger-bg", "text-danger");
+    expect(btnFlaggedBlank).not.toHaveClass("bg-surface");
+
+    // Partial + flagged: red tinted cell & dashed red border + current focus ring
+    expect(btnFlaggedPartial).toHaveClass("border-danger", "border-dashed", "bg-danger-bg", "text-danger", "ring-2");
+    expect(btnFlaggedPartial).not.toHaveClass("bg-primary-50");
+
+    // Complete + flagged: solid danger red cell & white text/icon
+    expect(btnFlaggedComplete).toHaveClass("border-danger", "bg-danger-solid", "text-on-danger");
+    expect(btnFlaggedComplete).not.toHaveClass("bg-primary-fill");
+
+    // Legend swatch matches danger red cell + border + Flag icon
+    const legendSwatch = container.querySelector('dt[data-legend="flagged"]');
+    expect(legendSwatch).not.toBeNull();
+    expect(legendSwatch).toHaveClass("border-danger", "bg-danger-bg", "text-danger");
+    expect(legendSwatch?.querySelector("svg")).not.toBeNull();
+  });
 });

@@ -102,12 +102,23 @@ function QuestionNavGrid({
         onClick={() => onSelectUnit(item.unitIndex)}
         className={cn(
           "relative inline-flex h-9 items-center justify-center rounded-lg border text-label font-semibold tabular-nums transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-          item.completion === "complete" &&
-            "border-primary-600 bg-primary-fill text-on-primary",
-          item.completion === "partial" &&
-            "border-primary-600 border-dashed bg-primary-50 text-primary-800",
-          item.completion === "blank" &&
-            "border-border bg-surface text-text hover:border-border-strong hover:bg-subtle",
+          item.flagged
+            ? [
+                item.completion === "complete" &&
+                  "border-danger bg-danger-solid text-on-danger hover:bg-danger-solid-hover",
+                item.completion === "partial" &&
+                  "border-danger border-dashed bg-danger-bg text-danger",
+                item.completion === "blank" &&
+                  "border-danger bg-danger-bg text-danger hover:border-danger-solid",
+              ]
+            : [
+                item.completion === "complete" &&
+                  "border-primary-600 bg-primary-fill text-on-primary",
+                item.completion === "partial" &&
+                  "border-primary-600 border-dashed bg-primary-50 text-primary-800",
+                item.completion === "blank" &&
+                  "border-border bg-surface text-text hover:border-border-strong hover:bg-subtle",
+              ],
           item.isCurrent && "ring-2 ring-primary-700 ring-offset-2 ring-offset-surface",
           focusRing,
         )}
@@ -125,8 +136,8 @@ function QuestionNavGrid({
           <Flag
             aria-hidden="true"
             className={cn(
-              "absolute bottom-0.5 right-0.5 size-2.5",
-              item.completion === "complete" ? "text-gold-400" : "text-warning",
+              "absolute bottom-0.5 right-0.5 size-2.5 fill-current",
+              item.completion === "complete" ? "text-on-danger" : "text-danger",
             )}
           />
         ) : null}
@@ -245,8 +256,12 @@ function QuestionNavGrid({
           <dd>{t("legendUnsaved")}</dd>
         </div>
         <div className="flex items-center gap-1.5">
-          <dt className="inline-flex items-center text-warning" aria-hidden="true">
-            <Flag className="size-3" />
+          <dt
+            data-legend="flagged"
+            className="inline-flex size-3.5 items-center justify-center rounded-sm border border-danger bg-danger-bg text-danger"
+            aria-hidden="true"
+          >
+            <Flag className="size-2.5 fill-current" />
           </dt>
           <dd>{t("legendFlagged")}</dd>
         </div>
