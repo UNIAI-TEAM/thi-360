@@ -24,6 +24,12 @@ struct Thi360App: App {
                 preferences: preferences,
                 sessionStore: sessionStore
             )
+            .onOpenURL { url in
+                _ = router.handleIncomingURL(url)
+            }
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                _ = router.handleUserActivity(userActivity)
+            }
         }
     }
 }

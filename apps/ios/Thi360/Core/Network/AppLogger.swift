@@ -70,19 +70,26 @@ struct RedactingAppLogger: Sendable {
 
     private static let sensitiveQueryKeys: Set<String> = [
         "token",
+        "reset_token",
+        "resettoken",
         "access_token",
         "refresh_token",
         "password",
+        "oldpassword",
+        "newpassword",
+        "confirmpassword",
         "code",
-        "otp"
+        "otp",
+        "otpcode",
+        "verificationcode"
     ]
 
     private static let redactionPatterns: [(NSRegularExpression, String)] = {
         let definitions: [(String, String)] = [
             (#"(?i)(Bearer\s+)[^\s,;"')]+"#, "$1<redacted>"),
-            (#"(?i)("(?:password|oldPassword|newPassword|accessToken|refreshToken|token|code|otp)"\s*:\s*")[^"]*(")"#, "$1<redacted>$2"),
-            (#"(?i)\b(password|oldPassword|newPassword|accessToken|refreshToken|token|code|otp)(\s*:\s*")[^"]*(")"#, "$1$2<redacted>$3"),
-            (#"(?i)\b(password|oldPassword|newPassword|accessToken|refreshToken|token|code|otp)(\s*=\s*)[^\s&,;)]+"#, "$1$2<redacted>")
+            (#"(?i)("(?:password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode)"\s*:\s*")[^"]*(")"#, "$1<redacted>$2"),
+            (#"(?i)\b(password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode)(\s*:\s*")[^"]*(")"#, "$1$2<redacted>$3"),
+            (#"(?i)\b(password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode)(\s*=\s*)[^\s&,;)"'\]\}]+"#, "$1$2<redacted>")
         ]
         return definitions.compactMap { pattern, replacement in
             guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }

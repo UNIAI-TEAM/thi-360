@@ -2,6 +2,12 @@ import Foundation
 import OpenAPIRuntime
 import OpenAPIURLSession
 
+struct RegisterStartResult: Equatable, Sendable {
+    let registrationId: String
+    let email: String
+    let resendAfterSeconds: Int
+}
+
 protocol MobileAuthClientProtocol: Sendable {
     func login(identifier: String, password: String) async throws -> SessionTokens
     func refresh(refreshToken: String) async throws -> SessionTokens
@@ -10,7 +16,24 @@ protocol MobileAuthClientProtocol: Sendable {
     func getMyProfile() async throws -> Components.Schemas.ProfileResponse
 }
 
-final class MobileAPIClient: MobileAuthClientProtocol, Sendable {
+protocol MobileRecoveryClientProtocol: Sendable {
+    func startRegistration(
+        username: String,
+        fullName: String,
+        email: String,
+        password: String,
+        acceptTerms: Bool,
+        termsVersion: String,
+        registrationId: String?
+    ) async throws -> RegisterStartResult
+    func resendRegistrationCode(registrationId: String) async throws -> RegisterStartResult
+    func verifyRegistration(registrationId: String, code: String, username: String?) async throws -> SessionTokens
+    func forgotPassword(email: String) async throws
+    func resetPassword(token: String, newPassword: String) async throws
+    func changePassword(oldPassword: String, newPassword: String) async throws
+}
+
+final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProtocol, Sendable {
     let serverURL: URL
     let publicClient: Client
     let authenticatedClient: Client
@@ -210,6 +233,297 @@ final class MobileAPIClient: MobileAuthClientProtocol, Sendable {
         } catch {
             throw MobileApiError.classify(error)
         }
+    }
+
+    func startRegistration(
+        username: String,
+        fullName: String,
+        email: String,
+        password: String,
+        acceptTerms: Bool,
+        termsVersion: String,
+        registrationId: String?
+    ) async throws -> RegisterStartResult {
+        do {
+            let output = try await publicClient.startRegistration(
+                body: .json(.init(
+                    acceptTerms: acceptTerms,
+                    callbackUrl: nil,
+                    email: email,
+                    fullName: fullName,
+                    password: password,
+                    registrationId: registrationId,
+                    termsVersion: termsVersion,
+                    username: username
+                ))
+            )
+            switch output {
+            case let .ok(response):
+                let payload = try response.body.json
+                return RegisterStartResult(
+                    registrationId: payload.registrationId,
+                    email: payload.email,
+                    resendAfterSeconds: Int(payload.resendAfterSeconds)
+                )
+            case let .badRequest(response):
+                throw await Self.decodeAnyBody(statusCode: 400, body: try response.body.any)
+            case let .unauthorized(response):
+                throw await Self.decodeAnyBody(statusCode: 401, body: try response.body.any)
+            case let .forbidden(response):
+                throw await Self.decodeAnyBody(statusCode: 403, body: try response.body.any)
+            case let .notFound(response):
+                throw await Self.decodeAnyBody(statusCode: 404, body: try response.body.any)
+            case let .conflict(response):
+                throw await Self.decodeAnyBody(statusCode: 409, body: try response.body.any)
+            case let .preconditionFailed(response):
+                throw await Self.decodeAnyBody(statusCode: 412, body: try response.body.any)
+            case let .contentTooLarge(response):
+                throw await Self.decodeAnyBody(statusCode: 413, body: try response.body.any)
+            case let .unprocessableContent(response):
+                throw await Self.decodeAnyBody(statusCode: 422, body: try response.body.any)
+            case let .tooManyRequests(response):
+                let payload = try response.body.json
+                throw MobileApiError.api(statusCode: 429, error: Self.toApiError(payload))
+            case let .internalServerError(response):
+                throw await Self.decodeAnyBody(statusCode: 500, body: try response.body.any)
+            case let .notImplemented(response):
+                throw await Self.decodeAnyBody(statusCode: 501, body: try response.body.any)
+            case let .badGateway(response):
+                throw await Self.decodeAnyBody(statusCode: 502, body: try response.body.any)
+            case let .undocumented(statusCode, payload):
+                throw await Self.decodeOptionalBody(statusCode: statusCode, body: payload.body)
+            }
+        } catch {
+            throw MobileApiError.classify(error)
+        }
+    }
+
+    func resendRegistrationCode(registrationId: String) async throws -> RegisterStartResult {
+        do {
+            let output = try await publicClient.resendRegistrationCode(
+                body: .json(.init(registrationId: registrationId))
+            )
+            switch output {
+            case let .ok(response):
+                let payload = try response.body.json
+                return RegisterStartResult(
+                    registrationId: payload.registrationId,
+                    email: payload.email,
+                    resendAfterSeconds: Int(payload.resendAfterSeconds)
+                )
+            case let .badRequest(response):
+                throw await Self.decodeAnyBody(statusCode: 400, body: try response.body.any)
+            case let .unauthorized(response):
+                throw await Self.decodeAnyBody(statusCode: 401, body: try response.body.any)
+            case let .forbidden(response):
+                throw await Self.decodeAnyBody(statusCode: 403, body: try response.body.any)
+            case let .notFound(response):
+                throw await Self.decodeAnyBody(statusCode: 404, body: try response.body.any)
+            case let .conflict(response):
+                throw await Self.decodeAnyBody(statusCode: 409, body: try response.body.any)
+            case let .preconditionFailed(response):
+                throw await Self.decodeAnyBody(statusCode: 412, body: try response.body.any)
+            case let .contentTooLarge(response):
+                throw await Self.decodeAnyBody(statusCode: 413, body: try response.body.any)
+            case let .unprocessableContent(response):
+                let payload = try response.body.json
+                throw MobileApiError.api(statusCode: 422, error: Self.toApiError(payload))
+            case let .tooManyRequests(response):
+                let payload = try response.body.json
+                throw MobileApiError.api(statusCode: 429, error: Self.toApiError(payload))
+            case let .internalServerError(response):
+                throw await Self.decodeAnyBody(statusCode: 500, body: try response.body.any)
+            case let .notImplemented(response):
+                throw await Self.decodeAnyBody(statusCode: 501, body: try response.body.any)
+            case let .badGateway(response):
+                throw await Self.decodeAnyBody(statusCode: 502, body: try response.body.any)
+            case let .undocumented(statusCode, payload):
+                throw await Self.decodeOptionalBody(statusCode: statusCode, body: payload.body)
+            }
+        } catch {
+            throw MobileApiError.classify(error)
+        }
+    }
+
+    func verifyRegistration(
+        registrationId: String,
+        code: String,
+        username: String?
+    ) async throws -> SessionTokens {
+        do {
+            let output = try await publicClient.mobileVerifyRegistration(
+                body: .json(.init(code: code, registrationId: registrationId))
+            )
+            switch output {
+            case let .created(response):
+                let payload = try response.body.json
+                return Self.toSessionTokens(payload, username: username)
+            case let .badRequest(response):
+                throw await Self.decodeAnyBody(statusCode: 400, body: try response.body.any)
+            case let .unauthorized(response):
+                throw await Self.decodeAnyBody(statusCode: 401, body: try response.body.any)
+            case let .forbidden(response):
+                throw await Self.decodeAnyBody(statusCode: 403, body: try response.body.any)
+            case let .notFound(response):
+                throw await Self.decodeAnyBody(statusCode: 404, body: try response.body.any)
+            case let .conflict(response):
+                throw await Self.decodeAnyBody(statusCode: 409, body: try response.body.any)
+            case let .preconditionFailed(response):
+                throw await Self.decodeAnyBody(statusCode: 412, body: try response.body.any)
+            case let .contentTooLarge(response):
+                throw await Self.decodeAnyBody(statusCode: 413, body: try response.body.any)
+            case let .unprocessableContent(response):
+                let payload = try response.body.json
+                throw MobileApiError.api(statusCode: 422, error: Self.toApiError(payload))
+            case let .tooManyRequests(response):
+                throw await Self.decodeAnyBody(statusCode: 429, body: try response.body.any)
+            case let .internalServerError(response):
+                throw await Self.decodeAnyBody(statusCode: 500, body: try response.body.any)
+            case let .notImplemented(response):
+                throw await Self.decodeAnyBody(statusCode: 501, body: try response.body.any)
+            case let .badGateway(response):
+                throw await Self.decodeAnyBody(statusCode: 502, body: try response.body.any)
+            case let .undocumented(statusCode, payload):
+                throw await Self.decodeOptionalBody(statusCode: statusCode, body: payload.body)
+            }
+        } catch {
+            throw MobileApiError.classify(error)
+        }
+    }
+
+    func forgotPassword(email: String) async throws {
+        do {
+            let output = try await publicClient.forgotPassword(
+                body: .json(.init(email: email))
+            )
+            switch output {
+            case .accepted:
+                return
+            case let .badRequest(response):
+                throw await Self.decodeAnyBody(statusCode: 400, body: try response.body.any)
+            case let .unauthorized(response):
+                throw await Self.decodeAnyBody(statusCode: 401, body: try response.body.any)
+            case let .forbidden(response):
+                throw await Self.decodeAnyBody(statusCode: 403, body: try response.body.any)
+            case let .notFound(response):
+                throw await Self.decodeAnyBody(statusCode: 404, body: try response.body.any)
+            case let .conflict(response):
+                throw await Self.decodeAnyBody(statusCode: 409, body: try response.body.any)
+            case let .preconditionFailed(response):
+                throw await Self.decodeAnyBody(statusCode: 412, body: try response.body.any)
+            case let .contentTooLarge(response):
+                throw await Self.decodeAnyBody(statusCode: 413, body: try response.body.any)
+            case let .unprocessableContent(response):
+                throw await Self.decodeAnyBody(statusCode: 422, body: try response.body.any)
+            case let .tooManyRequests(response):
+                throw await Self.decodeAnyBody(statusCode: 429, body: try response.body.any)
+            case let .internalServerError(response):
+                throw await Self.decodeAnyBody(statusCode: 500, body: try response.body.any)
+            case let .notImplemented(response):
+                throw await Self.decodeAnyBody(statusCode: 501, body: try response.body.any)
+            case let .badGateway(response):
+                throw await Self.decodeAnyBody(statusCode: 502, body: try response.body.any)
+            case let .undocumented(statusCode, payload):
+                throw await Self.decodeOptionalBody(statusCode: statusCode, body: payload.body)
+            }
+        } catch {
+            throw MobileApiError.classify(error)
+        }
+    }
+
+    func resetPassword(token: String, newPassword: String) async throws {
+        do {
+            let output = try await publicClient.resetPasswordByToken(
+                body: .json(.init(newPassword: newPassword, token: token))
+            )
+            switch output {
+            case .noContent:
+                return
+            case let .badRequest(response):
+                throw await Self.decodeAnyBody(statusCode: 400, body: try response.body.any)
+            case let .unauthorized(response):
+                throw await Self.decodeAnyBody(statusCode: 401, body: try response.body.any)
+            case let .forbidden(response):
+                throw await Self.decodeAnyBody(statusCode: 403, body: try response.body.any)
+            case let .notFound(response):
+                throw await Self.decodeAnyBody(statusCode: 404, body: try response.body.any)
+            case let .conflict(response):
+                throw await Self.decodeAnyBody(statusCode: 409, body: try response.body.any)
+            case let .preconditionFailed(response):
+                throw await Self.decodeAnyBody(statusCode: 412, body: try response.body.any)
+            case let .contentTooLarge(response):
+                throw await Self.decodeAnyBody(statusCode: 413, body: try response.body.any)
+            case let .unprocessableContent(response):
+                throw await Self.decodeAnyBody(statusCode: 422, body: try response.body.any)
+            case let .tooManyRequests(response):
+                throw await Self.decodeAnyBody(statusCode: 429, body: try response.body.any)
+            case let .internalServerError(response):
+                throw await Self.decodeAnyBody(statusCode: 500, body: try response.body.any)
+            case let .notImplemented(response):
+                throw await Self.decodeAnyBody(statusCode: 501, body: try response.body.any)
+            case let .badGateway(response):
+                throw await Self.decodeAnyBody(statusCode: 502, body: try response.body.any)
+            case let .undocumented(statusCode, payload):
+                throw await Self.decodeOptionalBody(statusCode: statusCode, body: payload.body)
+            }
+        } catch {
+            throw MobileApiError.classify(error)
+        }
+    }
+
+    func changePassword(oldPassword: String, newPassword: String) async throws {
+        do {
+            let output = try await authenticatedClient.changePassword(
+                body: .json(.init(newPassword: newPassword, oldPassword: oldPassword))
+            )
+            switch output {
+            case .ok:
+                return
+            case let .undocumented(statusCode, _) where statusCode == 204:
+                return
+            case let .badRequest(response):
+                throw await Self.decodeAnyBody(statusCode: 400, body: try response.body.any)
+            case let .unauthorized(response):
+                throw await Self.decodeAnyBody(statusCode: 401, body: try response.body.any)
+            case let .forbidden(response):
+                throw await Self.decodeAnyBody(statusCode: 403, body: try response.body.any)
+            case let .notFound(response):
+                throw await Self.decodeAnyBody(statusCode: 404, body: try response.body.any)
+            case let .conflict(response):
+                throw await Self.decodeAnyBody(statusCode: 409, body: try response.body.any)
+            case let .preconditionFailed(response):
+                throw await Self.decodeAnyBody(statusCode: 412, body: try response.body.any)
+            case let .contentTooLarge(response):
+                throw await Self.decodeAnyBody(statusCode: 413, body: try response.body.any)
+            case let .unprocessableContent(response):
+                throw await Self.decodeAnyBody(statusCode: 422, body: try response.body.any)
+            case let .tooManyRequests(response):
+                throw await Self.decodeAnyBody(statusCode: 429, body: try response.body.any)
+            case let .internalServerError(response):
+                throw await Self.decodeAnyBody(statusCode: 500, body: try response.body.any)
+            case let .notImplemented(response):
+                throw await Self.decodeAnyBody(statusCode: 501, body: try response.body.any)
+            case let .badGateway(response):
+                throw await Self.decodeAnyBody(statusCode: 502, body: try response.body.any)
+            case let .undocumented(statusCode, payload):
+                throw await Self.decodeOptionalBody(statusCode: statusCode, body: payload.body)
+            }
+        } catch {
+            throw MobileApiError.classify(error)
+        }
+    }
+
+    private static func toApiError(_ response: Components.Schemas.EmailCodeErrorResponse) -> ApiError {
+        ApiError(
+            code: response.code,
+            message: response.message,
+            fieldErrors: response.fieldErrors.map {
+                ApiFieldError(field: $0.field, code: $0.code, message: $0.message)
+            },
+            traceId: response.traceId,
+            retryAfter: response.retryAfter.map(Int.init),
+            remainingAttempts: response.remainingAttempts.map(Int.init)
+        )
     }
 
     private static func executeRefresh(

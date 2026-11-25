@@ -52,56 +52,6 @@ struct OfflineStatusBanner: View {
     }
 }
 
-struct MustChangePasswordGateView: View {
-    let locale: AppLocale
-    let onSignOut: () -> Void
-
-    @Environment(\.brandPalette) private var palette
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Spacer(minLength: 0)
-
-            VStack(spacing: 12) {
-                Text(AuthStrings.text("auth.mustChangePassword.title", locale: locale))
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(palette.textColor)
-                    .multilineTextAlignment(.center)
-                    .accessibilityAddTraits(.isHeader)
-
-                Text(AuthStrings.text("auth.mustChangePassword.description", locale: locale))
-                    .font(.body)
-                    .foregroundStyle(palette.textSecondaryColor)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: 440)
-            .padding(.horizontal, 24)
-
-            Spacer(minLength: 0)
-
-            Button(action: onSignOut) {
-                Text(AuthStrings.text("auth.mustChangePassword.signOut", locale: locale))
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(palette.onPrimaryColor)
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(palette.primaryFillColor)
-                    )
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: 440)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 24)
-            .accessibilityIdentifier("session.mustChangePassword.signOut")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(palette.bgSurfaceColor.ignoresSafeArea())
-        .accessibilityIdentifier("session.mustChangePassword.screen")
-    }
-}
-
 struct LockedGateView: View {
     let locale: AppLocale
     let onSignOut: () -> Void

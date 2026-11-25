@@ -65,7 +65,7 @@ jobs:
             -skipPackagePluginValidation \
             build
 
-      - name: Run Thi360Demo ATS, config, and log redaction unit tests
+      - name: Run Thi360Demo ATS, config, entitlements, and log redaction unit tests
         run: |
           xcodebuild -project Thi360.xcodeproj \
             -scheme Thi360Demo \
@@ -74,7 +74,11 @@ jobs:
             test \
             -only-testing:Thi360Tests/TransportSecurityTests \
             -only-testing:Thi360Tests/EnvironmentConfigTests \
-            -only-testing:Thi360Tests/LogRedactionTests
+            -only-testing:Thi360Tests/LogRedactionTests \
+            -only-testing:Thi360Tests/EntitlementsTests \
+            -only-testing:Thi360Tests/ResetLinkRoutingTests \
+            -only-testing:Thi360Tests/ResetTokenHandlingTests \
+            -only-testing:Thi360Tests/RecoveryLogRedactionTests
 
       - name: Run Thi360Dev unit and UI tests
         run: |

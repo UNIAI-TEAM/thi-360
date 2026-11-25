@@ -12,17 +12,23 @@ struct ApiError: Codable, Equatable, Sendable {
     let message: String
     let fieldErrors: [ApiFieldError]
     let traceId: String
+    let retryAfter: Int?
+    let remainingAttempts: Int?
 
     init(
         code: String,
         message: String = "",
         fieldErrors: [ApiFieldError] = [],
-        traceId: String = ""
+        traceId: String = "",
+        retryAfter: Int? = nil,
+        remainingAttempts: Int? = nil
     ) {
         self.code = code
         self.message = message
         self.fieldErrors = fieldErrors
         self.traceId = traceId
+        self.retryAfter = retryAfter
+        self.remainingAttempts = remainingAttempts
     }
 }
 
