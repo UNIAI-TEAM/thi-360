@@ -65,10 +65,10 @@ describe("ExamDetailView", () => {
     const how = screen.getByRole("region", { name: "Cách làm và cách chấm" });
     expect(how).toHaveTextContent("Trắc nghiệm một đáp án: 40, Trả lời ngắn: 10");
     expect(how).toHaveTextContent("150 điểm");
-    expect(how).toHaveTextContent("Tính giờ từng phần");
+    expect(how).toHaveTextContent("195 phút · Tính giờ từng phần. Đồng hồ tính theo máy chủ.");
     expect(how).toHaveTextContent("Làm tuần tự");
 
-    const rights = screen.getByRole("region", { name: "Quyền sau khi mua" });
+    const rights = screen.getByRole("region", { name: "Quyền lợi sử dụng" });
     expect(rights).toHaveTextContent("3 lượt thi mỗi lần mua");
     expect(rights).toHaveTextContent("Điểm, đáp án và lời giải");
     expect(rights).toHaveTextContent("Ngay sau khi chấm xong");
@@ -83,6 +83,18 @@ describe("ExamDetailView", () => {
     expect(within(aside).getByText("150 câu · 195 phút mỗi lượt")).toBeInTheDocument();
   });
 
+  it("mục Thời gian hiển thị cả thời lượng và cách đồng hồ chạy cho bài đồng hồ chung (UNI-2796)", () => {
+    const sharedClock = {
+      ...FULL_DETAIL,
+      durationMinutes: { min: 60, max: 60 },
+      scoring: { ...FULL_DETAIL.scoring, timing: "SHARED" as const },
+    };
+    renderWithProviders(<ExamDetailView product={sharedClock} />);
+
+    const how = screen.getByRole("region", { name: "Cách làm và cách chấm" });
+    expect(how).toHaveTextContent("60 phút · Một đồng hồ chung cho cả bài. Đồng hồ tính theo máy chủ.");
+  });
+
   it("bài có tự luận: ghi chấm tay, điểm tổng sau khi người chấm xong; nhóm tạm bỏ qua ghi 'Không có phần tự luận'", () => {
     const withEssay = {
       ...FULL_DETAIL,
@@ -94,7 +106,7 @@ describe("ExamDetailView", () => {
     };
     renderWithProviders(<ExamDetailView product={withEssay} />);
 
-    const rights = screen.getByRole("region", { name: "Quyền sau khi mua" });
+    const rights = screen.getByRole("region", { name: "Quyền lợi sử dụng" });
     expect(rights).toHaveTextContent("Sau khi người chấm chấm xong");
     expect(rights).not.toHaveTextContent("Ngay sau khi chấm xong");
     const how = screen.getByRole("region", { name: "Cách làm và cách chấm" });
@@ -133,7 +145,7 @@ describe("ExamDetailView", () => {
     };
     renderWithProviders(<ExamDetailView product={optionEssay} />);
 
-    const rights = screen.getByRole("region", { name: "Quyền sau khi mua" });
+    const rights = screen.getByRole("region", { name: "Quyền lợi sử dụng" });
     expect(rights).toHaveTextContent("Sau khi người chấm chấm xong");
     const choices = screen.getByRole("region", { name: "Phần được chọn trong phạm vi mua" });
     expect(choices).toHaveTextContent("Tự luận: 2");
@@ -196,7 +208,7 @@ describe("ExamDetailView", () => {
     };
     renderWithProviders(<ExamDetailView product={childEssay} />);
 
-    const rights = screen.getByRole("region", { name: "Quyền sau khi mua" });
+    const rights = screen.getByRole("region", { name: "Quyền lợi sử dụng" });
     expect(rights).toHaveTextContent("Sau khi người chấm chấm xong");
     expect(rights).not.toHaveTextContent("Ngay sau khi chấm xong");
   });
