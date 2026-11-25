@@ -47,12 +47,12 @@ function CoverOrbitDecoration() {
   return (
     <svg
       aria-hidden="true"
-      viewBox="0 0 160 160"
+      viewBox="0 0 140 140"
       fill="none"
-      className="pointer-events-none absolute -top-8 -right-8 size-36 opacity-15 select-none"
+      className="pointer-events-none absolute top-0 right-0 size-32 opacity-15 select-none"
     >
-      <circle cx="80" cy="80" r="68" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="80" cy="80" r="48" stroke="currentColor" strokeWidth="1.2" strokeDasharray="4 4" />
+      <circle cx="112" cy="28" r="68" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="112" cy="28" r="48" stroke="currentColor" strokeWidth="1.2" strokeDasharray="4 4" />
     </svg>
   );
 }

@@ -96,7 +96,7 @@ function CatalogCarousel({
     canNext: false,
     hasOverflow: false,
     thumbWidthPct: 100,
-    thumbShiftPct: 0,
+    thumbLeftPct: 0,
   });
 
   const updateScrollUi = useCallback(() => {
@@ -108,20 +108,20 @@ function CatalogCarousel({
       setScrollUi((prev) =>
         !prev.canPrev && !prev.canNext && !prev.hasOverflow && prev.thumbWidthPct === 100
           ? prev
-          : { canPrev: false, canNext: false, hasOverflow: false, thumbWidthPct: 100, thumbShiftPct: 0 },
+          : { canPrev: false, canNext: false, hasOverflow: false, thumbWidthPct: 100, thumbLeftPct: 0 },
       );
       return;
     }
     const visibleRatio = Math.max(0.18, Math.min(1, el.clientWidth / el.scrollWidth));
     const progress = Math.max(0, Math.min(1, el.scrollLeft / maxScroll));
     const thumbWidthPct = Number((visibleRatio * 100).toFixed(1));
-    const thumbShiftPct = Number((progress * ((1 / visibleRatio - 1) * 100)).toFixed(1));
+    const thumbLeftPct = Number((progress * (100 - thumbWidthPct)).toFixed(1));
     setScrollUi({
       canPrev: el.scrollLeft > 4,
       canNext: el.scrollLeft < maxScroll - 4,
       hasOverflow: true,
       thumbWidthPct,
-      thumbShiftPct,
+      thumbLeftPct,
     });
   }, []);
 
@@ -253,12 +253,12 @@ function CatalogCarousel({
       {(scrollUi.hasOverflow || page.totalPages > 1) && (
         <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
           {scrollUi.hasOverflow ? (
-            <div aria-hidden="true" className="h-1 w-44 overflow-hidden rounded-full bg-border-strong/65">
+            <div aria-hidden="true" className="relative h-1 w-44 rounded-full bg-border-strong/65">
               <div
-                className="h-full rounded-full bg-primary-600 transition-transform duration-150 ease-out motion-reduce:transition-none"
+                className="absolute top-0 h-full rounded-full bg-primary-600 transition-[left] duration-150 ease-out motion-reduce:transition-none"
                 style={{
                   width: `${scrollUi.thumbWidthPct}%`,
-                  transform: `translateX(${scrollUi.thumbShiftPct}%)`,
+                  left: `${scrollUi.thumbLeftPct}%`,
                 }}
               />
             </div>
