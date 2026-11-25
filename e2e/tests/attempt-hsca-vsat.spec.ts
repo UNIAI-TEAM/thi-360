@@ -882,7 +882,7 @@ test.describe("FS-7 E2E · H-SCA audio, ký hiệu ion & V-SAT phân đoạn", (
 
       await openMobileNavAndJump(page, targetDisplayNo);
 
-      const targetSection = page.locator("main section").filter({ has: page.locator(`#${targetItemId}-title`) });
+      const targetSection = page.locator("main section").filter({ has: page.locator(`[id="${targetItemId}-title"]`) });
       const symbolBar = targetSection.getByRole("group", { name: SYMBOL_GROUP_NAME });
       await expect(symbolBar).toBeVisible({ timeout: 15_000 });
 
