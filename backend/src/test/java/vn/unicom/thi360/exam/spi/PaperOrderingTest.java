@@ -85,4 +85,49 @@ class PaperOrderingTest {
                     .isEqualTo(PaperOrdering.order(shuffledPaper, seed).optionOrder().get("later"));
         }
     }
+
+    @Test
+    void mixBlocksInterleavesUnitsAcrossBlocksWhilePreservingOriginBlockId() throws Exception {
+        JsonNode choice = json("""
+                {"type":"SINGLE_CHOICE","options":[{"id":"a"},{"id":"b"},{"id":"c"},{"id":"d"}]}
+                """);
+        JsonNode shortAns = json("""
+                {"type":"SHORT_ANSWER"}
+                """);
+        JsonNode set = json("""
+                {"type":"QUESTION_SET","children":[
+                  {"id":"c1","body":{"type":"SINGLE_CHOICE","options":[{"id":"x"},{"id":"y"}]}},
+                  {"id":"c2","body":{"type":"SHORT_ANSWER"}}]}
+                """);
+        var blockMcq = new PaperOrdering.Block("blk-mcq", true, List.of(
+                new PaperOrdering.Question("q1", choice), new PaperOrdering.Question("q2", choice)));
+        var blockSa = new PaperOrdering.Block("blk-sa", true, List.of(
+                new PaperOrdering.Question("sa1", shortAns), new PaperOrdering.Question("sa2", shortAns)));
+        var blockSet = new PaperOrdering.Block("blk-set", true, List.of(
+                new PaperOrdering.Question("set1", set)));
+        var paper = new PaperOrdering.Paper(List.of(new PaperOrdering.Part("p1", List.of(
+                new PaperOrdering.Section("sec-toan", true, List.of(blockMcq, blockSa, blockSet))))));
+
+        boolean interleaved = false;
+        for (long seed = 1; seed <= 30; seed++) {
+            var ordered = PaperOrdering.order(paper, seed);
+            var blocks = ordered.paper().parts().getFirst().sections().getFirst().blocks();
+            assertThat(blocks).hasSize(1);
+            var units = blocks.getFirst().units();
+            assertThat(units).extracting(PaperOrdering.Question::id)
+                    .containsExactlyInAnyOrder("q1", "q2", "sa1", "sa2", "set1");
+            var byId = units.stream().collect(
+                    java.util.stream.Collectors.toMap(PaperOrdering.Question::id, PaperOrdering.Question::blockId));
+            assertThat(byId).containsEntry("q1", "blk-mcq")
+                    .containsEntry("q2", "blk-mcq")
+                    .containsEntry("sa1", "blk-sa")
+                    .containsEntry("sa2", "blk-sa")
+                    .containsEntry("set1", "blk-set");
+            List<String> blockSequence = units.stream().map(PaperOrdering.Question::blockId).toList();
+            if (!blockSequence.equals(List.of("blk-mcq", "blk-mcq", "blk-sa", "blk-sa", "blk-set"))) {
+                interleaved = true;
+            }
+        }
+        assertThat(interleaved).isTrue();
+    }
 }

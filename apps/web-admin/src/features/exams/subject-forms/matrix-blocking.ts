@@ -1,12 +1,12 @@
 import { isFlexibleSet } from "../matrix";
 import type { ExamSection } from "../types";
 import type { BlockingIssue, FormBlockingRule } from "./blocking";
-import { subjectFormLimits } from "./limits";
-import { roleBlocks } from "./matrix-form-model";
+import { sectionSetCount, sectionShortAnswerCount, subjectFormLimits } from "./limits";
 
-/** Mã lỗi của MT: cũng là khóa chữ báo lỗi tại ô ở `exams.subjectForm.matrix.errors`. */
+/** Mã lỗi chặn lưu của MT: ánh xạ tới khóa chữ báo lỗi tại `exams.subjectForm.matrix.errors`. */
 export const MATRIX_ISSUE_CODES = {
   setMin: "SET_COUNT_MIN",
+  setSizeMin: "SET_SIZE_MIN",
   setRange: "SET_COUNT_RANGE",
   shortAnswerMin: "SHORT_ANSWER_MIN",
   choiceBelowChildren: "CHOICE_BELOW_CHILDREN",
@@ -15,7 +15,7 @@ export const MATRIX_ISSUE_CODES = {
 
 /** Tên ô (`data-form-field`) của MT: đích của lỗi chặn lưu, của `?block=`, bấm lỗi kiểm tra và tóm tắt. */
 export const MATRIX_FIELDS = {
-  /** Cả khối Cấu trúc câu: đích mặc định (`navigation.ts`). */
+  /** Cả khối Cấu trúc thành phần: đích mặc định (`navigation.ts`). */
   structure: "STRUCTURE",
   choice: "CHOICE",
   sets: "SETS",
@@ -25,21 +25,56 @@ export const MATRIX_FIELDS = {
   setSource: "SET_SOURCE",
   scope: "SCOPE",
   topicQuotas: "TOPIC_QUOTAS",
+  rowCount: (blockId: string) => `COUNT:${blockId}`,
+  rowSets: (blockId: string) => `SETS:${blockId}`,
+  rowSetSize: (blockId: string) => `SET_SIZE:${blockId}`,
 } as const;
 
-/** Lỗi chặn lưu tính từ bản nháp của một môn MT. */
+/** Lỗi chặn lưu tính từ bản nháp của một môn MT trên danh sách dòng động. */
 export function matrixBlockingIssues(section: ExamSection, kindCode: string): BlockingIssue[] {
   const issues: BlockingIssue[] = [];
-  const { set, fill } = roleBlocks(section);
   const limits = subjectFormLimits(kindCode, section.subjectCode);
-  if (set && !isFlexibleSet(set)) {
-    const sets = set.setCount ?? 0;
-    if (sets < 1) issues.push({ code: MATRIX_ISSUE_CODES.setMin, sectionId: section.id, blockId: set.id, field: MATRIX_FIELDS.sets });
-    else if (limits && sets > limits.setCount.max) issues.push({ code: MATRIX_ISSUE_CODES.setRange, sectionId: section.id, blockId: set.id, field: MATRIX_FIELDS.sets });
+  const activeBlocks = section.blocks.filter((block) => !block.omitted);
+  const fixedSetBlocks = activeBlocks.filter((block) => block.questionType === "QUESTION_SET" && !isFlexibleSet(block));
+
+  for (const block of fixedSetBlocks) {
+    const sets = block.setCount ?? 0;
+    const size = block.setSize ?? 0;
+    if (sets < 1) {
+      issues.push({ code: MATRIX_ISSUE_CODES.setMin, sectionId: section.id, blockId: block.id, field: MATRIX_FIELDS.rowSets(block.id) });
+    }
+    if (size < 1) {
+      issues.push({ code: MATRIX_ISSUE_CODES.setSizeMin, sectionId: section.id, blockId: block.id, field: MATRIX_FIELDS.rowSetSize(block.id) });
+    }
   }
-  if (limits && fill && (fill.questionCount ?? 0) < limits.shortAnswerMin) {
-    issues.push({ code: MATRIX_ISSUE_CODES.shortAnswerMin, sectionId: section.id, blockId: fill.id, field: MATRIX_FIELDS.fill });
+
+  if (limits && fixedSetBlocks.length > 0 && !issues.some((issue) => issue.code === MATRIX_ISSUE_CODES.setMin)) {
+    const totalSets = sectionSetCount(section);
+    if (totalSets > limits.setCount.max) {
+      const target = fixedSetBlocks[0]!;
+      issues.push({ code: MATRIX_ISSUE_CODES.setRange, sectionId: section.id, blockId: target.id, field: MATRIX_FIELDS.rowSets(target.id) });
+    }
   }
+
+  if (limits && limits.shortAnswerMin > 0 && sectionShortAnswerCount(section) < limits.shortAnswerMin) {
+    const fillBlock = activeBlocks.find((block) => block.questionType === "SHORT_ANSWER");
+    if (fillBlock) {
+      issues.push({
+        code: MATRIX_ISSUE_CODES.shortAnswerMin,
+        sectionId: section.id,
+        blockId: fillBlock.id,
+        field: MATRIX_FIELDS.rowCount(fillBlock.id),
+      });
+    } else {
+      issues.push({
+        code: MATRIX_ISSUE_CODES.shortAnswerMin,
+        sectionId: section.id,
+        blockId: null,
+        field: MATRIX_FIELDS.structure,
+      });
+    }
+  }
+
   return issues;
 }
 

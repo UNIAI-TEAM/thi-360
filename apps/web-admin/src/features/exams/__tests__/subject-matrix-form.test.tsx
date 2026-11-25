@@ -5,9 +5,9 @@ import enMessages from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { ExamStructureView } from "../components/exam-structure-view";
 import { registerMatrixKindSlot } from "../subject-forms/matrix-form";
-import { EXAM_ID, type FakeServer } from "./fake-exams-server";
+import { EXAM_ID } from "./fake-exams-server";
 import { boot, checkCalls, openStructure, putCalls, requestLog, sectionsOf, wireBlock, wirePart, wireSection, type Wire } from "./subject-form-harness";
-import { matrixOf, structureInput, wireBcaHistory, wireQdaScience } from "./subject-matrix-harness";
+import { MATRIX_STRUCTURE_HEADING, matrixOf, rowCountInput, rowSetsInput, rowSetSizeInput, structureInput, wireBcaHistory, wireQdaScience } from "./subject-matrix-harness";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
 vi.mock(import("@/features/content/api"), async (importOriginal) => {
@@ -20,8 +20,8 @@ const routerMock = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
 /**
- * CR-2 (FTM R-3, R-4, R-6, R-8, R-12, R-13; plan CR-2 AC-2, AC-4..AC-8, AC-11) trên `StructureEditor` thật với cờ MT của QDA, BCA bật
- * như ở sản phẩm. Phần V-ACT (hai cột %, Tiếng Việt, Toán) ở `subject-matrix-vact.test.tsx`.
+ * CR-2 & UNI-2776 (MatrixForm v3) trên `StructureEditor` thật với cờ MT của QDA, BCA bật như ở sản phẩm.
+ * Phần V-ACT (hai cột %, Tiếng Việt, Toán) ở `subject-matrix-vact.test.tsx`.
  */
 const type = async (user: UserEvent, input: HTMLElement, text: string) => {
   await user.clear(input);
@@ -38,59 +38,146 @@ const lyParts = (over: Parameters<typeof wireQdaScience>[2] = {}) => [wirePart([
 
 afterEach(() => routerMock.push.mockReset());
 
-describe("MT của QDA, BCA: Cấu trúc câu (R-3)", () => {
-  it("mở môn Khoa học thành MT: có Cấu trúc câu, khối lớp và độ khó, phạm vi; Trắc nghiệm đơn chỉ đọc; không có trường của MD (noRemovedFields)", async () => {
+describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2776)", () => {
+  it("mở môn Khoa học thành MT v3: bảng cộng thẳng có Vị trí câu, banner đảo câu mặc định, Khớp 25 câu, không có trường của MD (noRemovedFields)", async () => {
     await openSection("sec-ly", lyParts());
-    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
-    expect(structureInput("Trắc nghiệm")).toHaveValue("24");
-    expect(structureInput("Số chùm")).toHaveValue("1");
-    expect(structureInput("Điền đáp án")).toHaveValue("1");
-    expect(screen.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveAttribute("readonly");
-    expect(screen.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveValue("21");
+    const structure = (await screen.findByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).closest("[data-form-field]") as HTMLElement;
+    const banner = within(structure).getByTestId("matrix-shuffle-banner");
+    expect(banner).toHaveAttribute("data-mixed", "false");
+    expect(banner).toHaveTextContent(/Quy tắc đảo vị trí mặc định:/);
+    expect(within(structure).getByText("1–21")).toBeInTheDocument();
+    expect(within(structure).getByText("22–24")).toBeInTheDocument();
+    expect(within(structure).getByText("Câu 25")).toBeInTheDocument();
+    expect(rowCountInput("sec-ly don")).toHaveValue("21");
+    expect(rowSetsInput("sec-ly chum")).toHaveValue("1");
+    expect(rowSetSizeInput("sec-ly chum")).toHaveValue("3");
+    expect(rowCountInput("sec-ly chum")).toHaveAttribute("readonly");
+    expect(rowCountInput("sec-ly chum")).toHaveValue("3");
+    expect(rowCountInput("sec-ly dien")).toHaveValue("1");
+    expect(within(structure).getByText("Khớp 25 câu")).toBeInTheDocument();
+    expect(within(structure).getByText(/Tóm tắt theo định dạng:/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Khối lớp và độ khó" })).toBeInTheDocument();
-    // R-13: không có bảng dạng trả lời, Khai báo/Bỏ, kết hợp, đơn vị đếm, danh sách nhóm, nút thêm nhóm.
+    // R-13: không có bảng dạng trả lời, Khai báo/Bỏ, kết hợp, đơn vị đếm, danh sách nhóm cũ, nút thêm nhóm cũ.
     for (const gone of [/Khai chỉ tiêu/, /Thêm nhóm/, /Thêm dạng/, /Lấy phần còn lại/, /Kết hợp/, /Lệnh hỏi/]) expect(screen.queryByText(gone)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Thêm nhóm/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 4, name: /Dạng trả lời/ })).not.toBeInTheDocument();
   });
 
-  it("đổi số chùm 1 → 2 ở BCA Sử (T = 10): nhóm chùm 2 × 3 = 6, nhóm đơn 4, các trường không dẫn xuất giữ nguyên trong thân PUT", async () => {
+  it("câu chùm Cố định cỡ tùy ý (2 chùm × 4 câu/chùm = 8) và chuyển sang Linh hoạt cỡ: cộng thẳng, giữ nguyên trường không dẫn xuất trong PUT", async () => {
     const user = userEvent.setup();
     const original = [wirePart([wireBcaHistory()])];
     const { server } = await openSection("sec-su", original, "BCA");
-    await type(user, structureInput("Số chùm"), "2");
-    expect(structureInput("Trắc nghiệm")).toHaveValue("10");
-    expect(screen.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveValue("4");
+    await type(user, rowSetsInput("Su chum"), "2");
+    await type(user, rowSetSizeInput("Su chum"), "4");
+    expect(rowCountInput("Su don")).toHaveValue("7");
+    expect(rowCountInput("Su chum")).toHaveValue("8");
+    const structure = document.querySelector<HTMLElement>('[data-form-field="STRUCTURE"]')!;
+    expect(within(structure).getByText("Vượt 5 câu")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [single, set] = (sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[]) as [Wire, Wire];
-    expect(single).toMatchObject({ id: "sec-su-single", questionCount: 4, templateGroupCode: "SU_SINGLE" });
-    expect(set).toMatchObject({ id: "sec-su-set", setCount: 2, setSize: 3, questionCount: 6, templateGroupCode: "SU_SET", tagCodes: ["SU_TU_LIEU_LICH_SU"] });
+    expect(single).toMatchObject({ id: "sec-su-single", questionCount: 7, templateGroupCode: "SU_SINGLE" });
+    expect(set).toMatchObject({ id: "sec-su-set", setCount: 2, setSize: 4, questionCount: 8, templateGroupCode: "SU_SET", tagCodes: ["SU_TU_LIEU_LICH_SU"] });
+
+    // Chuyển sang Linh hoạt cỡ -> ẩn ô chùm × câu/chùm, mở khóa ô Số câu và lưu setCount/setSize = null.
+    await user.click(screen.getByRole("radio", { name: "Linh hoạt cỡ" }));
+    expect(screen.queryByRole("textbox", { name: "Số chùm của Su chum" })).not.toBeInTheDocument();
+    expect(rowCountInput("Su chum")).not.toHaveAttribute("readonly");
+    await type(user, rowCountInput("Su chum"), "3");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(2));
+    const [, flexSet] = (sectionsOf(putCalls(server)[1]!.body)["sec-su"]!.blocks as Wire[]) as [Wire, Wire];
+    expect(flexSet).toMatchObject({ id: "sec-su-set", questionCount: 3, tagCodes: ["SU_TU_LIEU_LICH_SU"] });
+    expect(flexSet.setCount ?? null).toBeNull();
+    expect(flexSet.setSize ?? null).toBeNull();
   });
 
-  it("fixedSetMinOne: Số chùm 0 báo \"Ít nhất 1 chùm\" tại ô, Lưu không gửi PUT và đặt focus vào ô", async () => {
+  it("fixedSetMinOne & setSizeMinOne: Số chùm 0 hoặc Số câu/chùm 0 báo lỗi tại ô, Lưu không gửi PUT và đặt focus đúng ô", async () => {
     const user = userEvent.setup();
     const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
-    await type(user, structureInput("Số chùm"), "0");
+    await type(user, rowSetsInput("Su chum"), "0");
     expect(await screen.findByText("Ít nhất 1 chùm")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     expect(putCalls(server)).toHaveLength(0);
-    await waitFor(() => expect(structureInput("Số chùm")).toHaveFocus());
-  });
+    await waitFor(() => expect(rowSetsInput("Su chum")).toHaveFocus());
 
-  it("Trắc nghiệm nhỏ hơn câu con báo lỗi tại ô, không vào bản nháp, chặn lưu; sửa đúng thì lưu được", async () => {
-    const user = userEvent.setup();
-    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
-    await type(user, structureInput("Trắc nghiệm"), "2");
-    expect(await screen.findByText(/Ít hơn số câu con của chùm \(3\)/)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveValue("7");
+    await type(user, rowSetsInput("Su chum"), "1");
+    await type(user, rowSetSizeInput("Su chum"), "0");
+    expect(await screen.findByText("Ít nhất 1 câu/chùm")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     expect(putCalls(server)).toHaveLength(0);
-    await type(user, structureInput("Trắc nghiệm"), "9");
-    await waitFor(() => expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument());
+    await waitFor(() => expect(rowSetSizeInput("Su chum")).toHaveFocus());
+  });
+
+  it("thêm dòng loại câu mới (kèm nhãn Chấm tay), đổi tên, đảo thứ tự ↑/↓, xóa dòng giữ tối thiểu 1 dòng và đặt lại Mặc định của môn", async () => {
+    const user = userEvent.setup();
+    const bcaSuTemplate = {
+      code: "BCA_SUBJECT_SU",
+      kindCode: "BCA",
+      scope: "SUBJECT",
+      subjectCode: "SU",
+      timing: "SHARED",
+      structure: { parts: [wirePart([wireBcaHistory()])] },
+      parts: [],
+    };
+    const { server } = boot({ kind: "BCA", parts: [wirePart([wireBcaHistory()])], templates: [bcaSuTemplate] });
+    openStructure("?section=sec-su");
+    await screen.findByRole("heading", { level: 2, name: /Cấu trúc câu|Môn/ });
+
+    await user.click(screen.getByRole("button", { name: /Thêm dòng loại câu/ }));
+    const essayItem = await screen.findByRole("menuitem", { name: /\+ Tự luận/ });
+    expect(within(essayItem).getByText("Chấm tay")).toBeInTheDocument();
+    await user.click(essayItem);
+
+    expect(screen.getByText("Tổng cộng (3 dòng thành phần)")).toBeInTheDocument();
+    await type(user, screen.getByRole("textbox", { name: "Tên hiển thị dòng 3" }), "Bài luận mở");
+    await type(user, rowCountInput("Bài luận mở"), "2");
+
+    // Đưa Bài luận mở lên trên Su chum rồi lưu kiểm tra thứ tự.
+    await user.click(screen.getByRole("button", { name: "Đưa dòng Bài luận mở lên trên" }));
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-    expect((sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[])[0]!.questionCount).toBe(6);
+    const reordered = sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[];
+    expect(reordered.map((item) => item.name)).toEqual(["Su don", "Bài luận mở", "Su chum"]);
+
+    // Xóa 2 dòng cho tới khi chỉ còn 1 dòng -> nút xóa dòng cuối bị khóa.
+    await user.click(screen.getByRole("button", { name: "Xóa dòng Su don" }));
+    await user.click(screen.getByRole("button", { name: "Xóa dòng Su chum" }));
+    expect(screen.getByText("Tổng cộng (1 dòng thành phần)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Xóa dòng Bài luận mở" })).toHaveAttribute("aria-disabled", "true");
+
+    // Khôi phục Mặc định của môn từ template chuẩn -> về lại đúng 2 dòng gốc (Su don 7 + Su chum 3 = 10) kể cả sau khi đã Lưu 3 dòng.
+    await user.click(screen.getByRole("button", { name: /Mặc định của môn/ }));
+    expect(screen.getByText("Tổng cộng (2 dòng thành phần)")).toBeInTheDocument();
+    expect(rowCountInput("Su don")).toHaveValue("7");
+    expect(rowCountInput("Su chum")).toHaveValue("3");
+  });
+
+  it("công tắc Trộn lẫn giữa các loại câu: bật hiện ⇄ Trộn chung, đổi banner thông báo, khóa ↑/↓ và gửi mixBlocks: true; tắt gỡ mixBlocks", async () => {
+    const user = userEvent.setup();
+    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
+    const mixSwitch = screen.getByRole("switch", { name: "Trộn lẫn giữa các loại câu" });
+    expect(mixSwitch).not.toBeChecked();
+
+    await user.click(mixSwitch);
+    expect(mixSwitch).toBeChecked();
+    const banner = screen.getByTestId("matrix-shuffle-banner");
+    expect(banner).toHaveAttribute("data-mixed", "true");
+    expect(banner).toHaveTextContent(/Đang bật trộn lẫn giữa các loại câu:/);
+    expect(screen.getAllByText("⇄ Trộn chung")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Đưa dòng Su don xuống dưới" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Đưa dòng Su chum lên trên" })).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.mixBlocks).toBe(true);
+
+    await user.click(mixSwitch);
+    expect(mixSwitch).not.toBeChecked();
+    expect(banner).toHaveAttribute("data-mixed", "false");
+    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(2));
+    expect(sectionsOf(putCalls(server)[1]!.body)["sec-su"]).not.toHaveProperty("mixBlocks");
   });
 
   it("môn không có chỉ tiêu dạng trả lời và không ma trận giữ nguyên null sau khi sửa Cấu trúc câu", async () => {
@@ -104,15 +191,15 @@ describe("MT của QDA, BCA: Cấu trúc câu (R-3)", () => {
     expect(sent.matrix ?? null).toBeNull();
   });
 
-  it("answerQuotas dạng HSA-B của QDA Toán tính lại đúng dạng khi đổi Trắc nghiệm", async () => {
+  it("answerQuotas dạng HSA-B của QDA Toán tính lại đúng dạng khi đổi Điền đáp án", async () => {
     const user = userEvent.setup();
     const toan = wireSection(
       "sec-toan",
       "TOAN",
       [
-        wireBlock("t-single", { questionType: null, questionCount: 32 }),
-        wireBlock("t-set", { questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3 }),
-        wireBlock("t-fill", { questionType: "SHORT_ANSWER", questionCount: 15 }),
+        wireBlock("t-single", { name: "Trắc nghiệm đơn", questionType: null, questionCount: 32 }),
+        wireBlock("t-set", { name: "Chùm", questionType: "QUESTION_SET", setCount: 1, setSize: 3, questionCount: 3 }),
+        wireBlock("t-fill", { name: "Trả lời ngắn", questionType: "SHORT_ANSWER", questionCount: 15 }),
       ],
       {
         answerQuotas: {
@@ -137,80 +224,6 @@ describe("MT của QDA, BCA: Cấu trúc câu (R-3)", () => {
         { answerType: "QUESTION_SET", value: 3 },
       ],
     });
-  });
-});
-
-describe("MT: Số chùm vượt Trắc nghiệm (R-3, R1-4, R1-7)", () => {
-  const choice = () => within(screen.getByRole("group", { name: "Trắc nghiệm" }));
-  const single = () => screen.getByRole("textbox", { name: "Trắc nghiệm đơn" });
-  const savedBlocks = (server: FakeServer, sectionId: string) => sectionsOf(putCalls(server)[0]!.body)[sectionId]!.blocks as Wire[];
-
-  it("BCA Sử T = 10: 3 chùm (9 câu con) vừa đủ; 4 chùm (12) báo lỗi tại Trắc nghiệm, T vẫn 10, không PUT, focus vào Trắc nghiệm; về 3 chùm thì lưu 9 và câu đơn 1", async () => {
-    const user = userEvent.setup();
-    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
-    await type(user, structureInput("Số chùm"), "3");
-    expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument();
-    expect(structureInput("Trắc nghiệm")).toHaveValue("10");
-    expect(single()).toHaveValue("1");
-
-    await type(user, structureInput("Số chùm"), "4");
-    expect(await choice().findByText("Ít hơn số câu con của chùm (12)")).toBeInTheDocument();
-    expect(structureInput("Trắc nghiệm")).toHaveValue("10");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    expect(putCalls(server)).toHaveLength(0);
-    await waitFor(() => expect(structureInput("Trắc nghiệm")).toHaveFocus());
-
-    await type(user, structureInput("Số chùm"), "3");
-    await waitFor(() => expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument());
-    expect(structureInput("Trắc nghiệm")).toHaveValue("10");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-    const [singleBlock, setBlock] = savedBlocks(server, "sec-su") as [Wire, Wire];
-    expect(singleBlock).toMatchObject({ questionCount: 1 });
-    expect(setBlock).toMatchObject({ setCount: 3, setSize: 3, questionCount: 9 });
-  });
-
-  it("biên: T = 12 và 4 chùm (12 câu con) không lỗi, câu đơn về 0, lưu được; 5 chùm (15) lỗi tại Trắc nghiệm và T vẫn 12", async () => {
-    const user = userEvent.setup();
-    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
-    await type(user, structureInput("Trắc nghiệm"), "12");
-    await type(user, structureInput("Số chùm"), "4");
-    expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument();
-    expect(single()).toHaveValue("0");
-    expect(structureInput("Trắc nghiệm")).toHaveValue("12");
-
-    await type(user, structureInput("Số chùm"), "5");
-    expect(await choice().findByText("Ít hơn số câu con của chùm (15)")).toBeInTheDocument();
-    expect(structureInput("Trắc nghiệm")).toHaveValue("12");
-    await type(user, structureInput("Số chùm"), "4");
-    await waitFor(() => expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-    const [singleBlock, setBlock] = savedBlocks(server, "sec-su") as [Wire, Wire];
-    expect(singleBlock).toMatchObject({ questionCount: 0 });
-    expect(setBlock).toMatchObject({ setCount: 4, setSize: 3, questionCount: 12 });
-  });
-
-  it("R1-7: T gõ nhỏ hơn câu con rồi đổi Số chùm theo T đã gõ: lỗi gỡ khi câu con vừa T, và nhóm đơn tính từ T đã gõ chứ không từ T của bản nháp", async () => {
-    const user = userEvent.setup();
-    const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
-    await type(user, structureInput("Số chùm"), "3");
-    await type(user, structureInput("Trắc nghiệm"), "8");
-    expect(await choice().findByText("Ít hơn số câu con của chùm (9)")).toBeInTheDocument();
-
-    await type(user, structureInput("Số chùm"), "4");
-    expect(await choice().findByText("Ít hơn số câu con của chùm (12)")).toBeInTheDocument();
-    expect(structureInput("Trắc nghiệm")).toHaveValue("8");
-
-    await type(user, structureInput("Số chùm"), "2");
-    await waitFor(() => expect(screen.queryByText(/Ít hơn số câu con/)).not.toBeInTheDocument());
-    expect(structureInput("Trắc nghiệm")).toHaveValue("8");
-    expect(single()).toHaveValue("2");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-    const [singleBlock, setBlock] = savedBlocks(server, "sec-su") as [Wire, Wire];
-    expect(singleBlock).toMatchObject({ questionCount: 2 });
-    expect(setBlock).toMatchObject({ setCount: 2, questionCount: 6 });
   });
 });
 
@@ -263,7 +276,7 @@ describe("MT của QDA, BCA: khối lớp, độ khó và mức áp dụng (R-4,
     await openSection("sec-su", [wirePart([wireBcaHistory("sec-su", { matrix: matrixOf({ byGrade: [{ code: "GRADE_12", value: 7 }], gradeEnforcement: "REFERENCE", difficultyEnforcement: "REFERENCE" }) })])], "BCA");
     const grade = within(screen.getByRole("heading", { level: 4, name: "Khối lớp" }).closest("[data-form-field]") as HTMLElement);
     expect(grade.getByText("Tham khảo")).toBeInTheDocument();
-    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: "Áp dụng khi sinh đề" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Bắt buộc|Tham khảo/ })).not.toBeInTheDocument();
   });
 
@@ -419,7 +432,7 @@ describe("MT: chỗ gắn theo kỳ (ADV:CR-2:2; R-3, R-15)", () => {
       expect(slot.compareDocumentPosition(structure!) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
       expect(structure).toHaveAttribute("data-structure-variant", "compact");
       // Bản gọn: ô xếp ngang, không câu nhắc; vẫn giữ toàn bộ ô và lỗi như bản mặc định.
-      expect(within(structure!).queryByText(/Nhập số câu của từng dạng/), "hint paragraph hidden in compact").toBeNull();
+      expect(within(structure!).queryByText(/Khai báo số lượng câu theo từng loại câu hỏi/), "hint paragraph hidden in compact").toBeNull();
     } finally {
       unregister();
     }

@@ -71,15 +71,15 @@ function expectWholeSets(result: PreviewResultLite, expected: Array<{ subjectCod
   }
 }
 
-/** Mở môn dùng Ma trận môn (CR-2H: Toán, Lý): thấy Cấu trúc câu, Số chùm = 1, Mỗi chùm 3 câu con, không còn nút Thêm nhóm. */
+/** Mở môn dùng Ma trận môn (CR-2H: Toán, Lý): thấy Cấu trúc thành phần câu hỏi, Số chùm = 1, Số câu mỗi chùm = 3, không còn nút Thêm nhóm. */
 async function expectMatrixSetGroup(page: Page, id: string, subjectName: RegExp): Promise<void> {
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
   const list = page.getByRole("navigation", { name: "Cấu trúc" });
   await expect(list).toBeVisible();
   await list.getByRole("button", { name: subjectName }).first().click();
-  await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Số chùm", exact: true })).toHaveValue("1");
-  await expect(page.getByText(/Mỗi chùm 3 câu con/)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /^Số chùm của / })).toHaveValue("1");
+  await expect(page.getByRole("textbox", { name: /^Số câu mỗi chùm của / })).toHaveValue("3");
   await expect(page.getByRole("button", { name: /Thêm nhóm/ })).toHaveCount(0);
 }
 

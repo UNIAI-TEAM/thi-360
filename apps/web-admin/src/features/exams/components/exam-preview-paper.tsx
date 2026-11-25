@@ -205,11 +205,13 @@ function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock
   const t = useTranslations("exams.preview");
   const lookup = useLookup();
   const [expanded, setExpanded] = useState(false);
-  // Tên khối do mẫu đặt là nội dung đề: nằm trong `ExamName`, tên môn theo danh mục ở ngoài.
-  const name = (
+  // Tên khối do mẫu đặt là nội dung đề: nằm trong `ExamName`, tên môn theo danh mục ở ngoài; mục trộn chung toàn môn chỉ hiện tên môn.
+  const name = block.blockName ? (
     <Fragment key="block-name">
       {lookup.subject(block.subjectCode)} · <ExamName>{block.blockName}</ExamName>
     </Fragment>
+  ) : (
+    <Fragment key="block-name">{lookup.subject(block.subjectCode)}</Fragment>
   );
   const items = useMemo(
     () =>
@@ -245,7 +247,7 @@ function PreviewBlockView({ block, original, scope = "" }: { block: PreviewBlock
               item={item}
               setIndex={index + 1}
               original={original}
-              cloze={block.questionType === "CLOZE"}
+              cloze={block.questionType === "CLOZE" || (item.kind === "QUESTION" && item.question.type === "CLOZE")}
               scope={scope}
               level={Math.min(level + 1, 6)}
             />

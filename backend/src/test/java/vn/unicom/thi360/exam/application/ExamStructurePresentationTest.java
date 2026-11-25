@@ -30,6 +30,20 @@ class ExamStructurePresentationTest {
         assertThat(common.blocks().getFirst().positionRange()).isNull();
     }
 
+    @Test
+    void mixedBlocksOmitFixedBlockRangesWhileAdvancingSubsequentSections() {
+        ExamSection mixed = new ExamSection("mixed", "MATH", 5, null, null, null, null,
+                List.of(block("b1", 3), block("b2", 2)), List.of(), null, null, null, true);
+        ExamSection following = section("following", block("b3", 4));
+        ExamPart part = new ExamPart("p", 1, "part", null, null, null, null, null, null,
+                List.of(mixed, following), List.of());
+        var presented = ExamStructurePresentation.withPositionRanges(new ExamStructureDocument(List.of(part)));
+        var sections = presented.parts().getFirst().sections();
+        assertThat(sections.get(0).isMixBlocks()).isTrue();
+        assertThat(sections.get(0).blocks()).extracting(QuestionBlock::positionRange).containsOnlyNulls();
+        assertThat(sections.get(1).blocks().getFirst().positionRange()).isEqualTo(new PositionRange(6, 9));
+    }
+
     private static ExamSection section(String id, QuestionBlock block) {
         return new ExamSection(id, "MATH", null, null, null, null, null, List.of(block));
     }

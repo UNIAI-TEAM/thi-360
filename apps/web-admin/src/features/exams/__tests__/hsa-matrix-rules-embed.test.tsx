@@ -72,7 +72,7 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
     const user = userEvent.setup();
     boot({ kind: "HSA", parts: [wirePart([hsaMathSection({ mapidMode: "ALL" })])] });
     openStructure("?section=sec-toan");
-    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
 
     expect(screen.getByTestId("mapid-mode-all")).toBeChecked();
     expect(screen.getByTestId("mapid-mode-matrix")).toBeInTheDocument();
@@ -97,8 +97,8 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
       const view = openStructure("?section=sec-toan");
       try {
         await screen.findByTestId("mapid-mode-matrix");
-        if (expectMatrix) expect(screen.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
-        else expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeNull();
+        if (expectMatrix) expect(screen.getByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
+        else expect(screen.queryByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeNull();
         await user.click(screen.getByTestId("mapid-mode-matrix"));
         await screen.findByTestId("mapid-rules-table");
         await addMathRule(user, { type: "COUNT", scope: /^Điền đáp án/, exactCount: 3 });
@@ -133,7 +133,7 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
     ];
     const { server } = boot({ kind: "HSA", parts });
     openStructure("?section=sec-toan");
-    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
     const fill = () => structureInput("Điền đáp án");
 
     await user.clear(fill());
@@ -156,7 +156,7 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
     const user = userEvent.setup();
     boot({ kind: "HSA", parts: [wirePart([hsaMathSection({ mapidMode: "MATRIX", mapidRules: [] })])] });
     openStructure("?section=sec-toan");
-    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
     const addBtn = await screen.findByTestId("mapid-rule-add");
     addBtn.focus();
     await user.keyboard("{Enter}");

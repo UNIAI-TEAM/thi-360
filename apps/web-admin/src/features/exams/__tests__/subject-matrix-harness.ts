@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import viMessages from "@/messages/vi.json";
 import { type Wire, wireBlock, wireSection } from "./subject-form-harness";
 
 /**
@@ -49,7 +50,62 @@ export function wireBcaHistory(id = "sec-su", over: Wire = {}): Wire {
   );
 }
 
+const structureMessages = viMessages.exams.subjectForm.matrix.structure;
+const prefixOf = (template: string) => template.replace("{name}", "");
+const COUNT_PREFIX = prefixOf(structureMessages.rowCountAria);
+const SETS_PREFIX = prefixOf(structureMessages.rowSetsAria);
+const SET_SIZE_PREFIX = prefixOf(structureMessages.rowSetSizeAria);
+const PERCENT_PREFIX = prefixOf(structureMessages.rowPercentAria);
+const FILL_ROLE = structureMessages.fill;
+const SETS_ROLE = structureMessages.sets;
+const CHOICE_ROLE = structureMessages.choice;
+const SINGLE_ROLE = structureMessages.single;
+const FILL_DEFAULT = structureMessages.defaultRowName.SHORT_ANSWER;
+
+export const MATRIX_STRUCTURE_HEADING = structureMessages.title;
+
 export const textboxByName = (name: string) => screen.findByRole("textbox", { name });
 
-/** Ô số của một hàng Cấu trúc câu: nhóm `role="group"` cùng tên chứa đúng một ô nhập. */
-export const structureInput = (name: string) => within(screen.getByRole("group", { name })).getByRole("textbox");
+/** Ô Số câu của một dòng thành phần v3. */
+export const rowCountInput = (rowName: string | RegExp) =>
+  screen.getByRole("textbox", {
+    name: typeof rowName === "string" ? `${COUNT_PREFIX}${rowName}` : new RegExp(`^${COUNT_PREFIX}(?:${rowName.source})$`, rowName.flags),
+  });
+
+/** Ô Số chùm của dòng `QUESTION_SET` cỡ cố định. */
+export const rowSetsInput = (rowName?: string | RegExp) =>
+  screen.getByRole("textbox", {
+    name:
+      rowName === undefined
+        ? new RegExp(`^${SETS_PREFIX}`)
+        : typeof rowName === "string"
+          ? `${SETS_PREFIX}${rowName}`
+          : new RegExp(`^${SETS_PREFIX}(?:${rowName.source})$`, rowName.flags),
+  });
+
+/** Ô Số câu/chùm của dòng `QUESTION_SET` cỡ cố định. */
+export const rowSetSizeInput = (rowName?: string | RegExp) =>
+  screen.getByRole("textbox", {
+    name:
+      rowName === undefined
+        ? new RegExp(`^${SET_SIZE_PREFIX}`)
+        : typeof rowName === "string"
+          ? `${SET_SIZE_PREFIX}${rowName}`
+          : new RegExp(`^${SET_SIZE_PREFIX}(?:${rowName.source})$`, rowName.flags),
+  });
+
+/** Ô Tỷ lệ (%) của dòng thành phần ở kỳ nhập 2 cột (V-ACT). */
+export const rowPercentInput = (rowName: string | RegExp) =>
+  screen.getByRole("textbox", {
+    name: typeof rowName === "string" ? `${PERCENT_PREFIX}${rowName}` : new RegExp(`^${PERCENT_PREFIX}(?:${rowName.source})$`, rowName.flags),
+  });
+
+/** Tương thích với các test cũ: ánh xạ nhãn vai trò sang ô dòng tương ứng của bảng v3. */
+export const structureInput = (name: string) => {
+  if (name === SETS_ROLE) return rowSetsInput();
+  if (name === FILL_ROLE) return screen.getByRole("textbox", { name: new RegExp(`^${COUNT_PREFIX}.*(${FILL_ROLE}|${FILL_DEFAULT}|dien)`, "i") });
+  if (name === CHOICE_ROLE || name === SINGLE_ROLE) {
+    return screen.getByRole("textbox", { name: new RegExp(`^${COUNT_PREFIX}.*(${CHOICE_ROLE}|${SINGLE_ROLE}|don)`, "i") });
+  }
+  return within(screen.getByRole("group", { name })).getByRole("textbox");
+};

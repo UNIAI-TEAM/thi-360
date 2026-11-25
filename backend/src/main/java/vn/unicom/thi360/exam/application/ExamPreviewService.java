@@ -568,6 +568,10 @@ public class ExamPreviewService {
             if (resolved == null) return;
             List<QuestionSourcePort.Unit> sectionUnits = new ArrayList<>();
             List<String> sectionQuotaTypes = new ArrayList<>();
+            List<PreviewItem> mixedItems = new ArrayList<>();
+            int sectionFirst = number;
+            boolean sectionManual = false;
+            BigDecimal firstBlockPoints = null;
             for (QuestionBlock block : section.blocks()) {
                 if (Boolean.TRUE.equals(block.omitted())) continue;
                 List<QuestionPick> picks = new ArrayList<>();
@@ -597,13 +601,25 @@ public class ExamPreviewService {
                 }
                 sectionUnits.addAll(units);
                 for (var unit : units) sectionQuotaTypes.add(AnswerQuotaCounting.key(section, block, unit.answerType()));
-                var requirement = requirement(block.matrix(), units);
-                var allocation = allocation(requirement, units);
-                out.add(new PreviewBlock(block.id(), block.name(), section.subjectCode(),
-                        block.questionType() == null ? null : block.questionType().name(), blockManual,
-                        block.requiredPointsPerQuestion() == null ? BigDecimal.ONE : block.requiredPointsPerQuestion(),
-                        first, number - 1, units.size(), block.setCount(), block.setSize(), requirement, allocation, items));
+                BigDecimal pointsEach = block.requiredPointsPerQuestion() == null ? BigDecimal.ONE : block.requiredPointsPerQuestion();
+                if (firstBlockPoints == null) firstBlockPoints = pointsEach;
+                sectionManual |= blockManual;
+                if (section.isMixBlocks()) {
+                    mixedItems.addAll(items);
+                } else {
+                    var requirement = requirement(block.matrix(), units);
+                    var allocation = allocation(requirement, units);
+                    out.add(new PreviewBlock(block.id(), block.name(), section.subjectCode(),
+                            block.questionType() == null ? null : block.questionType().name(), blockManual,
+                            pointsEach, first, number - 1, units.size(), block.setCount(), block.setSize(),
+                            requirement, allocation, items));
+                }
                 manual |= blockManual;
+            }
+            if (section.isMixBlocks() && !mixedItems.isEmpty()) {
+                out.add(new PreviewBlock(section.id(), "", section.subjectCode(), null, sectionManual,
+                        firstBlockPoints == null ? BigDecimal.ONE : firstBlockPoints,
+                        sectionFirst, number - 1, sectionUnits.size(), null, null, null, List.of(), mixedItems));
             }
             subjects.add(subject(section, resolved.questionCount(), optionId, sectionUnits, sectionQuotaTypes));
         }

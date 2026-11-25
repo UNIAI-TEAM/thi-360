@@ -184,7 +184,8 @@ final class MiniStructure {
             }
         }
         ExamSection shrunk = new ExamSection(section.id(), section.subjectCode(), units, section.knowledgeScope(), null,
-                null, section.choiceGroup(), list, List.of(), section.audioRequirement());
+                null, section.choiceGroup(), list, List.of(), section.audioRequirement(), null, null,
+                section.mixBlocks());
         return new SectionResult(shrunk, units, points);
     }
 

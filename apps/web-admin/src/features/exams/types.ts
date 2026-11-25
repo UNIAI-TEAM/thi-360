@@ -192,6 +192,7 @@ export interface ExamSection {
   audioRequirement?: AudioRequirement;
   mapidMode?: MapidMode;
   mapidRules?: MapidRule[];
+  mixBlocks?: boolean;
 }
 
 export interface ExamPartOption {

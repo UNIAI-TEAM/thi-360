@@ -664,37 +664,25 @@ export async function renameFirstBlockAndSaveInUi(page: Page, admin: AdminApi, e
 
   if ((await matrixForm.count()) > 0) {
     const structureBlock = matrixForm.locator('[data-form-field="STRUCTURE"]');
-    const fillInput = structureBlock.getByRole("textbox", { name: "Điền đáp án", exact: true });
-    const choiceInput = structureBlock.getByRole("textbox", { name: "Trắc nghiệm", exact: true });
-    const singleInput = structureBlock.getByRole("textbox", { name: "Trắc nghiệm đơn", exact: true });
-    const fallbackCountInput = structureBlock.getByRole("textbox", { name: /· số câu$/ }).first();
-
-    const isFill = (await fillInput.count()) > 0;
-    const isChoice = !isFill && (await choiceInput.count()) > 0;
-    const isSingle = !isFill && !isChoice && (await singleInput.count()) > 0;
-    const countInput = isFill
-      ? fillInput
-      : isChoice
-        ? choiceInput
-        : isSingle
-          ? singleInput
-          : fallbackCountInput;
-    await expect(countInput).toBeVisible();
+    await expect(structureBlock).toBeVisible();
 
     const sectionBefore = allSections(await getStructure(admin, examId)).find((s) =>
       (s.blocks ?? []).some((b) => b.id === block!.id),
     );
-    const targetType = isFill ? "SHORT_ANSWER" : "SINGLE_CHOICE";
     const targetBlockBefore =
-      (sectionBefore?.blocks ?? []).find((b) => b.questionType === targetType) ??
+      (sectionBefore?.blocks ?? []).find((b) => b.questionType === "SHORT_ANSWER") ??
+      (sectionBefore?.blocks ?? []).find((b) => b.questionType !== "QUESTION_SET") ??
       (sectionBefore?.blocks ?? []).find((b) => b.id === block!.id);
     expect(targetBlockBefore?.id, "không tìm thấy khối mục tiêu trong section MATRIX").toBeTruthy();
 
+    const countInput = structureBlock.locator(`[data-form-field="COUNT:${targetBlockBefore!.id}"] input`);
+    await expect(countInput).toBeVisible();
+
     const origValue = await countInput.inputValue();
     const origNum = Number(origValue);
+    const isFill = targetBlockBefore?.questionType === "SHORT_ANSWER";
     const tempValue = isFill ? String(origNum > 1 ? origNum - 1 : origNum + 1) : String(origNum + 1);
-    const delta = Number(tempValue) - origNum;
-    const expectedTempCount = isChoice ? (targetBlockBefore?.questionCount ?? 0) + delta : Number(tempValue);
+    const expectedTempCount = Number(tempValue);
 
     await countInput.fill(tempValue);
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();

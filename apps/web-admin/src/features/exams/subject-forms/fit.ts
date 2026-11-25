@@ -96,9 +96,18 @@ function setSizeMismatch(block: QuestionBlock): boolean {
   return count <= 0 || (block.setSize ?? 0) <= 0 || block.questionCount !== count * (block.setSize ?? 0);
 }
 
-const ANSWER_QUOTA_TYPES: readonly string[] = ["SINGLE_CHOICE", "QUESTION_SET", "SHORT_ANSWER"];
+const ANSWER_QUOTA_TYPES: readonly string[] = [
+  "SINGLE_CHOICE",
+  "QUESTION_SET",
+  "SHORT_ANSWER",
+  "TRUE_FALSE",
+  "MULTIPLE_CHOICE",
+  "CLOZE",
+  "MATCHING",
+  "ESSAY",
+];
 
-/** `answerQuotas` trống, dạng HSA-B (đơn + Bộ câu hỏi + điền) hoặc dạng cũ (trắc nghiệm gồm câu con + điền): chỉ ba loại, mỗi loại một lần. */
+/** `answerQuotas` trống hoặc gồm các loại câu hợp lệ của bảng thành phần v3, mỗi loại tối đa một dòng. */
 function answerQuotasFit(section: ExamSection): boolean {
   const items = section.answerQuotas?.items ?? [];
   const types = items.map((item) => item.answerType);
@@ -107,17 +116,13 @@ function answerQuotasFit(section: ExamSection): boolean {
 
 function matrixFormReason(section: ExamSection, entry: SubjectFormEntry, context: FitContext): FitReason | null {
   const hsa = context.kindCode === "HSA";
-  const roles = new Set<string>();
   for (const block of section.blocks) {
-    const role = block.questionType === null || block.questionType === "SINGLE_CHOICE" ? "SINGLE" : block.questionType === "QUESTION_SET" ? "SET" : block.questionType === "SHORT_ANSWER" ? "FILL" : null;
-    if (role === null) return "ROLE_UNKNOWN";
-    if (roles.has(role)) return "ROLE_DUPLICATE";
-    roles.add(role);
+    const isSet = block.questionType === "QUESTION_SET";
     if (block.matrix !== null) return "BLOCK_MATRIX";
     if (!hsa && (block.topicQuotas?.length ?? 0) > 0) return "BLOCK_TOPIC_QUOTAS";
     if ((block.childConditions?.length ?? 0) > 0) return "POSITION_CONDITION";
     if ((block.slots?.length ?? 0) > 0) return "SET_CONDITION";
-    if (role !== "SET" && ((!hsa && hasOwnScope(block.knowledgeScope)) || block.tagCodes.length > 0)) return "BLOCK_SCOPE_OR_TAGS";
+    if (!isSet && ((!hsa && hasOwnScope(block.knowledgeScope)) || block.tagCodes.length > 0)) return "BLOCK_SCOPE_OR_TAGS";
   }
   if (!answerQuotasFit(section)) return "ANSWER_QUOTAS_SHAPE";
   if (section.blocks.some(setSizeMismatch)) return "SET_SIZE_MISMATCH";

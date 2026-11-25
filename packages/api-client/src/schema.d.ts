@@ -7606,6 +7606,7 @@ export interface components {
             mapidMode?: "ALL" | "MATRIX";
             mapidRules?: components["schemas"]["MapidRule"][];
             matrix?: components["schemas"]["BlockMatrix"];
+            mixBlocks?: boolean;
             /** Format: int32 */
             questionCount?: number;
             subjectCode?: string;

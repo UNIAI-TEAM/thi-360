@@ -74,7 +74,13 @@ async function saveInUi(page: Page, examId: string): Promise<void> {
   await expect(save).toBeDisabled();
 }
 
-const field = (page: Page, name: string) => page.getByRole("textbox", { name, exact: true });
+const MATRIX_STRUCTURE_HEADING = "Cấu trúc thành phần câu hỏi";
+
+function field(page: Page, name: string) {
+  if (name === "Số chùm") return page.getByRole("textbox", { name: /^Số chùm của / });
+  if (name === "Điền đáp án") return page.getByRole("textbox", { name: /^Số câu của .*(Điền đáp án|Trả lời ngắn)/i });
+  return page.getByRole("textbox", { name, exact: true });
+}
 
 async function typeInto(page: Page, name: string, value: string): Promise<void> {
   const input = field(page, name);
@@ -83,7 +89,7 @@ async function typeInto(page: Page, name: string, value: string): Promise<void> 
 }
 
 test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 35 phần QDA, AC 53, AC 59)", () => {
-  test("khung: QDA Khoa học mở MT (Cấu trúc câu, ô, không nút thêm nhóm); `?block=` của nhóm chùm đặt focus vào ô Số chùm", async ({ context, page }) => {
+  test("khung: QDA Khoa học mở MT (Cấu trúc thành phần câu hỏi, ô, không nút thêm nhóm cũ); `?block=` của nhóm chùm đặt focus vào ô Số chùm", async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
     const exam = await createExam(admin, { kind: "QDA", scope: "PART", partCode: "SCIENCE" }, "QDA-S");
@@ -92,14 +98,14 @@ test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 3
     const set = roleBlock(ly, "QUESTION_SET")!;
 
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${ly.id}`);
-    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).toBeVisible();
     await expect(field(page, "Số chùm")).toHaveValue("1");
     await expect(page.getByRole("button", { name: /Thêm nhóm/ })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 3, name: "Khối lớp và độ khó" })).toBeVisible();
 
     // R1-8: mở thẳng theo `?block=` (môn vẽ sau khi tải xong dữ liệu) vẫn đặt focus đúng ô của nhóm.
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?block=${set.id}`);
-    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).toBeVisible();
     await expect(field(page, "Số chùm")).toBeFocused();
     await expect(page.getByRole("textbox", { name: /^Tên nhóm/ })).toHaveCount(0);
   });
@@ -135,7 +141,7 @@ test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 3
     // Sử cho phép 0 câu điền: mở môn không có lỗi giới hạn.
     const su = sectionOf(before, "SU");
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${su.id}`);
-    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).toBeVisible();
     await expect(page.getByText(/Cần ít nhất \d+ câu điền đáp án/)).toHaveCount(0);
   });
 
@@ -190,7 +196,7 @@ test.describe("MT của BCA: số chùm của Sử (FTM AC 44 b, AC 53, AC 27 ph
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${before.id}`);
     await expect(field(page, "Số chùm")).toHaveValue("1");
     await expect(page.getByText("Tham khảo").first()).toBeVisible();
-    await expect(page.getByRole("switch")).toHaveCount(0);
+    await expect(page.getByRole("switch", { name: "Áp dụng khi sinh đề" })).toHaveCount(0);
 
     await typeInto(page, "Số chùm", "0");
     await expect(page.getByText("Ít nhất 1 chùm")).toBeVisible();
@@ -199,7 +205,8 @@ test.describe("MT của BCA: số chùm của Sử (FTM AC 44 b, AC 53, AC 27 ph
     await expect(field(page, "Số chùm")).toBeFocused();
 
     await typeInto(page, "Số chùm", "2");
-    await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveValue(String((singleBefore.questionCount ?? 0) - 3));
+    const singleInput = page.getByRole("textbox", { name: `Số câu của ${singleBefore.name}`, exact: true });
+    await singleInput.fill(String((singleBefore.questionCount ?? 0) - 3));
     await saveInUi(page, exam.id);
     const saved = sectionOf(await getStructure(admin, exam.id), "SU");
     expect(roleBlock(saved, "QUESTION_SET")).toMatchObject({ id: setBefore.id, setCount: 2, setSize: 3, questionCount: 6 });
@@ -215,6 +222,8 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
     const admin = await adminApi();
     const exam = await createExam(admin, { kind: "VACT", scope: "SUBJECT", subjectCode: "TOAN", durationMinutes: 60 }, "VACT-T");
     const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
+    const singleBlock = roleBlock(toan, null)!;
+    const setBlock = roleBlock(toan, "QUESTION_SET")!;
 
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
     await expect(page.getByLabel("Liên lớp", { exact: true })).toBeVisible();
@@ -233,11 +242,11 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
     await page.reload();
     await expect(page.getByRole("textbox", { name: "Tỷ lệ của Nhận biết", exact: true })).toHaveValue("25");
 
-    await page.getByRole("textbox", { name: "Tỷ lệ của Trắc nghiệm đơn", exact: true }).fill("30");
+    await page.getByRole("textbox", { name: `Tỷ lệ của ${singleBlock.name}`, exact: true }).fill("30");
     await expect(page.getByText("Tổng tỷ lệ 30%, cần 100%")).toBeVisible();
-    await page.getByRole("textbox", { name: "Tỷ lệ của Câu con trong chùm", exact: true }).fill("70");
-    await expect(page.getByLabel("Trắc nghiệm đơn", { exact: true })).toHaveValue("9");
-    await expect(page.getByLabel("Câu con trong chùm", { exact: true })).toHaveValue("21");
+    await page.getByRole("textbox", { name: `Tỷ lệ của ${setBlock.name}`, exact: true }).fill("70");
+    await expect(page.getByRole("textbox", { name: `Số câu của ${singleBlock.name}`, exact: true })).toHaveValue("9");
+    await expect(page.getByRole("textbox", { name: `Số câu của ${setBlock.name}`, exact: true })).toHaveValue("21");
     await saveInUi(page, exam.id);
     const set = roleBlock(sectionOf(await getStructure(admin, exam.id), "TOAN"), "QUESTION_SET")!;
     expect(set.questionCount).toBe(21);
@@ -251,7 +260,7 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
     const exam = await createExam(admin, { kind: "VACT", scope: "SUBJECT", subjectCode: "VIETNAMESE", durationMinutes: 60 }, "VACT-V");
     const vn = sectionOf(await getStructure(admin, exam.id), "VIETNAMESE");
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${vn.id}`);
-    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).toBeVisible();
     await expect(page.getByRole("heading", { level: 4, name: "Khối lớp" })).toHaveCount(0);
     await expect(page.getByText(/Chờ mapping/).first()).toBeVisible();
     await page.getByRole("button", { name: "Thêm điều kiện", exact: true }).first().click();
@@ -270,11 +279,11 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
     const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
 
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
-    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
-    await expect(field(page, "Trắc nghiệm")).toHaveValue("35");
+    await expect(page.getByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Số câu của Trắc nghiệm độc lập", exact: true })).toHaveValue("32");
     await expect(field(page, "Điền đáp án")).toHaveValue("15");
     await expect(field(page, "Số chùm")).toHaveValue("1");
-    await expect(page.getByRole("textbox", { name: "Trắc nghiệm đơn" })).toHaveValue("32");
+    await expect(page.getByRole("textbox", { name: "Số câu của Chùm cuối", exact: true })).toHaveValue("3");
 
     await typeInto(page, "Điền đáp án", "12");
     await saveInUi(page, exam.id);
@@ -412,7 +421,7 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
     const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
 
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
-    await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING })).toBeVisible();
     await expect(page.getByRole("button", { name: /Thêm nhóm/ })).toHaveCount(0);
 
     await page.getByTestId("mapid-mode-matrix").check();

@@ -9215,6 +9215,9 @@
           "matrix" : {
             "$ref" : "#/components/schemas/BlockMatrix"
           },
+          "mixBlocks" : {
+            "type" : "boolean"
+          },
           "questionCount" : {
             "format" : "int32",
             "type" : "integer"

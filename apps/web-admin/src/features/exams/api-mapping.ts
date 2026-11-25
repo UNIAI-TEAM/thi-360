@@ -275,6 +275,7 @@ export function mapSection(section: ApiSection): ExamSection {
     ...(section.audioRequirement ? { audioRequirement: section.audioRequirement } : {}),
     ...(section.mapidMode ? { mapidMode: section.mapidMode } : {}),
     ...(section.mapidRules?.length ? { mapidRules: mapMapidRules(section.mapidRules) } : {}),
+    ...(section.mixBlocks === true ? { mixBlocks: true } : {}),
   };
 }
 

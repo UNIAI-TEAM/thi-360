@@ -110,11 +110,29 @@ class ExamStructureFieldPassThroughTest {
         assertThat(selection.document().parts().getFirst().sections()).hasSize(1);
     }
 
+    @Test
+    void falseMixBlocksNormalizesToNullAndIsOmittedFromJson() {
+        ExamSection unmixed = new ExamSection("s-off", "TOAN", 5, null, null, null, null, List.of(), List.of(),
+                null, null, null, false);
+        assertThat(unmixed.mixBlocks()).isNull();
+        assertThat(unmixed.isMixBlocks()).isFalse();
+        String json = codec.writeString(new ExamStructureDocument(List.of(
+                new ExamPart("p", 1, "Phần", 60, 5, null, null, null, null, List.of(unmixed), List.of()))));
+        assertThat(json).doesNotContain("mixBlocks");
+
+        var schemas = io.swagger.v3.core.converter.ModelConverters.getInstance().readAll(ExamSection.class);
+        var sectionSchema = schemas.get("ExamSection");
+        assertThat(sectionSchema.getProperties()).containsKey("mixBlocks").doesNotContainKey("isMixBlocks");
+        var mixSchema = (io.swagger.v3.oas.models.media.Schema<?>) sectionSchema.getProperties().get("mixBlocks");
+        assertThat(mixSchema.getType()).isEqualTo("boolean");
+    }
+
     private static void assertIntact(ExamStructureDocument document, String stage, boolean segments) {
         ExamPart part = document.parts().getFirst();
         ExamSection section = part.sections().getFirst();
         assertThat(section.audioRequirement()).as(stage + ": audioRequirement")
                 .isEqualTo(AudioRequirement.REQUIRED);
+        assertThat(section.isMixBlocks()).as(stage + ": mixBlocks").isTrue();
         QuestionBlock block = section.blocks().getFirst();
         assertThat(block.childConditions()).as(stage + ": child conditions").hasSize(2);
         ChildCondition first = block.childConditions().getFirst();
@@ -130,6 +148,8 @@ class ExamStructureFieldPassThroughTest {
         if (part.sections().size() > 1) {
             assertThat(part.sections().get(1).audioRequirement()).as(stage + ": second section")
                     .isEqualTo(AudioRequirement.FORBIDDEN);
+            assertThat(part.sections().get(1).isMixBlocks()).as(stage + ": second section mixBlocks")
+                    .isFalse();
         }
         if (segments) {
             assertThat(part.displaySegments()).as(stage + ": displaySegments").isEqualTo(SEGMENTS);
@@ -150,9 +170,9 @@ class ExamStructureFieldPassThroughTest {
                 null, null, null, null, null, false, null, List.of(), null, true, false, List.of(), List.of(), null,
                 List.of(), false, List.of(), null);
         ExamSection listening = new ExamSection("s1", "ANH", 8, null, null, null, null, List.of(set), List.of(),
-                AudioRequirement.REQUIRED);
+                AudioRequirement.REQUIRED, null, null, true);
         ExamSection reading = new ExamSection("s2", "ANH", 7, null, null, null, null, List.of(single), List.of(),
-                AudioRequirement.FORBIDDEN);
+                AudioRequirement.FORBIDDEN, null, null, false);
         ExamPartOption option = new ExamPartOption("opt", OptionKind.SUBJECT, "ANH", "Tùy chọn", null, null,
                 List.of(new ExamSection("s3", "ANH", 1, null, null, null, null, List.of(optionBlock), List.of(),
                         AudioRequirement.REQUIRED)), List.of(), true);

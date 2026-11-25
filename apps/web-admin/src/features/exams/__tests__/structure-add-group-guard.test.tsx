@@ -72,7 +72,7 @@ describe("R-09 / AC-14: chỉ hiện '+ Thêm nhóm' ở MD fallback không khó
     partView.unmount();
 
     openStructure("?section=sec-1");
-    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: ADD_GROUP })).not.toBeInTheDocument();
   });
 

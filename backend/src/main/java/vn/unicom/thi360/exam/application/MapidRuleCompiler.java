@@ -104,7 +104,7 @@ public final class MapidRuleCompiler {
         ExamSection effective = new ExamSection(section.id(), section.subjectCode(), section.questionCount(),
                 scope(section.knowledgeScope(), matrix), section.answerQuotas(),
                 section.matrix(), section.choiceGroup(), effectiveBlocks, sectionQuotas,
-                section.audioRequirement(), section.mapidMode(), section.mapidRules());
+                section.audioRequirement(), section.mapidMode(), section.mapidRules(), section.mixBlocks());
         Map<String, List<UUID>> compiledExclusions = new LinkedHashMap<>();
         exclusions.forEach((blockId, nodes) -> compiledExclusions.put(blockId, List.copyOf(nodes)));
         return new CompiledMapidRules(effective, caps, compiledExclusions, subjectSources, groupSources);

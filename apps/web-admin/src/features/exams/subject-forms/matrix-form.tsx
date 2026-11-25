@@ -8,7 +8,7 @@ import type { SubjectFormRendererProps } from "./form-renderers";
 import type { MatrixBlockProps, MatrixKindSlotOptionsResolver } from "./matrix-block-props";
 import { MatrixDistributionBlock } from "./matrix-distribution-block";
 import { HsaRoleScopeFooter, hsaMatrixSlotOptions, MatrixFormHsa } from "./matrix-form-hsa";
-import { structureOf } from "./matrix-form-model";
+import { resolveMatrixDefaultSnapshot, structureOf } from "./matrix-form-model";
 import { MatrixScopeBlock } from "./matrix-scope-block";
 import { MatrixStructureBlock } from "./matrix-structure-block";
 import { subjectFormFor } from "./registry";
@@ -30,7 +30,23 @@ export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, o
 }
 
 export function MatrixForm(props: SubjectFormRendererProps) {
-  const { context, subjectName, axes, labels, reference, onChange, headerAction, examId, templateLocked = false, topicError = null, examKind, rawInputs } = props;
+  const {
+    context,
+    subjectName,
+    axes,
+    labels,
+    reference,
+    onChange,
+    headerAction,
+    examId,
+    templateLocked = false,
+    topicError = null,
+    examKind,
+    rawInputs,
+    template = null,
+    templates,
+    baselineParts,
+  } = props;
   const { section, option } = context;
   const t = useTranslations("exams.structure.subject");
   const rawEntries = useSyncExternalStore(rawInputs.subscribe, rawInputs.getSnapshot, rawInputs.getSnapshot);
@@ -43,19 +59,44 @@ export function MatrixForm(props: SubjectFormRendererProps) {
       hasPrefix: (prefix) => rawEntries.some((item) => item.sectionId === section.id && item.blockId === null && item.field.startsWith(prefix)),
       set: (field, text, code) => rawInputs.set({ sectionId: section.id, blockId: null, field, text, code }),
       clear: (field) => rawInputs.clear(section.id, null, field),
+      clearPrefix: (prefix) => {
+        for (const item of rawEntries) {
+          if (item.sectionId === section.id && item.blockId === null && item.field.startsWith(prefix)) {
+            rawInputs.clear(section.id, null, item.field);
+          }
+        }
+      },
     }),
     [rawEntries, rawInputs, section.id],
   );
 
   const kindCode = examKind ?? "";
   const entry = subjectFormFor(kindCode, section.subjectCode);
+  const defaultSnapshot = useMemo(
+    () => resolveMatrixDefaultSnapshot(section, kindCode, template, templates, baselineParts),
+    [section, kindCode, template, templates, baselineParts],
+  );
   if (!entry) return null;
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
   // Khi sửa Cấu trúc câu hay bất kỳ phần nào của HSA MT, tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
   const handleChange: MatrixBlockProps["onChange"] =
     entry.mapidFlow === "HSA_RULES" ? (update) => onChange((current) => recomputeMapidRules(update(current))) : onChange;
-  const blockProps: MatrixBlockProps = { section, entry, kindCode, subjectName, total, axes, labels, reference, onChange: handleChange, templateLocked, raw, topicError };
+  const blockProps: MatrixBlockProps = {
+    section,
+    entry,
+    kindCode,
+    subjectName,
+    total,
+    axes,
+    labels,
+    reference,
+    onChange: handleChange,
+    templateLocked,
+    raw,
+    topicError,
+    defaultSnapshot,
+  };
   const kindSlot = kindSlots[kindCode];
   const slotOptions = kindSlot ? (typeof kindSlot.options === "function" ? kindSlot.options(section) : kindSlot.options) : {};
   const beforeStructure = slotOptions.placement === "before-structure";
@@ -70,7 +111,7 @@ export function MatrixForm(props: SubjectFormRendererProps) {
       templateLocked={templateLocked}
       action={headerAction}
     >
-      <div data-form-kind="MATRIX" className="flex flex-col gap-6 divide-y divide-border [&>*]:pt-6 [&>*:first-child]:pt-0">
+      <div data-form-kind="MATRIX" className="flex flex-col gap-5">
         {beforeStructure && kindSlot && <kindSlot.slot {...blockProps} />}
         <MatrixStructureBlock
           {...blockProps}

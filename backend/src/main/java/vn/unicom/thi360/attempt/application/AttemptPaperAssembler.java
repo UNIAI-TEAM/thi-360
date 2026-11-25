@@ -82,11 +82,11 @@ public class AttemptPaperAssembler {
                     QuestionSourcePort.Version rootVersion = requireVersion(
                             versions, new QuestionSourcePort.VersionKey(gq.questionId(), gq.versionNo()));
                     JsonNode body = rootVersion.snapshot().path("body");
-                    units.add(new PaperOrdering.Question(gq.questionId().toString(), body));
+                    units.add(new PaperOrdering.Question(gq.questionId().toString(), body, group.groupId()));
                 }
                 orderingBlocks.add(new PaperOrdering.Block(group.groupId(), shuffleUnits, units));
             }
-            orderingSections.add(new PaperOrdering.Section(section.sectionId(), orderingBlocks));
+            orderingSections.add(new PaperOrdering.Section(section.sectionId(), section.mixBlocks(), orderingBlocks));
         }
 
         PaperOrdering.Paper paper = new PaperOrdering.Paper(
@@ -104,8 +104,8 @@ public class AttemptPaperAssembler {
             PaperSolverPort.GeneratedSection genSection = sectionById.get(orderedSection.id());
             String componentCode = genSection.subjectCode();
             for (PaperOrdering.Block orderedBlock : orderedSection.blocks()) {
-                String blockId = orderedBlock.id();
                 for (PaperOrdering.Question orderedQuestion : orderedBlock.units()) {
+                    String blockId = orderedQuestion.blockId() != null ? orderedQuestion.blockId() : orderedBlock.id();
                     PaperSolverPort.GeneratedQuestion gq = questionById.get(orderedQuestion.id());
                     QuestionSourcePort.Version rootVersion = requireVersion(
                             versions, new QuestionSourcePort.VersionKey(gq.questionId(), gq.versionNo()));

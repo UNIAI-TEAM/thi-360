@@ -69,7 +69,7 @@ final class ExamOverview {
                 ExamSection s = fixed.getFirst();
                 fixed = List.of(new ExamSection(s.id(), s.subjectCode(), count, s.knowledgeScope(), s.answerQuotas(),
                         s.matrix(), s.choiceGroup(), s.blocks(), s.topicQuotas(), s.audioRequirement(),
-                        s.mapidMode(), s.mapidRules()));
+                        s.mapidMode(), s.mapidRules(), s.mixBlocks()));
             }
             return new ExamPart(part.id(), part.order(), part.name(),
                     change != null && change.durationChanged() ? row.durationMinutes() : part.durationMinutes(),
@@ -198,7 +198,7 @@ final class ExamOverview {
                 change.countChanged() ? row.questionCount() : section.questionCount(),
                 section.knowledgeScope(), section.answerQuotas(), section.matrix(), section.choiceGroup(),
                 section.blocks(), section.topicQuotas(), section.audioRequirement(), section.mapidMode(),
-                section.mapidRules());
+                section.mapidRules(), section.mixBlocks());
     }
 
     /** A changed section count means the expert never saw the option as it now is. */

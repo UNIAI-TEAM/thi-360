@@ -78,11 +78,11 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     expect(ds("SPT", "ANH", [block("r")], { topicQuotas: [{ id: "t", name: "t", nodeIds: [], count: 2, gradeCodes: ["GRADE_12"], enforcement: "REQUIRED" }] })).toBe("GRADE_REQUIRED_HIDDEN");
   });
 
-  it("MT: hai nhóm cùng vai trò, nhóm dạng khác ba vai trò", () => {
-    expect(mt("QDA", "TOAN", {}, [block("a"), block("b")])).toBe("ROLE_DUPLICATE");
-    expect(mt("QDA", "TOAN", {}, [setBlock("a", 1, 3), setBlock("b", 1, 3)])).toBe("ROLE_DUPLICATE");
-    expect(mt("QDA", "TOAN", {}, [block("a"), block("b", { questionType: "TRUE_FALSE" })])).toBe("ROLE_UNKNOWN");
-    expect(mt("QDA", "TOAN", {}, [block("a", { questionType: "ESSAY" })])).toBe("ROLE_UNKNOWN");
+  it("MT v3: nhiều dòng cùng loại và đủ 8 loại câu hỏi đều khớp biểu mẫu gọn", () => {
+    expect(mt("QDA", "TOAN", {}, [block("a"), block("b")])).toBe("FITS");
+    expect(mt("QDA", "TOAN", {}, [setBlock("a", 1, 3), setBlock("b", 2, 4)])).toBe("FITS");
+    expect(mt("QDA", "TOAN", {}, [block("a"), block("b", { questionType: "TRUE_FALSE" })])).toBe("FITS");
+    expect(mt("QDA", "TOAN", {}, [block("a", { questionType: "CLOZE" }), block("b", { questionType: "ESSAY" })])).toBe("FITS");
   });
 
   it("MT: nhóm có ma trận riêng, điều kiện vị trí, điều kiện từng chùm", () => {
@@ -106,12 +106,12 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     expect(mt("HSA", "TOAN", {}, [block("a", { tagCodes: ["x"] })])).toBe("BLOCK_SCOPE_OR_TAGS");
   });
 
-  it("MT: answerQuotas ngoài ba dạng; trống, dạng HSA-B và dạng cũ khớp", () => {
+  it("MT: answerQuotas hợp lệ cho mọi loại câu v3 (mỗi loại tối đa 1 dòng); trùng loại rơi về ANSWER_QUOTAS_SHAPE", () => {
     const quotas = (...types: string[]) => ({ unit: "COUNT" as const, items: types.map((answerType) => ({ answerType: answerType as "SINGLE_CHOICE", value: 5 })) });
     expect(mt("QDA", "TOAN", { answerQuotas: quotas("SINGLE_CHOICE", "SHORT_ANSWER", "QUESTION_SET") })).toBe("FITS");
     expect(mt("QDA", "TOAN", { answerQuotas: quotas("SINGLE_CHOICE", "SHORT_ANSWER") })).toBe("FITS");
     expect(mt("QDA", "TOAN", { answerQuotas: quotas() })).toBe("FITS");
-    expect(mt("QDA", "TOAN", { answerQuotas: quotas("SINGLE_CHOICE", "TRUE_FALSE") })).toBe("ANSWER_QUOTAS_SHAPE");
+    expect(mt("QDA", "TOAN", { answerQuotas: quotas("SINGLE_CHOICE", "TRUE_FALSE") })).toBe("FITS");
     expect(mt("QDA", "TOAN", { answerQuotas: quotas("SINGLE_CHOICE", "SINGLE_CHOICE") })).toBe("ANSWER_QUOTAS_SHAPE");
   });
 

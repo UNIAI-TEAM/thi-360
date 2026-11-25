@@ -53,7 +53,7 @@ function wireVactMath(over: Wire = {}, matrix: Wire | null = matrixOf({ byGrade:
 const openToan = async (section: Wire = wireVactMath()) => {
   const booted = boot({ kind: "VACT", parts: [wirePart([section])] });
   openStructure("?section=sec-toan");
-  await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+  await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
   return booted;
 };
 
@@ -128,21 +128,21 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
     const user = userEvent.setup();
     const { server } = await openToan(wireVactMath({}, null));
     // Tải lại hiện số đã lưu; ô Tỷ lệ chưa gõ gợi ý % tính từ số.
-    expect(screen.getByRole("textbox", { name: "Tỷ lệ của Trắc nghiệm đơn" })).toHaveAttribute("placeholder", "40");
-    expect(screen.getByRole("textbox", { name: "Tỷ lệ của Câu con trong chùm" })).toHaveAttribute("placeholder", "60");
-    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Trắc nghiệm đơn" }), "40");
+    expect(screen.getByRole("textbox", { name: "Tỷ lệ của Toan don" })).toHaveAttribute("placeholder", "40");
+    expect(screen.getByRole("textbox", { name: "Tỷ lệ của Toan chum" })).toHaveAttribute("placeholder", "60");
+    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Toan don" }), "40");
     expect(await screen.findByText("Tổng tỷ lệ 40%, cần 100%")).toBeInTheDocument();
-    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Câu con trong chùm" }), "50");
+    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Toan chum" }), "50");
     expect(await screen.findByText("Tổng tỷ lệ 90%, cần 100%")).toBeInTheDocument();
-    expect(screen.getByLabelText("Trắc nghiệm đơn")).toHaveValue("12");
+    expect(screen.getByRole("textbox", { name: "Số câu của Toan don" })).toHaveValue("12");
     // Nhập thô chưa đủ 100% chặn lưu dù bản nháp sạch: Kiểm tra toàn bài không gửi request.
     await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
-    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Câu con trong chùm" }), "60");
+    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Toan chum" }), "60");
     await waitFor(() => expect(screen.queryByText(/cần 100%/)).not.toBeInTheDocument());
-    expect(screen.getByLabelText("Trắc nghiệm đơn")).toHaveValue("12");
-    expect(screen.getByLabelText("Câu con trong chùm")).toHaveValue("18");
+    expect(screen.getByRole("textbox", { name: "Số câu của Toan don" })).toHaveValue("12");
+    expect(screen.getByRole("textbox", { name: "Số câu của Toan chum" })).toHaveValue("18");
     // Số không đổi nên bản nháp sạch và hết nhập thô: không còn chặn.
     expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
   });
@@ -150,10 +150,10 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
   it("vactPercentStorage: tỷ lệ 30%/70% quy ra 9/21 theo phần dư lớn nhất và lưu số câu, `setCount`, `setSize` vẫn null", async () => {
     const user = userEvent.setup();
     const { server } = await openToan(wireVactMath({}, null));
-    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Trắc nghiệm đơn" }), "30");
-    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Câu con trong chùm" }), "70");
-    await waitFor(() => expect(screen.getByLabelText("Trắc nghiệm đơn")).toHaveValue("9"));
-    expect(screen.getByLabelText("Câu con trong chùm")).toHaveValue("21");
+    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Toan don" }), "30");
+    await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Toan chum" }), "70");
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Số câu của Toan don" })).toHaveValue("9"));
+    expect(screen.getByRole("textbox", { name: "Số câu của Toan chum" })).toHaveValue("21");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [single, set] = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[];
@@ -166,7 +166,7 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
   it("vactFlexibleKeepsNulls: sửa tổng câu con 18 → 15 giữ `setCount`, `setSize` là null trong thân PUT", async () => {
     const user = userEvent.setup();
     const { server } = await openToan();
-    await type(user, screen.getByLabelText("Câu con trong chùm"), "15");
+    await type(user, screen.getByRole("textbox", { name: "Số câu của Toan chum" }), "15");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const set = (sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[])[1]!;
@@ -195,7 +195,7 @@ describe("V-ACT Tiếng Việt MT (R-4, R-6, CR-2 AC-4)", () => {
     const sectionId = (wireParts[0]!.sections as Wire[])[0]!.id as string;
     const booted = boot({ kind: "VACT", parts: wireParts, templates: [template], examOverrides: { templateCode: code, scope, ...examOverrides } });
     openStructure(`?section=${sectionId}`);
-    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
     return { ...booted, sectionId };
   };
 
@@ -216,15 +216,15 @@ describe("V-ACT Tiếng Việt MT (R-4, R-6, CR-2 AC-4)", () => {
     });
     boot({ kind: "VACT", parts: [wirePart([section])] });
     openStructure("?section=sec-vn");
-    await screen.findByRole("heading", { level: 3, name: "Cấu trúc câu" });
+    await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
     expect(dimension("Khối lớp").getByLabelText("Lớp 12")).toHaveValue("30");
   });
 
   it("vactVietnameseScopes: bài FULL khóa tổng 30 chỉ đọc kèm lý do; bài tiểu mục sửa được số", async () => {
     await openVietnamese("VACT_FULL", {}, "FULL");
-    const locked = screen.getByLabelText("Trắc nghiệm đơn");
+    const locked = screen.getByRole("textbox", { name: /^Số câu của / });
     expect(locked).toHaveAttribute("readonly");
-    // Lý do nằm ở đầu môn (số câu của mục) và ngay cạnh ô Trắc nghiệm đơn.
+    // Lý do nằm ở đầu môn (số câu của mục) và ngay cạnh ô số câu dòng duy nhất.
     expect(screen.getAllByText("Số câu của mục theo mẫu, không đổi").length).toBeGreaterThanOrEqual(2);
   });
 
@@ -259,9 +259,10 @@ describe("V-ACT Tiếng Việt MT (R-4, R-6, CR-2 AC-4)", () => {
   it("vactVietnameseScopes: tiểu mục (không khóa tổng) sửa được số câu; 8 dòng mạch chờ mapping hiện sẵn và lưu được nguyên vẹn", async () => {
     const user = userEvent.setup();
     const { server, sectionId } = await openVietnamese("VACT_SUBJECT_VIETNAMESE");
-    expect(screen.getByLabelText("Trắc nghiệm đơn")).not.toHaveAttribute("readonly");
+    const singleCount = screen.getByRole("textbox", { name: /^Số câu của / });
+    expect(singleCount).not.toHaveAttribute("readonly");
     expect((await screen.findAllByText(/Chờ mapping/)).length).toBeGreaterThanOrEqual(1);
-    await type(user, screen.getByLabelText("Trắc nghiệm đơn"), "12");
+    await type(user, singleCount, "12");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body)[sectionId]!;

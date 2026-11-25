@@ -49,7 +49,7 @@ final class ExamCheckDraftInputs {
                 .map(section -> invalid.contains(section.id())
                         ? new ExamSection(section.id(), section.subjectCode(), section.questionCount(),
                                 null, null, null, section.choiceGroup(), List.of(), List.of(),
-                                section.audioRequirement()) : section)
+                                section.audioRequirement(), null, null, section.mixBlocks()) : section)
                 .toList();
     }
 }

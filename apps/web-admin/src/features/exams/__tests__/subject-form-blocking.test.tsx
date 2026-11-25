@@ -31,8 +31,10 @@ beforeEach(() => {
   routerMock.push.mockReset();
 });
 
-const lyFillInput = () => screen.findByRole("textbox", { name: "Điền đáp án" });
-const lySetsInput = () => screen.findByRole("textbox", { name: "Số chùm" });
+const FILL_INPUT_NAME = /^Số câu của .*(Điền đáp án|Trả lời ngắn|dien)/i;
+const SETS_INPUT_NAME = /^Số chùm của /;
+const lyFillInput = () => screen.findByRole("textbox", { name: FILL_INPUT_NAME });
+const lySetsInput = () => screen.findByRole("textbox", { name: SETS_INPUT_NAME });
 /** Làm bản nháp bẩn ở môn Toán (MD) mà không đụng môn khác: bấm "Khai chỉ tiêu" đầu tiên. */
 async function dirtyToan(user: UserEvent) {
   await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
@@ -191,7 +193,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
 describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
   const science = (id: string, subject: string, sets = 1) => wireQdaScience(id, subject, { sets });
   const typeSets = async (user: UserEvent, value: string) => {
-    const input = await screen.findByRole("textbox", { name: "Số chùm" });
+    const input = await screen.findByRole("textbox", { name: SETS_INPUT_NAME });
     await user.clear(input);
     await user.type(input, value);
   };
@@ -208,7 +210,7 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Còn lỗi cần sửa trước khi lưu hoặc kiểm tra.");
     expect(putCalls(server)).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
-    await waitFor(() => expect(screen.getByRole("textbox", { name: "Số chùm" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("textbox", { name: SETS_INPUT_NAME })).toHaveFocus());
     await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
     await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
     expect(putCalls(server)).toHaveLength(0);
@@ -238,9 +240,9 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     openStructure("?section=sec-ly");
     expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Thêm nhóm/ })).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: "Số chùm" })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: SETS_INPUT_NAME })).toBeNull();
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
-    const fill = await screen.findByRole("textbox", { name: "Điền đáp án" });
+    const fill = await screen.findByRole("textbox", { name: FILL_INPUT_NAME });
     await user.clear(fill);
     await user.type(fill, "2");
     await user.click(screen.getByRole("button", { name: "Lưu" }));
