@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="login_title">Sign in</string>
+    <string name="login_headline">HSA &amp; QDA Aptitude Exam Preparation</string>
+    <string name="login_feature_1">Practice exams matching official structure</string>
+    <string name="login_feature_2">Instant scoring upon submission</string>
+    <string name="login_feature_3">Detailed solutions and weak-area focus</string>
+    <string name="login_identifier_label">Username or email</string>
+    <string name="login_identifier_required">Please enter your username or email.</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_password_required">Please enter your password.</string>
+    <string name="login_show_password">Show password</string>
+    <string name="login_hide_password">Hide password</string>
+    <string name="login_forgot_link">Forgot password?</string>
+    <string name="login_submit">Sign in</string>
+    <string name="login_submitting">Signing in…</string>
+    <string name="login_no_account">No account yet?</string>
+    <string name="login_register_link">Register</string>
+    <string name="login_switch_language">Switch language</string>
+    <string name="login_error_invalid_credentials">Username or password is incorrect.</string>
+    <string name="login_error_account_inactive">Account is inactive. Please contact an administrator.</string>
+    <string name="login_error_throttled">Too many failed attempts. Please try again in 15 minutes.</string>
+    <string name="login_error_rate_limited">Too many requests from your address. Please try again in a few minutes.</string>
+    <string name="login_error_network">No internet connection. Please check your connection and try again.</string>
+    <string name="login_error_generic">Unable to sign in. Please try again.</string>
+    <string name="login_notice_session_expired">Your session has expired. Please sign in again.</string>
+    <string name="login_notice_password_reset">Your password has been reset. Sign in with your new password.</string>
+    <string name="role_notice_title">This app is for students</string>
+    <string name="role_notice_body_with_username">Account %1$s has an administrative role and cannot take exams in this app.</string>
+    <string name="role_notice_body_generic">This account has an administrative role and cannot take exams in this app.</string>
+    <string name="role_notice_guidance">Please use the admin portal on a computer to manage the system.</string>
+    <string name="role_notice_switch_account">Sign in with another account</string>
+    <string name="offline_banner_title">No internet connection</string>
+    <string name="offline_banner_description">Check your connection to sync your session.</string>
+    <string name="offline_retry">Retry</string>
+</resources>

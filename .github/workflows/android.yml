@@ -32,9 +32,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Generate OpenAPI Kotlin client
+        run: ./gradlew :app:generateMobileOpenApiClient
       - name: Assemble dev and demo debug APKs
         run: ./gradlew :app:assembleDevDebug :app:assembleDemoDebug
-      - name: Run JVM unit and UI tests
+      - name: Run JVM unit and UI tests (dev and demo)
         run: ./gradlew :app:testDevDebugUnitTest :app:testDemoDebugUnitTest
       - name: Verify Roborazzi screenshots
         run: ./gradlew :app:verifyRoborazziDevDebug
