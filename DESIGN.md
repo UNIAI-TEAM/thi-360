@@ -575,3 +575,87 @@ Token khai báo một lần trong `packages/ui/src/styles/tokens.css` bằng `@t
   --radius-2xl: 24px;
 }
 ```
+
+## 11. App học viên
+
+Quy ước giao diện cho hai ứng dụng native dành riêng cho học viên cổng thi Thi 360 (đợt khung và xác thực, `UNI-2785`). Nguồn ràng buộc: đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (R-1, R-2, R-12, R-13, mục 9), kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (mục B1.4, B1.7) và bản thiết kế đã duyệt tại `docs/design/app-hoc-vien/README.md`.
+
+### 11.1 Thành phần gốc theo nền tảng và bản thiết kế tham chiếu
+
+- **Android (`apps/android/`):** Kotlin + Jetpack Compose + Material 3; hỗ trợ từ Android 8.0 (API 26); định danh `vn.unicom.thi360`, tên hiển thị tạm `Thi 360`.
+- **iOS (`apps/ios/`):** Swift + SwiftUI theo kiểu iOS thuần; hỗ trợ từ iOS 17.0; định danh `vn.unicom.thi360`, tên hiển thị tạm `Thi 360`.
+- **Bản thiết kế tham chiếu:** 28 màn `*.dc.html` trong `docs/design/app-hoc-vien/` (bảng ánh xạ từng màn theo yêu cầu nằm ở `docs/design/app-hoc-vien/README.md`). Hai tệp `m3.css` và `ios.css` chỉ dùng để xem bản vẽ, **không** chép style sang mã thật; mỗi app dùng thành phần gốc của hệ điều hành.
+- **Đặc tả thắng bản vẽ khi có khác biệt:** nền, bề mặt, viền và chữ trung tính dùng đúng token trung tính của web ở từng chế độ (AC-78, quyết định D-21), không dùng sắc xanh nhạt mặc định của bảng màu hệ thống trong bản vẽ Android.
+- **Màn và trạng thái chưa vẽ nhưng bắt buộc theo đặc tả (R-11, R-13):** màn chọn ngôn ngữ, hộp thoại Điều khoản sử dụng (dùng bản tạm của web), hộp xác nhận đăng xuất, bản giao diện tiếng Anh, khung chờ đang tải, thông báo lỗi kèm nút "Thử lại", và trạng thái mất kết nối (khi lỗi hoặc mất mạng, các mục cài đặt lưu trên máy gồm ngôn ngữ, giao diện sáng/tối, sinh trắc học vẫn dùng được).
+
+### 11.2 Nguồn màu, bảng `Palette` và chế độ sáng/tối
+
+- **Nguồn màu duy nhất (R-12, B1.4, D-36):** route công khai của web học viên `GET {THI360_WEB_URL}/mobile/appearance-tokens.json`. Route đọc `GET /api/v1/appearance` và chạy `deriveTokens` qua `packages/ui/src/theme/mobile-tokens.ts`; **không** port công thức suy ra màu sang Kotlin hay Swift.
+  - Phản hồi `200` gồm: `version`, `mode` (`"light"` | `"dark"`), `presetId`, `light` (`Palette`), `dark` (`Palette`).
+  - Bộ đệm và chu kỳ cập nhật: `ETag` theo `version`, `Cache-Control: no-cache`, trả `304 Not Modified` khi `If-None-Match` khớp. App nạp lại khi mở app hoặc đưa app từ nền trở lại sau ít nhất **60 giây** (AC-72), áp ngay ở mọi màn khi `version` đổi mà không cần đăng nhập lại.
+  - Xử lý lỗi: route trả `503` khi backend lỗi hoặc khi `presetId` không có trong danh sách bộ màu của web; khi gặp `503`, lỗi mạng hoặc JSON sai hình, app giữ bảng màu đang dùng và không rơi về mặc định một cách im lặng (AC-77).
+- **Bảng `Palette` (17 màu định dạng `#RRGGBB`, đọc qua đối tượng `BrandPalette` trong app — B1.7):**
+
+| Nhóm | Trường trong `Palette` | Token web tương ứng | Quy tắc giá trị |
+|---|---|---|---|
+| Thương hiệu (7 màu) | `primaryFill` | `primary-fill` | Trùng `deriveTokens` cho 9 bộ cố định và `custom` ở cả sáng và tối (AC-71) |
+| Thương hiệu | `onPrimary` | `on-primary` | Trùng `deriveTokens` (sáng/tối) |
+| Thương hiệu | `primaryText` | `primary-text` | Trùng `deriveTokens` (sáng/tối) |
+| Thương hiệu | `primaryContainer` | `primary-50` | Trùng `deriveTokens` (sáng/tối) |
+| Thương hiệu | `primaryContainerStrong` | `primary-100` | Trùng `deriveTokens` (sáng/tối) |
+| Thương hiệu | `accent` | `accent-500` | Trùng `deriveTokens` (sáng/tối) |
+| Thương hiệu | `onAccent` | `on-accent` | Trùng `deriveTokens` (sáng/tối) |
+| Trung tính (8 màu) | `bgPage` | `bg-page` (`--color-page`) | Sáng `#F7F8F9` (mục 2.3) · Tối `#0F1418` (`packages/ui/src/styles/tokens.css`), không đổi theo bộ màu (AC-78) |
+| Trung tính | `bgSurface` | `bg-surface` (`--color-surface`) | Sáng `#FFFFFF` · Tối `#171D22`, không đổi theo bộ màu |
+| Trung tính | `bgSubtle` | `bg-subtle` (`--color-subtle`) | Sáng `#F1F2F4` · Tối `#1E262C`, không đổi theo bộ màu |
+| Trung tính | `text` | `text` (`--color-text`) | Sáng `#11181C` · Tối `#E6EAED`, không đổi theo bộ màu |
+| Trung tính | `textSecondary` | `text-secondary` (`--color-text-secondary`) | Sáng `#3A3A42` · Tối `#C5CCD2`, không đổi theo bộ màu |
+| Trung tính | `textMuted` | `text-muted` (`--color-text-muted`) | Sáng `#6B6B72` · Tối `#A9B2BA`, không đổi theo bộ màu |
+| Trung tính | `border` | `border` (`--color-border`) | Sáng `#E8E8EC` · Tối `#2A3238`, không đổi theo bộ màu |
+| Trung tính | `borderStrong` | `border-strong` (`--color-border-strong`) | Sáng `#D4D4D8` · Tối `#3A444C`, không đổi theo bộ màu |
+| Lỗi / nguy hiểm (2 màu) | `dangerText` | `danger` (`--color-danger`) | Sáng `#B91C1C` · Tối `#F87171` |
+| Lỗi / nguy hiểm | `dangerBg` | `danger-bg` (`--color-danger-bg`) | Sáng `#FEF2F2` · Tối `#2E1517` |
+
+- **Độ tương phản (mục 8, AC-76):** chữ đạt tối thiểu **4,5:1** (WCAG AA) và thành phần không phải chữ đạt tối thiểu **3:1** (WCAG 1.4.11) với cả 9 bộ cố định và cấu hình `custom` ở hai chế độ sáng/tối, kiểm tĩnh trên cùng tập cặp chữ–nền của `packages/ui/src/styles/tokens.test.ts`.
+- **Mặc định và ngoại tuyến (AC-75):** lần mở đầu tiên chưa lấy được cấu hình từ máy chủ dùng bộ mặc định `thi360-green` chế độ `light` (khớp tệp hợp đồng `contracts/mobile/appearance/tokens-thi360-green.json`). Khi mất mạng ở các lần sau, app giữ bảng màu đã lưu gần nhất trên máy.
+- **Chế độ sáng/tối (D-20, AC-73, AC-74):** người dùng chưa tự chọn trên máy (`AppPreferences.themeMode` trống) dùng `mode` của cấu hình admin, **không theo chế độ sáng/tối của hệ điều hành**. Khi người dùng chọn Sáng hoặc Tối trong mục Tài khoản, lựa chọn `AppPreferences.themeMode` ghi đè `mode` của admin, lưu trên máy và giữ nguyên qua các lần tắt app và đăng xuất (như cookie `thi360_theme` trên web).
+
+### 11.3 Khung điều hướng và bố cục theo bề rộng
+
+- **Bốn mục sau đăng nhập:** **Trang chủ**, **Bài thi của tôi**, **Lịch sử** và **Tài khoản**. Đợt đầu, ba mục đầu là màn giữ chỗ chỉ hiện tiêu đề mục và dòng `"Chưa có nội dung"`, không gọi API nghiệp vụ (AC-10); mục **Tài khoản** hiển thị thông tin chỉ đọc từ `GET /api/v1/me/profile` cùng các cài đặt trên máy (R-11).
+- **Quy tắc đáp ứng (R-2, AC-6..11, AC-13):** kiểu điều hướng và số cột phụ thuộc bề rộng cửa sổ khả dụng / size class, không phụ thuộc tên máy. Xoay máy, gập/mở máy hoặc đổi kích thước cửa sổ phải giữ đúng màn hiện tại, mục đang chọn và dữ liệu đang nhập dở (AC-11). Khi chạy chia đôi màn hình trên tablet/iPad ở bề rộng hẹp, bố cục tự lùi về 1 cột kèm thanh điều hướng dưới và vẫn dùng đủ chức năng (AC-13).
+
+| Nền tảng | Bề rộng cửa sổ / size class | Thanh điều hướng | Bố cục nội dung |
+|---|---|---|---|
+| Android | `< 600dp` (bề rộng hẹp, gồm chia đôi hẹp) | Thanh điều hướng dưới (bottom bar) | 1 cột (AC-6, AC-13) |
+| Android | `600dp` đến `< 840dp` | Thanh điều hướng bên trái (navigation rail) | 1 cột (AC-7) |
+| Android | `>= 840dp` (màn hình gập mở, tablet) | Thanh điều hướng bên trái (navigation rail) | Mục Tài khoản 2 cột: danh sách bên trái, chi tiết bên phải (AC-7) |
+| iOS | `horizontalSizeClass == compact` (iPhone, màn ngoài iPhone Duo, iPad chia đôi hẹp) | Thanh tab dưới (tab bar) | 1 cột (AC-6, AC-13) |
+| iOS (iPad) | `horizontalSizeClass == regular` | Sidebar bên trái | Hai cột (sidebar trái + vùng nội dung bên phải; mục Tài khoản hiện trong vùng nội dung cạnh sidebar) (AC-8) |
+| iOS (iPhone `regular` / iPhone Duo mở) | `regular × regular` (đo trên simulator Xcode 27.1: màn trong `669×951pt`, ngang `951×669pt`; màn ngoài `466×678pt` compact) | Hai nửa; thanh tab nằm ở nửa trái | Nửa trái hiện danh sách Tài khoản kèm thanh tab, nửa phải hiện chi tiết mục đang chọn; gập về màn ngoài quay lại 1 cột (AC-9, D-17) |
+
+- **Ma trận kích thước kiểm thử tương thích (đặc tả mục 9):** mỗi kích thước kiểm ở cả chế độ sáng và tối cho các màn Đăng nhập, Đăng ký, Khóa, Trang chủ, Tài khoản; không tràn ngang, không cắt nội dung:
+  - **Android:** `360×640dp`, `412×915dp`, màn hình gập mở `840×720dp`, tablet `1280×800dp`.
+  - **iOS:** iPhone `390×844pt`, iPad `1180×820pt` và `820×1180pt`, iPhone Duo màn ngoài `466×678pt` và màn trong `669×951pt` (`951×669pt` khi cạnh dài nằm ngang).
+
+### 11.4 Quy tắc xoay màn hình
+
+- **Khóa chiều dọc (AC-12, D-8):** áp dụng cho điện thoại — Android có bề rộng nhỏ nhất (`sw`) `< 600dp`; iPhone có bề rộng `compact`, kể cả màn ngoài iPhone Duo.
+- **Xoay tự do cả hai chiều:** áp dụng cho tablet Android (`sw >= 600dp`), iPad, màn hình gập Android khi mở và màn trong iPhone Duo.
+
+### 11.5 Ngôn ngữ
+
+- **Mặc định tiếng Việt (`vi`)** ở lần mở đầu tiên, bất kể ngôn ngữ hệ điều hành (AC-79, D-22).
+- **Song ngữ `vi` / `en` cùng bộ khóa (AC-81):**
+  - Android: cặp tệp `res/values/strings_*.xml` và `res/values-en/strings_*.xml`.
+  - iOS: các String Catalog `*.xcstrings` (`Shell.xcstrings`, `Auth.xcstrings`, `Recovery.xcstrings`, `Account.xcstrings`, `InfoPlist.xcstrings`).
+  - Không lẫn ngôn ngữ trên mọi màn.
+- **Đổi tức thì và lưu bền (AC-80):** đổi tại màn Đăng nhập hoặc mục Tài khoản (`AppPreferences.locale`), chữ giao diện đổi ngay, lưu trên máy và giữ qua lần tắt app và đăng xuất.
+- **Câu chữ và thông báo lỗi:** câu chữ luồng xác thực lấy theo khóa web học viên trong `apps/web-student/src/messages/vi.json`. Tên sinh trắc học theo thiết bị: Android ghi `"vân tay hoặc khuôn mặt"`; iOS ghi `"Face ID"` hoặc `"Touch ID"` đúng loại phần cứng (AC-66). Mã lỗi máy chủ chưa định nghĩa hiện câu chung thân thiện của màn đó, không lộ mã kỹ thuật (AC-83).
+
+### 11.6 Truy cập, vùng bấm và cỡ chữ
+
+- **Vùng bấm tối thiểu (đặc tả mục 9):** `48dp` trên Android và `44pt` trên iOS.
+- **Trình đọc màn hình:** mọi điều khiển có nhãn rõ ràng cho **TalkBack** (Android) và **VoiceOver** (iOS), thứ tự đọc theo thứ tự nhìn; không truyền đạt trạng thái chỉ bằng màu.
+- **Phóng cỡ chữ hệ thống:** mức `130%` không cắt hay chồng chữ; mức `200%` mọi màn vẫn cuộn được và dùng được.
+- **Che nội dung khi khóa sinh trắc học (AC-58):** màn khóa che hoàn toàn nội dung app, và ảnh xem trước trong trình chuyển ứng dụng không để lộ nội dung bên trong.

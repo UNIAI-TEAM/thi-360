@@ -1,0 +1,7 @@
+Thi360.xcodeproj/
+DerivedData/
+.build/
+*.xcresult
+xcuserdata/
+Config/Local.xcconfig
+.DS_Store

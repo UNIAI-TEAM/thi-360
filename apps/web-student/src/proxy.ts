@@ -8,10 +8,11 @@ const PUBLIC_PATHS: Record<string, true> = {
   "/forgot-password": true,
   "/reset-password": true,
   "/checkout/result": true,
+  "/mobile/appearance-tokens.json": true,
 };
 
 // ...và theo tiền tố có dấu gạch chéo cuối: `/exams/<code>` công khai, còn `/exams`, `/examsx` cần phiên.
-const PUBLIC_PREFIXES = ["/exams/"] as const;
+const PUBLIC_PREFIXES = ["/exams/", "/.well-known/"] as const;
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
