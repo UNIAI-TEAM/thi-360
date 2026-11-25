@@ -301,6 +301,25 @@ Issue cha: **UNI-2702** · Plan `docs/plans/2026-11-17-thuong-mai-luot-thi-pbi-0
 
 Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
 
+## App học viên native — khung và xác thực (một phần PBI-19)
+
+Issue cha: **UNI-2785**. Đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (bản 6), kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (bản 4, 62 điểm), thiết kế `docs/design/app-hoc-vien/`. Đã duyệt 2026-11-25; chưa bắt đầu triển khai.
+
+| Sóng | Task | Issue | Việc |
+|---|---|---|---|
+| 1 | BE-1 | UNI-2798 | Backend: API xác thực mobile và phiên mobile |
+| 1 | WEB-1 | UNI-2799 | Web học viên: bảng màu cho app và tệp xác minh deep link |
+| 1 | DOC-1 | UNI-2800 | Tài liệu kiến trúc và quy ước giao diện app |
+| 1 | AND-1 | UNI-2801 | Android: dự án, môi trường, CI và khung điều hướng |
+| 1 | IOS-1 | UNI-2802 | iOS: dự án, môi trường, CI và khung điều hướng |
+| 2 | AND-2 | UNI-2803 | Android: lõi phiên, lưu token an toàn và đăng nhập |
+| 2 | IOS-2 | UNI-2804 | iOS: lõi phiên, lưu token an toàn và đăng nhập |
+| 3 | AND-3 | UNI-2805 | Android: đăng ký có OTP, quên và đặt lại mật khẩu, đổi mật khẩu |
+| 3 | IOS-3 | UNI-2806 | iOS: đăng ký có OTP, quên và đặt lại mật khẩu, đổi mật khẩu |
+| 4 | AND-4 | UNI-2807 | Android: Tài khoản, sinh trắc học và màn khóa, giao diện theo cấu hình admin |
+| 4 | IOS-4 | UNI-2808 | iOS: Tài khoản, Face ID / Touch ID và màn khóa, giao diện theo cấu hình admin |
+| 5 | QA | UNI-2809 | Nghiệm thu đợt chạy |
+
 ## Backlog
 
 | Issue | Việc | Ghi chú |
@@ -315,5 +334,5 @@ Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
 | 3 · Thi | 10–13 Làm bài, lưu bài, chấm, kết quả | Port một phần từ `lms-exam` |
 | 4 · Thương mại | 05, 06, 07–09 | Port nhiều từ `lms-exam/commercial` và `exam-portal` |
 | 5 · AI | 14–18 | Làm mới |
-| 6 · Mobile | 19–23 | React Native |
+| 6 · Mobile | 19–23 | Native Android và iOS (quyết định 2026-11-25). Đợt đầu, khung và xác thực, ở mục App học viên native phía trên (UNI-2785); các PBI còn lại chưa tạo issue |
 | 7 · Vận hành | 24–26 | Port `commercial/support`, phần xuất báo cáo |
