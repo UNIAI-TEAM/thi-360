@@ -27,17 +27,36 @@ const NAV_ITEMS = [
   { key: "orders", href: "/account/orders" },
 ] as const;
 
-export function StudentHeader({ account }: { account: HeaderAccount }) {
+export function StudentHeader({
+  account,
+  variant = "default",
+}: {
+  account: HeaderAccount;
+  variant?: "default" | "landing";
+}) {
   const common = useTranslations("common");
   const t = useTranslations("header");
   const pathname = usePathname();
   // Khách mở Đăng nhập, Đăng ký từ trang con (chi tiết bài thi) thì quay lại đúng trang đó; ở `/` về trang chủ theo vai trò.
   const here = pathname && pathname !== "/" ? pathname : null;
+  const isLanding = variant === "landing";
 
   return (
-    <header className="border-b border-border bg-surface">
+    <header
+      className={cn(
+        "border-b",
+        isLanding
+          ? "sticky top-0 z-20 border-border/80 bg-surface/75 backdrop-blur-md"
+          : "border-border bg-surface",
+      )}
+    >
       {/* Đệm ngang 16px dưới `sm` để logo, hai nút tùy chọn và nút tài khoản vừa một hàng từ 320px (không xuống hàng khi phiên tải xong). */}
-      <div className="mx-auto flex max-w-[1170px] flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3 sm:px-6">
+      <div
+        className={cn(
+          "mx-auto flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3",
+          isLanding ? "w-full sm:w-[90%] sm:max-w-[90%] sm:px-0" : "max-w-[1170px] sm:px-6",
+        )}
+      >
         <Link href="/" className="flex items-center gap-3">
           <span
             aria-hidden

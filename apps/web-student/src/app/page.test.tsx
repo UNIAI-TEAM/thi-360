@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type * as SessionApi from "@/features/session/api";
+import type { Loaded, StorefrontFilters } from "@/features/storefront/types";
 import enMessages from "@/messages/en.json";
 import viMessages from "@/messages/vi.json";
 import { renderWithProviders } from "@/test/render";
@@ -11,8 +12,15 @@ vi.mock("@/features/session/api", async () => {
   return { ...actual, loadOptionalSession: async () => null };
 });
 
+const mockLoadFilters = vi.hoisted(() =>
+  vi.fn<() => Promise<Loaded<StorefrontFilters>>>(async () => ({
+    status: "ok",
+    data: { kinds: [], formats: [], parts: [], subjects: [] },
+  })),
+);
+
 vi.mock("@/features/storefront/server-api", () => ({
-  loadFiltersOnServer: async () => ({ status: "ok", data: { kinds: [], formats: [], parts: [], subjects: [] } }),
+  loadFiltersOnServer: mockLoadFilters,
   loadProductsOnServer: async () => ({
     status: "ok",
     data: { items: [], page: 0, size: 12, totalItems: 0, totalPages: 0 },
@@ -97,18 +105,54 @@ describe("web-student landing page", () => {
     expect(JSON.stringify(viMessages.metadata)).not.toMatch(/HSA (và|·|,) ?QDA/);
   });
 
-  it("bảy kỳ thi nằm trong danh sách ở khối giới thiệu", async () => {
-    await renderLanding();
+  it("hiển thị cố định AuthBackdrop, khung 90% và danh sách kỳ thi mặc định theo danh mục EXAM (UNI-2810)", async () => {
+    mockLoadFilters.mockResolvedValueOnce({
+      status: "ok",
+      data: { kinds: [], formats: [], parts: [], subjects: [] },
+    });
+    const { container } = await renderLanding();
+
+    const backdrop = screen.getByTestId("auth-backdrop");
+    expect(backdrop).toHaveClass("fixed");
+    expect(container.querySelector(".sm\\:w-\\[90\\%\\]")).not.toBeNull();
 
     const kinds = screen.getByRole("list", { name: "Các kỳ thi" });
     expect(within(kinds).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
       "HSA",
       "QDA",
       "BCA",
-      "V-ACT",
+      "VACT",
       "SPT",
       "SP2E",
       "THPTQG",
+      "HSCA",
+      "VSAT",
+    ]);
+    expect(within(kinds).getByRole("link", { name: "VSAT" })).toHaveAttribute("href", "/?kind=VSAT#exams");
+  });
+
+  it("lấy động danh sách các kỳ thi trên Hero từ catalogKinds của danh mục hệ thống EXAM (UNI-2810)", async () => {
+    mockLoadFilters.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        kinds: [],
+        formats: [],
+        parts: [],
+        subjects: [],
+        catalogKinds: [
+          { code: "HSA", nameVi: "Đánh giá năng lực ĐHQG Hà Nội (HSA)", nameEn: "VNU Hanoi (HSA)" },
+          { code: "VSAT", nameVi: "Đánh giá năng lực V-SAT", nameEn: "V-SAT assessment" },
+          { code: "HSCA", nameVi: "Đánh giá năng lực H-SCA", nameEn: "H-SCA assessment" },
+        ],
+      },
+    });
+    await renderLanding();
+
+    const kinds = screen.getByRole("list", { name: "Các kỳ thi" });
+    expect(within(kinds).getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "HSA",
+      "VSAT",
+      "HSCA",
     ]);
   });
 });

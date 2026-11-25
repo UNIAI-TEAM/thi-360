@@ -1640,6 +1640,8 @@
       "viewDetail": "View details"
     },
     "catalog": {
+      "carouselHint": "Swipe or drag horizontally to view more",
+      "carouselLabel": "Exam list",
       "clearFilters": "Clear filters",
       "emptyTitle": "No exams are on sale right now",
       "errorMessage": "Could not load the exam catalog. Your filters are kept.",
@@ -1656,6 +1658,8 @@
       "paginationLabel": "Catalog pagination",
       "partAll": "All sections, subjects",
       "partLabel": "Section/subject",
+      "scrollNext": "Scroll list right",
+      "scrollPrev": "Scroll list left",
       "searchLabel": "Search by name or code",
       "searchPlaceholder": "For example: HSA FULL or HSA-FULL-01",
       "showing": "Showing {from}–{to} of {total} exams on sale",

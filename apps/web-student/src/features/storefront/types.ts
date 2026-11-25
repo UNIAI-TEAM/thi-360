@@ -1,5 +1,6 @@
 import type { components } from "@thi360/api-client";
 
+export type CatalogExamKind = components["schemas"]["CatalogKind"];
 export type ProductCard = components["schemas"]["ProductCard"];
 export type ProductDetail = components["schemas"]["ProductDetail"];
 export type BundleDetailItem = components["schemas"]["BundleDetailItem"];

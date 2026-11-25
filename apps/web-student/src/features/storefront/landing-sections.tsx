@@ -1,14 +1,14 @@
 import { Button, cn, focusRing } from "@thi360/ui";
 import {
   BookOpen,
-  ChevronDown,
   ChartLine,
+  ChevronDown,
   ChevronsDown,
+  LayoutGrid,
   ListChecks,
   MessageCircle,
   PenLine,
   Target,
-  LayoutGrid,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -16,14 +16,27 @@ import type { ReactNode } from "react";
 import { CATALOG_ANCHOR_ID } from "./catalog-query";
 import { hasSupportContact, readSupportContact } from "./support";
 
-/** Mã bảy kỳ thi (nhãn kỹ thuật, không dịch). */
-const EXAM_KINDS = ["HSA", "QDA", "BCA", "V-ACT", "SPT", "SP2E", "THPTQG"] as const;
+/** Danh sách mã kỳ thi dự phòng theo nhóm danh mục hệ thống EXAM khi chưa tải được bộ lọc. */
+export const DEFAULT_EXAM_KINDS = [
+  "HSA",
+  "QDA",
+  "BCA",
+  "VACT",
+  "SPT",
+  "SP2E",
+  "THPTQG",
+  "HSCA",
+  "VSAT",
+] as const;
+
 const FAQ_KEYS = ["formats", "attempts", "otherAccount", "paidNoExam", "refund", "voucher"] as const;
 /** Hai câu hỏi đầu mở sẵn; bốn câu còn lại gập. */
 const FAQ_OPEN_BY_DEFAULT: readonly (typeof FAQ_KEYS)[number][] = ["formats", "attempts"];
 
-const sectionInner = "mx-auto flex w-full max-w-[1170px] flex-col gap-6 px-4 py-14 sm:px-6";
-const itemCard = "flex flex-col gap-2.5 rounded-xl border border-border bg-page p-6";
+const landingContainer = "mx-auto w-full px-4 sm:w-[90%] sm:max-w-[90%] sm:px-0";
+const sectionInner = `${landingContainer} flex flex-col gap-6 py-14`;
+const glassCard = "flex flex-col gap-2.5 rounded-2xl border border-border bg-surface/88 p-6 backdrop-blur-xs";
+const surfaceGlassBand = "border-y border-border/75 bg-surface/45 backdrop-blur-xs";
 
 function SectionTitle({ id, children }: { id: string; children: ReactNode }) {
   return (
@@ -44,8 +57,8 @@ function IconTile({ children }: { children: ReactNode }) {
   );
 }
 
-/** Khối 1: giới thiệu, bảy kỳ thi, nút "Khám phá bài thi" (TM 11.2). */
-export function HeroSection() {
+/** Khối 1: giới thiệu, danh sách các kỳ thi từ danh mục EXAM, nút "Khám phá bài thi" (TM 11.2). */
+export function HeroSection({ examKinds = DEFAULT_EXAM_KINDS }: { examKinds?: readonly string[] }) {
   const t = useTranslations("landing.hero");
   const formats = [
     { key: "full", icon: <BookOpen /> },
@@ -54,20 +67,29 @@ export function HeroSection() {
   ] as const;
 
   return (
-    <section aria-labelledby="hero-title" className="bg-primary-50">
-      <div className="mx-auto flex w-full max-w-[1170px] flex-wrap items-center gap-10 px-4 py-14 sm:px-6 sm:py-18">
+    <section
+      aria-labelledby="hero-title"
+      className="border-b border-border-primary/60 bg-primary-50/35 backdrop-blur-xs"
+    >
+      <div className={cn(landingContainer, "flex flex-wrap items-center gap-10 py-14 sm:py-16")}>
         <div className="flex min-w-0 flex-[999_1_32rem] flex-col gap-5">
           <h1 id="hero-title" className="max-w-[42rem] text-display font-bold text-primary-900">
             {t("title")}
           </h1>
-          <p className="max-w-[38rem] text-title text-text-secondary">{t("description")}</p>
+          <p className="max-w-[42rem] text-title text-text-secondary">{t("description")}</p>
           <ul aria-label={t("kindsLabel")} className="flex flex-wrap gap-2">
-            {EXAM_KINDS.map((kind) => (
-              <li
-                key={kind}
-                className="rounded-full border border-primary-200 bg-surface px-3 py-1 text-field-label font-semibold text-primary-800"
-              >
-                {kind}
+            {examKinds.map((kind) => (
+              <li key={kind}>
+                <Link
+                  href={`/?kind=${encodeURIComponent(kind)}#${CATALOG_ANCHOR_ID}`}
+                  prefetch={false}
+                  className={cn(
+                    "inline-flex min-h-8.5 items-center rounded-full border border-primary-200 bg-surface/90 px-3 py-1 text-field-label font-semibold text-primary-800 transition-colors hover:border-primary-600 hover:bg-primary-50 pointer-coarse:min-h-11",
+                    focusRing,
+                  )}
+                >
+                  {kind}
+                </Link>
               </li>
             ))}
           </ul>
@@ -80,7 +102,7 @@ export function HeroSection() {
             </Button>
           </div>
         </div>
-        <div className="flex min-w-0 flex-[1_1_21rem] flex-col gap-4 rounded-xl border border-border-primary bg-surface p-6 shadow-xs">
+        <div className="flex min-w-0 flex-[1_1_21rem] flex-col gap-4 rounded-2xl border border-border-primary bg-surface/88 p-6 shadow-xs backdrop-blur-md">
           <h2 className="text-overline font-semibold tracking-overline text-primary-text uppercase">
             {t("formatsTitle")}
           </h2>
@@ -109,12 +131,12 @@ export function WhySection() {
   ] as const;
 
   return (
-    <section aria-labelledby="why-title" className="border-y border-border bg-surface">
+    <section aria-labelledby="why-title" className={surfaceGlassBand}>
       <div className={sectionInner}>
         <SectionTitle id="why-title">{t("title")}</SectionTitle>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(16rem,100%),1fr))] gap-5">
           {items.map(({ key, icon }) => (
-            <article key={key} className={itemCard}>
+            <article key={key} className={glassCard}>
               <IconTile>{icon}</IconTile>
               <h3 className="text-title font-semibold text-text">{t(`items.${key}.title`)}</h3>
               <p className="text-text-muted">{t(`items.${key}.description`)}</p>
@@ -137,7 +159,7 @@ export function StepsSection() {
         <SectionTitle id="steps-title">{t("title")}</SectionTitle>
         <ol className="grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-5">
           {keys.map((key, index) => (
-            <li key={key} className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-6">
+            <li key={key} className={glassCard}>
               <span
                 aria-hidden
                 className="flex size-9 items-center justify-center rounded-full bg-primary-fill font-bold text-on-primary"
@@ -164,8 +186,8 @@ export function FaqSection() {
   const t = useTranslations("landing.faq");
 
   return (
-    <section id="faq" aria-labelledby="faq-title" className="border-y border-border bg-surface">
-      <div className="mx-auto flex w-full max-w-[1170px] flex-wrap gap-8 px-4 py-14 sm:px-6">
+    <section id="faq" aria-labelledby="faq-title" className={surfaceGlassBand}>
+      <div className={cn(landingContainer, "flex flex-wrap gap-8 py-14")}>
         <div className="flex min-w-0 flex-[1_1_17.5rem] flex-col gap-2.5">
           <SectionTitle id="faq-title">{t("title")}</SectionTitle>
           <p className="text-text-muted">{t("intro")}</p>
@@ -175,11 +197,11 @@ export function FaqSection() {
             <details
               key={key}
               open={FAQ_OPEN_BY_DEFAULT.includes(key)}
-              className="group rounded-lg border border-border bg-surface"
+              className="group rounded-xl border border-border bg-surface/88 backdrop-blur-xs"
             >
               <summary
                 className={cn(
-                  "flex min-h-13 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3.5 font-semibold [&::-webkit-details-marker]:hidden",
+                  "flex min-h-13 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3.5 font-semibold [&::-webkit-details-marker]:hidden",
                   focusRing,
                 )}
               >
@@ -211,8 +233,8 @@ export function SupportSection() {
   ].filter((row) => row.value);
 
   return (
-    <section id="support" aria-labelledby="support-title" className="mx-auto w-full max-w-[1170px] px-4 pt-14 pb-16 sm:px-6">
-      <div className="flex flex-wrap items-start gap-8 rounded-2xl border border-border-primary bg-primary-50 p-6 sm:p-8">
+    <section id="support" aria-labelledby="support-title" className={cn(landingContainer, "pt-14 pb-16")}>
+      <div className="flex flex-wrap items-start gap-8 rounded-2xl border border-border-primary bg-primary-50/75 p-6 backdrop-blur-sm sm:p-8">
         <div className="flex min-w-0 flex-[1_1_20rem] flex-col gap-3">
           <SectionTitle id="support-title">{t("title")}</SectionTitle>
           {configured ? (
@@ -234,7 +256,7 @@ export function SupportSection() {
           )}
         </div>
         {configured && (
-          <dl className="flex min-w-0 flex-[1_1_20rem] flex-col rounded-xl border border-border-primary bg-surface px-5 py-2">
+          <dl className="flex min-w-0 flex-[1_1_20rem] flex-col rounded-xl border border-border-primary bg-surface/92 px-5 py-2">
             {rows.map((row, index) => (
               <div
                 key={row.key}

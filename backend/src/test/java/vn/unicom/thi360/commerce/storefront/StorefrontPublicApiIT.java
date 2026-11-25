@@ -239,6 +239,16 @@ class StorefrontPublicApiIT extends AbstractStorefrontIT {
         assertThat(ownPart.path("count").asLong()).isEqualTo(1);
         assertThat(filters.path("subjects").toString()).contains("\"code\":\"TOAN\"");
         assertThat(filters.path("formats").toString()).contains("\"code\":\"FULL\"");
+
+        List<String> expectedActiveCatalogKinds = catalog.listGroupItems("EXAM").stream()
+                .filter(item -> item.effectiveStatus() == vn.unicom.thi360.catalog.spi.CatalogStatus.ACTIVE)
+                .map(vn.unicom.thi360.catalog.spi.CatalogItemView::code)
+                .toList();
+        List<String> actualCatalogKinds = new ArrayList<>();
+        filters.path("catalogKinds").forEach(node -> actualCatalogKinds.add(node.path("code").asText()));
+        assertThat(actualCatalogKinds)
+                .as("catalogKinds lists all active EXAM catalog items in display order, even with 0 on-sale products")
+                .containsExactlyElementsOf(expectedActiveCatalogKinds);
     }
 
     // ------------------------------------------------- Phần facet (R1-4, AD-78)
