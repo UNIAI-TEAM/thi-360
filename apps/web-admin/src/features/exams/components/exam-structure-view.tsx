@@ -6,6 +6,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { focusExamQuotaWhenReady } from "../exam-overview";
 import { focusMapidRuleWhenReady } from "../mapid-rules";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import type { ContentReference } from "@/features/content/types";
@@ -75,13 +76,13 @@ import { focusFormTarget, formTarget, type FormTarget } from "../subject-forms/n
 import { createRawInputStore } from "../subject-forms/raw-input-store";
 import { pinnedForm, selectAllSubjectForms, type SubjectFormPins } from "../subject-forms/selection";
 
-const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block", rule: "rule" } as const;
+const SELECTION_PARAMS = { exam: "exam", part: "part", option: "option", section: "section", block: "block", rule: "rule", quota: "quota" } as const;
 
 function readSelectionFromUrl(): StructureSelection | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const blockId = params.get(SELECTION_PARAMS.block);
-  if (params.get(SELECTION_PARAMS.exam) === "1") return { kind: "exam" };
+  if (params.get(SELECTION_PARAMS.exam) === "1" || params.get(SELECTION_PARAMS.quota)) return { kind: "exam" };
   if (blockId) return { kind: "block", blockId };
   const sectionId = params.get(SELECTION_PARAMS.section);
   if (sectionId) return { kind: "section", sectionId };
@@ -100,6 +101,7 @@ function writeSelectionToUrl(selection: StructureSelection): void {
   url.searchParams.delete(SELECTION_PARAMS.option);
   url.searchParams.delete(SELECTION_PARAMS.part);
   url.searchParams.delete(SELECTION_PARAMS.rule);
+  url.searchParams.delete(SELECTION_PARAMS.quota);
   if (selection.kind === "exam") url.searchParams.set(SELECTION_PARAMS.exam, "1");
   else if (selection.kind === "block") url.searchParams.set(SELECTION_PARAMS.block, selection.blockId);
   else if (selection.kind === "section") url.searchParams.set(SELECTION_PARAMS.section, selection.sectionId);
@@ -277,10 +279,13 @@ function StructureEditor({
     const fromUrl = readSelectionFromUrl();
     return fromUrl && selectionExists(structure.parts, fromUrl) ? fromUrl : defaultSelection(structure.parts);
   });
-  // `?rule=` (liên kết "Đi tới quy tắc" của kiểm tra và xem thử): cuộn tới dòng quy tắc MAPID một lần khi mở trang.
+  // `?rule=` / `?quota=` (liên kết từ trang Kiểm tra và xem thử): cuộn tới quy tắc MAPID hoặc chỉ tiêu cấp bài khi mở trang.
   useEffect(() => {
-    const ruleId = new URLSearchParams(window.location.search).get(SELECTION_PARAMS.rule);
+    const params = new URLSearchParams(window.location.search);
+    const ruleId = params.get(SELECTION_PARAMS.rule);
     if (ruleId) void focusMapidRuleWhenReady(ruleId);
+    const quotaId = params.get(SELECTION_PARAMS.quota);
+    if (quotaId) void focusExamQuotaWhenReady(quotaId);
   }, []);
   const requested = selection && selectionExists(draft, selection) ? selection : defaultSelection(draft);
   const requestedBlock = requested?.kind === "block" ? findBlock(draft, requested.blockId) : null;
@@ -641,6 +646,8 @@ function StructureEditor({
           checkResult={checkResult}
           names={names}
           parts={draft}
+          quotas={quotas}
+          combinations={structure.combinations}
           onSelect={select}
         />
 

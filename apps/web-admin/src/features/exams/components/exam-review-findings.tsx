@@ -23,6 +23,7 @@ import {
   collectCheckIssues,
   findBlockContext,
   groupIssues,
+  issueQuotaHref,
   issueRuleHref,
   issueStructureHref,
   splitBySeverity,
@@ -30,10 +31,12 @@ import {
   type IssueGrouping,
   type UnitRow,
 } from "../check";
+import { findExamQuotaForIssue } from "../exam-overview";
 import { useExamStructure } from "../queries";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
-import type { ExamDetail, ExamSectionState } from "../types";
+import type { ExamDetail, ExamPart, ExamQuota, ExamSectionState, StructureCombination } from "../types";
 import { examTabHref } from "../editor-tabs";
+import { ExamQuotaDeviationHint, ExamQuotaScopePrefix } from "./exam-quota-deviation";
 import { listingErrorCount } from "./exam-review-listing";
 import { ExamName, labelBeforeName, richNodes, useIssueNode, useLookup } from "./exam-review-shared";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
@@ -129,9 +132,33 @@ export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
           </div>
           {(["subject", "code"] as const).map((by) => (
             <TabsContent key={by} value={by} className="flex flex-col gap-5">
-              <IssueList exam={exam} issues={errors} grouping={by} severity="errors" />
-              <IssueList exam={exam} issues={unconfirmed} grouping={by} severity="unconfirmed" />
-              <IssueList exam={exam} issues={warnings} grouping={by} severity="warnings" />
+              <IssueList
+                exam={exam}
+                issues={errors}
+                grouping={by}
+                severity="errors"
+                parts={structure.data?.parts}
+                quotas={structure.data?.examQuotas}
+                combinations={structure.data?.combinations}
+              />
+              <IssueList
+                exam={exam}
+                issues={unconfirmed}
+                grouping={by}
+                severity="unconfirmed"
+                parts={structure.data?.parts}
+                quotas={structure.data?.examQuotas}
+                combinations={structure.data?.combinations}
+              />
+              <IssueList
+                exam={exam}
+                issues={warnings}
+                grouping={by}
+                severity="warnings"
+                parts={structure.data?.parts}
+                quotas={structure.data?.examQuotas}
+                combinations={structure.data?.combinations}
+              />
             </TabsContent>
           ))}
         </Tabs>
@@ -163,11 +190,17 @@ function IssueList({
   issues,
   grouping,
   severity,
+  parts,
+  quotas,
+  combinations,
 }: {
   exam: ExamDetail;
   issues: CheckIssue[];
   grouping: IssueGrouping;
   severity: "errors" | "unconfirmed" | "warnings";
+  parts?: readonly ExamPart[];
+  quotas?: readonly ExamQuota[];
+  combinations?: readonly StructureCombination[];
 }) {
   const t = useTranslations("exams.review.findings");
   const lookup = useLookup();
@@ -192,7 +225,14 @@ function IssueList({
             </span>
             <ul className="flex flex-col gap-2">
               {group.issues.map((issue) => (
-                <IssueRow key={`${group.key}:${issue.key}`} exam={exam} issue={issue} />
+                <IssueRow
+                  key={`${group.key}:${issue.key}`}
+                  exam={exam}
+                  issue={issue}
+                  parts={parts}
+                  quotas={quotas}
+                  combinations={combinations}
+                />
               ))}
             </ul>
           </li>
@@ -202,16 +242,33 @@ function IssueList({
   );
 }
 
-function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
+function IssueRow({
+  exam,
+  issue,
+  parts,
+  quotas,
+  combinations,
+}: {
+  exam: ExamDetail;
+  issue: CheckIssue;
+  parts?: readonly ExamPart[];
+  quotas?: readonly ExamQuota[];
+  combinations?: readonly StructureCombination[];
+}) {
   const t = useTranslations("exams.review.findings");
   const tMapid = useTranslations("exams.mapidRules.issue");
+  const tQuota = useTranslations("exams.examQuota");
   const issueNode = useIssueNode(exam, true);
   const lookup = useLookup();
   const openId = useId();
   const messageId = useId();
   const message = issueNode(issue);
+  const isQuotaDeviation = issue.code === "EXAM_QUOTA_DEVIATION";
+  const matchedQuota = isQuotaDeviation ? findExamQuotaForIssue(issue, quotas) : null;
+  const effectiveParts = parts && parts.length > 0 ? parts : exam.parts;
   const ruleHref = issueRuleHref(exam.id, issue);
-  const href = ruleHref ?? issueStructureHref(exam.id, issue);
+  const quotaHref = issueQuotaHref(exam.id, issue, quotas);
+  const href = ruleHref ?? quotaHref ?? issueStructureHref(exam.id, issue);
   const where = findBlockContext(exam, issue.blockId);
   const partName = issue.partName ?? where?.part.name ?? exam.parts.find((part) => part.id === issue.partId)?.name ?? null;
   const blockName = issue.blockName ?? where?.block.name ?? null;
@@ -228,8 +285,25 @@ function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <p id={messageId} className="text-body text-text">
+            {isQuotaDeviation && (
+              <ExamQuotaScopePrefix
+                quota={matchedQuota}
+                parts={effectiveParts}
+                combinations={combinations}
+                subjectName={lookup.subject}
+              />
+            )}
             {message}
           </p>
+          {isQuotaDeviation && (
+            <ExamQuotaDeviationHint
+              issue={issue}
+              quota={matchedQuota}
+              parts={effectiveParts}
+              subjectName={lookup.subject}
+              examId={exam.id}
+            />
+          )}
           <p className="font-mono text-caption text-text-muted">{issue.code}</p>
         </div>
         {href && (
@@ -237,10 +311,16 @@ function IssueRow({ exam, issue }: { exam: ExamDetail; issue: CheckIssue }) {
             <Link
               id={openId}
               href={href}
-              aria-label={labelBeforeName(ruleHref ? tMapid : t, ruleHref ? "goToRuleAria" : "openAria", "issue")}
+              aria-label={
+                ruleHref
+                  ? labelBeforeName(tMapid, "goToRuleAria", "issue")
+                  : quotaHref
+                    ? labelBeforeName(tQuota, "goToQuotaAria", "issue")
+                    : labelBeforeName(t, "openAria", "issue")
+              }
               aria-labelledby={`${openId} ${messageId}`}
             >
-              {ruleHref ? tMapid("goToRule") : t("open")}
+              {ruleHref ? tMapid("goToRule") : quotaHref ? tQuota("goToQuota") : t("open")}
               <ArrowRight />
             </Link>
           </Button>
