@@ -77,3 +77,16 @@ jobs:
           profile: pixel_7
           disable-animations: true
           script: cd apps/android && ./gradlew :app:connectedDevDebugAndroidTest
+      - name: Print emulator test failure details
+        if: failure()
+        run: |
+          find apps/android/app/build/outputs/androidTest-results -name '*.xml' -print -exec cat {} + || true
+      - name: Upload emulator failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-diagnostics
+          path: |
+            apps/android/app/build/reports/androidTests/
+            apps/android/app/build/outputs/androidTest-results/
+          if-no-files-found: ignore

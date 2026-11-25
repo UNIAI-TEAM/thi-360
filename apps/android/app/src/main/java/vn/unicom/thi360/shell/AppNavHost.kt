@@ -1,5 +1,10 @@
 package vn.unicom.thi360.shell
 
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,10 +25,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -31,6 +39,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
+import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
@@ -44,6 +53,46 @@ import vn.unicom.thi360.feature.login.LoginRoutes
 import vn.unicom.thi360.feature.login.LoginScreen
 import vn.unicom.thi360.feature.login.OfflineSessionBanner
 import vn.unicom.thi360.feature.login.RoleNoticeScreen
+import vn.unicom.thi360.feature.password.ChangePasswordDraftViewModel
+import vn.unicom.thi360.feature.password.InvalidResetLinkScreen
+import vn.unicom.thi360.feature.password.NewPasswordMode
+import vn.unicom.thi360.feature.password.NewPasswordScreen
+import vn.unicom.thi360.feature.recovery.ForgotPasswordScreen
+import vn.unicom.thi360.feature.recovery.OpenApiRecoveryGateway
+import vn.unicom.thi360.feature.recovery.RecoveryGateway
+import vn.unicom.thi360.feature.recovery.RecoveryRoutes
+import vn.unicom.thi360.feature.recovery.ResetLink
+import vn.unicom.thi360.feature.recovery.ResetLinkIntentResult
+import vn.unicom.thi360.feature.register.RegistrationFlowScreen
+
+internal sealed interface ActiveResetOverlay {
+    data class Valid(val link: ResetLink) : ActiveResetOverlay {
+        override fun toString(): String = "Valid(link=[REDACTED])"
+    }
+
+    data object InvalidLink : ActiveResetOverlay
+}
+
+private tailrec fun Context.findComponentActivityOrNull(): ComponentActivity? = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> baseContext.findComponentActivityOrNull()
+    else -> null
+}
+
+private fun clearConsumedResetIntent(activity: ComponentActivity?, allowedHost: String) {
+    val current = activity?.intent ?: return
+    if (ResetLink.parseIntent(current, allowedHost) is ResetLinkIntentResult.Ignored) {
+        return
+    }
+    val savedComponent = current.component
+    // Mutate the live Intent in place so ActivityClientRecord cannot retain the reset token URI in memory.
+    current.action = Intent.ACTION_MAIN
+    current.data = null
+    current.replaceExtras(null as Bundle?)
+    activity.intent = Intent(Intent.ACTION_MAIN).apply {
+        component = savedComponent
+    }
+}
 
 @Composable
 fun AppRoot(
@@ -57,11 +106,15 @@ fun AppRoot(
     extraDestinations: NavGraphBuilder.() -> Unit = {},
     sessionManager: SessionManager? = null,
     validateOnLaunch: Boolean = true,
-    onForgotPasswordClick: () -> Unit = {},
-    onRegisterClick: () -> Unit = {},
+    onForgotPasswordClick: (() -> Unit)? = null,
+    onRegisterClick: (() -> Unit)? = null,
+    recoveryGateway: RecoveryGateway? = null,
+    initialIntent: Intent? = null,
+    lockedContent: (@Composable () -> Unit)? = null,
+    clockMillis: () -> Long = System::currentTimeMillis,
 ) {
     // Preserve direct shell entry when callers pin an explicit startDestination without a SessionManager.
-    if (startDestination != null && sessionManager == null) {
+    if (startDestination != null && sessionManager == null && initialIntent == null) {
         Thi360App(
             preferences = preferences,
             brandPalette = brandPalette,
@@ -76,21 +129,25 @@ fun AppRoot(
     }
 
     val context = LocalContext.current
+    val activity = remember(context) { context.findComponentActivityOrNull() }
     val activeSessionManager = remember(sessionManager, context) {
         sessionManager ?: AppSessionContainer.get(context).sessionManager
     }
+    val activeRecoveryGateway = remember(recoveryGateway, context) {
+        recoveryGateway ?: AppSessionContainer.get(context).let { stack ->
+            OpenApiRecoveryGateway(
+                publicAuthApi = stack.publicAuthApi,
+                authenticatedAuthApi = stack.authenticatedAuthApi,
+            )
+        }
+    }
+    val allowedResetHost = remember { ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl) }
 
     SideEffect {
         AppSessionContainer.setLocale(preferences.effectiveLocale)
     }
 
-    val sessionStateHolder = activeSessionManager.state.collectAsStateWithLifecycle()
-    val sessionState = sessionStateHolder.value
-    val latestSelectLocale by rememberUpdatedState(onSelectLocale)
-    val latestForgotPasswordClick by rememberUpdatedState(onForgotPasswordClick)
-    val latestRegisterClick by rememberUpdatedState(onRegisterClick)
-    val coroutineScope = rememberCoroutineScope()
-    var isRetryingOffline by remember { mutableStateOf(false) }
+    val sessionState by activeSessionManager.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(activeSessionManager, validateOnLaunch) {
         if (validateOnLaunch) {
@@ -98,18 +155,210 @@ fun AppRoot(
         }
     }
 
+    // Keep reset link token strictly in ephemeral composition memory; never save to Bundle or disk.
+    var activeResetOverlay by remember { mutableStateOf<ActiveResetOverlay?>(null) }
+    var openForgotPasswordOverlay by remember { mutableStateOf(false) }
+    // Persist only a plain consumed flag so Activity recreation / state restoration never replays a dismissed reset Intent.
+    var initialIntentConsumed by rememberSaveable { mutableStateOf(false) }
+
+    fun processResetIntent(candidate: Intent?) {
+        when (val parsed = ResetLink.parseIntent(candidate, allowedResetHost)) {
+            is ResetLinkIntentResult.Valid -> {
+                activeResetOverlay = ActiveResetOverlay.Valid(parsed.link)
+                openForgotPasswordOverlay = false
+                clearConsumedResetIntent(activity, allowedResetHost)
+            }
+
+            ResetLinkIntentResult.MissingToken -> {
+                activeResetOverlay = ActiveResetOverlay.InvalidLink
+                openForgotPasswordOverlay = false
+                clearConsumedResetIntent(activity, allowedResetHost)
+            }
+
+            ResetLinkIntentResult.Ignored -> Unit
+        }
+    }
+
+    LaunchedEffect(initialIntent, activity) {
+        if (!initialIntentConsumed) {
+            initialIntentConsumed = true
+            processResetIntent(initialIntent ?: activity?.intent)
+        }
+    }
+
+    DisposableEffect(activity, allowedResetHost) {
+        if (activity == null) {
+            onDispose {}
+        } else {
+            val listener = Consumer<Intent> { newIntent ->
+                processResetIntent(newIntent)
+            }
+            activity.addOnNewIntentListener(listener)
+            onDispose {
+                activity.removeOnNewIntentListener(listener)
+            }
+        }
+    }
+
+    AppSessionContent(
+        sessionState = sessionState,
+        sessionManager = activeSessionManager,
+        recoveryGateway = activeRecoveryGateway,
+        preferences = preferences,
+        brandPalette = brandPalette,
+        onSelectLocale = onSelectLocale,
+        onSelectThemeMode = onSelectThemeMode,
+        navController = navController,
+        startDestination = startDestination,
+        accountContent = accountContent,
+        extraDestinations = extraDestinations,
+        onForgotPasswordClick = onForgotPasswordClick,
+        onRegisterClick = onRegisterClick,
+        lockedContent = lockedContent,
+        activeResetOverlay = activeResetOverlay,
+        onDismissResetOverlay = {
+            activeResetOverlay = null
+            clearConsumedResetIntent(activity, allowedResetHost)
+        },
+        onMarkResetLinkInvalid = {
+            activeResetOverlay = ActiveResetOverlay.InvalidLink
+            clearConsumedResetIntent(activity, allowedResetHost)
+        },
+        openForgotPasswordOverlay = openForgotPasswordOverlay,
+        onOpenForgotPasswordOverlay = { openForgotPasswordOverlay = it },
+        clockMillis = clockMillis,
+    )
+}
+
+@Composable
+internal fun AppSessionContent(
+    sessionState: SessionState,
+    sessionManager: SessionManager,
+    recoveryGateway: RecoveryGateway,
+    preferences: AppPreferences,
+    brandPalette: BrandPalette,
+    onSelectLocale: (AppLocale) -> Unit,
+    onSelectThemeMode: (ThemeMode) -> Unit,
+    navController: NavHostController?,
+    startDestination: String?,
+    accountContent: (@Composable (isTwoPaneWidth: Boolean) -> Unit)?,
+    extraDestinations: NavGraphBuilder.() -> Unit,
+    onForgotPasswordClick: (() -> Unit)?,
+    onRegisterClick: (() -> Unit)?,
+    lockedContent: (@Composable () -> Unit)?,
+    activeResetOverlay: ActiveResetOverlay?,
+    onDismissResetOverlay: () -> Unit,
+    onMarkResetLinkInvalid: () -> Unit,
+    openForgotPasswordOverlay: Boolean,
+    onOpenForgotPasswordOverlay: (Boolean) -> Unit,
+    clockMillis: () -> Long,
+) {
+    val latestSelectLocale by rememberUpdatedState(onSelectLocale)
+    val latestForgotPasswordClick by rememberUpdatedState(onForgotPasswordClick)
+    val latestRegisterClick by rememberUpdatedState(onRegisterClick)
+    val coroutineScope = rememberCoroutineScope()
+    var isRetryingOffline by remember { mutableStateOf(false) }
+    var pendingSignedOutRoute by remember { mutableStateOf<String?>(null) }
+
+    val isSignedOut = sessionState is SessionState.SignedOut
+    LaunchedEffect(isSignedOut) {
+        if (isSignedOut) {
+            ChangePasswordDraftViewModel.clearAllActiveDrafts()
+        }
+    }
+
+    // Password reset deep links bypass Locked, MustChangePassword, Active, and SignedOut states.
+    if (activeResetOverlay != null) {
+        Thi360Theme(
+            preferences = preferences,
+            brandPalette = brandPalette,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Thi360Theme.colors.bgPage)
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
+            ) {
+                when (activeResetOverlay) {
+                    is ActiveResetOverlay.Valid -> {
+                        NewPasswordScreen(
+                            mode = NewPasswordMode.FromLink(activeResetOverlay.link.token),
+                            recoveryGateway = recoveryGateway,
+                            sessionManager = sessionManager,
+                            onBack = onDismissResetOverlay,
+                            onResetCompleted = onDismissResetOverlay,
+                            onResetTokenInvalid = onMarkResetLinkInvalid,
+                        )
+                    }
+
+                    ActiveResetOverlay.InvalidLink -> {
+                        InvalidResetLinkScreen(
+                            onRequestNewLink = {
+                                onDismissResetOverlay()
+                                if (sessionState is SessionState.SignedOut) {
+                                    pendingSignedOutRoute = RecoveryRoutes.FORGOT_PASSWORD
+                                } else {
+                                    onOpenForgotPasswordOverlay(true)
+                                }
+                            },
+                            onBackToLogin = onDismissResetOverlay,
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+
+    if (openForgotPasswordOverlay) {
+        Thi360Theme(
+            preferences = preferences,
+            brandPalette = brandPalette,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Thi360Theme.colors.bgPage)
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
+            ) {
+                ForgotPasswordScreen(
+                    recoveryGateway = recoveryGateway,
+                    onBackToLogin = { onOpenForgotPasswordOverlay(false) },
+                    clockMillis = clockMillis,
+                )
+            }
+        }
+        return
+    }
+
     // Separate signed-out auth NavHost from authenticated Thi360App so shell graph startDestination
     // stays pinned to Home (preserving tab saveState/restoreState) and sign-out disposes prior tab state.
     if (sessionState is SessionState.SignedOut) {
         val authNavController = rememberNavController()
-        val initialAuthRoute = remember(activeSessionManager) {
+        val initialAuthRoute = remember(sessionManager) {
             routeForSignedOut(sessionState.reason)
         }
+        var appliedReason by remember(sessionManager) { mutableStateOf(sessionState.reason) }
+        val latestSignedOutState = rememberUpdatedState(sessionState)
+
         LaunchedEffect(sessionState.reason, authNavController) {
-            val targetRoute = routeForSignedOut(sessionState.reason)
-            if (authNavController.currentDestination?.route != targetRoute) {
-                authNavController.navigate(targetRoute) {
-                    popUpTo(0) { inclusive = true }
+            if (sessionState.reason != appliedReason) {
+                appliedReason = sessionState.reason
+                val targetRoute = routeForSignedOut(sessionState.reason)
+                if (authNavController.currentDestination?.route != targetRoute) {
+                    authNavController.navigate(targetRoute) {
+                        popUpTo(0) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(pendingSignedOutRoute, authNavController) {
+            val pending = pendingSignedOutRoute ?: return@LaunchedEffect
+            pendingSignedOutRoute = null
+            if (authNavController.currentDestination?.route != pending) {
+                authNavController.navigate(pending) {
                     launchSingleTop = true
                 }
             }
@@ -131,29 +380,131 @@ fun AppRoot(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     composable(LoginRoutes.LOGIN) {
-                        val currentSignOutReason =
-                            (sessionStateHolder.value as? SessionState.SignedOut)?.reason
-                                ?: SignOutReason.None
                         LoginScreen(
-                            sessionManager = activeSessionManager,
-                            signOutReason = currentSignOutReason,
+                            sessionManager = sessionManager,
+                            signOutReason = latestSignedOutState.value.reason,
                             onSelectLocale = { latestSelectLocale(it) },
-                            onForgotPasswordClick = { latestForgotPasswordClick() },
-                            onRegisterClick = { latestRegisterClick() },
+                            onForgotPasswordClick = {
+                                val custom = latestForgotPasswordClick
+                                if (custom != null) {
+                                    custom()
+                                } else {
+                                    authNavController.navigate(RecoveryRoutes.FORGOT_PASSWORD) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            },
+                            onRegisterClick = {
+                                val custom = latestRegisterClick
+                                if (custom != null) {
+                                    custom()
+                                } else {
+                                    authNavController.navigate(RecoveryRoutes.REGISTER) {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            },
                         )
                     }
                     composable(LoginRoutes.ROLE_NOTICE) {
-                        val studentOnly =
-                            (sessionStateHolder.value as? SessionState.SignedOut)?.reason
-                                as? SignOutReason.StudentOnly
+                        val studentOnly = latestSignedOutState.value.reason as? SignOutReason.StudentOnly
                         RoleNoticeScreen(
                             username = studentOnly?.username.orEmpty(),
-                            onSwitchAccount = { activeSessionManager.acknowledgeRoleNotice() },
+                            onSwitchAccount = { sessionManager.acknowledgeRoleNotice() },
                             onSelectLocale = { latestSelectLocale(it) },
+                        )
+                    }
+                    composable(RecoveryRoutes.REGISTER) {
+                        RegistrationFlowScreen(
+                            recoveryGateway = recoveryGateway,
+                            sessionManager = sessionManager,
+                            onBackToLogin = {
+                                authNavController.popBackStack(LoginRoutes.LOGIN, inclusive = false)
+                            },
+                            clockMillis = clockMillis,
+                        )
+                    }
+                    composable(RecoveryRoutes.FORGOT_PASSWORD) {
+                        ForgotPasswordScreen(
+                            recoveryGateway = recoveryGateway,
+                            onBackToLogin = {
+                                authNavController.popBackStack(LoginRoutes.LOGIN, inclusive = false)
+                            },
+                            clockMillis = clockMillis,
                         )
                     }
                     extraDestinations()
                 }
+            }
+        }
+        return
+    }
+
+    if (sessionState is SessionState.MustChangePassword) {
+        val isOffline = sessionState.isOffline
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (isOffline) {
+                OfflineBannerSlot(
+                    preferences = preferences,
+                    brandPalette = brandPalette,
+                    isRetrying = isRetryingOffline,
+                    onRetry = {
+                        if (!isRetryingOffline) {
+                            isRetryingOffline = true
+                            coroutineScope.launch {
+                                try {
+                                    sessionManager.retryConnection()
+                                } finally {
+                                    isRetryingOffline = false
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .consumeWindowInsets(
+                        if (isOffline) WindowInsets.statusBars else WindowInsets(0, 0, 0, 0),
+                    ),
+            ) {
+                Thi360Theme(
+                    preferences = preferences,
+                    brandPalette = brandPalette,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Thi360Theme.colors.bgPage)
+                            .windowInsetsPadding(WindowInsets.safeDrawing),
+                    ) {
+                        NewPasswordScreen(
+                            mode = NewPasswordMode.Forced(username = sessionState.username),
+                            recoveryGateway = recoveryGateway,
+                            sessionManager = sessionManager,
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+
+    if (sessionState is SessionState.Locked) {
+        Thi360Theme(
+            preferences = preferences,
+            brandPalette = brandPalette,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Thi360Theme.colors.bgPage)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .testTag("session_locked_host"),
+            ) {
+                lockedContent?.invoke()
             }
         }
         return
@@ -174,43 +525,28 @@ fun AppRoot(
         }
     }
 
-    val isOffline = when (sessionState) {
-        is SessionState.Active -> sessionState.isOffline
-        is SessionState.MustChangePassword -> sessionState.isOffline
-        is SessionState.Locked -> false
-    }
+    val isOffline = (sessionState as SessionState.Active).isOffline
 
     // Keep Thi360App at a stable slot in Column so toggling isOffline never unmounts the NavHost.
     Column(modifier = Modifier.fillMaxSize()) {
         if (isOffline) {
-            Thi360Theme(
+            OfflineBannerSlot(
                 preferences = preferences,
                 brandPalette = brandPalette,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Thi360Theme.colors.bgPage)
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    OfflineSessionBanner(
-                        isRetrying = isRetryingOffline,
-                        onRetry = {
-                            if (!isRetryingOffline) {
-                                isRetryingOffline = true
-                                coroutineScope.launch {
-                                    try {
-                                        activeSessionManager.retryConnection()
-                                    } finally {
-                                        isRetryingOffline = false
-                                    }
-                                }
+                isRetrying = isRetryingOffline,
+                onRetry = {
+                    if (!isRetryingOffline) {
+                        isRetryingOffline = true
+                        coroutineScope.launch {
+                            try {
+                                sessionManager.retryConnection()
+                            } finally {
+                                isRetryingOffline = false
                             }
-                        },
-                    )
-                }
-            }
+                        }
+                    }
+                },
+            )
         }
         Box(
             modifier = Modifier
@@ -229,6 +565,32 @@ fun AppRoot(
                 startDestination = startDestination ?: Destination.Home.route,
                 accountContent = accountContent,
                 extraDestinations = extraDestinations,
+            )
+        }
+    }
+}
+
+@Composable
+private fun OfflineBannerSlot(
+    preferences: AppPreferences,
+    brandPalette: BrandPalette,
+    isRetrying: Boolean,
+    onRetry: () -> Unit,
+) {
+    Thi360Theme(
+        preferences = preferences,
+        brandPalette = brandPalette,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Thi360Theme.colors.bgPage)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            OfflineSessionBanner(
+                isRetrying = isRetrying,
+                onRetry = onRetry,
             )
         }
     }
