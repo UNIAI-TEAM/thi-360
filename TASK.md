@@ -1,6 +1,6 @@
 # TASK — Thi 360
 
-> Cập nhật: 2026-11-13 · Trạng thái sống nằm trên UniAI (project Thi 360). File này là bản chụp để đọc nhanh trong repo; khi lệch thì UniAI đúng.
+> Cập nhật: 2026-11-26 · Trạng thái sống nằm trên UniAI (project Thi 360). File này là bản chụp để đọc nhanh trong repo; khi lệch thì UniAI đúng.
 > Chi tiết từng task (hợp đồng, thứ tự sóng, trọng số): `docs/plans/2026-11-13-base-port-pbi-01-02.md`. Phụ thuộc trong bảng dưới theo Phần C của plan.
 
 ## Đợt 1 — Port nền + PBI-01 + PBI-02
@@ -303,22 +303,22 @@ Trạng thái sống nằm trên UniAI; khi lệch thì UniAI đúng.
 
 ## App học viên native — khung và xác thực (một phần PBI-19)
 
-Issue cha: **UNI-2785**. Đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (bản 6), kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (bản 4, 62 điểm), thiết kế `docs/design/app-hoc-vien/`. Đã duyệt 2026-11-25; chưa bắt đầu triển khai.
+Issue cha: **UNI-2785**. Đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (bản 6, 94 tiêu chí hiệu lực `AC-1..AC-94`, bỏ `AC-95..AC-97` theo D-28), kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (bản 4, 12 task, 5 sóng, 62 điểm), thiết kế `docs/design/app-hoc-vien/`. Sóng 1–4 (`11/12` task, `58/62` điểm) đã merge vào `integration/app-hoc-vien` (PR #204–#214, base `25bc46e1`); Sóng 5 QA (`UNI-2809`, `4` điểm) đang hoàn tất nghiệm thu trên nhánh `feature/UNI-2809-qa-app-hoc-vien` (báo cáo: `docs/acceptance/app-hoc-vien.md`).
 
-| Sóng | Task | Issue | Việc |
-|---|---|---|---|
-| 1 | BE-1 | UNI-2798 | Backend: API xác thực mobile và phiên mobile |
-| 1 | WEB-1 | UNI-2799 | Web học viên: bảng màu cho app và tệp xác minh deep link |
-| 1 | DOC-1 | UNI-2800 | Tài liệu kiến trúc và quy ước giao diện app |
-| 1 | AND-1 | UNI-2801 | Android: dự án, môi trường, CI và khung điều hướng |
-| 1 | IOS-1 | UNI-2802 | iOS: dự án, môi trường, CI và khung điều hướng |
-| 2 | AND-2 | UNI-2803 | Android: lõi phiên, lưu token an toàn và đăng nhập |
-| 2 | IOS-2 | UNI-2804 | iOS: lõi phiên, lưu token an toàn và đăng nhập |
-| 3 | AND-3 | UNI-2805 | Android: đăng ký có OTP, quên và đặt lại mật khẩu, đổi mật khẩu |
-| 3 | IOS-3 | UNI-2806 | iOS: đăng ký có OTP, quên và đặt lại mật khẩu, đổi mật khẩu |
-| 4 | AND-4 | UNI-2807 | Android: Tài khoản, sinh trắc học và màn khóa, giao diện theo cấu hình admin |
-| 4 | IOS-4 | UNI-2808 | iOS: Tài khoản, Face ID / Touch ID và màn khóa, giao diện theo cấu hình admin |
-| 5 | QA | UNI-2809 | Nghiệm thu đợt chạy |
+| Sóng | Task | Issue | Việc | Điểm | Trạng thái |
+|---|---|---|---|---:|---|
+| 1 | BE-1 | UNI-2798 | Backend: API xác thực mobile và phiên mobile | 8 | in_review (merge PR #208, `aa822855`) |
+| 1 | WEB-1 | UNI-2799 | Web học viên: bảng màu cho app và tệp xác minh deep link | 3 | in_review (merge PR #205, `1a17cdcc`) |
+| 1 | DOC-1 | UNI-2800 | Tài liệu kiến trúc và quy ước giao diện app | 1 | in_review (merge PR #204, `e056f65c`) |
+| 1 | AND-1 | UNI-2801 | Android: dự án, môi trường, CI và khung điều hướng | 5 | in_review (merge PR #207, `9e270df0`) |
+| 1 | IOS-1 | UNI-2802 | iOS: dự án, môi trường, CI và khung điều hướng | 5 | in_review (merge PR #206, `4e9caedd`) |
+| 2 | AND-2 | UNI-2803 | Android: lõi phiên, lưu token an toàn và đăng nhập | 6 | in_review (merge PR #209, `4b9613ad`) |
+| 2 | IOS-2 | UNI-2804 | iOS: lõi phiên, lưu token an toàn và đăng nhập | 6 | in_review (merge PR #210, `ae6fb3e0`) |
+| 3 | AND-3 | UNI-2805 | Android: đăng ký có OTP, quên và đặt lại mật khẩu, đổi mật khẩu | 5 | in_review (merge PR #211, `0deae789`) |
+| 3 | IOS-3 | UNI-2806 | iOS: đăng ký có OTP, quên và đặt lại mật khẩu, đổi mật khẩu | 5 | in_review (merge PR #212, `c2718a9c`) |
+| 4 | AND-4 | UNI-2807 | Android: Tài khoản, sinh trắc học và màn khóa, giao diện theo cấu hình admin | 7 | in_review (merge PR #214, `25bc46e1`) |
+| 4 | IOS-4 | UNI-2808 | iOS: Tài khoản, Face ID / Touch ID và màn khóa, giao diện theo cấu hình admin | 7 | in_review (merge PR #213, `f8b1d51d`) |
+| 5 | QA | UNI-2809 | Nghiệm thu đợt chạy | 4 | in_review (nhánh `feature/UNI-2809-qa-app-hoc-vien` → `integration/app-hoc-vien`; báo cáo `docs/acceptance/app-hoc-vien.md`) |
 
 ## Backlog
 

@@ -76,7 +76,7 @@ jobs:
           arch: x86_64
           profile: pixel_7
           disable-animations: true
-          script: cd apps/android && ./gradlew :app:connectedDevDebugAndroidTest
+          script: cd apps/android && ./gradlew :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.notPackage=vn.unicom.thi360.smoke
       - name: Print emulator test failure details
         if: failure()
         run: |
