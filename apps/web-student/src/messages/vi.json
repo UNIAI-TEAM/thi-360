@@ -1640,6 +1640,8 @@
       "viewDetail": "Xem chi tiết"
     },
     "catalog": {
+      "carouselHint": "Vuốt hoặc kéo ngang để xem thêm",
+      "carouselLabel": "Danh sách bài thi",
       "clearFilters": "Xóa bộ lọc",
       "emptyTitle": "Hiện chưa có bài thi nào đang mở bán",
       "errorMessage": "Chưa tải được danh mục bài thi. Bộ lọc của bạn vẫn được giữ.",
@@ -1656,6 +1658,8 @@
       "paginationLabel": "Phân trang danh mục",
       "partAll": "Tất cả phần, môn",
       "partLabel": "Phần/môn",
+      "scrollNext": "Cuộn danh sách sang phải",
+      "scrollPrev": "Cuộn danh sách sang trái",
       "searchLabel": "Tìm theo tên hoặc mã",
       "searchPlaceholder": "Ví dụ: HSA FULL hoặc HSA-FULL-01",
       "showing": "Hiển thị {from}–{to} trong {total} bài thi đang mở bán",

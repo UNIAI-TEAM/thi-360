@@ -4517,6 +4517,22 @@
         "required" : [ "childCount", "code", "createdAt", "depth", "displayOrder", "effectiveStatus", "groupCode", "groupId", "id", "inheritedRefs", "nameVi", "ownRefs", "path", "status", "system", "updatedAt", "value", "version" ],
         "type" : "object"
       },
+      "CatalogKind" : {
+        "description" : "Kỳ thi đang hoạt động trong danh mục hệ thống EXAM",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "nameEn" : {
+            "type" : "string"
+          },
+          "nameVi" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "code", "nameEn", "nameVi" ],
+        "type" : "object"
+      },
       "CatalogOption" : {
         "description" : "Một lựa chọn danh mục (mã + tên theo ngôn ngữ của request)",
         "properties" : {
@@ -16277,6 +16293,13 @@
       "StorefrontFilters" : {
         "description" : "Bộ lọc của danh mục (TM 10.2): mỗi giá trị kèm số sản phẩm đang bán; giá trị có số 0 không có mặt",
         "properties" : {
+          "catalogKinds" : {
+            "description" : "Danh sách kỳ thi đang hoạt động từ danh mục hệ thống EXAM theo đúng thứ tự hiển thị",
+            "items" : {
+              "$ref" : "#/components/schemas/CatalogKind"
+            },
+            "type" : "array"
+          },
           "formats" : {
             "items" : {
               "$ref" : "#/components/schemas/FormatFilter"

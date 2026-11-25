@@ -14,12 +14,14 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import vn.unicom.thi360.catalog.spi.CatalogItemView;
 import vn.unicom.thi360.catalog.spi.CatalogLookup;
+import vn.unicom.thi360.catalog.spi.CatalogStatus;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.PriceResult;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.PricedProduct;
 import vn.unicom.thi360.commerce.storefront.api.ProductCard;
 import vn.unicom.thi360.commerce.storefront.api.ProductDetail;
 import vn.unicom.thi360.commerce.storefront.api.StorefrontFilters;
+import vn.unicom.thi360.commerce.storefront.api.StorefrontFilters.CatalogKind;
 import vn.unicom.thi360.commerce.storefront.api.StorefrontFilters.FormatFilter;
 import vn.unicom.thi360.commerce.storefront.api.StorefrontFilters.KindFilter;
 import vn.unicom.thi360.commerce.storefront.api.StorefrontFilters.PartFilter;
@@ -76,7 +78,11 @@ public class StorefrontQueryService {
         Map<String, Long> kindCounts = new LinkedHashMap<>();
         repository.countByKind().forEach(c -> kindCounts.put(c.key(), c.count()));
         List<KindFilter> kinds = new ArrayList<>();
+        List<CatalogKind> catalogKinds = new ArrayList<>();
         for (CatalogItemView item : catalog.listGroupItems(EXAM_GROUP)) {
+            if (item.effectiveStatus() == CatalogStatus.ACTIVE) {
+                catalogKinds.add(new CatalogKind(item.code(), item.nameVi(), item.nameEn()));
+            }
             Long count = kindCounts.remove(item.code());
             if (count != null && count > 0) {
                 kinds.add(new KindFilter(item.code(), item.nameVi(), item.nameEn(), count));
@@ -107,7 +113,7 @@ public class StorefrontQueryService {
 
         List<PartFilter> parts = repository.countByPart().stream()
                 .map(p -> new PartFilter(p.kindCode(), p.code(), p.name(), p.count())).toList();
-        return new StorefrontFilters(kinds, formats, subjects, parts);
+        return new StorefrontFilters(kinds, formats, subjects, parts, catalogKinds);
     }
 
     /**

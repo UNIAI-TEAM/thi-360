@@ -18,10 +18,18 @@ export default async function LandingPage({ searchParams }: { searchParams: Prom
   // còn dữ liệu danh mục được cache 60 giây ở lời gọi API (`revalidate: 60`).
   const query = parseCatalogQuery(await searchParams);
   const [filters, products] = await Promise.all([loadFiltersOnServer(), loadProductsOnServer(query)]);
+  const examKinds =
+    filters.status === "ok"
+      ? filters.data.catalogKinds && filters.data.catalogKinds.length > 0
+        ? filters.data.catalogKinds.map((item) => item.code)
+        : filters.data.kinds.length > 0
+          ? filters.data.kinds.map((item) => item.code)
+          : undefined
+      : undefined;
 
   return (
-    <PublicShell>
-      <HeroSection />
+    <PublicShell variant="landing">
+      <HeroSection examKinds={examKinds} />
       <CatalogSection query={query} filters={filters} products={products} />
       <WhySection />
       <StepsSection />

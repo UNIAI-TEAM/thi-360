@@ -83,12 +83,46 @@ describe("CatalogResults · bốn trạng thái (AC-10)", () => {
 });
 
 describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)", () => {
-  it("có dữ liệu: dòng tóm tắt, thẻ bài thi, phân trang", () => {
+  it("có dữ liệu: dòng tóm tắt, dải cuộn ngang 1 dòng có tên truy cập, thẻ bài thi, phân trang (UNI-2810)", () => {
     renderWithProviders(<CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page()} />);
 
     expect(screen.getByText(/Hiển thị 1–12/)).toHaveTextContent("Hiển thị 1–12 trong 30 bài thi đang mở bán");
-    expect(screen.getAllByRole("article")).toHaveLength(2);
+    const carousel = screen.getByRole("region", { name: "Danh sách bài thi" });
+    expect(carousel).toHaveAttribute("tabindex", "0");
+    expect(carousel).toHaveClass("flex-nowrap", "overflow-x-auto");
+    expect(within(carousel).getAllByRole("article")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Cuộn danh sách sang trái" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cuộn danh sách sang phải" })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Phân trang danh mục" })).toBeInTheDocument();
+  });
+
+  it("dải chip Kỳ thi hiển thị theo catalogKinds của danh mục EXAM và bấm chip ghi kind lên URL, về trang 1 (UNI-2810)", async () => {
+    const withCatalogKinds: Loaded<StorefrontFilters> = {
+      status: "ok",
+      data: {
+        ...FILTERS.data,
+        catalogKinds: [
+          { code: "HSA", nameVi: "ĐGNL ĐHQG Hà Nội", nameEn: "HSA" },
+          { code: "VACT", nameVi: "ĐGNL ĐHQG TP.HCM", nameEn: "V-ACT" },
+          { code: "HSCA", nameVi: "ĐGNL H-SCA", nameEn: "H-SCA" },
+          { code: "VSAT", nameVi: "ĐGNL V-SAT", nameEn: "V-SAT" },
+        ],
+      },
+    };
+    renderWithProviders(
+      <CatalogSection query={{ ...EMPTY_CATALOG_QUERY, page: 2 }} filters={withCatalogKinds} products={page({ page: 1 })} />,
+    );
+
+    const kindGroup = screen.getByRole("group", { name: "Kỳ thi" });
+    expect(within(kindGroup).getAllByRole("button").map((btn) => btn.textContent)).toEqual([
+      "Tất cả kỳ thi",
+      "HSA",
+      "VACT",
+      "HSCA",
+      "VSAT",
+    ]);
+    await userEvent.click(within(kindGroup).getByRole("button", { name: "VSAT" }));
+    expect(router.replace).toHaveBeenCalledWith("/?kind=VSAT", { scroll: false });
   });
 
   it("chuyển trang giữ điều kiện và ghi lên URL; thẻ không mất bộ lọc", async () => {
