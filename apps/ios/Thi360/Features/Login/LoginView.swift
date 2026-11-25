@@ -37,6 +37,7 @@ struct LoginView: View {
     let idiom: UIUserInterfaceIdiom
     var onForgotPassword: () -> Void = {}
     var onRegister: () -> Void = {}
+    var onBackToLock: (() -> Void)? = nil
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.brandPalette) private var palette
@@ -98,6 +99,14 @@ struct LoginView: View {
     private func phoneCompactLayout(isCompactCover: Bool) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
+                if let onBackToLock {
+                    RecoveryCircleNavButton(
+                        systemName: "chevron.left",
+                        accessibilityLabel: AccountStrings.text("lock.backToLockLabel", locale: locale),
+                        accessibilityIdentifier: "lock.passwordFallback.backButton",
+                        action: onBackToLock
+                    )
+                }
                 if isCompactCover {
                     loginBrandBadge(compact: true)
                 }
@@ -121,8 +130,10 @@ struct LoginView: View {
 
                     formFieldsAndActions(usesCardSurfaceInputs: false)
 
-                    registerFooter
-                        .padding(.top, isCompactCover ? 0 : 8)
+                    if onBackToLock == nil {
+                        registerFooter
+                            .padding(.top, isCompactCover ? 0 : 8)
+                    }
                 }
                 .padding(.horizontal, isCompactCover ? 24 : 20)
                 .padding(.top, isCompactCover ? 12 : 16)
@@ -141,6 +152,14 @@ struct LoginView: View {
     private func padCardLayout(containerHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             HStack {
+                if let onBackToLock {
+                    RecoveryCircleNavButton(
+                        systemName: "chevron.left",
+                        accessibilityLabel: AccountStrings.text("lock.backToLockLabel", locale: locale),
+                        accessibilityIdentifier: "lock.passwordFallback.backButton",
+                        action: onBackToLock
+                    )
+                }
                 Spacer(minLength: 0)
                 languageMenuButton
             }
@@ -156,7 +175,9 @@ struct LoginView: View {
                         }
 
                         formFieldsAndActions(usesCardSurfaceInputs: true)
-                        registerFooter
+                        if onBackToLock == nil {
+                            registerFooter
+                        }
                     }
                     .padding(36)
                     .frame(maxWidth: 480)
@@ -213,6 +234,14 @@ struct LoginView: View {
 
             VStack(spacing: 0) {
                 HStack {
+                    if let onBackToLock {
+                        RecoveryCircleNavButton(
+                            systemName: "chevron.left",
+                            accessibilityLabel: AccountStrings.text("lock.backToLockLabel", locale: locale),
+                            accessibilityIdentifier: "lock.passwordFallback.backButton",
+                            action: onBackToLock
+                        )
+                    }
                     Spacer(minLength: 0)
                     languageMenuButton
                 }
@@ -223,7 +252,9 @@ struct LoginView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         headingBlock(showsSubtitle: false)
                         formFieldsAndActions(usesCardSurfaceInputs: false)
-                        registerFooter
+                        if onBackToLock == nil {
+                            registerFooter
+                        }
                     }
                     .padding(.horizontal, 28)
                     .padding(.vertical, 24)

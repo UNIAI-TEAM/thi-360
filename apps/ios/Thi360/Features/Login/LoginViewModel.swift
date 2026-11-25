@@ -13,15 +13,18 @@ final class LoginViewModel {
     private(set) var isSubmitting: Bool = false
 
     private let sessionStore: SessionStore
+    let isLockPasswordFallback: Bool
 
     init(
         sessionStore: SessionStore,
         prefilledIdentifier: String = "",
-        initialReason: SignedOutReason = .none
+        initialReason: SignedOutReason = .none,
+        isLockPasswordFallback: Bool = false
     ) {
         self.sessionStore = sessionStore
         self.identifier = prefilledIdentifier
         self.serverBanner = Self.banner(for: initialReason)
+        self.isLockPasswordFallback = isLockPasswordFallback
     }
 
     func updateSignedOutReason(_ reason: SignedOutReason) {
@@ -65,7 +68,14 @@ final class LoginViewModel {
         let submittedPassword = password
 
         do {
-            try await sessionStore.login(identifier: submittedIdentifier, password: submittedPassword)
+            if isLockPasswordFallback {
+                try await sessionStore.reauthenticateFromLock(
+                    identifier: submittedIdentifier,
+                    password: submittedPassword
+                )
+            } else {
+                try await sessionStore.login(identifier: submittedIdentifier, password: submittedPassword)
+            }
             password = ""
             isPasswordVisible = false
         } catch {

@@ -64,6 +64,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Thi360/Thi360.entitlements
         DEVELOPMENT_ASSET_PATHS: ""
         ENABLE_PREVIEWS: YES
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "Thi 360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn."
         SWIFT_EMIT_LOC_STRINGS: YES
       configs:
         DevDebug:

@@ -12,6 +12,10 @@ final class SessionStore {
 
     let tokenStore: any TokenStore
     let apiClient: MobileAPIClient
+    let biometricManager: BiometricManager?
+    var onSessionCleared: (@MainActor () -> Void)?
+    var onSessionReplaced: (@MainActor () -> Void)?
+
     private let logger: RedactingAppLogger
     private let skipsLaunchValidation: Bool
     private var hasTriggeredLaunchValidation = false
@@ -20,12 +24,14 @@ final class SessionStore {
         tokenStore: any TokenStore,
         apiClient: MobileAPIClient,
         firstRunCleaner: FirstRunKeychainCleaner? = nil,
+        biometricManager: BiometricManager? = nil,
         logger: RedactingAppLogger = RedactingAppLogger(),
         initialStateOverride: SessionState? = nil,
         skipsLaunchValidation: Bool = false
     ) {
         self.tokenStore = tokenStore
         self.apiClient = apiClient
+        self.biometricManager = biometricManager
         self.logger = logger
         self.skipsLaunchValidation = skipsLaunchValidation
 
@@ -34,8 +40,15 @@ final class SessionStore {
         } else {
             _ = try? firstRunCleaner?.cleanIfNeeded()
             if let existing = try? tokenStore.read() {
-                self.state = existing.mustChangePassword ? .mustChangePassword : .active
+                if existing.mustChangePassword {
+                    self.state = .mustChangePassword
+                } else if biometricManager?.shouldLockOnColdLaunch() == true {
+                    self.state = .locked
+                } else {
+                    self.state = .active
+                }
             } else {
+                biometricManager?.clearForSessionEnd()
                 self.state = .signedOut(reason: .none)
             }
         }
@@ -50,7 +63,13 @@ final class SessionStore {
     func validateSessionOnLaunch() async {
         guard !skipsLaunchValidation, !hasTriggeredLaunchValidation else { return }
         hasTriggeredLaunchValidation = true
-        guard state.isAuthenticated else { return }
+        // Wait until biometric unlock succeeds before refreshing a locked session (Spec AC-65).
+        guard state == .active || state == .mustChangePassword else { return }
+        await probeStoredSession()
+    }
+
+    func validateSessionAfterUnlock() async {
+        guard state == .active || state == .mustChangePassword else { return }
         await probeStoredSession()
     }
 
@@ -61,6 +80,16 @@ final class SessionStore {
         await probeStoredSession()
     }
 
+    func lockSession() {
+        guard state == .active else { return }
+        state = .locked
+    }
+
+    func unlockSession() {
+        guard state == .locked else { return }
+        state = .active
+    }
+
     func login(identifier: String, password: String) async throws {
         let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
@@ -69,12 +98,17 @@ final class SessionStore {
             try tokenStore.write(tokens)
             connectivityState = .online
             state = tokens.mustChangePassword ? .mustChangePassword : .active
+            if !tokens.mustChangePassword {
+                biometricManager?.presentEnablePromptIfEligible()
+            }
             logger.log(.info, category: "session", message: "Mobile login succeeded")
         } catch {
             let apiError = MobileApiError.classify(error)
             if apiError.statusCode == 403, apiError.apiCode == "APP_STUDENT_ONLY" {
                 await apiClient.refresher.invalidate()
                 try? tokenStore.clear()
+                biometricManager?.clearForSessionEnd()
+                onSessionCleared?()
                 connectivityState = .online
                 state = .signedOut(reason: .studentOnly(username: trimmedIdentifier))
                 logger.log(.info, category: "session", message: "Login rejected: APP_STUDENT_ONLY")
@@ -89,8 +123,60 @@ final class SessionStore {
         }
     }
 
+    func reauthenticateFromLock(identifier: String, password: String) async throws {
+        let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        let previousRefreshToken = (try? tokenStore.read())?.refreshToken
+
+        do {
+            let newTokens = try await apiClient.login(identifier: trimmedIdentifier, password: password)
+            await apiClient.refresher.invalidate()
+            try tokenStore.write(newTokens)
+            biometricManager?.clearForSessionEnd()
+            onSessionReplaced?()
+            connectivityState = .online
+            state = newTokens.mustChangePassword ? .mustChangePassword : .active
+
+            if let previousRefreshToken,
+               !previousRefreshToken.isEmpty,
+               previousRefreshToken != newTokens.refreshToken
+            {
+                _ = try? await apiClient.logout(refreshToken: previousRefreshToken)
+            }
+
+            if !newTokens.mustChangePassword {
+                biometricManager?.presentEnablePromptIfEligible()
+            }
+            logger.log(.info, category: "session", message: "Lock password fallback re-authentication succeeded")
+        } catch {
+            let apiError = MobileApiError.classify(error)
+            if apiError.statusCode == 403, apiError.apiCode == "APP_STUDENT_ONLY" {
+                try? tokenStore.clear()
+                biometricManager?.clearForSessionEnd()
+                onSessionCleared?()
+                connectivityState = .online
+                state = .signedOut(reason: .studentOnly(username: trimmedIdentifier))
+                await apiClient.refresher.invalidate()
+                if let previousRefreshToken, !previousRefreshToken.isEmpty {
+                    _ = try? await apiClient.logout(refreshToken: previousRefreshToken)
+                }
+                logger.log(.info, category: "session", message: "Lock fallback rejected: APP_STUDENT_ONLY")
+                return
+            }
+            logger.log(
+                .warning,
+                category: "session",
+                message: "Lock password fallback failed code=\(apiError.apiCode ?? "network_or_unknown")"
+            )
+            throw apiError
+        }
+    }
+
     var currentUsername: String? {
         (try? tokenStore.read())?.username
+    }
+
+    var currentRefreshToken: String? {
+        (try? tokenStore.read())?.refreshToken
     }
 
     func adoptSession(_ tokens: SessionTokens) async throws {
@@ -117,15 +203,18 @@ final class SessionStore {
         connectivityState = .online
         if state == .mustChangePassword {
             state = .active
+            biometricManager?.presentEnablePromptIfEligible()
         }
         logger.log(.info, category: "session", message: "Forced password change completed")
     }
 
     func clearLocalSession(reason: SignedOutReason = .none) async {
-        await apiClient.refresher.invalidate()
         try? tokenStore.clear()
+        biometricManager?.clearForSessionEnd()
+        onSessionCleared?()
         connectivityState = .online
         state = .signedOut(reason: reason)
+        await apiClient.refresher.invalidate()
     }
 
     func acknowledgeRoleNotice() {
@@ -136,10 +225,19 @@ final class SessionStore {
 
     func signOut(reason: SignedOutReason = .none) async {
         let refreshToken = (try? tokenStore.read())?.refreshToken
-        await apiClient.refresher.invalidate()
+        let hasRefreshToken = (refreshToken?.isEmpty == false)
+        guard state.isAuthenticated || hasRefreshToken else {
+            return
+        }
+
+        // Clear persisted tokens and transition synchronously before awaiting so duplicate taps never emit a second logout.
         try? tokenStore.clear()
+        biometricManager?.clearForSessionEnd()
+        onSessionCleared?()
         connectivityState = .online
         state = .signedOut(reason: reason)
+        await apiClient.refresher.invalidate()
+
         if let refreshToken, !refreshToken.isEmpty {
             _ = try? await apiClient.logout(refreshToken: refreshToken)
         }
@@ -157,9 +255,13 @@ final class SessionStore {
                 state = .active
             }
         case .expired:
+            biometricManager?.clearForSessionEnd()
+            onSessionCleared?()
             connectivityState = .online
             state = .signedOut(reason: .expired)
         case let .studentOnly(username):
+            biometricManager?.clearForSessionEnd()
+            onSessionCleared?()
             connectivityState = .online
             state = .signedOut(reason: .studentOnly(username: username))
         }
@@ -184,6 +286,7 @@ final class SessionStore {
 
     static func makeForCurrentProcess(
         preferences: AppPreferences,
+        biometricManager: BiometricManager? = nil,
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: AppEnvironment = .current
     ) -> SessionStore {
@@ -241,7 +344,14 @@ final class SessionStore {
             defaults.removeObject(forKey: FirstRunKeychainCleaner.defaultFlagKey)
         }
 
-        let cleaner = FirstRunKeychainCleaner(userDefaults: defaults, tokenStore: tokenStore)
+        let biometricSecretStore = biometricManager?.secretStore
+        let cleaner = FirstRunKeychainCleaner(
+            userDefaults: defaults,
+            tokenStore: tokenStore,
+            additionalCleanup: {
+                try? biometricSecretStore?.deleteProtectedSecret()
+            }
+        )
         let client = MobileAPIClient(
             serverURL: serverURL,
             tokenStore: tokenStore,
@@ -255,6 +365,7 @@ final class SessionStore {
             tokenStore: tokenStore,
             apiClient: client,
             firstRunCleaner: cleaner,
+            biometricManager: biometricManager,
             logger: logger,
             initialStateOverride: initialStateOverride,
             skipsLaunchValidation: initialStateOverride != nil
