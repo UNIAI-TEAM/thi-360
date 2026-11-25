@@ -149,4 +149,41 @@ describe("QuestionNav (AC-8, AC-16)", () => {
     expect(gridBtn).toHaveTextContent("17/4");
     expect(controls).toHaveClass("rounded-xl", "border", "flex", "items-center", "justify-between");
   });
+
+  it("ghim cột Danh sách câu hỏi khi cuộn trên màn rộng kèm cuộn dọc nội bộ và báo onSelectItem (UNI-2793)", async () => {
+    const user = userEvent.setup();
+    const onSelectUnit = vi.fn();
+    const onSelectItem = vi.fn();
+
+    renderWithProviders(
+      <QuestionNav
+        items={SAMPLE_ITEMS}
+        currentUnitIndex={0}
+        totalUnits={4}
+        currentDisplayNumber={16}
+        totalDisplayItems={4}
+        onSelectUnit={onSelectUnit}
+        onSelectItem={onSelectItem}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        canPrev={false}
+        canNext={true}
+      >
+        <div>Nội dung bài làm dài</div>
+      </QuestionNav>,
+    );
+
+    const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+    expect(aside).toHaveClass(
+      "lg:sticky",
+      "lg:top-28",
+      "lg:max-h-[calc(100dvh-8rem)]",
+      "lg:overflow-y-auto",
+      "scroll-shadows-y",
+    );
+
+    await user.click(screen.getByRole("button", { name: /^19,/ }));
+    expect(onSelectUnit).toHaveBeenCalledWith(3);
+    expect(onSelectItem).toHaveBeenCalledWith(expect.objectContaining({ itemId: "q-19", unitIndex: 3 }));
+  });
 });
