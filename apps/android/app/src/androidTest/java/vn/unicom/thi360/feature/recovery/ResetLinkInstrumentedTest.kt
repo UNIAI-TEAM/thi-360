@@ -10,9 +10,12 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleCallback
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
+import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -72,8 +75,23 @@ class ResetLinkInstrumentedTest {
         }
         assertTrue(context.packageManager.queryIntentActivities(otherHostIntent, 0).isEmpty())
 
-        val launchIntent = Intent(validIntent).setClass(context, MainActivity::class.java)
-        ActivityScenario.launch<MainActivity>(launchIntent).use { scenario ->
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val launchIntent = Intent(validIntent)
+            .setClass(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+
+        // Drive MainActivity directly via Instrumentation because AppNavHost intentionally clears
+        // activity.intent (action + data) on consumption, which makes ActivityScenario's
+        // activityMatchesIntent() ignore subsequent recreate/destroy lifecycle events on real API 34.
+        val initialActivity = instrumentation.startActivitySync(launchIntent) as MainActivity
+        val latestActivityRef = AtomicReference<MainActivity>(initialActivity)
+        val lifecycleCallback = ActivityLifecycleCallback { activity, stage ->
+            if (activity is MainActivity && stage == Stage.RESUMED) {
+                latestActivityRef.set(activity)
+            }
+        }
+        ActivityLifecycleMonitorRegistry.getInstance().addLifecycleCallback(lifecycleCallback)
+        try {
             composeRule.waitUntil(timeoutMillis = 10_000) {
                 runCatching {
                     composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
@@ -82,12 +100,14 @@ class ResetLinkInstrumentedTest {
             }
             composeRule.onNodeWithTag(PasswordTestTags.LINK_BANNER).assertIsDisplayed()
             composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).assertIsDisplayed()
-            scenario.onActivity { activity ->
-                assertTrue(
-                    "Consumed reset intent data must be cleared from Activity",
-                    activity.intent?.data == null,
-                )
+            var clearedData: Uri? = Uri.EMPTY
+            instrumentation.runOnMainSync {
+                clearedData = latestActivityRef.get().intent?.data
             }
+            assertTrue(
+                "Consumed reset intent data must be cleared from Activity",
+                clearedData == null,
+            )
 
             composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
             composeRule.waitUntil(timeoutMillis = 10_000) {
@@ -98,14 +118,30 @@ class ResetLinkInstrumentedTest {
             }
             composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
 
-            scenario.recreate()
+            val beforeRecreate = latestActivityRef.get()
+            instrumentation.runOnMainSync {
+                beforeRecreate.recreate()
+            }
             composeRule.waitUntil(timeoutMillis = 10_000) {
-                runCatching {
-                    composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
-                    true
-                }.getOrDefault(false)
+                latestActivityRef.get() !== beforeRecreate &&
+                    runCatching {
+                        composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+                        true
+                    }.getOrDefault(false)
             }
             composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertDoesNotExist()
+        } finally {
+            ActivityLifecycleMonitorRegistry.getInstance().removeLifecycleCallback(lifecycleCallback)
+            instrumentation.runOnMainSync {
+                val current = latestActivityRef.get()
+                if (!current.isFinishing && !current.isDestroyed) {
+                    current.finish()
+                }
+                if (initialActivity !== current && !initialActivity.isFinishing && !initialActivity.isDestroyed) {
+                    initialActivity.finish()
+                }
+            }
+            instrumentation.waitForIdleSync()
         }
     }
 }
