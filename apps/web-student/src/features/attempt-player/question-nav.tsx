@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, cn, focusRing } from "@thi360/ui";
-import { ChevronLeft, ChevronRight, Flag, LayoutGrid } from "lucide-react";
+import { Flag, LayoutGrid } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import type { ItemCompletionStatus } from "./mappers";
@@ -22,16 +22,23 @@ export interface QuestionNavItem {
 export interface QuestionNavProps {
   items: QuestionNavItem[];
   segments?: AttemptDisplaySegmentView[];
+  /**
+   * Controls whether `data-exam-content` is rendered on segment group headings.
+   * Defaults to `true` for author-defined `displaySegments`; pass `false` (or a set via
+   * `examContentSegmentCodes`) when segments represent UI-localized subject names.
+   */
+  segmentsAreExamContent?: boolean;
+  examContentSegmentCodes?: ReadonlySet<string>;
   currentUnitIndex: number;
   totalUnits: number;
   currentDisplayNumber: number;
   totalDisplayItems: number;
   onSelectUnit: (unitIndex: number) => void;
   onSelectItem?: (item: QuestionNavItem) => void;
-  onPrev: () => void;
-  onNext: () => void;
-  canPrev: boolean;
-  canNext: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
+  canPrev?: boolean;
+  canNext?: boolean;
   children?: ReactNode;
   footer?: ReactNode;
 }
@@ -39,6 +46,8 @@ export interface QuestionNavProps {
 interface QuestionNavGridProps {
   items: QuestionNavItem[];
   segments?: AttemptDisplaySegmentView[];
+  segmentsAreExamContent?: boolean;
+  examContentSegmentCodes?: ReadonlySet<string>;
   filter: QuestionNavFilter;
   onChangeFilter: (filter: QuestionNavFilter) => void;
   onSelectUnit: (unitIndex: number) => void;
@@ -48,6 +57,8 @@ interface QuestionNavGridProps {
 function QuestionNavGrid({
   items,
   segments,
+  segmentsAreExamContent = true,
+  examContentSegmentCodes,
   filter,
   onChangeFilter,
   onSelectUnit,
@@ -211,7 +222,13 @@ function QuestionNavGrid({
                 {group.segment ? (
                   <div
                     id={headingId}
-                    data-exam-content
+                    {...((
+                      examContentSegmentCodes
+                        ? Boolean(group.segment.code && examContentSegmentCodes.has(group.segment.code))
+                        : segmentsAreExamContent
+                    )
+                      ? { "data-exam-content": "" }
+                      : {})}
                     className="text-caption font-semibold text-text-secondary"
                   >
                     {group.segment.name || group.segment.code}
@@ -279,16 +296,12 @@ function QuestionNavGrid({
 export function QuestionNav({
   items,
   segments,
-  currentUnitIndex,
-  totalUnits,
+  segmentsAreExamContent = true,
+  examContentSegmentCodes,
   currentDisplayNumber,
   totalDisplayItems,
   onSelectUnit,
   onSelectItem,
-  onPrev,
-  onNext,
-  canPrev,
-  canNext,
   children,
   footer,
 }: QuestionNavProps) {
@@ -297,64 +310,40 @@ export function QuestionNav({
   const [filter, setFilter] = useState<QuestionNavFilter>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
+  const answeredCount = useMemo(
+    () => items.filter((item) => item.completion === "complete").length,
+    [items],
+  );
+
   const controlsBar = (
     <div
       role="region"
       aria-label={t("controlsLabel")}
-      className="flex items-center justify-between gap-1.5 rounded-xl border border-border bg-surface px-3 py-2.5 sm:gap-2 sm:px-4 sm:py-3"
+      className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 lg:hidden"
     >
+      <span className="text-caption font-semibold text-text-secondary tabular-nums">
+        {t("answeredCount", { answered: answeredCount, total: items.length })}
+      </span>
+
       <Button
         type="button"
         variant="secondary"
         size="sm"
+        aria-expanded={isDrawerOpen}
+        aria-label={t("openGrid", {
+          current: Math.max(1, currentDisplayNumber),
+          total: Math.max(1, totalDisplayItems),
+        })}
         className="shrink-0 whitespace-nowrap px-2.5 text-caption pointer-coarse:min-h-11 sm:px-3 sm:text-label [&>span]:gap-1.5 sm:[&>span]:gap-2"
-        disabled={!canPrev}
-        onClick={onPrev}
+        onClick={() => setIsDrawerOpen(true)}
       >
-        <ChevronLeft className="size-4" aria-hidden="true" />
-        <span>{t("prev")}</span>
-      </Button>
-
-      <div className="flex min-w-0 items-center justify-center gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          aria-expanded={isDrawerOpen}
-          aria-label={t("openGrid", {
+        <LayoutGrid className="size-4" aria-hidden="true" />
+        <span aria-hidden="true" className="tabular-nums">
+          {t("openGridCompact", {
             current: Math.max(1, currentDisplayNumber),
             total: Math.max(1, totalDisplayItems),
           })}
-          className="shrink-0 whitespace-nowrap px-2.5 text-caption pointer-coarse:min-h-11 sm:px-3 sm:text-label lg:hidden [&>span]:gap-1.5 sm:[&>span]:gap-2"
-          onClick={() => setIsDrawerOpen(true)}
-        >
-          <LayoutGrid className="size-4" aria-hidden="true" />
-          <span aria-hidden="true" className="tabular-nums">
-            {t("openGridCompact", {
-              current: Math.max(1, currentDisplayNumber),
-              total: Math.max(1, totalDisplayItems),
-            })}
-          </span>
-        </Button>
-
-        <span className="hidden text-caption font-medium text-text-muted tabular-nums lg:inline">
-          {t("questionPosition", {
-            current: Math.min(totalUnits, currentUnitIndex + 1),
-            total: Math.max(1, totalUnits),
-          })}
         </span>
-      </div>
-
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        className="shrink-0 whitespace-nowrap px-2.5 text-caption pointer-coarse:min-h-11 sm:px-3 sm:text-label [&>span]:gap-1.5 sm:[&>span]:gap-2"
-        disabled={!canNext}
-        onClick={onNext}
-      >
-        <span>{t("next")}</span>
-        <ChevronRight className="size-4" aria-hidden="true" />
       </Button>
     </div>
   );
@@ -362,11 +351,13 @@ export function QuestionNav({
   const sidebar = !isDrawerOpen ? (
     <aside
       aria-label={t("gridLabel")}
-      className="hidden shrink-0 rounded-xl border border-border bg-surface p-4 lg:sticky lg:top-28 lg:block lg:w-[282px] lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto min-[1440px]:w-[300px] scroll-shadows-y"
+      className="hidden shrink-0 rounded-xl border border-border bg-surface p-4 lg:sticky lg:top-[var(--attempt-sticky-top,7rem)] lg:block lg:w-[282px] lg:max-h-[calc(100dvh-var(--attempt-sticky-top,7rem)-1.5rem)] lg:overflow-y-auto min-[1440px]:w-[300px] scroll-shadows-y"
     >
       <QuestionNavGrid
         items={items}
         segments={segments}
+        segmentsAreExamContent={segmentsAreExamContent}
+        examContentSegmentCodes={examContentSegmentCodes}
         filter={filter}
         onChangeFilter={setFilter}
         onSelectUnit={onSelectUnit}
@@ -384,13 +375,18 @@ export function QuestionNav({
         <QuestionNavGrid
           items={items}
           segments={segments}
+          segmentsAreExamContent={segmentsAreExamContent}
+          examContentSegmentCodes={examContentSegmentCodes}
           filter={filter}
           onChangeFilter={setFilter}
           onSelectUnit={(unitIndex) => {
             onSelectUnit(unitIndex);
             setIsDrawerOpen(false);
           }}
-          onSelectItem={onSelectItem}
+          onSelectItem={(item) => {
+            setIsDrawerOpen(false);
+            onSelectItem?.(item);
+          }}
         />
         <div className="flex justify-end pt-2">
           <Button
@@ -411,8 +407,8 @@ export function QuestionNav({
     return (
       <div className="flex flex-1 flex-col gap-5 lg:flex-row lg:items-start min-[1440px]:gap-6">
         <div className="min-w-0 flex-1 space-y-4">
-          {children}
           {controlsBar}
+          {children}
           {footer}
         </div>
         {sidebar}

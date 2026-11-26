@@ -99,13 +99,14 @@ const BRAND_SILK_MASK_STYLE = {
  * - Contained inside an `aria-hidden` `-z-10` layer with `overflow-hidden` so `<main>` keeps solid `bg-page` for
  *   deterministic WCAG contrast checks and never causes horizontal overflow at 360px-1440px.
  */
-export function AuthBackdrop() {
+export function AuthBackdrop({ className }: { className?: string } = {}) {
   return (
     <div
       aria-hidden="true"
       data-testid="auth-backdrop"
       className={cn(
-        "pointer-events-none absolute inset-0 -z-10 select-none overflow-hidden",
+        "pointer-events-none inset-0 -z-10 select-none overflow-clip",
+        className ?? "absolute",
         STUDIO_PALETTE_CLASS,
       )}
     >
@@ -117,7 +118,7 @@ export function AuthBackdrop() {
         viewBox="0 0 1200 900"
         fill="none"
         preserveAspectRatio="xMidYMid slice"
-        className="absolute left-1/2 top-1/2 h-full w-[min(1280px,100vw)] -translate-x-1/2 -translate-y-1/2 opacity-95 [[data-theme=dark]_&]:opacity-80"
+        className="absolute left-1/2 top-1/2 h-full w-[min(1280px,100%)] -translate-x-1/2 -translate-y-1/2 opacity-95 [[data-theme=dark]_&]:opacity-80"
       >
         <defs>
           <filter id="auth-bg-velvet-blur" x="-25%" y="-25%" width="150%" height="150%">

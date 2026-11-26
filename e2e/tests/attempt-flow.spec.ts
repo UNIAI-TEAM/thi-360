@@ -67,8 +67,9 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await expect(timer).toBeVisible();
     await expect(timer).toHaveText(/^\d{1,2}:\d{2}(:\d{2})?$/);
 
-    await answerCurrentUnit(page);
-    await page.getByRole("button", { name: "Câu sau" }).click();
+    await expect(page.getByRole("button", { name: "Câu sau" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Câu trước" })).toHaveCount(0);
+
     await answerCurrentUnit(page);
     await waitForSavedStatus(page);
 
@@ -121,6 +122,7 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await expect(page.getByRole("heading", { name: "Lượt thi đã đóng" })).toHaveCount(0);
     await expect(page.locator("main fieldset[data-attempt-question-fieldset]")).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole("button", { name: "Hoàn thành phần" })).toHaveCount(0);
+    await expect(page.locator("[data-subject-group]")).toHaveCount(3);
 
     await answerCurrentUnit(page);
     await waitForSavedStatus(page);
@@ -207,7 +209,6 @@ test.describe("Luồng chuẩn bị & làm bài (AC-1, AC-9, AC-13, AC-33)", () 
     await tabs.nth(2).click();
     await expect(tabs.nth(2)).toHaveAttribute("aria-selected", "true");
     await answerCurrentUnit(page, "12.5");
-    await page.getByRole("button", { name: "Câu sau" }).click();
     await waitForSavedStatus(page);
 
     // Nhảy về Phần II · Đúng/Sai

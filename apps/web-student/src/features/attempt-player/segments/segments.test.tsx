@@ -225,11 +225,12 @@ describe("phân đoạn hiển thị và chùm cắt ngang ranh giới (AC-9, BS
       />,
     );
 
-    // Unit 1: Phần I header with data-exam-content, range, commandCount, maxPoints, strictly 1 [role="timer"]
+    // Continuous 1-screen layout renders all 4 displaySegments (Phần I..IV) with data-exam-content and strictly 1 [role="timer"]
     expect(await screen.findByText("Câu lẻ Phần I số 1")).toBeInTheDocument();
-    const segHeader = document.querySelector("[data-segment-header]") as HTMLElement;
+    const segHeaders = document.querySelectorAll("[data-segment-header]");
+    expect(segHeaders).toHaveLength(4);
+    const segHeader = document.querySelector('[data-segment-code="I"]') as HTMLElement;
     expect(segHeader).toBeInTheDocument();
-    expect(segHeader).toHaveAttribute("data-segment-code", "I");
     expect(segHeader).toHaveAttribute("data-segment-start", "true");
     const segHeading = within(segHeader).getByRole("heading", { level: 2, name: "Phần I" });
     expect(segHeading).toHaveAttribute("data-exam-content");
@@ -251,13 +252,18 @@ describe("phân đoạn hiển thị và chùm cắt ngang ranh giới (AC-9, BS
       expect(within(navAside).getByRole("button", { name: new RegExp(`^${n},`) })).toBeInTheDocument();
     }
 
-    // Jump to Q8 (first slice of shared reading QUESTION_SET in Phần I)
+    // Phần I group holds Q8–9 slice + shared reading passage, excluding Q10..15
+    const segGroup1 = document.querySelector('[data-segment-group="I"]') as HTMLElement;
+    const segGroup2 = document.querySelector('[data-segment-group="II"]') as HTMLElement;
+    expect(segGroup1).toBeInTheDocument();
+    expect(segGroup2).toBeInTheDocument();
+
     await user.click(within(navAside).getByRole("button", { name: /^8,/ }));
-    expect(await screen.findByText("V-SAT English shared reading passage")).toBeInTheDocument();
-    expect(screen.getByText("Câu 8 Đúng/Sai trong chùm chung")).toBeInTheDocument();
-    expect(screen.getByText("Câu 9 Đúng/Sai trong chùm chung")).toBeInTheDocument();
-    expect(screen.queryByText("Câu 10 trắc nghiệm trong chùm chung")).not.toBeInTheDocument();
-    expect(document.querySelector("[data-segment-header]")).toHaveAttribute("data-segment-start", "false");
+    expect(within(navAside).getByRole("button", { name: /^8,/ })).toHaveAttribute("aria-current", "step");
+    expect(within(segGroup1).getByText("V-SAT English shared reading passage")).toBeInTheDocument();
+    expect(within(segGroup1).getByText("Câu 8 Đúng/Sai trong chùm chung")).toBeInTheDocument();
+    expect(within(segGroup1).getByText("Câu 9 Đúng/Sai trong chùm chung")).toBeInTheDocument();
+    expect(within(segGroup1).queryByText("Câu 10 trắc nghiệm trong chùm chung")).not.toBeInTheDocument();
 
     // Answer Q8 Statement 1 -> saves itemId "q-8"
     await waitFor(() => {
@@ -282,15 +288,13 @@ describe("phân đoạn hiển thị và chùm cắt ngang ranh giới (AC-9, BS
       ),
     );
 
-    // Jump to Q10 (second slice of shared reading QUESTION_SET in Phần II)
+    // Phần II group holds Q10–15 slice + its own sticky shared reading passage, excluding Q8 & Q9
     await user.click(within(navAside).getByRole("button", { name: /^10,/ }));
-    expect(await screen.findByText("Câu 10 trắc nghiệm trong chùm chung")).toBeInTheDocument();
-    // Same shared reading passage is still visible in Phần II!
-    expect(screen.getByText("V-SAT English shared reading passage")).toBeInTheDocument();
-    // Q8 & Q9 are NOT rendered in Phần II slice
-    expect(screen.queryByText("Câu 8 Đúng/Sai trong chùm chung")).not.toBeInTheDocument();
-    const seg2Header = document.querySelector("[data-segment-header]") as HTMLElement;
-    expect(seg2Header).toHaveAttribute("data-segment-code", "II");
+    expect(within(navAside).getByRole("button", { name: /^10,/ })).toHaveAttribute("aria-current", "step");
+    expect(within(segGroup2).getByText("Câu 10 trắc nghiệm trong chùm chung")).toBeInTheDocument();
+    expect(within(segGroup2).getByText("V-SAT English shared reading passage")).toBeInTheDocument();
+    expect(within(segGroup2).queryByText("Câu 8 Đúng/Sai trong chùm chung")).not.toBeInTheDocument();
+    const seg2Header = document.querySelector('[data-segment-code="II"]') as HTMLElement;
     expect(seg2Header).toHaveAttribute("data-segment-start", "true");
     expect(within(seg2Header).getByText("Câu 10–15")).toBeInTheDocument();
     expect(within(seg2Header).getByText("6 lệnh hỏi")).toBeInTheDocument();
@@ -501,10 +505,9 @@ describe("phân đoạn hiển thị và chùm cắt ngang ranh giới (AC-9, BS
     );
 
     expect(await screen.findByText("Câu 10 trắc nghiệm trong chùm chung")).toBeInTheDocument();
-    expect(screen.getByText("V-SAT English shared reading passage")).toBeInTheDocument();
-    expect(screen.queryByText("Câu 8 Đúng/Sai trong chùm chung")).not.toBeInTheDocument();
-    const seg2Header = document.querySelector("[data-segment-header]") as HTMLElement;
-    expect(seg2Header).toHaveAttribute("data-segment-code", "II");
+    const navAside1 = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+    expect(within(navAside1).getByRole("button", { name: /^10,/ })).toHaveAttribute("aria-current", "step");
+    const seg2Header = document.querySelector('[data-segment-code="II"]') as HTMLElement;
     expect(within(seg2Header).getByText("Câu 10–15")).toBeInTheDocument();
     childView.unmount();
 
@@ -523,7 +526,7 @@ describe("phân đoạn hiển thị và chùm cắt ngang ranh giới (AC-9, BS
     );
 
     expect(await screen.findByText("Câu 8 Đúng/Sai trong chùm chung")).toBeInTheDocument();
-    expect(screen.getByText("V-SAT English shared reading passage")).toBeInTheDocument();
-    expect(document.querySelector("[data-segment-header]")).toHaveAttribute("data-segment-code", "I");
+    const navAside2 = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
+    expect(within(navAside2).getByRole("button", { name: /^8,/ })).toHaveAttribute("aria-current", "step");
   });
 });

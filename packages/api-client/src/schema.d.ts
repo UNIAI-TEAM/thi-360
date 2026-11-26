@@ -5590,6 +5590,12 @@ export interface components {
              */
             version: number;
         };
+        /** @description Kỳ thi đang hoạt động trong danh mục hệ thống EXAM */
+        CatalogKind: {
+            code: string;
+            nameEn: string;
+            nameVi: string;
+        };
         /** @description Một lựa chọn danh mục (mã + tên theo ngôn ngữ của request) */
         CatalogOption: {
             /** @description Mã giá trị */
@@ -11241,6 +11247,8 @@ export interface components {
         };
         /** @description Bộ lọc của danh mục (TM 10.2): mỗi giá trị kèm số sản phẩm đang bán; giá trị có số 0 không có mặt */
         StorefrontFilters: {
+            /** @description Danh sách kỳ thi đang hoạt động từ danh mục hệ thống EXAM theo đúng thứ tự hiển thị */
+            catalogKinds?: components["schemas"]["CatalogKind"][];
             formats: components["schemas"]["FormatFilter"][];
             kinds: components["schemas"]["KindFilter"][];
             parts: components["schemas"]["PartFilter"][];

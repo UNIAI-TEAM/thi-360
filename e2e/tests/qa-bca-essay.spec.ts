@@ -54,17 +54,7 @@ async function answerAllUnitsInCurrentPart(page: Page, fallbackText: string): Pr
   const fieldset = page.locator("main fieldset[data-attempt-question-fieldset]").first();
   await expect(fieldset).toBeVisible({ timeout: 30_000 });
   await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 30_000 });
-  const nextBtn = page.getByRole("button", { name: "Câu sau" });
-  for (let step = 0; step < 20; step += 1) {
-    await answerCurrentUnit(page, fallbackText);
-    if ((await nextBtn.isVisible()) && (await nextBtn.isEnabled())) {
-      await nextBtn.click();
-      await expect(fieldset).toBeVisible({ timeout: 20_000 });
-      await expect(fieldset).not.toHaveAttribute("disabled", "", { timeout: 20_000 });
-    } else {
-      break;
-    }
-  }
+  await answerCurrentUnit(page, fallbackText);
   await waitForSavedStatus(page);
 }
 

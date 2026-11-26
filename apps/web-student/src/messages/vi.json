@@ -331,6 +331,8 @@
       "takeoverHere": "Tiếp tục tại đây"
     },
     "header": {
+      "collapseHeader": "Thu gọn thanh đầu trang",
+      "expandHeader": "Mở rộng thanh đầu trang",
       "finishPart": "Hoàn thành phần",
       "submit": "Nộp bài"
     },
@@ -430,6 +432,32 @@
       "maxPoints": "{points} điểm",
       "range": "Câu {from}–{to}",
       "ungrouped": "Câu hỏi khác"
+    },
+    "subjects": {
+      "codes": {
+        "ANH": "Tiếng Anh",
+        "CNCN": "Công nghệ (định hướng công nghiệp)",
+        "CNNN": "Công nghệ (định hướng nông nghiệp)",
+        "DIA": "Địa lí",
+        "ECON_LAW": "Giáo dục kinh tế và pháp luật",
+        "GDKTPL": "Giáo dục kinh tế và pháp luật",
+        "HOA": "Hóa học",
+        "INFORMATICS": "Tin học",
+        "LY": "Vật lí",
+        "SCIENTIFIC_THINKING": "Tư duy khoa học",
+        "SINH": "Sinh học",
+        "SU": "Lịch sử",
+        "TECH_AGRICULTURE": "Công nghệ (định hướng nông nghiệp)",
+        "TECH_INDUSTRY": "Công nghệ (định hướng công nghiệp)",
+        "TIENG_ANH": "Tiếng Anh",
+        "TIN": "Tin học",
+        "TOAN": "Toán học",
+        "VAN": "Ngữ văn",
+        "VIETNAMESE": "Tiếng Việt"
+      },
+      "heading": "Môn {name}",
+      "questionCount": "{count, plural, other {# câu}}",
+      "range": "Câu {from}–{to}"
     },
     "tabLock": {
       "badge": "Chỉ xem",
@@ -1640,6 +1668,8 @@
       "viewDetail": "Xem chi tiết"
     },
     "catalog": {
+      "carouselHint": "Vuốt hoặc kéo ngang để xem thêm",
+      "carouselLabel": "Danh sách bài thi",
       "clearFilters": "Xóa bộ lọc",
       "emptyTitle": "Hiện chưa có bài thi nào đang mở bán",
       "errorMessage": "Chưa tải được danh mục bài thi. Bộ lọc của bạn vẫn được giữ.",
@@ -1656,6 +1686,8 @@
       "paginationLabel": "Phân trang danh mục",
       "partAll": "Tất cả phần, môn",
       "partLabel": "Phần/môn",
+      "scrollNext": "Cuộn danh sách sang phải",
+      "scrollPrev": "Cuộn danh sách sang trái",
       "searchLabel": "Tìm theo tên hoặc mã",
       "searchPlaceholder": "Ví dụ: HSA FULL hoặc HSA-FULL-01",
       "showing": "Hiển thị {from}–{to} trong {total} bài thi đang mở bán",

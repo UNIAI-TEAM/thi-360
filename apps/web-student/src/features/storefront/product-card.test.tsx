@@ -188,4 +188,15 @@ describe("ProductCard", () => {
     );
     expect(within(article).getByRole("link", { name: "Xem chi tiết" })).toHaveAttribute("href", "/exams/BO-SP2E-001");
   });
+
+  it("bài thi không có ảnh bìa riêng: dựng bìa mặc định theo hình thức với tên kỳ thi, mã sản phẩm và nhãn -% khi có khuyến mãi (UNI-2810)", () => {
+    const fullWithoutCover: ProductCardData = { ...FULL_CARD, coverUrl: undefined };
+    const { container } = renderWithProviders(<ProductCard product={fullWithoutCover} action={action} />);
+    const article = card(fullWithoutCover.name);
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(within(article).getByText("Danh gia nang luc")).toBeInTheDocument();
+    expect(within(article).getByText("HSA-FULL-01")).toBeInTheDocument();
+    expect(within(article).getByText("-20%")).toBeInTheDocument();
+  });
 });

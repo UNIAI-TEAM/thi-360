@@ -88,7 +88,7 @@ export function PartNavigation({
       <div
         role="tablist"
         aria-label={t("navLabel")}
-        className="flex items-center gap-1.5 overflow-x-auto py-1"
+        className="flex items-center gap-1.5 overflow-x-auto py-0.5"
       >
         {sortedParts.map((part, index) => {
           const ord = part.ord ?? index + 1;
@@ -116,7 +116,7 @@ export function PartNavigation({
               }}
               onKeyDown={(event) => handleTabKeyDown(event, index)}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-caption font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+                "inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-caption font-medium transition-colors pointer-coarse:min-h-11 pointer-coarse:min-w-11",
                 isCurrent
                   ? "relative border-primary-600 bg-primary-50 text-primary-800 after:pointer-events-none after:absolute after:inset-x-2 after:bottom-0 after:border-b-2 after:border-primary-600"
                   : isOpen
@@ -140,8 +140,8 @@ export function PartNavigation({
   }
 
   return (
-    <nav aria-label={t("navLabel")} className="overflow-x-auto py-1">
-      <ol className="flex items-center gap-2">
+    <nav aria-label={t("navLabel")} className="overflow-x-auto py-0.5">
+      <ol className="flex items-center gap-1.5">
         {sortedParts.map((part, index) => {
           const ord = part.ord ?? index + 1;
           const normState = normalizePartState(part.state);
@@ -154,7 +154,7 @@ export function PartNavigation({
               key={part.partId ?? ord}
               aria-current={isCurrent ? "step" : undefined}
               className={cn(
-                "inline-flex shrink-0 items-center gap-2 rounded-lg border px-3 py-1.5 text-caption font-medium",
+                "inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-caption font-medium",
                 isCurrent
                   ? "border-primary-600 bg-primary-50 text-primary-800"
                   : isClosed

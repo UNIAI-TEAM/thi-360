@@ -20,6 +20,22 @@ export interface NavSegmentGroup {
   items: QuestionNavItem[];
 }
 
+export interface SegmentUnitGroup {
+  key: string;
+  segment: AttemptDisplaySegmentView | null;
+  positionOffset: number;
+  units: Array<{ unit: SegmentedQuestionUnit; unitIndex: number }>;
+}
+
+export interface SubjectUnitGroup {
+  key: string;
+  subjectCode: string;
+  fromDisplayNo: number;
+  toDisplayNo: number;
+  questionCount: number;
+  units: Array<{ unit: SegmentedQuestionUnit; unitIndex: number }>;
+}
+
 function sortSegments(
   displaySegments: readonly AttemptDisplaySegmentView[],
 ): AttemptDisplaySegmentView[] {
@@ -215,5 +231,102 @@ export function groupNavItemsBySegment(
   if (ungrouped.length > 0) {
     groups.push({ segment: null, items: ungrouped });
   }
+  return groups;
+}
+
+export function resolveUnitSubjectCode(unit: SegmentedQuestionUnit): string {
+  const direct = unit.parentItem.componentCode?.trim();
+  if (direct) return direct;
+  for (const child of unit.childItems) {
+    const childCode = child.componentCode?.trim();
+    if (childCode) return childCode;
+  }
+  return "";
+}
+
+function countUnitQuestions(unit: SegmentedQuestionUnit): number {
+  if (unit.kind === "QUESTION_SET") {
+    return unit.childItems.reduce((sum, child) => sum + Math.max(1, child.unitCount ?? 1), 0);
+  }
+  return Math.max(1, unit.parentItem.unitCount ?? 1);
+}
+
+/**
+ * Groups contiguous units by their resolved `displaySegment` when `displaySegments` is declared.
+ */
+export function groupUnitsByDisplaySegment(
+  units: readonly SegmentedQuestionUnit[],
+): SegmentUnitGroup[] {
+  const groups: SegmentUnitGroup[] = [];
+  for (let uIdx = 0; uIdx < units.length; uIdx++) {
+    const unit = units[uIdx]!;
+    const segId = segmentIdentity(unit.segment);
+    const prev = groups[groups.length - 1];
+    if (prev && segmentIdentity(prev.segment) === segId) {
+      prev.units.push({ unit, unitIndex: uIdx });
+    } else {
+      groups.push({
+        key: `${segId}::${groups.length}`,
+        segment: unit.segment,
+        positionOffset: unit.positionOffset,
+        units: [{ unit, unitIndex: uIdx }],
+      });
+    }
+  }
+  return groups;
+}
+
+/**
+ * Groups contiguous units by `componentCode` (subject) when a part has no `displaySegments`
+ * and spans 2 or more subjects (or has a multi-subject `choice.subjectCodes`).
+ */
+export function groupUnitsBySubject(
+  units: readonly SegmentedQuestionUnit[],
+  choiceSubjectCodes?: readonly string[],
+): SubjectUnitGroup[] {
+  if (units.length === 0) return [];
+  const distinctCodes = new Set<string>();
+  for (const unit of units) {
+    const code = resolveUnitSubjectCode(unit);
+    if (code) distinctCodes.add(code);
+  }
+  const hasMultiChoiceSubjects = (choiceSubjectCodes?.length ?? 0) >= 2 && distinctCodes.size >= 1;
+  if (distinctCodes.size < 2 && !hasMultiChoiceSubjects) {
+    return [];
+  }
+
+  const groups: SubjectUnitGroup[] = [];
+  for (let uIdx = 0; uIdx < units.length; uIdx++) {
+    const unit = units[uIdx]!;
+    const subjectCode = resolveUnitSubjectCode(unit);
+    if (!subjectCode) {
+      const prev = groups[groups.length - 1];
+      if (prev) {
+        prev.units.push({ unit, unitIndex: uIdx });
+        prev.fromDisplayNo = Math.min(prev.fromDisplayNo, unit.displayStart);
+        prev.toDisplayNo = Math.max(prev.toDisplayNo, unit.displayEnd);
+        prev.questionCount += countUnitQuestions(unit);
+      }
+      continue;
+    }
+
+    const prev = groups[groups.length - 1];
+    if (prev && prev.subjectCode === subjectCode) {
+      prev.units.push({ unit, unitIndex: uIdx });
+      prev.fromDisplayNo = Math.min(prev.fromDisplayNo, unit.displayStart);
+      prev.toDisplayNo = Math.max(prev.toDisplayNo, unit.displayEnd);
+      prev.questionCount += countUnitQuestions(unit);
+    } else {
+      groups.push({
+        key: `${subjectCode}::${groups.length}`,
+        subjectCode,
+        fromDisplayNo: unit.displayStart,
+        toDisplayNo: unit.displayEnd,
+        questionCount: countUnitQuestions(unit),
+        units: [{ unit, unitIndex: uIdx }],
+      });
+    }
+  }
+
   return groups;
 }

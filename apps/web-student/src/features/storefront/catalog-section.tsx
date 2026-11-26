@@ -1,11 +1,19 @@
 "use client";
 
-import { Button, cn, EmptyState, Input, Pagination, Select, type SelectOption, Skeleton } from "@thi360/ui";
+import { Button, cn, EmptyState, focusRing, Input, Pagination, Select, type SelectOption, Skeleton } from "@thi360/ui";
 import { pickName } from "@thi360/web-kit/i18n";
-import { FileText, Search, SearchX, TriangleAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Search, SearchX, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { touchFieldText } from "@/lib/styles";
 import { AccessAction } from "./access-action";
 import {
@@ -25,6 +33,7 @@ import type { Loaded, ProductPage, StorefrontFilters } from "./types";
 
 const ALL = "ALL";
 const SEARCH_DEBOUNCE_MS = 400;
+const SCROLL_STEP_PX = 660;
 
 export type CatalogView =
   | { kind: "loading" }
@@ -34,19 +43,27 @@ export type CatalogView =
   | { kind: "noResults" }
   | { kind: "ready"; page: ProductPage };
 
-const gridClass = "grid grid-cols-[repeat(auto-fill,minmax(min(250px,100%),1fr))] gap-5";
+const cardSlotClass = "flex w-[min(19.5rem,82vw)] shrink-0 snap-start sm:w-80";
 
-/** Khung thẻ có kích thước cố định bằng thẻ thật: trang không nhảy khi dữ liệu về (TM 11.3). */
+/** Khung thẻ có kích thước cố định bằng thẻ thật trên 1 hàng ngang: trang không nhảy khi dữ liệu về (TM 11.3). */
 function CatalogSkeleton({ label }: { label: string }) {
   return (
-    <div role="status" aria-busy="true" aria-label={label} className={gridClass}>
-      {Array.from({ length: 6 }, (_, index) => (
-        <div key={index} className="flex h-[26rem] flex-col overflow-hidden rounded-xl border border-border bg-surface">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label={label}
+      className="flex flex-nowrap gap-5 overflow-hidden py-1"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <div
+          key={index}
+          className="flex h-[26rem] w-[min(19.5rem,82vw)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface/90 sm:w-80"
+        >
           <Skeleton className="aspect-video w-full rounded-none" />
           <div className="flex flex-1 flex-col gap-3 p-4">
             <Skeleton className="h-5 w-1/2" />
             <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-9 w-full rounded-lg" />
             <Skeleton className="mt-auto h-11 w-full rounded-lg" />
           </div>
         </div>
@@ -55,29 +72,212 @@ function CatalogSkeleton({ label }: { label: string }) {
   );
 }
 
-function CatalogGrid({ page }: { page: ProductPage }) {
+function CatalogCarousel({
+  page,
+  showingText,
+  currentPage,
+  onPageChange,
+}: {
+  page: ProductPage;
+  showingText: string;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  const t = useTranslations("storefront.catalog");
   const access = useExamAccess(page.items.map((item) => item.code));
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ active: boolean; startX: number; scrollLeft: number }>({
+    active: false,
+    startX: 0,
+    scrollLeft: 0,
+  });
+  const [scrollUi, setScrollUi] = useState({
+    canPrev: false,
+    canNext: false,
+    hasOverflow: false,
+    thumbWidthPct: 100,
+    thumbLeftPct: 0,
+  });
+
+  const updateScrollUi = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    const hasOverflow = maxScroll > 4;
+    if (!hasOverflow || el.scrollWidth <= 0) {
+      setScrollUi((prev) =>
+        !prev.canPrev && !prev.canNext && !prev.hasOverflow && prev.thumbWidthPct === 100
+          ? prev
+          : { canPrev: false, canNext: false, hasOverflow: false, thumbWidthPct: 100, thumbLeftPct: 0 },
+      );
+      return;
+    }
+    const visibleRatio = Math.max(0.18, Math.min(1, el.clientWidth / el.scrollWidth));
+    const progress = Math.max(0, Math.min(1, el.scrollLeft / maxScroll));
+    const thumbWidthPct = Number((visibleRatio * 100).toFixed(1));
+    const thumbLeftPct = Number((progress * (100 - thumbWidthPct)).toFixed(1));
+    setScrollUi({
+      canPrev: el.scrollLeft > 4,
+      canNext: el.scrollLeft < maxScroll - 4,
+      hasOverflow: true,
+      thumbWidthPct,
+      thumbLeftPct,
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollLeft = 0;
+    const raf = window.requestAnimationFrame(updateScrollUi);
+    const onResize = () => updateScrollUi();
+    window.addEventListener("resize", onResize);
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(updateScrollUi);
+      observer.observe(el);
+    }
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      observer?.disconnect();
+    };
+  }, [page.items, updateScrollUi]);
+
+  function scrollByStep(direction: -1 | 1) {
+    scrollerRef.current?.scrollBy({ left: direction * SCROLL_STEP_PX, behavior: "smooth" });
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      scrollByStep(-1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      scrollByStep(1);
+    }
+  }
+
+  function handleMouseDown(event: MouseEvent<HTMLDivElement>) {
+    const el = scrollerRef.current;
+    if (!el || event.button !== 0) return;
+    if ((event.target as HTMLElement).closest("a,button,input,select")) return;
+    dragRef.current = { active: true, startX: event.pageX, scrollLeft: el.scrollLeft };
+  }
+
+  function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
+    const el = scrollerRef.current;
+    if (!el || !dragRef.current.active) return;
+    event.preventDefault();
+    el.scrollLeft = dragRef.current.scrollLeft - (event.pageX - dragRef.current.startX) * 1.15;
+  }
+
+  function stopDrag() {
+    dragRef.current.active = false;
+  }
+
   return (
-    <div className={gridClass}>
-      {page.items.map((product) => (
-        <ProductCard
-          key={product.code}
-          product={product}
-          action={
-            <AccessAction
-              variant="card"
-              product={{
-                code: product.code,
-                versionNo: product.versionNo,
-                price: product.price,
-                isBundle: isBundleProduct(product),
-              }}
-              view={access.view(product.code)}
-              onReload={access.reload}
+    <div className="flex flex-col gap-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p role="status" className="text-field-label font-medium text-text-secondary tabular-nums">
+          {showingText}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="hidden text-caption text-text-muted sm:inline">{t("carouselHint")}</span>
+          <button
+            type="button"
+            aria-label={t("scrollPrev")}
+            disabled={!scrollUi.canPrev}
+            onClick={() => scrollByStep(-1)}
+            className={cn(
+              "inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface/90 text-text shadow-xs backdrop-blur-xs transition-colors enabled:hover:border-primary-fill enabled:hover:bg-primary-fill enabled:hover:text-on-primary disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+              focusRing,
+            )}
+          >
+            <ChevronLeft aria-hidden className="size-4.5" />
+          </button>
+          <button
+            type="button"
+            aria-label={t("scrollNext")}
+            disabled={!scrollUi.canNext}
+            onClick={() => scrollByStep(1)}
+            className={cn(
+              "inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface/90 text-text shadow-xs backdrop-blur-xs transition-colors enabled:hover:border-primary-fill enabled:hover:bg-primary-fill enabled:hover:text-on-primary disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+              focusRing,
+            )}
+          >
+            <ChevronRight aria-hidden className="size-4.5" />
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollerRef}
+        role="region"
+        aria-label={t("carouselLabel")}
+        tabIndex={0}
+        onScroll={updateScrollUi}
+        onKeyDown={handleKeyDown}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={stopDrag}
+        onMouseLeave={stopDrag}
+        className={cn(
+          "flex snap-x snap-mandatory flex-nowrap gap-5 overflow-x-auto scroll-smooth rounded-xl py-1.5 select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          focusRing,
+        )}
+      >
+        {page.items.map((product) => (
+          <div key={product.code} className={cardSlotClass}>
+            <ProductCard
+              product={product}
+              action={
+                <AccessAction
+                  variant="card"
+                  product={{
+                    code: product.code,
+                    versionNo: product.versionNo,
+                    price: product.price,
+                    isBundle: isBundleProduct(product),
+                  }}
+                  view={access.view(product.code)}
+                  onReload={access.reload}
+                />
+              }
             />
-          }
-        />
-      ))}
+          </div>
+        ))}
+      </div>
+
+      {(scrollUi.hasOverflow || page.totalPages > 1) && (
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
+          {scrollUi.hasOverflow ? (
+            <div aria-hidden="true" className="relative h-1 w-44 rounded-full bg-border-strong/65">
+              <div
+                className="absolute top-0 h-full rounded-full bg-primary-600 transition-[left] duration-150 ease-out motion-reduce:transition-none"
+                style={{
+                  width: `${scrollUi.thumbWidthPct}%`,
+                  left: `${scrollUi.thumbLeftPct}%`,
+                }}
+              />
+            </div>
+          ) : (
+            <span />
+          )}
+
+          {page.totalPages > 1 && (
+            <Pagination
+              className="justify-center"
+              page={currentPage}
+              pageSize={page.size || CATALOG_PAGE_SIZE}
+              total={page.totalItems}
+              onPageChange={onPageChange}
+              labels={{ nav: t("paginationLabel"), range: () => "" }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -106,7 +306,7 @@ export function CatalogResults({
       return (
         <div
           role="alert"
-          className="flex flex-wrap items-center gap-3 rounded-lg border border-danger/30 bg-danger-bg px-4 py-3.5 text-danger"
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/30 bg-danger-bg px-4 py-3.5 text-danger"
         >
           <TriangleAlert aria-hidden className="size-5 shrink-0" />
           <span className="min-w-0 flex-1 basis-52">{t("errorMessage")}</span>
@@ -136,36 +336,15 @@ export function CatalogResults({
       const from = Math.min(page.page * page.size + 1, page.totalItems);
       const to = Math.min((page.page + 1) * page.size, page.totalItems);
       return (
-        <>
-          <p role="status" className="text-text-secondary">
-            {t("showing", { from, to, total: page.totalItems })}
-          </p>
-          <CatalogGrid page={page} />
-          {page.totalPages > 1 && (
-            <Pagination
-              className="justify-center pt-2"
-              page={currentPage}
-              pageSize={page.size || CATALOG_PAGE_SIZE}
-              total={page.totalItems}
-              onPageChange={onPageChange}
-              labels={{ nav: t("paginationLabel"), range: () => "" }}
-            />
-          )}
-        </>
+        <CatalogCarousel
+          page={page}
+          showingText={t("showing", { from, to, total: page.totalItems })}
+          currentPage={currentPage}
+          onPageChange={onPageChange}
+        />
       );
     }
   }
-}
-
-function FilterField({ id, label, children, className }: { id: string; label: string; children: ReactNode; className: string }) {
-  return (
-    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-field-label font-medium text-text-secondary">
-        {label}
-      </label>
-      {children}
-    </div>
-  );
 }
 
 function partValue(kind: string, code: string) {
@@ -226,10 +405,11 @@ export function CatalogSection({
   }, [query.q]);
 
   const filtersData = filters.status === "ok" ? filters.data : null;
-  const kindOptions: SelectOption[] = [
-    { value: ALL, label: t("kindAll") },
-    ...(filtersData?.kinds ?? []).map((kind) => ({ value: kind.code, label: kind.code })),
-  ];
+  const kindItems =
+    filtersData?.catalogKinds && filtersData.catalogKinds.length > 0
+      ? filtersData.catalogKinds
+      : (filtersData?.kinds ?? []);
+
   const formatOptions: SelectOption[] = [
     { value: ALL, label: t("formatAll") },
     ...CATALOG_FORMATS.filter((code) => (filtersData?.formats ?? []).some((item) => item.code === code)).map((code) => ({
@@ -296,11 +476,20 @@ export function CatalogSection({
     document.getElementById(CATALOG_ANCHOR_ID)?.scrollIntoView({ block: "start" });
   }
 
+  const chipClass = (active: boolean) =>
+    cn(
+      "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 py-1 text-field-label font-semibold transition-colors pointer-coarse:min-h-11",
+      active
+        ? "border-primary-fill bg-primary-fill text-on-primary shadow-xs"
+        : "border-border bg-surface/85 text-text-secondary hover:border-primary-200 hover:bg-primary-50 hover:text-primary-text",
+      focusRing,
+    );
+
   return (
     <section
       id={CATALOG_ANCHOR_ID}
       aria-labelledby="catalog-title"
-      className="mx-auto flex w-full max-w-[1170px] scroll-mt-4 flex-col gap-5 px-4 py-14 sm:px-6"
+      className="mx-auto flex w-full scroll-mt-4 flex-col gap-5 px-4 py-14 sm:w-[90%] sm:max-w-[90%] sm:px-0"
     >
       <div className="flex items-center gap-3">
         <span aria-hidden className="h-7 w-1 rounded-sm bg-primary-fill" />
@@ -314,36 +503,64 @@ export function CatalogSection({
           role="search"
           aria-label={t("filtersLabel")}
           onSubmit={(event) => event.preventDefault()}
-          className="flex flex-col gap-3.5 rounded-xl border border-border bg-surface p-5"
+          className="flex flex-col gap-3.5 rounded-2xl border border-border bg-surface/82 p-4 shadow-xs backdrop-blur-md sm:p-5"
         >
-          <div className="flex flex-wrap items-end gap-3">
-            <FilterField id="catalog-q" label={t("searchLabel")} className="flex-[2_1_17.5rem]">
+          {kindItems.length > 0 && (
+            <div role="group" aria-label={t("kindLabel")} className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={!query.kind}
+                onClick={() => go({ ...query, kind: "", part: "", page: 1 })}
+                className={chipClass(!query.kind)}
+              >
+                <span aria-hidden className="size-1.5 rounded-full bg-current opacity-80" />
+                {t("kindAll")}
+              </button>
+              {kindItems.map((kind) => {
+                const active = query.kind === kind.code;
+                return (
+                  <button
+                    key={kind.code}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => go({ ...query, kind: kind.code, part: "", page: 1 })}
+                    className={chipClass(active)}
+                  >
+                    <span aria-hidden className="size-1.5 rounded-full bg-current opacity-80" />
+                    {kind.code}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2.5",
+              kindItems.length > 0 && "border-t border-border/80 pt-3.5",
+            )}
+          >
+            <div className="min-w-0 flex-[2_1_16rem]">
+              <label htmlFor="catalog-q" className="sr-only">
+                {t("searchLabel")}
+              </label>
               <Input
                 id="catalog-q"
                 type="search"
-                size="lg"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t("searchPlaceholder")}
                 leadingIcon={<Search />}
                 className={touchFieldText}
               />
-            </FilterField>
-            <FilterField id="catalog-kind" label={t("kindLabel")} className="flex-[1_1_9.5rem]">
-              <Select
-                id="catalog-kind"
-                size="lg"
-                options={kindOptions}
-                value={query.kind || ALL}
-                onValueChange={(value) =>
-                  go({ ...query, kind: value === ALL ? "" : value, part: "", page: 1 })
-                }
-              />
-            </FilterField>
-            <FilterField id="catalog-format" label={t("formatLabel")} className="flex-[1_1_10.5rem]">
+            </div>
+
+            <div className="min-w-0 flex-[1_1_10.5rem]">
+              <label htmlFor="catalog-format" className="sr-only">
+                {t("formatLabel")}
+              </label>
               <Select
                 id="catalog-format"
-                size="lg"
                 aria-describedby="catalog-format-hint"
                 options={formatOptions}
                 value={query.format || ALL}
@@ -351,24 +568,43 @@ export function CatalogSection({
                   go({ ...query, format: value === ALL ? "" : (value as CatalogQuery["format"]), page: 1 })
                 }
               />
-            </FilterField>
-            <FilterField id="catalog-part" label={t("partLabel")} className="flex-[1_1_10.5rem]">
-              <Select id="catalog-part" size="lg" options={partOptions} value={partSelected} onValueChange={onPartChange} />
-            </FilterField>
-            <FilterField id="catalog-sort" label={t("sortLabel")} className="flex-[1_1_9.5rem]">
+            </div>
+
+            <div className="min-w-0 flex-[1_1_11rem]">
+              <label htmlFor="catalog-part" className="sr-only">
+                {t("partLabel")}
+              </label>
+              <Select
+                id="catalog-part"
+                options={partOptions}
+                value={partSelected}
+                onValueChange={onPartChange}
+              />
+            </div>
+
+            <div className="min-w-0 flex-[1_1_9.5rem]">
+              <label htmlFor="catalog-sort" className="sr-only">
+                {t("sortLabel")}
+              </label>
               <Select
                 id="catalog-sort"
-                size="lg"
                 options={CATALOG_SORTS.map((sort) => ({ value: sort, label: t(`sort.${sort}`) }))}
                 value={query.sort}
                 onValueChange={(value) => go({ ...query, sort: value as CatalogQuery["sort"], page: 1 })}
               />
-            </FilterField>
-            <Button type="button" variant="secondary" className="h-12" onClick={clearFilters}>
+            </div>
+
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-10 pointer-coarse:min-h-11"
+              onClick={clearFilters}
+            >
               {t("clearFilters")}
             </Button>
           </div>
-          <p id="catalog-format-hint" className="text-field-label text-text-secondary">
+
+          <p id="catalog-format-hint" className="text-caption text-text-secondary">
             <strong className="font-semibold text-text-secondary">{t("formatHintLabel")}</strong> {t("formatHint")}
           </p>
         </form>
