@@ -18,6 +18,7 @@ import org.springframework.core.io.ClassPathResource;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.DiscountApplied;
 import vn.unicom.thi360.commerce.pricing.PriceCalculator.QuoteCalculation;
 import vn.unicom.thi360.commerce.pricing.PricingEngine.AutoCandidate;
+import vn.unicom.thi360.commerce.pricing.PricingEngine.AutoEvaluation;
 import vn.unicom.thi360.commerce.pricing.PricingEngine.VoucherCandidate;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
 
@@ -213,6 +214,58 @@ class PriceCalculatorTest {
         assertThat(noFloor.finalPrice()).isEqualTo(2_000L);
         assertThat(noFloor.promotionDiscount()).isEqualTo(18_000L);
         assertThat(noFloor.promotionFloored()).isFalse();
+    }
+
+    @Test
+    void autoPromotionDiscountingWholePriceMakesItFree() {
+        long minAmount = 10_000L;
+
+        // UNI-2817: 100% auto on 49,000 VND -> free (0 VND), not clamped up to the VNPAY minimum
+        QuoteCalculation full = PricingEngine.calculate(
+                49_000L, List.of(autoPercent("100%", 100, null, T1)), null, minAmount);
+        assertThat(full.finalPrice()).isZero();
+        assertThat(full.promotionDiscount()).isEqualTo(49_000L);
+        assertThat(full.promotionFloored()).isFalse();
+        assertThat(full.discountApplied()).isEqualTo(DiscountApplied.PROMOTION_ONLY);
+        assertThat(full.promotion()).isNotNull();
+
+        // Amount discount equal to, or above, the list price is also free
+        QuoteCalculation exactAmount = PricingEngine.calculate(
+                19_000L, List.of(autoAmount("-19k", 19_000L, T1)), null, minAmount);
+        assertThat(exactAmount.finalPrice()).isZero();
+        assertThat(exactAmount.promotionFloored()).isFalse();
+        QuoteCalculation aboveList = PricingEngine.calculate(
+                19_000L, List.of(autoAmount("-50k", 50_000L, T1)), null, minAmount);
+        assertThat(aboveList.finalPrice()).isZero();
+        assertThat(aboveList.promotionDiscount()).isEqualTo(19_000L);
+
+        // List price below the minimum: a full discount is still free
+        QuoteCalculation cheapList = PricingEngine.calculate(
+                5_000L, List.of(autoPercent("100%", 100, null, T1)), null, minAmount);
+        assertThat(cheapList.finalPrice()).isZero();
+        assertThat(cheapList.promotionFloored()).isFalse();
+
+        // 1 VND left is still clamped up to the minimum and flagged
+        QuoteCalculation oneLeft = PricingEngine.calculate(
+                49_000L, List.of(autoAmount("-48,999", 48_999L, T1)), null, minAmount);
+        assertThat(oneLeft.finalPrice()).isEqualTo(10_000L);
+        assertThat(oneLeft.promotionFloored()).isTrue();
+
+        // The free auto promotion beats a smaller one and leaves nothing for a voucher
+        QuoteCalculation withVoucher = PricingEngine.calculate(
+                49_000L,
+                List.of(autoPercent("100%", 100, null, T1), autoAmount("-5k", 5_000L, T2)),
+                voucherAmount("V10K", 10_000L, true),
+                minAmount);
+        assertThat(withVoucher.finalPrice()).isZero();
+        assertThat(withVoucher.promotion().name()).isEqualTo("100%");
+        assertThat(withVoucher.voucherDiscount()).isZero();
+        assertThat(withVoucher.voucher()).isNull();
+
+        AutoEvaluation eval = PricingEngine.evaluateAuto(
+                49_000L, autoPercent("100%", 100, null, T1), minAmount);
+        assertThat(eval.promoPrice()).isZero();
+        assertThat(eval.floored()).isFalse();
     }
 
     @Test
