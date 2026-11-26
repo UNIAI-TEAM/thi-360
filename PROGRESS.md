@@ -2,6 +2,18 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### App học viên native: merge, deploy demo và sửa proxy Bearer (2026-11-26, `UNI-2785`, `UNI-2816`)
+
+- **Merge:** PR #216 (`integration/app-hoc-vien` → `develop`) merge commit `872db171`, sau khi gộp `develop` (#201, #203) vào nhánh. CI xanh; shard E2E 1 đỏ lần đầu do runner không tải được Maven, chạy lại đạt.
+- **Demo `https://thi360.zone17.click` chạy `872db171`:**
+  - Keycloak demo có client `thi360-mobile`; realm `thi-360` đặt phiên offline không dùng 7 ngày, tối đa 30 ngày; phiên web giữ 8 giờ.
+  - nginx chuyển `/.well-known/(assetlinks.json|apple-app-site-association)` và `/mobile/` tới web học viên.
+  - Đã đặt `THI360_ANDROID_PACKAGE`, `THI360_ANDROID_CERT_SHA256` (kho khóa debug dùng chung), `THI360_KC_MOBILE_CLIENT_ID/SECRET`. `THI360_IOS_APP_ID` còn trống, chờ Apple Team ID.
+  - Kiểm bằng API: `mobile/login` 200 (offline token, `refreshExpiresIn=604800`), `mobile/refresh` 200, `mobile/logout` 204, refresh sau logout 401 `SESSION_REVOKED`, tài khoản `MANAGE` 403 `APP_STUDENT_ONLY`.
+  - Emulator Android `Pixel_7_API_36`, bản `demo`: `pm get-app-links` báo `thi360.zone17.click: verified`; link `/reset-password?token=…` mở thẳng màn "Đặt mật khẩu mới"; đăng nhập `student01`, tab Tài khoản hiện đúng hồ sơ, đăng xuất được.
+- **Lỗi tìm thấy (`UNI-2816`):** proxy `/api` của web (`packages/web-kit/src/proxy.ts`) không chuyển tiếp `Authorization`, nên app gọi API cần đăng nhập qua tên miền web bị 401. Bản sửa: chuyển tiếp `Authorization` khi đúng dạng `Bearer <token>`, request có Bearer không tự làm mới phiên bằng cookie. Test `proxy.test.ts` thêm 5 ca; `@thi360/web-kit` 67/67, `@thi360/web-student` 557/557, typecheck và lint sạch. Demo đang chặn tạm bằng quy tắc nginx (request `/api/` có Bearer đi thẳng backend); gỡ quy tắc này sau khi bản sửa lên demo.
+- **Còn lại:** Apple Team ID cho Universal Links iOS; kiểm trên máy thật (sinh trắc học, Keystore/Keychain, máy gập, gỡ và cài lại, TalkBack/VoiceOver) theo mục 6 của `docs/acceptance/app-hoc-vien.md`.
+
 ### Hoàn tất đợt chạy App học viên native Android/iOS — Sóng 1–5 nghiệm thu xong (2026-11-26, `UNI-2785` / `UNI-2809`)
 
 - **Tiến độ tổng đợt (`62/62` điểm trên `integration/app-hoc-vien` + `feature/UNI-2809-qa-app-hoc-vien`):**

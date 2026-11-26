@@ -181,6 +181,77 @@ describe("proxyApiRequest header forwarding", () => {
   });
 });
 
+describe("proxyApiRequest Authorization: Bearer của app học viên (UNI-2816)", () => {
+  const JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl";
+
+  beforeEach(() => {
+    resetSessionRefreshRegistry();
+  });
+
+  it("chuyển tiếp Authorization dạng Bearer tới upstream", async () => {
+    const res = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: { authorization: `Bearer ${JWT}` },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(callUrl(0)).toBe(`${API}/api/v1/me`);
+    expect(lastHeaders().get("authorization")).toBe(`Bearer ${JWT}`);
+    expect(res.status).toBe(200);
+  });
+
+  it("không chuyển tiếp Authorization dạng khác Bearer hoặc sai định dạng", async () => {
+    for (const value of ["Basic dXNlcjpwYXNz", "Bearer", "Bearer a b", "Token abc"]) {
+      fetchMock.mockClear();
+      await handlers.GET(
+        new NextRequest("http://localhost:3000/api/v1/me", { headers: { authorization: value } }),
+        context("v1", "me"),
+      );
+      expect(lastHeaders().get("authorization"), value).toBeNull();
+    }
+  });
+
+  it("không chuyển tiếp Authorization khi nó nằm trong header hop-by-hop Connection", async () => {
+    await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: { authorization: `Bearer ${JWT}`, connection: "authorization" },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(lastHeaders().get("authorization")).toBeNull();
+  });
+
+  it("request có Bearer không tự làm mới phiên bằng cookie, kể cả khi thiếu thi360_at", async () => {
+    await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: { authorization: `Bearer ${JWT}`, cookie: "thi360_rt=rt1; thi360_xsrf=x1" },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(callUrl(0)).toBe(`${API}/api/v1/me`);
+  });
+
+  it("backend trả 401 cho request có Bearer: trả nguyên 401, không làm mới, không gửi lại", async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ code: "UNAUTHENTICATED" }, { status: 401 }));
+
+    const res = await handlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: { authorization: `Bearer ${JWT}`, cookie: "thi360_at=at1; thi360_rt=rt1" },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(res.status).toBe(401);
+    expect(res.headers.getSetCookie()).toEqual([]);
+  });
+});
+
 describe("proxyApiRequest multipart stream", () => {
   it("stream body multipart/form-data 4 MB (không parse JSON) kèm content-type và idempotency-key", async () => {
     const fourMb = 4 * 1024 * 1024;

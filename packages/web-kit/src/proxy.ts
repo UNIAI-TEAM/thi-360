@@ -12,6 +12,8 @@ import {
 const DEV_API_URL = "http://localhost:8080";
 const UPSTREAM_HEADERS_TIMEOUT_MS = 60_000;
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
+/** `Authorization: Bearer <token68>` theo RFC 6750; app học viên native gọi API qua tên miền web bằng dạng này. */
+const BEARER_PATTERN = /^Bearer [A-Za-z0-9._~+/-]+=*$/i;
 
 const FORWARDED_REQUEST_HEADERS = [
   "accept",
@@ -154,6 +156,16 @@ export async function proxyApiRequest(
   headers.set("accept-language", locale);
   headers.set("x-request-id", requestId);
 
+  // App học viên native (UNI-2785) xác thực bằng Bearer thay cho cookie. Chỉ chuyển tiếp đúng dạng Bearer;
+  // dạng khác (Basic, chuỗi lạ) bị bỏ như mọi header ngoài danh sách.
+  const authorization = requestHopOnly.has("authorization")
+    ? null
+    : (request.headers.get("authorization")?.trim() ?? null);
+  const bearer = authorization && BEARER_PATTERN.test(authorization) ? authorization : null;
+  if (bearer) {
+    headers.set("authorization", bearer);
+  }
+
   const clientIp = normalizeIpLiteral(
     options.resolveClientIp ? options.resolveClientIp(request) : resolveIncomingClientIp(request),
   );
@@ -165,7 +177,9 @@ export async function proxyApiRequest(
   // Làm mới phiên ở phía máy chủ khi access token hết hạn mà refresh token còn hạn (spec: proxy "tự refresh").
   // Trình duyệt tự bỏ cookie `thi360_at` đúng lúc token hết hạn, nên thiếu cookie này mà còn `thi360_rt`
   // là dấu hiệu chắc chắn: làm mới trước rồi mới gửi, nhờ đó thân request chỉ phải đọc một lần.
+  // Request mang Bearer tự quản lý token (app tự làm mới qua `/auth/mobile/refresh`), nên không làm mới bằng cookie.
   const canRefresh =
+    !bearer &&
     !Object.hasOwn(SESSION_ENDPOINTS, path.join("/")) &&
     Boolean(readCookieValue(cookieHeader, REFRESH_TOKEN_COOKIE_NAME));
   const clientXsrfHeader = request.headers.get(XSRF_HEADER_NAME);
