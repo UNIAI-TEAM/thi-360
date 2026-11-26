@@ -11,6 +11,17 @@
   - Unit test `PriceCalculatorTest.autoPromotionDiscountingWholePriceMakesItFree` chạy đỏ trước khi sửa (nhận 10.000, chờ 0), xanh sau khi sửa. Nhóm test pricing, promotion, order đều qua.
   - Thêm IT `PromotionAdminDataIT.autoPromotionRemovingWholePriceHasNoCapWarning` và `FreeOrderIT.autoPromotionRemovingWholePriceCreatesFreeOrderWithoutPayment`. Hai IT này cần Docker nên chạy trên CI.
 - **Tiếp theo:** PR vào `develop`, chờ CI, merge, deploy demo, kiểm khuyến mãi "trừ 100%" trên demo không còn cảnh báo.
+### Màn khuyến mãi quản trị: gộp một danh sách, cảnh báo thay đổi chưa lưu, bỏ trường trạng thái khi tạo (2026-11-26, `UNI-2819`)
+
+- **Nguồn:** ba bug BA báo trên uniworkos (sub-task của PBI-08 `UNI-1637` bên uniworkos): UNI-1713, UNI-1714, UNI-1715.
+- **Đã sửa (chỉ web quản trị, API giữ nguyên vì `GET /api/v1/admin/promotions` đã nhận `kind` để trống):**
+  - UNI-1713: bỏ hai tab; một bảng gộp có cột "Loại khuyến mãi" và dải lọc nhanh Tất cả loại / Tự động / Mã ưu đãi, đồng bộ `?kind=` trên URL; nút tạo đi `/promotions/new` khi xem tất cả, giữ `?kind=` khi đang lọc; "Xóa bộ lọc" trả về Tất cả loại.
+  - UNI-1714: form tạo và sửa đã thay đổi thì Hủy, Quay lại, bấm mục menu khác đều hỏi "Rời trang khi chưa lưu?"; đóng hay tải lại tab dùng hộp thoại của trình duyệt. Dùng lại bộ chặn của màn đề thi, chuyển sang `features/shell/unsaved-changes-guard.tsx`, chuỗi chuyển sang `common.unsaved`.
+  - UNI-1715: tạo mới không còn trường Trạng thái, luôn gửi `ACTIVE`; trang sửa vẫn đổi được.
+  - Đặc tả `docs/specs/2026-11-16-thuong-mai-pbi-05-09.md` mục màn admin Khuyến mãi đã ghi theo; e2e `promotions.spec.ts`, `qa-voucher-100.spec.ts` chuyển từ tab sang dải lọc.
+- **Kiểm chứng:** `vitest run src/features/promotions` 63/63; test chặn rời trang của màn đề thi vẫn qua; `typecheck`, `lint` sạch.
+- **Chưa làm:** nút Back của trình duyệt (popstate) chưa chặn được trong App Router; chỉ chặn liên kết trong trang và đóng/tải lại tab.
+- **Tiếp theo:** PR vào `develop`, CI, merge, deploy demo, chuyển ba task uniworkos sang In review.
 ### App học viên native: merge, deploy demo và sửa proxy Bearer (2026-11-26, `UNI-2785`, `UNI-2816`)
 
 - **Merge:** PR #216 (`integration/app-hoc-vien` → `develop`) merge commit `872db171`, sau khi gộp `develop` (#201, #203) vào nhánh. CI xanh; shard E2E 1 đỏ lần đầu do runner không tải được Maven, chạy lại đạt.

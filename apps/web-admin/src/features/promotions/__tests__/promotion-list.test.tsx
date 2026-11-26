@@ -51,9 +51,24 @@ afterEach(() => {
 });
 
 describe("PromotionListView (AC-1, AC-7, AC-13, AC-14)", () => {
-  it("AC-1: chuyển tab Tự động / Mã ưu đãi, lọc trạng thái và debounce tìm kiếm 300ms (xóa tức thì)", async () => {
+  it("AC-1 & UNI-1713: một danh sách gộp có cột Loại khuyến mãi, lọc nhanh Tự động / Mã ưu đãi, lọc trạng thái và debounce tìm kiếm 300ms", async () => {
+    const autoItem = promotionSummaryFixture({ id: PROMO_ID_1, kind: "AUTO", name: "Tự động HSA" });
     fakeApi.get(PROMO_LIST_PATH, (call) => {
       const q = (call.options?.params as { query?: Record<string, unknown> })?.query ?? {};
+      if (q.kind === undefined) {
+        return ok(
+          pageOfPromotions([
+            autoItem,
+            promotionSummaryFixture({
+              id: PROMO_ID_2,
+              kind: "VOUCHER",
+              name: "Voucher Tháng 11",
+              code: "NOV2026",
+              audience: "ALL",
+            }),
+          ]),
+        );
+      }
       if (q.kind === "VOUCHER") {
         return ok(
           pageOfPromotions([
@@ -81,15 +96,32 @@ describe("PromotionListView (AC-1, AC-7, AC-13, AC-14)", () => {
     const user = userEvent.setup();
     renderWithPermissions(<PromotionListView />);
 
+    // Mặc định: không còn tab, một bảng gộp cả hai loại, gọi API không kèm kind.
     expect(await screen.findByText("Tự động HSA")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Tạo khuyến mãi" })).toBeInTheDocument();
-    expect(fakeApi.calls[0]?.options).toMatchObject({
-      params: { query: { kind: "AUTO", page: 0, size: 20 } },
-    });
+    expect(screen.getByText("Voucher Tháng 11")).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Loại khuyến mãi" })).toBeInTheDocument();
+    const rows = screen.getAllByRole("row");
+    expect(within(rows.find((r) => within(r).queryByText("Tự động HSA"))!).getByText("Tự động")).toBeInTheDocument();
+    expect(within(rows.find((r) => within(r).queryByText("Voucher Tháng 11"))!).getByText("Mã ưu đãi")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Tất cả loại" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("link", { name: "Tạo khuyến mãi" })).toHaveAttribute("href", "/promotions/new");
+    const firstQuery = (fakeApi.calls[0]?.options?.params as { query?: Record<string, unknown> })?.query ?? {};
+    expect(firstQuery).toMatchObject({ page: 0, size: 20 });
+    expect(firstQuery.kind).toBeUndefined();
 
-    await user.click(screen.getByRole("tab", { name: "Mã ưu đãi" }));
+    // Lọc nhanh Tự động
+    await user.click(screen.getByRole("radio", { name: "Tự động" }));
+    await waitFor(() => expect(screen.queryByText("Voucher Tháng 11")).not.toBeInTheDocument());
+    expect(screen.getByText("Tự động HSA")).toBeInTheDocument();
+    expect(mockReplace).toHaveBeenLastCalledWith("/promotions?kind=AUTO", { scroll: false });
+    expect(screen.getByRole("link", { name: "Tạo khuyến mãi" })).toHaveAttribute("href", "/promotions/new?kind=AUTO");
+
+    // Lọc nhanh theo mã
+    await user.click(screen.getByRole("radio", { name: "Mã ưu đãi" }));
     expect(await screen.findByText("Voucher Tháng 11")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Tạo voucher" })).toBeInTheDocument();
+    expect(screen.queryByText("Tự động HSA")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tạo voucher" })).toHaveAttribute("href", "/promotions/new?kind=VOUCHER");
     expect(screen.getByText("NOV2026")).toBeInTheDocument();
 
     // Lọc trạng thái: Sắp diễn ra -> gửi status=ACTIVE & state=UPCOMING
@@ -452,7 +484,7 @@ describe("PromotionListView (AC-1, AC-7, AC-13, AC-14)", () => {
         c.path === PROMO_LIST_PATH &&
         (c.options?.params as { query?: Record<string, unknown> })?.query?.page === 1,
     );
-    expect(page2Call?.options?.params).toMatchObject({ query: { kind: "AUTO", page: 1, size: 20 } });
+    expect(page2Call?.options?.params).toMatchObject({ query: { page: 1, size: 20 } });
 
     await user.click(screen.getByRole("button", { name: "Thao tác: KM duy nhat trang 2" }));
     await user.click(await screen.findByRole("menuitem", { name: "Xóa" }));
@@ -465,6 +497,26 @@ describe("PromotionListView (AC-1, AC-7, AC-13, AC-14)", () => {
     });
     const searchInput = screen.getByRole("textbox", { name: "Tìm khuyến mãi theo tên hoặc mã" });
     expect(searchInput).toHaveFocus();
+  });
+
+  it("UNI-1713: mở /promotions?kind=VOUCHER chọn sẵn Mã ưu đãi; Xóa bộ lọc trả về Tất cả loại", async () => {
+    window.history.replaceState(null, "", "/promotions?kind=VOUCHER");
+    fakeApi.get(PROMO_LIST_PATH, ok(pageOfPromotions([], 0, 0, 20)));
+
+    const user = userEvent.setup();
+    renderWithPermissions(<PromotionListView />);
+
+    expect(await screen.findByText("Không có kết quả phù hợp")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Mã ưu đãi" })).toHaveAttribute("aria-checked", "true");
+    expect(fakeApi.calls[0]?.options).toMatchObject({ params: { query: { kind: "VOUCHER" } } });
+
+    await user.click(screen.getByRole("button", { name: "Xóa bộ lọc" }));
+    expect(screen.getByRole("radio", { name: "Tất cả loại" })).toHaveAttribute("aria-checked", "true");
+    expect(mockReplace).toHaveBeenLastCalledWith("/promotions", { scroll: false });
+    await waitFor(() => {
+      const q = (fakeApi.calls.at(-1)?.options?.params as { query?: Record<string, unknown> })?.query ?? {};
+      expect(q.kind).toBeUndefined();
+    });
   });
 
   it("R1-37: danh sách rỗng phân biệt quyền tạo mới và chỉ xem", async () => {
@@ -480,7 +532,7 @@ describe("PromotionListView (AC-1, AC-7, AC-13, AC-14)", () => {
     expect(screen.queryByRole("link", { name: "Tạo khuyến mãi" })).not.toBeInTheDocument();
   });
 
-  it("R1-13/R1-19 & R1-38 & R1-43 & R1-55: hủy debounce khi đổi tab, xử lý mất mạng, phím mũi tên radiogroup và xóa liveMessage", async () => {
+  it("R1-13/R1-19 & R1-38 & R1-43 & R1-55: hủy debounce khi đổi loại, xử lý mất mạng, phím mũi tên radiogroup và xóa liveMessage", async () => {
     fakeApi.get(PROMO_LIST_PATH, (call) => {
       const q = (call.options?.params as { query?: Record<string, unknown> })?.query ?? {};
       return ok(
@@ -519,10 +571,10 @@ describe("PromotionListView (AC-1, AC-7, AC-13, AC-14)", () => {
     expect(screen.getByRole("radio", { name: "Đang chạy" })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: "Đang chạy" })).toHaveFocus();
 
-    // 3) R1-13/R1-19: Gõ từ khóa rồi chuyển tab ngay trước 300ms không bị bắn 2 đợt hoặc kẹt timer cũ
+    // 3) R1-13/R1-19: Gõ từ khóa rồi đổi loại khuyến mãi ngay trước 300ms không bị bắn 2 đợt hoặc kẹt timer cũ
     const searchInput = screen.getByRole("textbox", { name: "Tìm khuyến mãi theo tên hoặc mã" });
     await user.type(searchInput, "ABC");
-    await user.click(screen.getByRole("tab", { name: "Mã ưu đãi" }));
+    await user.click(screen.getByRole("radio", { name: "Mã ưu đãi" }));
     expect(await screen.findByText("Voucher ABC")).toBeInTheDocument();
 
     const voucherCalls = fakeApi.calls.filter(

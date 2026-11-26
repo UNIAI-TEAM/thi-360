@@ -79,7 +79,7 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
         await expect(menu.getByRole("link", { name: visible })).toBeVisible();
       }
 
-      await page.getByRole("tab", { name: "Mã ưu đãi" }).click();
+      await page.getByRole("radio", { name: "Mã ưu đãi" }).click();
       await page.locator("main").getByRole("link", { name: "Tạo voucher" }).first().click();
       await expect(page).toHaveURL(/\/promotions\/new\?kind=VOUCHER/);
 
@@ -105,9 +105,9 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
       await expect(page.getByRole("heading", { name: `${TAG}-VOUCHER` })).toBeVisible();
       await expect(page.getByText(generatedCode).first()).toBeVisible();
 
-      // Quay lai danh sach tab Ma uu dai -> voucher vua tao xuat hien
+      // Quay lai danh sach, loc Ma uu dai -> voucher vua tao xuat hien
       await page.getByRole("link", { name: "Quay lại danh sách" }).click();
-      await page.getByRole("tab", { name: "Mã ưu đãi" }).click();
+      await page.getByRole("radio", { name: "Mã ưu đãi" }).click();
       await expect(page.getByRole("link", { name: `${TAG}-VOUCHER` })).toBeVisible();
     } finally {
       await cleanupPromotion(api, createdId);
@@ -239,7 +239,7 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
       await expect(menu.getByRole("link", { name: "Khuyến mãi" })).toHaveCount(0);
 
       await page.goto(`${ADMIN_URL}/promotions`);
-      await expect(page.getByRole("tab", { name: "Khuyến mãi tự động" })).toHaveCount(0);
+      await expect(page.getByRole("radiogroup", { name: "Lọc theo loại khuyến mãi" })).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
     } finally {
       if (userId) {
@@ -347,7 +347,7 @@ test.describe("FA-2: ảnh màn hình khuyến mãi (ma trận 2 khổ x 2 nền
     test(`ảnh màn: ${cell.width}px ${cell.mode} ${cell.lang}`, async () => {
       const { context, page } = await openCell(cell);
       try {
-        // 1. List (populated AUTO tab)
+        // 1. List (danh sach gop)
         await page.goto(`${ADMIN_URL}/promotions`);
         await expect(
           page.getByRole("heading", { name: cell.lang === "vi" ? "Khuyến mãi" : "Promotions" }),
