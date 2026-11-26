@@ -33,6 +33,18 @@ afterEach(() => {
 });
 
 describe("web-student proxy /api/[...path]", () => {
+  it("chuyển tiếp Authorization: Bearer của app học viên, bỏ dạng khác Bearer (UNI-2816)", async () => {
+    await GET(
+      request("v1/me", { headers: { authorization: "Bearer eyJhbGciOiJSUzI1NiJ9.e30.c2ln", host: "evil.example" } }),
+      context("v1", "me"),
+    );
+    expect(lastCall().headers.get("authorization")).toBe("Bearer eyJhbGciOiJSUzI1NiJ9.e30.c2ln");
+    expect(lastCall().headers.get("host")).toBeNull();
+
+    await GET(request("v1/me", { headers: { authorization: "Basic dXNlcjpwYXNz" } }), context("v1", "me"));
+    expect(lastCall().headers.get("authorization")).toBeNull();
+  });
+
   it("chuyển tiếp request tới backend và giữ Set-Cookie riêng lẻ", async () => {
     const upstream = new Response(JSON.stringify({ redirectTo: "http://localhost:3000/home", mustChangePassword: false }), {
       status: 200,
