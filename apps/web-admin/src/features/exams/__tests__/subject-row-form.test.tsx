@@ -254,7 +254,7 @@ describe("Danh sách dòng: ẩn khối lớp (R-11)", () => {
     ["VSAT", "DIA", true, {}],
     ["VSAT", "ANH", true, {}],
     ["THPTQG", "TOAN", false, {}],
-    ["QDA", "ANH", false, {}],
+    ["QDA", "ANH", true, {}],
     ["BCA", "VAN", false, {}],
   ];
 

@@ -18,6 +18,8 @@ type MatrixKindSlot = ComponentType<MatrixBlockProps>;
 
 const kindSlots: Record<string, { slot: MatrixKindSlot; options: MatrixKindSlotOptionsResolver }> = {
   HSA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
+  QDA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
+  BCA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
 };
 
 export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, options: MatrixKindSlotOptionsResolver = {}): () => void {
@@ -79,14 +81,16 @@ export function MatrixForm(props: SubjectFormRendererProps) {
   if (!entry) return null;
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
-  // Khi sửa Cấu trúc câu hay bất kỳ phần nào của HSA MT, tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
-  // Với môn MT ẩn khối lớp (HSA/QDA Sử, Địa), xóa `byGrade` cũ khi người dùng chỉnh sửa để không phát sinh lỗi ngầm lệch tổng khối lớp.
+  // Khi sửa Cấu trúc câu hay bất kỳ phần nào của môn dùng quy tắc MAPID (HSA, QDA, BCA), tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
+  // Với môn MT ẩn khối lớp (HSA/QDA/BCA Sử, Địa), xóa `byGrade` và `gradeEnforcement` cũ khi người dùng chỉnh sửa để không phát sinh lỗi ngầm lệch tổng khối lớp.
   const handleChange: MatrixBlockProps["onChange"] = (update) =>
     onChange((current) => {
       let next = update(current);
       if (entry.mapidFlow === "HSA_RULES") next = recomputeMapidRules(next);
       if (entry.hideGrade && next.matrix && next.matrix.byGrade.length > 0) {
-        next = { ...next, matrix: { ...next.matrix, byGrade: [] } };
+        const cleaned = { ...next.matrix, byGrade: [] };
+        delete cleaned.gradeEnforcement;
+        next = { ...next, matrix: cleaned };
       }
       return next;
     });

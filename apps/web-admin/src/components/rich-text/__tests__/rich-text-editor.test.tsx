@@ -286,6 +286,14 @@ describe("RichTextEditor", () => {
     await waitFor(() => expect(screen.queryByLabelText("LaTeX code")).not.toBeInTheDocument());
     expect(screen.getByRole("dialog", { name: "Question stem" })).toHaveAttribute("data-expanded", "true");
 
+    // Nếu có menu/listbox đang mở bên trong trình soạn mở rộng, Esc không được thu gọn khung mở rộng.
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "listbox");
+    document.body.appendChild(menu);
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "Question stem" })).toHaveAttribute("data-expanded", "true");
+    menu.remove();
+
     // Bấm Esc khi không mở hộp con thì thu gọn ô nhập về chỗ cũ.
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Question stem" })).not.toBeInTheDocument());

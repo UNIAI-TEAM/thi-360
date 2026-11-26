@@ -198,6 +198,39 @@ describe("Khung bước 2: vùng danh sách", () => {
     expect(screen.queryByText("BCA")).not.toBeInTheDocument();
   });
 
+  it("UNI-1730 / UNI-2838: QDA hiển thị mã tổ hợp QD01..QD05 kể cả khi examCode là mã kỳ thi QDA", () => {
+    const coded = part("p-qda", {
+      codeSource: { source: "GLOBAL_LIST", branch: null },
+      subjectPool: [section("s-ly", "LY"), section("s-hoa", "HOA"), section("s-sinh", "SINH"), section("s-su", "SU"), section("s-dia", "DIA"), section("s-anh", "ANH")],
+    });
+    renderWithProviders(
+      <ExamStructureList
+        parts={[coded]}
+        combinations={[
+          { code: "QD01", examCode: "QDA", partId: "p-qda", subjectCodes: ["LY", "HOA"], missingSubjects: [], nameVi: "QD01", nameEn: "QD01" },
+          { code: "QD02", examCode: "QDA", partId: "p-qda", subjectCodes: ["HOA", "SINH"], missingSubjects: [], nameVi: "QD02", nameEn: "QD02" },
+          { code: "QD03", examCode: "QDA", partId: "p-qda", subjectCodes: ["LY", "SINH"], missingSubjects: [], nameVi: "QD03", nameEn: "QD03" },
+          { code: "QD04", examCode: "QDA", partId: "p-qda", subjectCodes: ["SU", "DIA"], missingSubjects: [], nameVi: "QD04", nameEn: "QD04" },
+          { code: "QD05", examCode: "QDA", partId: "p-qda", subjectCodes: ["ANH"], missingSubjects: [], nameVi: "QD05", nameEn: "QD05" },
+        ]}
+        sectionStates={null}
+        selection={null}
+        issues={[]}
+        names={names}
+        onSelect={() => {}}
+      />,
+    );
+    const codeItems = screen.getAllByRole("listitem").filter((item) => /^QD0[1-5]/.test(item.textContent ?? ""));
+    expect(codeItems.map((item) => item.textContent)).toEqual([
+      "QD01LY – HOA",
+      "QD02HOA – SINH",
+      "QD03LY – SINH",
+      "QD04SU – DIA",
+      "QD05ANH",
+    ]);
+    expect(screen.queryByText("QDA")).not.toBeInTheDocument();
+  });
+
   it("HSA Khoa học: 'Môn tiếp theo' sang môn kế, 'Về tổng quan' mở tổng quan có nút 'Thiết lập' cho 5 môn", async () => {
     const user = userEvent.setup();
     openStructure(HSA, "?section=sec-sci-1-chemistry");

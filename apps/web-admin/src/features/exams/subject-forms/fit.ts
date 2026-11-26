@@ -73,7 +73,7 @@ function topicQuotaReason(quotas: readonly TopicQuota[] | undefined, entry: Subj
     const required = quota.enforcement === "REQUIRED";
     if (quota.percent != null && entry.percentEntry === "NONE") return "PERCENT_ENTRY";
     if (required && (quota.basis ?? "QUESTION") !== "QUESTION") return "COUNT_BASIS";
-    if (required && entry.form === "ROWS" && entry.hideGrade && (quota.gradeCodes?.length ?? 0) > 0) return "GRADE_REQUIRED_HIDDEN";
+    if (required && entry.hideGrade && (quota.gradeCodes?.length ?? 0) > 0) return "GRADE_REQUIRED_HIDDEN";
   }
   return null;
 }
@@ -115,14 +115,16 @@ function answerQuotasFit(section: ExamSection): boolean {
 }
 
 function matrixFormReason(section: ExamSection, entry: SubjectFormEntry, context: FitContext): FitReason | null {
-  const hsa = context.kindCode === "HSA";
+  const usesMapidRules = entry.mapidFlow === "HSA_RULES";
   for (const block of section.blocks) {
     const isSet = block.questionType === "QUESTION_SET";
     if (block.matrix !== null) return "BLOCK_MATRIX";
-    if (!hsa && (block.topicQuotas?.length ?? 0) > 0) return "BLOCK_TOPIC_QUOTAS";
+    if (!usesMapidRules && (block.topicQuotas?.length ?? 0) > 0) return "BLOCK_TOPIC_QUOTAS";
     if ((block.childConditions?.length ?? 0) > 0) return "POSITION_CONDITION";
     if ((block.slots?.length ?? 0) > 0) return "SET_CONDITION";
-    if (!isSet && ((!hsa && hasOwnScope(block.knowledgeScope)) || block.tagCodes.length > 0)) return "BLOCK_SCOPE_OR_TAGS";
+    // HSA Địa lí đã bỏ khung Điều kiện tư liệu (UNI-1724): bản cũ còn thẻ tư liệu trên chùm mở màn đầy đủ để xem/gỡ.
+    if (context.kindCode === "HSA" && context.subjectCode === "DIA" && block.tagCodes.length > 0) return "BLOCK_SCOPE_OR_TAGS";
+    if (!isSet && ((!usesMapidRules && hasOwnScope(block.knowledgeScope)) || block.tagCodes.length > 0)) return "BLOCK_SCOPE_OR_TAGS";
   }
   if (!answerQuotasFit(section)) return "ANSWER_QUOTAS_SHAPE";
   if (section.blocks.some(setSizeMismatch)) return "SET_SIZE_MISMATCH";

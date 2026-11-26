@@ -30,17 +30,22 @@ test("sửa phần rồi chuyển phần: hộp thoại ba nút, Bỏ thay đổ
   await points.fill(saved === "77" ? "78" : "77");
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
 
-  // Chuyển sang Phần 2: hộp thoại ba nút.
+  // Chuyển sang Phần 2 ngay trong bước 2: giữ nguyên bản nháp chưa lưu (không bật hộp thoại, UNI-1720).
   await parts.nth(1).click();
-  const dialog = page.getByRole("dialog", { name: /^Lưu thay đổi của/ });
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
+
+  // Rời bước 2 (Quay lại bước 1): hiện hộp thoại ba nút; "Bỏ thay đổi" khôi phục giá trị đã lưu.
+  await page.getByRole("button", { name: "Quay lại", exact: true }).click();
+  const dialog = page.getByTestId("structure-leave-dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Ở lại" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Lưu và chuyển" })).toBeVisible();
 
-  // Bỏ thay đổi: sang Phần 2, rồi về Phần 1 thì ô điểm trở lại giá trị đã lưu.
   await dialog.getByRole("button", { name: "Bỏ thay đổi" }).click();
-  await expect(dialog).toBeHidden();
-  await parts.nth(0).click();
+  await page.waitForURL(new RegExp(`/exams/${id}$`));
+  await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
+  await list.locator(":scope > ol > li:not(:first-child) > button[data-list-item]").nth(0).click();
   await expect(page.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue(saved);
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
@@ -238,8 +243,7 @@ test("PUT wire giữ nguyên GET đã nạp, chỉ đổi ô đã sửa (HSA FUL
     await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
     const list = page.getByRole("navigation", { name: "Cấu trúc" });
     await expect(list).toBeVisible();
-    const saveButton = page.getByRole("button", { name: "Lưu", exact: true });
-    await expect(saveButton, `${item.name}: nút Lưu bật khi chưa sửa`).toBeDisabled();
+    await expect(page.getByText("Có thay đổi chưa lưu"), `${item.name}: báo chưa lưu khi chưa sửa`).toHaveCount(0);
     expect(putRequests, `${item.name}: có PUT khi mở màn`).toHaveLength(0);
 
     // Sửa đúng một ô: điểm tối đa của phần đầu (mục thứ hai của danh sách, sau "Tổng quan bài").
@@ -248,10 +252,10 @@ test("PUT wire giữ nguyên GET đã nạp, chỉ đổi ô đã sửa (HSA FUL
     await expect(points).toBeVisible();
     const edited = (await points.inputValue()) === "77" ? "78" : "77";
     await points.fill(edited);
-    await expect(saveButton).toBeEnabled();
-    await saveButton.click();
+    await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
+    await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
     await expect.poll(() => putRequests.length, { timeout: 20_000 }).toBe(1);
-    await expect(page.getByText("Có thay đổi chưa lưu")).toHaveCount(0);
+    await page.waitForURL(/\/exams\/[^/]+\/listing/);
 
     const sent = putRequests[0]!.postDataJSON() as { parts: Wire[]; examQuotas?: unknown[]; expectedRevision: number };
     expect(sent.expectedRevision, `${item.name}: expectedRevision`).toBe(before.revision);

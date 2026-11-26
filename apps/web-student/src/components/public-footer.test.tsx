@@ -1,11 +1,15 @@
 import { screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import enMessages from "@/messages/en.json";
 import { renderWithProviders } from "@/test/render";
 import { PublicFooter } from "./public-footer";
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("PublicFooter", () => {
-  it("renders web logo, company details, 4 columns, MOIT badge and copyright bar in Vietnamese", () => {
+  it("renders web logo, company details, 4 columns, legal links and copyright bar in Vietnamese without dead social links", () => {
     renderWithProviders(<PublicFooter variant="landing" />);
 
     expect(screen.getByRole("img", { name: "Thi 360" })).toHaveAttribute("src", "/logo-full.png");
@@ -30,8 +34,18 @@ describe("PublicFooter", () => {
       "/chinh-sach-bao-mat-thong-tin",
     );
 
-    expect(screen.getByRole("img", { name: "Đã thông báo Bộ Công Thương" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Facebook" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Đã thông báo Bộ Công Thương" })).not.toBeInTheDocument();
     expect(screen.getByText("© 2026 Thi360 – All Rights Reserved.")).toBeInTheDocument();
+  });
+
+  it("renders MOIT badge as an external link only when NEXT_PUBLIC_THI360_MOIT_URL is configured", () => {
+    vi.stubEnv("NEXT_PUBLIC_THI360_MOIT_URL", "https://online.gov.vn/Home/WebDetails/12345");
+    renderWithProviders(<PublicFooter />);
+
+    const badgeLink = screen.getByRole("link", { name: "Đã thông báo Bộ Công Thương" });
+    expect(badgeLink).toHaveAttribute("href", "https://online.gov.vn/Home/WebDetails/12345");
+    expect(badgeLink).toHaveAttribute("target", "_blank");
   });
 
   it("renders localized labels in English without Vietnamese text", () => {
@@ -40,6 +54,5 @@ describe("PublicFooter", () => {
     expect(screen.getByRole("heading", { name: "CATEGORIES" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "STUDENT SUPPORT" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "POLICIES & TERMS" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Registered with the Ministry of Industry and Trade" })).toBeInTheDocument();
   });
 });

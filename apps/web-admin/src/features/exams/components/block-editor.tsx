@@ -15,7 +15,7 @@ import { applyTopicTotal, countFromPercent, ratePercent } from "../allocation";
 import type { MatrixAxes } from "../matrix";
 import { roundForDisplay } from "../display-number";
 import { blockPointsEach, emptyMatrix, isFlexibleSet, isSetBlock, validateBlock } from "../matrix";
-import { isHsaExam, useHsaExam } from "../hsa-enforcement";
+import { supportsMapidRules, useHsaExam } from "../hsa-enforcement";
 import { mapidViewMode } from "../mapid-rules";
 import { useAvailableQuestions } from "../queries";
 import type { ExamSection, ExamTemplate, KnowledgeScope, QuestionBlock } from "../types";
@@ -146,9 +146,9 @@ export function BlockEditor({
         }
       : {};
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
-  // Môn HSA dùng ma trận MAPID: phạm vi và chỉ tiêu chủ đề của nhóm không còn dùng, thay bằng quy tắc của môn (cùng điều kiện với màn môn).
+  // Môn thuộc kỳ dùng quy tắc MAPID (HSA, QDA, BCA): phạm vi và chỉ tiêu chủ đề của nhóm không còn dùng, thay bằng quy tắc của môn.
   const hsaContext = useHsaExam();
-  const mapidMode = hsaContext || isHsaExam(examKind) ? mapidViewMode(section) : null;
+  const mapidMode = hsaContext || supportsMapidRules(examKind) ? mapidViewMode(section) : null;
 
   // Bấm lỗi: tiêu điểm vào đúng ô của lỗi, từ vùng tổng hợp (yêu cầu trong bộ nhớ) hoặc từ tab Kiểm tra (`?block=&field=`).
   const fieldRequest = useBlockFieldRequest(block.id);

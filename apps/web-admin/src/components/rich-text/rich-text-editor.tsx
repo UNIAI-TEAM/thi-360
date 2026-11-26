@@ -179,7 +179,15 @@ export function RichTextEditor({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || dialogState) return;
+      if (event.key !== "Escape" || event.defaultPrevented || dialogState) return;
+      // Không thu gọn khung mở rộng khi menu `/` hoặc popover/menu Radix bên trong đang mở và cần Esc để đóng trước.
+      if (
+        document.querySelector(
+          '[data-radix-popper-content-wrapper], [role="menu"][data-state="open"], [role="listbox"]',
+        )
+      ) {
+        return;
+      }
       event.preventDefault();
       setExpanded(false);
     };

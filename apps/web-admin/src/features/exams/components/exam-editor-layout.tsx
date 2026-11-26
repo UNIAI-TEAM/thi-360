@@ -174,9 +174,9 @@ function ExamEditorHeader({
   useSetBreadcrumbLeaf(exam.code);
   const structureQuery = useExamStructure(exam.id);
   const structure = structureQuery.data;
-  // Chỉ tự tải kết quả kiểm tra khi đang ở bước 4 (dùng chung cache với màn Kiểm tra); ở các bước khác chỉ đọc cache sẵn có để tránh gọi thêm API.
+  // Chỉ tự tải và dùng kết quả kiểm tra ở bước 4 để tránh đọc cache lỗi thông tin bán đã cũ ở các bước trước.
   const checkQuery = useExamCheck(exam.id, activeRoute === "review");
-  const checkData = checkQuery.data;
+  const checkData = activeRoute === "review" ? checkQuery.data : undefined;
   const listingErrors = checkData ? listingErrorCount(checkData.listingCheck) : 0;
   const isVersions = activeRoute === "versions";
 

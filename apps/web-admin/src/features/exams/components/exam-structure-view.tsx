@@ -11,7 +11,16 @@ import { useContentReference, useReferenceLookup } from "@/features/content/quer
 import type { ContentReference } from "@/features/content/types";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { examQuotaBlockers, fillReviewCounts, rendersReviewPanel, saveBlockers } from "../allocation";
-import { HsaExamContext, hsaLoadedBaselines, hsaNeedsNormalizing, isHsaExam, normalizeHsaParts, useHsaNormalizedDraft } from "../hsa-enforcement";
+import {
+  HsaExamContext,
+  hsaLoadedBaselines,
+  hsaNeedsNormalizing,
+  isHsaExam,
+  normalizeHsaParts,
+  normalizeMapidParts,
+  supportsMapidRules,
+  useHsaNormalizedDraft,
+} from "../hsa-enforcement";
 import { strandTable } from "../reference-distribution";
 import { yearsNeedConfirmation } from "../check";
 import { matchingTemplates } from "../create-exam-schema";
@@ -230,9 +239,14 @@ function StructureEditor({
   const [fromReview] = useState(() => (typeof window !== "undefined" ? isFromReview(window.location.search) : false));
 
   const hsa = isHsaExam(exam.kind);
+  const mapidKinds = supportsMapidRules(exam.kind);
   const [draft, setDraft] = useState<ExamPart[]>(structure.parts);
   const [quotas, setQuotas] = useState<ExamQuota[]>(structure.examQuotas ?? []);
   useHsaNormalizedDraft(hsa, draft, setDraft, quotas, setQuotas);
+  if (!hsa && mapidKinds) {
+    const normalizedMapid = normalizeMapidParts(draft);
+    if (normalizedMapid !== draft) setDraft(normalizedMapid);
+  }
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
   const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
@@ -264,10 +278,10 @@ function StructureEditor({
   // Bản đã lưu còn mức Tham khảo mà HSA không cho: ghi chú hiện cho tới khi lưu.
   const hsaNormalizing = useMemo(() => hsaNeedsNormalizing(hsa, baselineParts, quotaBaseline), [hsa, baselineParts, quotaBaseline]);
 
-  // Biểu mẫu theo môn (FTM R-1, R-2): tính một lần khi mở và khi nạp mẫu (sau chuẩn hóa HSA-C), ghim trong phiên; sửa bản nháp không đổi.
+  // Biểu mẫu theo môn (FTM R-1, R-2): tính một lần khi mở và khi nạp mẫu (sau chuẩn hóa HSA-C / MAPID), ghim trong phiên; sửa bản nháp không đổi.
   const selectionExam = useMemo(() => ({ kind: exam.kind, buildMode: exam.buildMode }), [exam.kind, exam.buildMode]);
   const pinForms = (parts: readonly ExamPart[]): SubjectFormPins =>
-    selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : parts);
+    selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : mapidKinds ? normalizeMapidParts(parts) : parts);
   const [pinnedForms, setPinnedForms] = useState<SubjectFormPins>(() => pinForms(structure.parts));
   const [focusRequest, setFocusRequest] = useState<{ target: FormTarget; nonce: number } | null>(null);
   const formRegionRef = useRef<HTMLDivElement>(null);
@@ -477,7 +491,7 @@ function StructureEditor({
     [selectionExam, draft, pinnedForms, rawEntries],
   );
 
-  const quickCheckItems = useMemo(
+  const computeQuickCheckItems = useCallback(
     () =>
       buildQuickCheckItems({
         parts: draft,
@@ -533,13 +547,20 @@ function StructureEditor({
     [draft, quotas, axes, issues, blockingIssues, rateInvalid, current, lookup, issueText, exam.kind, rawEntries, matrixErrorsT, t, commonT, mapidText],
   );
 
+  // Chỉ tính danh sách kiểm tra nhanh khi panel đang mở để tránh quét toàn bài ở mỗi phím gõ.
+  const quickCheckItems = useMemo(
+    () => (quickCheckOpen ? computeQuickCheckItems() : []),
+    [quickCheckOpen, computeQuickCheckItems],
+  );
+
   /** Kiểm tra nhanh tại bước 2: kiểm trên toàn bộ dữ liệu đang nhập (gồm chưa lưu ở tất cả các môn), không lưu và không chuyển bước. */
   const handleQuickCheck = () => {
+    const items = computeQuickCheckItems();
     setQuickCheckOpen(true);
     announce(
-      quickCheckItems.length === 0
+      items.length === 0
         ? t("quickCheck.valid")
-        : t("quickCheck.invalidTitle", { count: quickCheckItems.length }),
+        : t("quickCheck.invalidTitle", { count: items.length }),
     );
   };
 

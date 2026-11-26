@@ -2,26 +2,30 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
-### Đợt hoàn thiện quản trị đề thi/câu hỏi, logo tạm thời & trang pháp lý/footer học viên (2026-11-26, `UNI-2827`–`UNI-2831`, `UNI-2833`, `UNI-2835`–`UNI-2837`)
+### Đợt hoàn thiện quản trị đề thi/câu hỏi, logo tạm thời & trang pháp lý/footer học viên (2026-11-26, `UNI-2827`–`UNI-2831`, `UNI-2833`, `UNI-2835`–`UNI-2840`)
 
-- **Quản trị bài thi (`apps/web-admin`, `e2e/tests`):**
+- **Quản trị bài thi (`backend`, `apps/web-admin`, `e2e/tests`):**
   - **`UNI-2827` (uniworkos `UNI-1721`):** màn Bước 4 (`Kiểm tra cấu hình`) bỏ dòng metadata `Kiểm tra lúc ... · giới hạn xử lý 30 giây` khi kết quả mới, bỏ dải `<dl>` tóm tắt trùng lặp và thẻ chú thích `Ba kết quả kiểm tra`.
-  - **`UNI-2828` (uniworkos `UNI-1720`):** chuẩn hóa luồng 4 bước đánh số (`1. Thông tin chung` → `4. Kiểm tra, xem trước và công bố`), tách `Lịch sử phiên bản` lên header; thống nhất lưu bản nháp & điều hướng (`Tiếp tục → ...`, `Lưu nháp và thoát`, hộp thoại rời 3 nút, `?from=review` → `Lưu và quay lại kiểm tra` về `/review?recheck=1`, modal `Áp dụng`); Bước 2 thêm kiểm tra nhanh trong bộ nhớ (`Kiểm tra cấu trúc`, không gọi PUT, đổi môn giữ nháp không hỏi rời); Bước 4 gom đủ lỗi cấu trúc + thông tin bán, đặt nút `Xem trước đề` cạnh kết luận, gắn link `?field=...&from=review` cho từng lỗi và nút `Công bố bài thi` / `Công bố bản cập nhật` ngay tại Bước 4. Đã cập nhật toàn bộ test đơn vị (146 file) + bổ sung `uni-1720-1724-acceptance.test.tsx` và cập nhật selector E2E liên quan.
-  - **`UNI-2829` (uniworkos `UNI-1722`), `UNI-2830` (uniworkos `UNI-1723`), `UNI-2831` (uniworkos `UNI-1724`):** ẩn thông tin khối lớp cho HSA & QDA các môn `VAN`, `SU`, `DIA`; với `SU` & `DIA` đưa `1. Cấu trúc thành phần câu hỏi` lên đầu trên `Mạch kiến thức`, tiêu đề khối phân bố đổi thành `Độ khó` và xóa `byGrade` cũ khi sửa; riêng `DIA` bỏ khối `Điều kiện tư liệu`. Giới hạn fallback `GRADE_REQUIRED_HIDDEN` trong `fit.ts` chỉ áp cho `ROWS` để mẫu `SU`/`DIA` hiện có mở đúng `MatrixForm`.
-  - **`UNI-2837` (uniworkos `UNI-1728`):** sửa hiển thị mã tổ hợp trong `ExamStructureList`, `CodedPartPanel` và `codesUsing` dùng `item.code` thay vì `item.examCode ?? item.code` để phần tự chọn BCA hiển thị đúng `CA1`–`CA4` thay vì lặp lại mã kỳ thi `BCA`.
+  - **`UNI-2828` (uniworkos `UNI-1720`):** chuẩn hóa luồng 4 bước đánh số (`1. Thông tin chung` → `4. Kiểm tra, xem trước và công bố`), tách `Lịch sử phiên bản` lên header; thống nhất lưu bản nháp & điều hướng (`Tiếp tục → ...`, `Lưu nháp và thoát`, hộp thoại rời 3 nút, `?from=review` → `Lưu và quay lại kiểm tra` về `/review?recheck=1`, modal `Áp dụng`); Bước 2 thêm kiểm tra nhanh trong bộ nhớ (`Kiểm tra cấu trúc`, không gọi PUT, đổi môn giữ nháp không hỏi rời); Bước 4 gom đủ lỗi cấu trúc + thông tin bán, đặt nút `Xem trước đề` cạnh kết luận, gắn link `?field=...&from=review` cho từng lỗi và nút `Công bố bài thi` / `Công bố bản cập nhật` ngay tại Bước 4.
+  - **`UNI-2829` (uniworkos `UNI-1722`), `UNI-2830` (uniworkos `UNI-1723`), `UNI-2831` (uniworkos `UNI-1724`):** ẩn thông tin khối lớp cho HSA & QDA các môn `VAN`, `SU`, `DIA`; với `SU` & `DIA` đưa `1. Cấu trúc thành phần câu hỏi` lên đầu trên `Mạch kiến thức`, tiêu đề khối phân bố đổi thành `Độ khó`, xóa `byGrade` & `gradeEnforcement` cũ khi sửa; riêng `DIA` bỏ khối `Điều kiện tư liệu` (vẫn rơi về MD nếu bài HSA Địa cũ còn `set.tagCodes` hoặc bài cũ có `topicQuotas` bắt buộc theo lớp).
+  - **`UNI-2837` (uniworkos `UNI-1728`) & `UNI-2838` (uniworkos `UNI-1730`):** sửa hiển thị mã tổ hợp trong `ExamStructureList`, `CodedPartPanel` và `codesUsing` dùng `item.code` thay vì `item.examCode ?? item.code` để BCA hiện đúng `CA1`–`CA4` và QDA hiện đúng `QD01`–`QD05`.
+  - **`UNI-2839` (uniworkos `UNI-1731`) & `UNI-2840` (uniworkos `UNI-1729`):** mở rộng luồng quy tắc MAPID của HSA (`mapidFlow: "HSA_RULES"`, `setSource: false`, `MatrixFormHsa`) cho toàn bộ môn QDA (`hideGrade: ["ANH", "VAN", "SU", "DIA"]`) và các môn BCA trừ Ngữ văn tự luận (`hideGrade: ["ANH", "SU", "DIA"]`, giữ `BCA:VAN` và `enforcement: "FIXED_REFERENCE"` theo mẫu BCA); backend `ExamService.rejectMapidOutsideHsa` cho phép `MAPID_RULE_KINDS = Set.of("HSA", "QDA", "BCA")` và cập nhật `ExamMapidRulesIT`.
 - **Trình soạn câu hỏi (`apps/web-admin`):**
-  - **`UNI-2833`:** câu Điền khuyết (`CLOZE`) khi gõ/dán `___` trực tiếp trong `Đề bài` tự sinh đủ các ô đáp án bên dưới trong `BlanksEditor` mà không cướp tiêu điểm và giữ nguyên đáp án đã nhập.
+  - **`UNI-2833`:** câu Điền khuyết (`CLOZE`) khi gõ/dán `___` trực tiếp trong `Đề bài` tự chèn đúng vị trí vào `BlanksEditor` (qua `findInsertedBlankIndex`, không làm lệch đáp án phía sau khi chèn trước chỗ trống cũ, không cướp tiêu điểm).
   - **`UNI-2835` (uniworkos `UNI-1726`):** `MatchingEditor` lọc nội dung lựa chọn cột phải qua `questionHtmlText` để ô `Lựa chọn đúng` không còn hiển thị thẻ HTML thô (`<p>...</p>`).
-  - **`UNI-2836` (uniworkos `UNI-1725`):** mọi `RichTextEditor` cho phép kéo giãn chiều cao trực tiếp (`resize: vertical`, tối đa `75dvh`) và thêm nút **Mở rộng / Thu gọn ô nhập** ở thanh công cụ (overlay toàn màn hình qua portal để thoát `@container`, `Esc` để thu gọn, các hộp thoại Chèn hoạt động trên lớp `z-50`).
+  - **`UNI-2836` (uniworkos `UNI-1725`):** mọi `RichTextEditor` cho phép kéo giãn chiều cao trực tiếp (`resize: vertical`, tối đa `75dvh`) và thêm nút **Mở rộng / Thu gọn ô nhập** ở thanh công cụ (overlay toàn màn hình qua portal thoát `@container`, `Esc` bỏ qua khi menu Radix/slash đang mở).
 - **Logo tạm thời, Footer & Trang pháp lý (`packages/ui`, `apps/web-admin`, `apps/web-student`):**
-  - Tích hợp bộ logo mới (`BrandLogo`, `BrandWordmark`, `/logo.svg`, `/logo.png`, `/logo-full.png`, `icon.svg`, `apple-icon.png`) thay toàn bộ ô chữ `360` ở sidebar/header/auth/footer.
-  - Dựng footer 4 cột mới trên `apps/web-student` (`PublicFooter`), kèm 2 trang công khai `/chinh-sach-bao-mat-thong-tin` và `/dieu-khoan-giao-dich-chung` (mở công khai trong `proxy.ts`, đổi tên thương hiệu sang `Thi360`, URL lấy động theo base URL của web qua `resolveSiteBase`).
+  - Tích hợp bộ logo mới (`BrandLogo`, `BrandWordmark`, `/logo.svg`, `/logo.png`, `/logo-full.png`, `icon.svg`, `apple-icon.png`) thay toàn bộ ô chữ `360`.
+  - Dựng footer 4 cột mới trên `apps/web-student` (`PublicFooter`, tương phản chuẩn WCAG AA cả sáng/tối, bỏ link MXH chết `#support`, nguồn liên hệ thống nhất `SITE_CONTACT`), kèm 2 trang công khai `/chinh-sach-bao-mat-thong-tin` và `/dieu-khoan-giao-dich-chung` (mở công khai trong `proxy.ts`, đổi thương hiệu sang `Thi360`, URL động lấy từ biến cấu hình tin cậy `resolveSiteBase` không đọc header `Host`).
+- **Xử lý trọn vẹn 11 góp ý review PR #225 & sửa E2E:**
+  - Sửa race điều hướng khi remount `ListingForm` (`mutateAsync`), `fit.ts` (`topicQuotaReason` cho cả MATRIX + fallback `set.tagCodes` HSA Địa) & xóa `gradeEnforcement`, chèn đúng chỉ số ô `CLOZE`, guard `Esc` khi menu Radix mở, tránh race `GET`/`POST /check` khi `?recheck=1`, chỉ gắn chip lỗi thông tin bán ở tab `review`, tối ưu `buildQuickCheckItems` và chỉ chạy khi panel mở, sửa text `Step4PublishDialog` khi đang tải, đồng bộ `SITE_CONTACT` & bỏ header `Host` trong `resolveSiteBase`, sửa tương phản tối của `PublicFooter` và cập nhật toàn bộ E2E spec theo nút mới (`Tiếp tục → Thông tin bán`, `Lưu nháp và thoát`, quy tắc MAPID QDA).
 - **Kiểm chứng:**
-  - `@thi360/ui`: `typecheck`, `lint`, `test` (79 file, 600 test) xanh.
-  - `@thi360/web-student`: `typecheck`, `lint`, `test` (75 file, 563 test), `build` xanh.
-  - `@thi360/web-admin`: `typecheck`, `lint` (0 lỗi, 0 cảnh báo), `test` toàn bộ (306 file, 3.208 test) + chạy lại 27 file / 220 test sau `UNI-1725`/`UNI-1726`, `build` xanh.
+  - `backend`: `mvn test-compile` + 89/89 unit test (`MapidRule*Test`, `ExamStructure*Test`, `ExamCheck*Test`, `ExamService*Test`) xanh.
+  - `@thi360/ui`: `typecheck`, `lint`, `test` (79 file / 600 test) xanh.
+  - `@thi360/web-student`: `typecheck`, `lint`, `test` (75 file / 565 test), `build` xanh.
+  - `@thi360/web-admin`: `typecheck`, `lint` (0 lỗi, 0 cảnh báo), `test` toàn bộ (306 file / 3.218 test), `build` xanh.
   - `@thi360/e2e`: `typecheck`, `lint` xanh.
-- **Tiếp theo:** chờ người dùng kiểm tra thay đổi tại máy và yêu cầu commit/push/PR; các issue UniAI vẫn giữ `in_progress`.
+- **Tiếp theo:** push commit mới lên PR #225, theo dõi 6/6 cổng CI xanh, squash-merge vào `develop` và deploy lên VPS `bro`.
 
 ### Màn làm bài: đầu trang gọn, ổn định, thanh danh sách câu luôn thấy trên màn hẹp (2026-11-26, `UNI-2826`)
 

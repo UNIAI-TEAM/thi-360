@@ -122,7 +122,7 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
     expect(groups.reduce((total, group) => total + group.questions, 0), `môn ${name}: tổng số câu của các nhóm`).toBe(count);
 
     if (matrix) {
-      // Năm môn Khoa học/Xã hội (FTM MT): Cấu trúc thành phần câu hỏi, Khối lớp và độ khó, Phạm vi và chỉ tiêu chủ đề.
+      // Năm môn Khoa học/Xã hội (FTM MT): Cấu trúc thành phần câu hỏi, Khối lớp và độ khó, Quy tắc MAPID.
       await expect(page.locator('[data-form-kind="MATRIX"]'), `môn ${name}: biểu mẫu MT`).toBeVisible();
       await expect(page.getByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" }), `môn ${name}`).toBeVisible();
       await expect(page.getByRole("button", { name: /Thêm nhóm/ }), `môn ${name}`).toHaveCount(0);
@@ -180,9 +180,13 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
         (value) => value !== "" && value !== "0",
       );
       expect(shown.sort(), `môn ${name}: chỉ tiêu theo độ khó`).toEqual(difficultyValues);
-      await expect(page.getByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" }), `môn ${name}`).toBeVisible();
+      // QDA dùng luồng quy tắc MAPID giống HSA (UNI-1731); Sử/Địa có khối Mạch kiến thức.
+      await expect(page.getByRole("radio", { name: /Theo ma trận MAPID/ }), `môn ${name}`).toBeVisible();
+      if (code === "SU" || code === "DIA") {
+        await expect(page.getByTestId("hsa-strand-section"), `môn ${name}`).toBeVisible();
+      }
     } else {
-      // Tiếng Anh (FTM DS): Danh sách dòng lấy câu 10 dòng khớp mẫu + Phân bổ đối chiếu chưa khai báo.
+      // Tiếng Anh (FTM DS): Danh sách dòng lấy câu 10 dòng khớp mẫu + Phân bổ đối chiếu ẩn khối lớp giống HSA (UNI-1731).
       await expect(page.locator('[data-subject-form="ROWS"]'), `môn ${name}: biểu mẫu DS`).toBeVisible();
       await expect(page.getByRole("heading", { level: 3, name: "Các dòng lấy câu" }), `môn ${name}`).toBeVisible();
       await expect(page.locator("[data-form-row]"), `môn ${name}: số dòng nhóm`).toHaveCount(groups.length);
@@ -197,7 +201,7 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
       }
       const refBlock = page.locator("[data-reference-block]");
       await refBlock.locator("summary").click();
-      await expect(refBlock.locator('[data-reference-dimension="GRADE"]')).toContainText("Chưa khai báo");
+      await expect(refBlock.locator('[data-reference-dimension="GRADE"]')).toHaveCount(0);
       await expect(refBlock.locator('[data-reference-dimension="DIFFICULTY"]')).toContainText("Chưa khai báo");
     }
   }

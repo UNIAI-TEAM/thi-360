@@ -2,17 +2,15 @@ import { cn, focusRing } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { SiteBaseInfo } from "@/lib/site-url";
-
-const CONTACT_EMAIL = "hsaeducation.jsc@gmail.com";
-const SUPPORT_HOTLINE = "0974187313";
+import { SITE_CONTACT } from "@/lib/contact";
 
 export function TermsOfServiceView({ site }: { site: SiteBaseInfo }) {
   const legal = useTranslations("legal");
   const t = useTranslations("legal.terms");
   const vars = {
     siteUrl: site.siteUrl,
-    email: CONTACT_EMAIL,
-    phone: SUPPORT_HOTLINE,
+    email: SITE_CONTACT.email,
+    phone: SITE_CONTACT.hotline,
   };
 
   return (

@@ -213,7 +213,9 @@ function Step4PublishDialog({
       <DialogContent size="md" closeLabel={t("close")}>
         <DialogHeader>
           <DialogTitle>{exam.servingVersion !== null ? tVersions("working.publish") : t("title", { version: 1 })}</DialogTitle>
-          <DialogDescription>{tVersions("errorDescription")}</DialogDescription>
+          <DialogDescription>
+            {versionsQuery.isError ? tVersions("errorDescription") : tVersions("loading")}
+          </DialogDescription>
         </DialogHeader>
         {versionsQuery.isPending ? (
           <div className="flex flex-col gap-3 py-2" aria-busy="true">

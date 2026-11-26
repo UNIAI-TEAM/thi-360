@@ -129,10 +129,14 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
     return tv("fieldInvalid");
   };
 
-  const navigateForIntent = (intent: ListingSubmitIntent, savedChanges: boolean) => {
+  const navigateForIntent = (intent: ListingSubmitIntent, savedChanges: boolean, leaveHref?: string | null) => {
     setLeaveError(null);
     if (intent === "leave") {
-      guard.leave();
+      if (leaveHref) {
+        guard.leaveTo(leaveHref);
+      } else {
+        guard.leave();
+      }
       return;
     }
     if (intent === "exit") {
@@ -148,45 +152,45 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
 
   const submitWithIntent = (intent: ListingSubmitIntent) => {
     setActiveSubmitIntent(intent);
+    const pendingLeaveHref = intent === "leave" ? guard.pendingHref : null;
     return handleSubmit(
-      (submitted) => {
+      async (submitted) => {
         setSubmitError(null);
         setLeaveError(null);
         if (unchanged) {
-          navigateForIntent(intent, false);
+          navigateForIntent(intent, false, pendingLeaveHref);
           return;
         }
-        save.mutate(toListingRequest(submitted, cover.cover?.assetId ?? null, listing.revision), {
-          onSuccess: () => {
-            navigateForIntent(intent, true);
-          },
-          onError: (error) => {
-            if (getErrorStatus(error) === 412) {
-              onConflict();
-              if (intent === "leave") setLeaveError(t("conflict.title"));
-              return;
-            }
-            const fieldErrors = error instanceof ExamsApiError && getErrorStatus(error) === 422 ? error.fieldErrors : [];
-            const mapped = fieldErrors.flatMap((item) => {
-              const field = FORM_FIELD_OF[item.field ?? ""];
-              return field ? [{ field, code: item.code ?? "" }] : [];
-            });
-            mapped.forEach(({ field, code }, index) => {
-              setError(field, { message: serverMessage(field, code) }, { shouldFocus: index === 0 });
-            });
-            let message: string | null = null;
-            if (fieldErrors.some((item) => item.field === "coverAssetId")) {
-              message = t("errors.coverNotFound");
-              setSubmitError(message);
-            } else if (mapped.length === 0) {
-              message = t(getErrorStatus(error) === 422 ? "errors.invalid" : "errors.saveFailed");
-              setSubmitError(message);
-            }
-            if (intent === "leave") {
-              setLeaveError(message ?? t("errors.invalid"));
-            }
-          },
-        });
+        try {
+          await save.mutateAsync(toListingRequest(submitted, cover.cover?.assetId ?? null, listing.revision));
+          // Chạy điều hướng sau khi promise giải quyết để không bị bỏ qua khi `ListingTab` dựng lại form theo `listing.revision` mới.
+          navigateForIntent(intent, true, pendingLeaveHref);
+        } catch (error) {
+          if (getErrorStatus(error) === 412) {
+            onConflict();
+            if (intent === "leave") setLeaveError(t("conflict.title"));
+            return;
+          }
+          const fieldErrors = error instanceof ExamsApiError && getErrorStatus(error) === 422 ? error.fieldErrors : [];
+          const mapped = fieldErrors.flatMap((item) => {
+            const field = FORM_FIELD_OF[item.field ?? ""];
+            return field ? [{ field, code: item.code ?? "" }] : [];
+          });
+          mapped.forEach(({ field, code }, index) => {
+            setError(field, { message: serverMessage(field, code) }, { shouldFocus: index === 0 });
+          });
+          let message: string | null = null;
+          if (fieldErrors.some((item) => item.field === "coverAssetId")) {
+            message = t("errors.coverNotFound");
+            setSubmitError(message);
+          } else if (mapped.length === 0) {
+            message = t(getErrorStatus(error) === 422 ? "errors.invalid" : "errors.saveFailed");
+            setSubmitError(message);
+          }
+          if (intent === "leave") {
+            setLeaveError(message ?? t("errors.invalid"));
+          }
+        }
       },
       () => {
         if (intent === "leave") {

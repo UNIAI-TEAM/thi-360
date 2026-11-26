@@ -171,17 +171,17 @@ test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 3
     expect(await checkSection(admin, exam.id, ly.id!)).toContain("SUBJECT_MATRIX_TOTAL_MISMATCH");
   });
 
-  test("QDA Toán: Phạm vi kiến thức và nút Thêm chỉ tiêu chủ đề; chưa có dòng thì không hiện bảng", async ({ context, page }) => {
+  test("QDA Toán: dùng quy tắc MAPID giống HSA (UNI-1731), không còn Phạm vi và chỉ tiêu chủ đề", async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
     // Mẫu QDA_PART_MATH có mã phần `TOAN` (không có `MATH`).
     const exam = await createExam(admin, { kind: "QDA", scope: "PART", partCode: "TOAN" }, "QDA-T");
     const toan = sectionOf(await getStructure(admin, exam.id), "TOAN");
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${toan.id}`);
-    await expect(page.getByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).toBeVisible();
-    await expect(page.getByText("Phần còn lại")).toHaveCount(0);
-    await page.getByRole("button", { name: "Thêm chỉ tiêu chủ đề", exact: true }).click();
-    await expect(page.getByRole("heading", { name: /Chỉ tiêu chủ đề/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).toHaveCount(0);
+    await expect(page.getByRole("radio", { name: /Theo ma trận MAPID/ })).toBeVisible();
+    await page.getByRole("radio", { name: /Theo ma trận MAPID/ }).check();
+    await expect(page.getByTestId("mapid-rules-table")).toBeVisible();
   });
 });
 
@@ -197,12 +197,13 @@ test.describe("MT của BCA: số chùm của Sử (FTM AC 44 b, AC 53, AC 27 ph
 
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${before.id}`);
     await expect(field(page, "Số chùm")).toHaveValue("1");
+    await expect(page.getByTestId("hsa-strand-section")).toBeVisible();
     await expect(page.getByText("Tham khảo").first()).toBeVisible();
     await expect(page.getByRole("switch", { name: "Áp dụng khi sinh đề" })).toHaveCount(0);
 
     await typeInto(page, "Số chùm", "0");
     await expect(page.getByText("Ít nhất 1 chùm")).toBeVisible();
-    await page.getByRole("button", { name: "Lưu", exact: true }).click();
+    await page.getByRole("button", { name: "Lưu nháp và thoát", exact: true }).click();
     expect(roleBlock(sectionOf(await getStructure(admin, exam.id), "SU"), "QUESTION_SET")!.setCount).toBe(setBefore.setCount);
     await expect(field(page, "Số chùm")).toBeFocused();
 

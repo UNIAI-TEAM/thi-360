@@ -248,4 +248,33 @@ describe("UNI-1720 §6: kịch bản nghiệm thu luồng 4 bước & lưu nháp
     await waitFor(() => expect(reviewServer.calls("POST", `${EXAM_PATH}/check`)).toHaveLength(1));
     await waitFor(() => expect(screen.getByRole("button", { name: "Công bố bài thi" })).toBeEnabled());
   });
+
+  it("Bước 3 vẫn điều hướng sau khi PUT tăng revision (remount ListingForm) và GET /exams/{id} invalidation trả chậm", async () => {
+    const user = userEvent.setup();
+    let examCalls = 0;
+    listingServer(listingWire({ revision: 7, listPriceVnd: undefined }))
+      .on("GET", EXAM_PATH, async () => {
+        examCalls += 1;
+        if (examCalls > 1) await new Promise((resolve) => setTimeout(resolve, 40));
+        return { status: 200, body: examDetailWire({ revision: examCalls > 1 ? 8 : 7 }) };
+      })
+      .on("PUT", LISTING_PATH, { status: 200, body: listingWire({ revision: 8, updatedAt: "2026-11-26T10:00:00Z", listPriceVnd: 199000 }) })
+      .install();
+
+    nav.pathname = `/exams/${EXAM_ID}/listing`;
+    nav.search = "";
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/listing`);
+
+    renderWithProviders(
+      <SessionProvider loadSession={adminSession(["EXAM.VIEW", "EXAM.MODIFY", "EXAM.PUBLISH"])}>
+        <ExamListingView examId={EXAM_ID} />
+      </SessionProvider>,
+    );
+
+    const priceInput = await screen.findByRole("textbox", { name: /Giá bán/ });
+    await user.type(priceInput, "199000");
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" }));
+
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/review`));
+  });
 });

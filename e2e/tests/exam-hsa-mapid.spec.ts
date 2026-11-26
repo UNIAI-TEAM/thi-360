@@ -226,7 +226,14 @@ async function selectScope(page: Page, dialog: Locator, optionPattern: RegExp) {
 }
 
 async function saveStructure(page: Page) {
-  await page.getByRole("button", { name: "Lưu" }).click();
+  const returnUrl = page.url();
+  const [response] = await Promise.all([
+    page.waitForResponse((res) => /\/exams\/[^/]+\/structure$/.test(res.url()) && res.request().method() === "PUT", { timeout: 60_000 }),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+  ]);
+  expect(response.status(), await response.text()).toBe(200);
+  await page.waitForURL(/\/exams\/[^/]+\/listing/, { timeout: 60_000 });
+  await page.goto(returnUrl);
   await expect(page.getByText("Có thay đổi chưa lưu")).not.toBeVisible({ timeout: 60_000 });
 }
 

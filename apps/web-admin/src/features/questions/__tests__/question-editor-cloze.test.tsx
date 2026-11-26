@@ -165,4 +165,20 @@ describe("trinh soan Dien khuyet", () => {
     expect(screen.getByRole("textbox", { name: "Answer 1 for blank 1" })).toHaveValue("gì");
     expect(screen.getByText("The text has 3 gaps ___ and 3 answer blanks.")).toBeInTheDocument();
   });
+
+  it("gõ thêm ___ ở đầu đề bài trước các ô có sẵn sẽ chèn đúng vị trí đầu, không làm lệch đáp án phía sau", async () => {
+    const user = userEvent.setup();
+    renderEn(<QuestionEditorView mode="create" type="CLOZE" />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+
+    rich(text).set("<p>A ___ B ___</p>");
+    await user.type(await screen.findByRole("textbox", { name: "Answer 1 for blank 1" }), "x");
+    await user.type(screen.getByRole("textbox", { name: "Answer 1 for blank 2" }), "y");
+
+    rich(text).set("<p>___ A ___ B ___</p>");
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Answer 1 for blank 3" })).toBeInTheDocument());
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 1" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 2" })).toHaveValue("x");
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 3" })).toHaveValue("y");
+  });
 });

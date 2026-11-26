@@ -135,6 +135,28 @@ export function countBlankMarkers(content: string): number {
   return content.split(BLANK_MARKER).length - 1;
 }
 
+/**
+ * Tìm vị trí chèn (theo chỉ số chỗ trống `0..n`) khi nội dung đề bài tăng thêm `___`
+ * bằng cách đối chiếu tiền tố chung với nội dung trước đó, giúp gõ/dán `___` ở đầu hoặc giữa
+ * không làm lệch đáp án của các ô đứng sau.
+ */
+export function findInsertedBlankIndex(previousContent: string, nextContent: string): number {
+  const maxPrefix = Math.min(previousContent.length, nextContent.length);
+  let prefixLen = 0;
+  while (prefixLen < maxPrefix && previousContent[prefixLen] === nextContent[prefixLen]) {
+    prefixLen += 1;
+  }
+  let keptBefore = 0;
+  let cursor = 0;
+  while (cursor <= previousContent.length - BLANK_MARKER.length) {
+    const found = previousContent.indexOf(BLANK_MARKER, cursor);
+    if (found === -1 || found + BLANK_MARKER.length > prefixLen) break;
+    keptBefore += 1;
+    cursor = found + BLANK_MARKER.length;
+  }
+  return keptBefore;
+}
+
 /** Khoảng hợp lệ của `blankNumberStart` (spec UNI-2638 mục 3.4). */
 export const BLANK_NUMBER_START_MIN = 1;
 export const BLANK_NUMBER_START_MAX = 200;

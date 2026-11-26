@@ -272,8 +272,8 @@ describe("MT của QDA, BCA: khối lớp, độ khó và mức áp dụng (R-4,
     expect(screen.queryByRole("switch", { name: "Áp dụng khi sinh đề" })).not.toBeInTheDocument();
   });
 
-  it("enforcementByKind: BCA chip Tham khảo, không nút đổi", async () => {
-    await openSection("sec-su", [wirePart([wireBcaHistory("sec-su", { matrix: matrixOf({ byGrade: [{ code: "GRADE_12", value: 7 }], gradeEnforcement: "REFERENCE", difficultyEnforcement: "REFERENCE" }) })])], "BCA");
+  it("enforcementByKind: BCA chip Tham khảo, không nút đổi; Sử ẩn Khối lớp theo chuẩn HSA (UNI-1729)", async () => {
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN", { matrix: matrixOf({ byGrade: [{ code: "GRADE_12", value: 25 }], gradeEnforcement: "REFERENCE", difficultyEnforcement: "REFERENCE" }) })])], "BCA");
     const grade = within(screen.getByRole("heading", { level: 4, name: "Khối lớp" }).closest("[data-form-field]") as HTMLElement);
     expect(grade.getByText("Tham khảo")).toBeInTheDocument();
     expect(screen.queryByRole("switch", { name: "Áp dụng khi sinh đề" })).not.toBeInTheDocument();
@@ -320,10 +320,28 @@ describe("MT: giới hạn Khoa học của QDA (R-12)", () => {
   });
 });
 
-describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
-  it("scopeAndQuotaFlow: QDA Toán có Phạm vi kiến thức và nút Thêm chỉ tiêu chủ đề; chưa có dòng thì không hiện bảng, bấm mới hiện", async () => {
+describe("MT: QDA/BCA dùng quy tắc MAPID giống HSA (UNI-1729, UNI-1731) & V-ACT giữ Nguồn chùm + Phạm vi (R-3, R-6)", () => {
+  it("UNI-1731: QDA Toán dùng quy tắc MAPID giống HSA, không còn Nguồn chùm hay Phạm vi & chỉ tiêu chủ đề", async () => {
     const user = userEvent.setup();
-    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN")])]);
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN")])], "QDA");
+    expect(await screen.findByRole("radio", { name: /Theo ma trận MAPID/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 4, name: "Nguồn chùm" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Theo ma trận MAPID/ }));
+    expect(await screen.findByTestId("mapid-rules-table")).toBeInTheDocument();
+  });
+
+  it("UNI-1729: BCA Lịch sử dùng quy tắc MAPID & mạch kiến thức giống HSA, ẩn Khối lớp và không còn Nguồn chùm", async () => {
+    await openSection("sec-su", [wirePart([wireBcaHistory("sec-su")])], "BCA");
+    expect(await screen.findByTestId("hsa-strand-section")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 4, name: "Khối lớp" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 4, name: "Nguồn chùm" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 4, name: "Độ khó" })).toBeInTheDocument();
+  });
+
+  it("scopeAndQuotaFlow: V-ACT Toán có Phạm vi kiến thức và nút Thêm chỉ tiêu chủ đề; chưa có dòng thì không hiện bảng, bấm mới hiện", async () => {
+    const user = userEvent.setup();
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN")])], "VACT");
     expect(await screen.findByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Toàn môn/ })).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: /chỉ tiêu chủ đề/i })).not.toBeInTheDocument();
@@ -334,14 +352,14 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
 
   it("bài đã có dòng chỉ tiêu chủ đề hiện bảng sẵn, không hiện nút mở bảng", async () => {
     const quota = { id: "tq-1", name: "Xác suất", nodeIds: [], count: 3, enforcement: "REQUIRED", basis: "QUESTION" };
-    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN", { section: { topicQuotas: [quota] } })])]);
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN", { section: { topicQuotas: [quota] } })])], "VACT");
     expect(await screen.findByRole("heading", { name: /Chỉ tiêu chủ đề/ })).toBeInTheDocument();
     expect(screen.queryByText("Mở bảng số câu tối thiểu theo từng chủ đề.")).not.toBeInTheDocument();
   });
 
-  it("BCA Hóa: Nguồn chùm chỉ hiện ở nhóm chùm; không có điều kiện nào thì hiện dòng trống; menu Thêm điều kiện có MAPID và Nhãn nguồn", async () => {
+  it("V-ACT Toán: Nguồn chùm chỉ hiện ở nhóm chùm; không có điều kiện nào thì hiện dòng trống; menu Thêm điều kiện có MAPID và Nhãn nguồn", async () => {
     const user = userEvent.setup();
-    await openSection("sec-hoa", [wirePart([wireQdaScience("sec-hoa", "HOA", { fill: 0 })])], "BCA");
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN", { fill: 0 })])], "VACT");
     const source = await screen.findByRole("heading", { level: 4, name: "Nguồn chùm" });
     expect(within(source.closest("[data-form-field]") as HTMLElement).getByText(/Chưa có điều kiện/)).toBeInTheDocument();
     await user.click(within(source.closest("[data-form-field]") as HTMLElement).getByRole("button", { name: "Thêm điều kiện" }));
@@ -351,8 +369,8 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
 
   it("setSourceOnlyTouchesSetGroup: nhãn nguồn của chùm chỉ đổi `tagCodes` của nhóm chùm; môn, nhóm đơn và nhóm điền không đổi", async () => {
     const user = userEvent.setup();
-    const original = [wirePart([wireQdaScience("sec-hoa", "HOA")])];
-    const { server } = await openSection("sec-hoa", original, "BCA");
+    const original = [wirePart([wireQdaScience("sec-toan", "TOAN")])];
+    const { server } = await openSection("sec-toan", original, "VACT");
     const source = (await screen.findByRole("heading", { level: 4, name: "Nguồn chùm" })).closest("[data-form-field]") as HTMLElement;
     await user.click(within(source).getByRole("button", { name: "Thêm điều kiện" }));
     await user.click(await screen.findByRole("menuitem", { name: /Nhãn nguồn/ }));
@@ -360,20 +378,20 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
     await user.click(tag[0]!);
     await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-    const [single, set, fill] = sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.blocks as Wire[];
+    const [single, set, fill] = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[];
     const seeded = (original[0]!.sections as Wire[])[0]!.blocks as Wire[];
     expect((set!.tagCodes as string[]).length).toBe(1);
     expect(single).toEqual(expect.objectContaining({ id: seeded[0]!.id, tagCodes: [] }));
     expect(fill).toEqual(expect.objectContaining({ id: seeded[2]!.id, tagCodes: [] }));
-    expect(sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.knowledgeScope ?? null).toBeNull();
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.knowledgeScope ?? null).toBeNull();
   });
 
   it("AD-135: bản en dùng nhãn đã dịch Question sets cho aria-label của MatrixSetSource, không rò tên Chùm tiếng Việt và giữ nguyên set.name trong payload", async () => {
     const user = userEvent.setup();
-    const hoa = wireQdaScience("sec-hoa", "HOA");
-    (hoa.blocks as Wire[])[1]!.name = "Chùm";
-    const { server } = boot({ kind: "BCA", parts: [wirePart([hoa])] });
-    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-hoa`);
+    const toan = wireQdaScience("sec-toan", "TOAN");
+    (toan.blocks as Wire[])[1]!.name = "Chùm";
+    const { server } = boot({ kind: "VACT", parts: [wirePart([toan])] });
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-toan`);
     renderWithProviders(<ExamStructureView examId={EXAM_ID} />, { locale: "en", messages: enMessages });
 
     const source = (await screen.findByRole("heading", { level: 4, name: "Set source" })).closest("[data-form-field]") as HTMLElement;
@@ -413,7 +431,7 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
 
     await user.click(screen.getByRole("button", { name: "Continue → Listing" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-    const [, savedSet] = sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.blocks as Wire[];
+    const [, savedSet] = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[];
     expect(savedSet!.name).toBe("Chùm");
     expect((savedSet!.tagCodes as string[]).length).toBe(1);
   });
@@ -460,7 +478,7 @@ describe("MT: chỗ gắn theo kỳ (ADV:CR-2:2; R-3, R-15)", () => {
 describe("MT: bàn phím và focus (CR-2 AC-10; R1-3, R1-6)", () => {
   it("Thêm chỉ tiêu chủ đề bằng bàn phím: Enter mở bảng và đưa focus về nút Thêm chỉ tiêu chủ đề của bảng; Enter nữa thêm dòng chờ mapping", async () => {
     const user = userEvent.setup();
-    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN")])]);
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN")])], "VACT");
     const reveal = await screen.findByRole("button", { name: "Thêm chỉ tiêu chủ đề" });
     reveal.focus();
     await user.keyboard("{Enter}");
@@ -472,7 +490,7 @@ describe("MT: bàn phím và focus (CR-2 AC-10; R1-3, R1-6)", () => {
 
   it("Nguồn chùm bằng bàn phím: Enter mở menu, ArrowDown tới Nhãn nguồn, Enter chọn; mục Nhãn nguồn hiện, menu đóng và focus về nút Thêm điều kiện", async () => {
     const user = userEvent.setup();
-    await openSection("sec-hoa", [wirePart([wireQdaScience("sec-hoa", "HOA", { fill: 0 })])], "BCA");
+    await openSection("sec-toan", [wirePart([wireQdaScience("sec-toan", "TOAN", { fill: 0 })])], "VACT");
     const source = (await screen.findByRole("heading", { level: 4, name: "Nguồn chùm" })).closest("[data-form-field]") as HTMLElement;
     const trigger = within(source).getByRole("button", { name: "Thêm điều kiện" });
     trigger.focus();

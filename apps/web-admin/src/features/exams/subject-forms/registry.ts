@@ -68,7 +68,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     enforcement: "DECLARED_REQUIRED",
     combinedMatrix: "NONE",
     percent: { MATRIX: "NONE", ROWS: "NONE" },
-    hideGrade: ["VAN", "SU", "DIA"],
+    hideGrade: ["ANH", "VAN", "SU", "DIA"],
     matrix: SCIENCE_MATRIX,
     rows: ["VAN", "ANH"],
   },
@@ -76,7 +76,7 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     enforcement: "FIXED_REFERENCE",
     combinedMatrix: "NONE",
     percent: { MATRIX: "NONE", ROWS: "NONE" },
-    hideGrade: [],
+    hideGrade: ["ANH", "SU", "DIA"],
     matrix: ["TOAN", "SU", "LY", "HOA", "SINH", "DIA"],
     rows: ["VAN", "ANH"],
   },
@@ -133,11 +133,13 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
 const SCIENCE_SET_COUNT = { min: 1, max: 2, size: 3 } as const;
 const SCIENCE_LIMITS: Readonly<Record<string, number>> = { LY: 1, HOA: 1, SINH: 1, SU: 0, DIA: 0 };
 const LIMITED_KINDS: readonly SubjectFormExamKind[] = ["HSA", "QDA"];
+const MAPID_RULE_KINDS: readonly SubjectFormExamKind[] = ["HSA", "QDA", "BCA"];
 
 function buildEntry(kind: SubjectFormExamKind, subject: string, form: SubjectFormKind): SubjectFormEntry {
   const rule = KIND_RULES[kind];
   const matrix = form === "MATRIX";
   const limited = LIMITED_KINDS.includes(kind) && subject in SCIENCE_LIMITS;
+  const usesMapidRules = MAPID_RULE_KINDS.includes(kind);
   return {
     form,
     percentEntry: rule.percent[form],
@@ -148,8 +150,8 @@ function buildEntry(kind: SubjectFormExamKind, subject: string, form: SubjectFor
     gradeMixedColumn: kind === "VACT" && subject === "TOAN",
     ...(limited ? { setCount: { ...SCIENCE_SET_COUNT }, shortAnswerMin: SCIENCE_LIMITS[subject]! } : {}),
     flexibleSets: kind === "VACT" && subject === "TOAN",
-    mapidFlow: !matrix ? "NONE" : kind === "HSA" ? "HSA_RULES" : "SCOPE_AND_QUOTA",
-    setSource: matrix && kind !== "HSA",
+    mapidFlow: !matrix ? "NONE" : usesMapidRules ? "HSA_RULES" : "SCOPE_AND_QUOTA",
+    setSource: matrix && !usesMapidRules,
     rowsEditable: (kind === "HSCA" && subject === "ANH") || (kind === "VACT" && subject === "SCIENTIFIC_THINKING") ? "ADD_AND_SPLIT" : "NONE",
     ...(kind === "THPTQG" && subject === "VAN" ? { readOnlyNotice: "ESSAY_SKIPPED" as const } : {}),
   };

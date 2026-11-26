@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { webUrl } from "./env";
 
 export interface SiteBaseInfo {
@@ -26,23 +25,11 @@ export function formatSiteBase(rawBase: string): SiteBaseInfo {
 }
 
 /**
- * Resolves the active web base URL from environment configuration or incoming request headers
- * so legal documents always reference the current web origin instead of a hardcoded domain.
+ * Resolves the canonical web base URL strictly from trusted environment configuration
+ * (`THI360_WEB_URL` / `NEXT_PUBLIC_THI360_WEB_URL` / `webUrl()`), never from untrusted
+ * client request headers such as `Host` or `X-Forwarded-Host`.
  */
 export async function resolveSiteBase(): Promise<SiteBaseInfo> {
   const configured = process.env.THI360_WEB_URL?.trim() || process.env.NEXT_PUBLIC_THI360_WEB_URL?.trim();
-  if (configured) {
-    return formatSiteBase(configured);
-  }
-  try {
-    const headerList = await headers();
-    const host = headerList.get("x-forwarded-host")?.split(",")[0]?.trim() || headerList.get("host")?.trim();
-    if (host) {
-      const proto = headerList.get("x-forwarded-proto")?.split(",")[0]?.trim() || (host.startsWith("localhost") ? "http" : "https");
-      return formatSiteBase(`${proto}://${host}`);
-    }
-  } catch {
-    // Static generation or unit test without active Next request scope.
-  }
-  return formatSiteBase(webUrl());
+  return formatSiteBase(configured || webUrl());
 }

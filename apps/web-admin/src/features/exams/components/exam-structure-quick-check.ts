@@ -99,8 +99,9 @@ export function buildQuickCheckItems({
     });
   }
 
-  for (let index = 0; index < saveBlockers(parts, axes).length; index += 1) {
-    const blocker = saveBlockers(parts, axes)[index]!;
+  const blockers = saveBlockers(parts, axes);
+  for (let index = 0; index < blockers.length; index += 1) {
+    const blocker = blockers[index]!;
     // Tránh lặp cảnh báo tổng tỷ lệ khối đã nằm trong `validateDraft`.
     if (blocker.kind === "MATRIX_PERCENT" && blocker.blockId && percentBlockIds.has(blocker.blockId)) {
       continue;

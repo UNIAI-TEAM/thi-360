@@ -21,7 +21,7 @@ import { AllocationGap } from "./allocation-gap";
 import { AudioChip, blockAvailableInput, blockShare, sectionAudio } from "./block-row-metrics";
 import { ScrollableTable } from "./scrollable-table";
 import { ReferenceDistributions } from "./subject-allocation-extras";
-import { useHsaExam, isHsaExam } from "../hsa-enforcement";
+import { useHsaExam, supportsMapidRules } from "../hsa-enforcement";
 import { deletedGroupRules, groupCountScope, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
 import { MapidRulesTable, useMapidRuleText } from "./mapid-rules-table";
 import { TopicQuotaTable, type TopicQuotaServerError } from "./topic-quota-table";
@@ -75,9 +75,9 @@ export function ExamStructureSubjectPanel({
   const tGap = useTranslations("exams.structure.gap");
   const tContent = useTranslations("content");
   const { section, option } = context;
-  // Môn HSA dùng ma trận có hai chế độ MAPID; môn khác, kỳ thi khác, và môn còn dữ liệu cũ không chuyển được giữ kiểu cũ.
+  // Môn thuộc kỳ dùng quy tắc MAPID (HSA, QDA, BCA) có hai chế độ MAPID; môn khác, kỳ thi khác, và môn còn dữ liệu cũ không chuyển được giữ kiểu cũ.
   const hsaContext = useHsaExam();
-  const mapidMode = hsaContext || isHsaExam(examKind) ? mapidViewMode(section) : null;
+  const mapidMode = hsaContext || supportsMapidRules(examKind) ? mapidViewMode(section) : null;
   const cases = sectionCaseCounts(section, option);
   const [caseIndex, setCaseIndex] = useState(0);
   const count = cases[Math.min(caseIndex, cases.length - 1)] ?? null;

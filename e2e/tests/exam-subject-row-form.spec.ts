@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { ADMIN_URL, adminApi, loginAdmin, RUN_ID } from "./helpers/editor-qa";
-import { allSections, collectIssues, forceBlockOmitted, getStructure, SCENARIO_TIMEOUT_MS } from "./helpers/wave-2b";
+import { allSections, collectIssues, forceBlockOmitted, getStructure, saveStructureInUi, SCENARIO_TIMEOUT_MS } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
 
@@ -45,7 +45,7 @@ test("HSA Văn: bảng 5 dòng theo mẫu, nhóm 5 có công tắc đảo; sửa
   const toggle = page.getByRole("switch", { name: "Đảo thứ tự các chùm" });
   await expect(toggle).toBeChecked();
   await toggle.click();
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
+  await saveStructureInUi(page, id);
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
 
   const saved = await structureOf(admin, id);
@@ -68,11 +68,14 @@ test("THPTQG Lý: Phân bổ đối chiếu độ khó 8/6/4 lưu được và K
   const initialSection = allSections(await getStructure(admin, id))[0]!;
   await page.goto(`${ADMIN_URL}/exams/${id}/structure?section=${initialSection.id}`);
   await expect(page.getByRole("heading", { name: "Các dòng lấy câu" })).toBeVisible();
-  await page.locator("[data-reference-block] summary").click();
-  const cells = page.locator("[data-reference-block]").getByRole("textbox", { name: /^Độ khó: .*số câu$/ });
   const fill = async (values: string[]) => {
+    const details = page.locator("[data-reference-block]");
+    await expect(details).toBeVisible();
+    const isOpen = await details.evaluate((el) => (el as HTMLDetailsElement).open);
+    if (!isOpen) await details.locator("summary").click();
+    const cells = details.getByRole("textbox", { name: /^Độ khó: .*số câu$/ });
     for (const [index, value] of values.entries()) await cells.nth(index).fill(value);
-    await page.getByRole("button", { name: "Lưu", exact: true }).click();
+    await saveStructureInUi(page, id);
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
   };
   const issues = async () => {
@@ -181,12 +184,13 @@ for (const scenario of [
     page.on("request", (request) => {
       if (request.method() === "PUT" && request.url().endsWith(`/exams/${id}/structure`)) saves += 1;
     });
-    await page.getByRole("button", { name: "Lưu", exact: true }).click();
+    await page.getByRole("button", { name: "Lưu nháp và thoát", exact: true }).click();
+    await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
     expect(saves).toBe(0);
     await children.nth(0).fill("1");
     await children.nth(1).fill("1");
     await page.getByRole("button", { name: "Tách", exact: true }).click();
-    await page.getByRole("button", { name: "Lưu", exact: true }).click();
+    await saveStructureInUi(page, id);
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
     const after = await getStructure(admin, id);
     const next = allSections(after).find((item) => item.id === section!.id)!;
@@ -223,7 +227,7 @@ test("V-SAT Toán: xác nhận bảng kết hợp của phần và đọc lại"
   await expect(reference.locator("[data-reference-combined]")).toHaveCount(0);
   await open();
   await reference.getByRole("button", { name: "Xác nhận chuyển" }).click();
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
+  await saveStructureInUi(page, id);
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
   const after = await getStructure(admin, id);
   expect(allSections(after).find((item) => item.id === section.id)?.matrix?.mode).toBe("COMBINED");
@@ -244,7 +248,7 @@ test("SP2E Lịch sử: không hiện khối lớp sau khi lưu", async ({ conte
   await page.keyboard.press("Escape");
   const name = page.getByRole("textbox", { name: /Tên nhóm/ });
   await name.fill(`${await name.inputValue()} updated`);
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
+  await saveStructureInUi(page, id);
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
   await page.reload();
   await page.locator("[data-reference-block] summary").click();
@@ -273,7 +277,7 @@ test("rowPercentPutGet: 30% của mục 40 câu lưu số 12, tải lại giữ 
   await page.locator(`[data-form-row="${block.id}"]`).getByRole("button", { name: /^Sửa dòng/ }).click();
   await page.getByRole("textbox", { name: "Tỷ lệ (%)" }).fill("30");
   await expect(page.getByText("30% của 40 câu = 12 câu")).toBeVisible();
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
+  await saveStructureInUi(page, id);
   await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
   const saved = await getStructure(admin, id);
   expect(allSections(saved).find((item) => item.id === section.id)?.blocks?.[0]?.questionCount).toBe(12);

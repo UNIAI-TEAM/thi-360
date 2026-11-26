@@ -2,9 +2,7 @@ import { cn, focusRing } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { SiteBaseInfo } from "@/lib/site-url";
-
-const CONTACT_EMAIL = "hsaeducation.jsc@gmail.com";
-const CONTACT_PHONE = "0968964334";
+import { SITE_CONTACT } from "@/lib/contact";
 
 export function PrivacyPolicyView({ site }: { site: SiteBaseInfo }) {
   const legal = useTranslations("legal");
@@ -12,8 +10,8 @@ export function PrivacyPolicyView({ site }: { site: SiteBaseInfo }) {
   const vars = {
     siteUrl: site.siteUrl,
     siteHost: site.siteHost,
-    email: CONTACT_EMAIL,
-    phone: CONTACT_PHONE,
+    email: SITE_CONTACT.email,
+    phone: SITE_CONTACT.hotline,
   };
 
   return (
@@ -80,14 +78,14 @@ export function PrivacyPolicyView({ site }: { site: SiteBaseInfo }) {
             <p>{t("s5.hcmc")}</p>
             <p>
               <span className="font-medium text-text">{t("s5.phoneLabel")}</span>{" "}
-              <a href={`tel:${CONTACT_PHONE}`} className={cn("text-primary-text hover:underline", focusRing)}>
-                {CONTACT_PHONE}
+              <a href={`tel:${SITE_CONTACT.hotlineTel}`} className={cn("text-primary-text hover:underline", focusRing)}>
+                {SITE_CONTACT.hotline}
               </a>
             </p>
             <p>
               <span className="font-medium text-text">{t("s5.emailLabel")}</span>{" "}
-              <a href={`mailto:${CONTACT_EMAIL}`} className={cn("text-primary-text hover:underline", focusRing)}>
-                {CONTACT_EMAIL}
+              <a href={`mailto:${SITE_CONTACT.email}`} className={cn("text-primary-text hover:underline", focusRing)}>
+                {SITE_CONTACT.email}
               </a>
             </p>
             <p>

@@ -75,7 +75,9 @@ export function ExamReviewCheck({
   onBusyChange,
 }: ExamReviewCheckProps) {
   const t = useTranslations("exams.review");
-  const checkQuery = useExamCheck(exam.id);
+  // Tránh `GET /check` chạy song song và ghi đè kết quả mới của `POST /check` khi vào từ `?recheck=1`.
+  const [pendingAutoRecheck, setPendingAutoRecheck] = useState(autoRecheck);
+  const checkQuery = useExamCheck(exam.id, !pendingAutoRecheck);
   const runCheck = useRunExamCheck(exam.id);
   const [liveMessage, setLiveMessage] = useState("");
   const blocksRef = useRef<HTMLHeadingElement>(null);
@@ -113,7 +115,11 @@ export function ExamReviewCheck({
     setLiveMessage(t("live.running"));
     runCheck.mutate(
       {},
-      { onSuccess: announceDone, onError: () => setLiveMessage(t("runError")) },
+      {
+        onSuccess: announceDone,
+        onError: () => setLiveMessage(t("runError")),
+        onSettled: () => setPendingAutoRecheck(false),
+      },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRecheck]);
@@ -128,7 +134,7 @@ export function ExamReviewCheck({
   }
 
   let body;
-  if (checkQuery.isPending) {
+  if (checkQuery.isPending || (pendingAutoRecheck && runCheck.isPending)) {
     body = (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton className="h-14" />
