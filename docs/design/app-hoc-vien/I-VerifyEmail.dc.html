@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Xác minh email</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios plain {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px; --warn-fg: {{warnFg}}; --warn-bg: {{warnBg}}">
+  <div class="nav">
+    <a class="circle" href="I-Profile.dc.html" aria-label="Quay lại Hồ sơ"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <span></span>
+  </div>
+  <div class="col pad grow g16" style="padding-top: 8px">
+    <span class="hero-ic" style="width: 72px; height: 72px; border-radius: 20px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 38px; height: 38px"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+    <div class="col g8">
+      <h1 class="t-large">Xác minh email</h1>
+      <p class="t-body">Chúng tôi đã gửi mã 6 số tới <span class="strong">minhanh@example.com</span>. Mã có hiệu lực trong 10 phút.</p>
+    </div>
+    <sc-if value="{{ isSent }}" hint-placeholder-val="{{ true }}">
+      <div class="field focus">
+        <label for="iv-code">Mã xác minh</label>
+        <input id="iv-code" type="text" inputmode="numeric" maxlength="6" value="4071" placeholder="6 chữ số" autocomplete="one-time-code" style="letter-spacing: .3em">
+      </div>
+    </sc-if>
+    <sc-if value="{{ isWrong }}" hint-placeholder-val="{{ false }}">
+      <div class="field">
+        <label for="iv-code-w">Mã xác minh</label>
+        <input id="iv-code-w" type="text" inputmode="numeric" maxlength="6" value="407163" placeholder="6 chữ số" autocomplete="one-time-code" aria-invalid="true" aria-describedby="iv-code-err" style="letter-spacing: .3em; box-shadow: 0 0 0 2px var(--red)">
+        <span class="hint" id="iv-code-err" style="color: var(--red)">Mã chưa đúng. Bạn còn 3 lần thử.</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isLimited }}" hint-placeholder-val="{{ false }}">
+      <div class="field">
+        <label for="iv-code-l">Mã xác minh</label>
+        <input id="iv-code-l" type="text" inputmode="numeric" maxlength="6" value="" placeholder="6 chữ số" autocomplete="one-time-code" style="letter-spacing: .3em">
+      </div>
+    </sc-if>
+    <button class="btn prominent block">Xác minh</button>
+    <div class="col center g4">
+      <span class="t-sub">Chưa nhận được mã?</span>
+      <sc-if value="{{ isSent }}" hint-placeholder-val="{{ true }}">
+        <div class="col center">
+          <button class="btn text" disabled aria-describedby="iv-cool" style="opacity: .4">Gửi lại mã</button>
+          <span class="t-foot" id="iv-cool">Gửi lại mã sau 00:42</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isWrong }}" hint-placeholder-val="{{ false }}">
+        <button class="btn text" style="font-weight: 600">Gửi lại mã</button>
+      </sc-if>
+      <sc-if value="{{ isLimited }}" hint-placeholder-val="{{ false }}">
+        <div class="col center g8" style="align-self: stretch">
+          <button class="btn text" disabled aria-describedby="iv-limit" style="opacity: .4">Gửi lại mã</button>
+          <div class="banner" role="alert" id="iv-limit" style="background: var(--warn-bg); color: var(--warn-fg); text-align: left; align-self: stretch">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>Bạn đã gửi lại mã quá số lần cho phép. Thử lại sau 27/11 08:15.</span>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+    <div class="grow"></div>
+    <a class="btn gray block" href="I-Profile.dc.html">Để sau</a>
+    <p class="t-foot">Chưa xác minh bạn vẫn mua bài và làm bài được, nhưng chưa dùng email này để đặt lại mật khẩu. Bạn có thể xác minh lại ở <a href="I-Profile.dc.html">Hồ sơ</a>. Gửi lại mã tối đa 5 lần mỗi ngày.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["sent","wrongCode","limited"],"default":"sent"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.state ?? 'sent';
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+isSent: s === 'sent',
+isWrong: s === 'wrongCode',
+isLimited: s === 'limited'
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Tablet, làm bài kèm danh sách câu</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}}" style="width: 1280px; height: 800px; background: var(--surface-container)">
+  <header class="row g16" style="flex: none; height: 80px; padding: 8px 16px 8px 8px">
+    <a class="icon-btn" href="#" aria-label="Về Bài thi của tôi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></a>
+    <div class="col" style="width: 240px; flex: none; min-width: 0">
+      <span style="font-size: 12px; line-height: 16px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thi thử ĐGNL HSA 2027 · Đề số 04</span>
+      <span class="t-title-m" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Phần 3 · Khoa học</span>
+    </div>
+    <nav class="grow" aria-label="Các phần của bài thi" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+      <div class="row g8" aria-label="Toán học và xử lý số liệu, đã hoàn thành" style="min-width: 0; padding: 6px 10px; border-radius: 12px; color: var(--on-surface-variant)">
+        <span style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: var(--primary-container); color: var(--on-primary-container); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 2.5"><path d="m5 12 5 5 9-10"/></svg></span>
+        <span style="min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; font-size: 13px; line-height: 16px; font-weight: 500">Toán học và xử lý số liệu</span>
+      </div>
+      <div class="row g8" aria-label="Văn học – Ngôn ngữ, đã hoàn thành" style="min-width: 0; padding: 6px 10px; border-radius: 12px; color: var(--on-surface-variant)">
+        <span style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: var(--primary-container); color: var(--on-primary-container); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 2.5"><path d="m5 12 5 5 9-10"/></svg></span>
+        <span style="min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; font-size: 13px; line-height: 16px; font-weight: 500">Văn học – Ngôn ngữ</span>
+      </div>
+      <div class="row g8" aria-current="step" aria-label="Khoa học, đang làm, đã trả lời {{answered}} trên 50 câu" style="min-width: 0; padding: 6px 10px; border-radius: 12px; background: var(--secondary-container); color: var(--on-secondary-container)">
+        <span style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: var(--primary); color: var(--on-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500">3</span>
+        <span class="col grow" style="min-width: 0"><span style="font-size: 13px; line-height: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Khoa học</span><span style="font-size: 11px; line-height: 13px; font-variant-numeric: tabular-nums">{{answered}}/50 câu</span><span aria-hidden="true" style="display: block; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--surface-lowest); overflow: hidden"><span style="display: block; width: {{pct}}%; height: 3px; background: var(--primary)"></span></span></span>
+      </div>
+    </nav>
+    <div class="row" role="timer" aria-label="Phần 3 còn: 38 phút 41 giây" style="gap: 6px; height: 40px; padding: 0 14px 0 12px; border-radius: 20px; background: var(--surface-lowest)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap">Phần 3 còn</span>
+      <span style="font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums">38:41</span>
+    </div>
+    <div class="row g4" role="status" style="height: 32px; padding: 0 12px 0 10px; border-radius: 16px; font-size: 13px; font-weight: 500; white-space: nowrap; background: {{sBg}}; color: {{sFg}}">
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1 0 8z"/><path d="m9.5 13 2 2 3.5-4"/></svg>Đã lưu
+    </div>
+    <a class="btn filled" href="A-PlayerDialogs.dc.html">Nộp bài</a>
+    <button class="icon-btn" aria-label="Thu gọn thanh đầu trang" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+  </header>
+
+  <div class="row grow g12" style="align-items: stretch; padding: 0 16px 16px">
+    <article class="pane col g12 grow" aria-label="Thông tin dùng chung" style="padding: 24px; overflow: hidden">
+      <div class="row between">
+        <span class="strong" style="font-size: 14px; color: var(--primary)">Môn Hóa học</span>
+        <span class="t-label">Câu 118–134 · 17 câu</span>
+      </div>
+      <span class="t-label">Đọc thông tin sau và trả lời các câu từ 118 đến 120.</span>
+      <h2 class="t-title-m" style="font-size: 18px; line-height: 26px">Sản xuất sulfuric acid theo phương pháp tiếp xúc</h2>
+      <p style="font-size: 15px; line-height: 24px">Trong công nghiệp, sulfuric acid (H<sub>2</sub>SO<sub>4</sub>) được sản xuất qua ba giai đoạn.</p>
+      <p style="font-size: 15px; line-height: 24px"><b style="font-weight: 500">Giai đoạn 1:</b> đốt lưu huỳnh hoặc quặng pyrite (FeS<sub>2</sub>) để thu được SO<sub>2</sub>.</p>
+      <p style="font-size: 15px; line-height: 24px"><b style="font-weight: 500">Giai đoạn 2:</b> oxi hóa SO<sub>2</sub> thành SO<sub>3</sub> ở 450–500 °C, xúc tác V<sub>2</sub>O<sub>5</sub>:<br />2SO<sub>2</sub> + O<sub>2</sub> ⇌ 2SO<sub>3</sub> &nbsp;(Δ<sub>r</sub>H &lt; 0)</p>
+      <p style="font-size: 15px; line-height: 24px"><b style="font-weight: 500">Giai đoạn 3:</b> hấp thụ SO<sub>3</sub> bằng H<sub>2</sub>SO<sub>4</sub> 98% tạo oleum H<sub>2</sub>SO<sub>4</sub>·nSO<sub>3</sub>, rồi pha loãng oleum bằng nước để được acid có nồng độ mong muốn.</p>
+      <div class="col center" role="img" aria-label="Hình 1. Sơ đồ dây chuyền sản xuất H₂SO₄" style="justify-content: center; gap: 8px; min-height: 150px; border-radius: 12px; background: var(--surface-high); color: var(--on-surface-variant); font-size: 13px">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg>
+        Hình 1. Sơ đồ dây chuyền sản xuất H₂SO₄
+      </div>
+    </article>
+
+    <section class="pane col g16 grow" aria-label="Câu hỏi" style="padding: 12px 20px 20px; overflow: hidden">
+      <section class="col g12" aria-labelledby="tq118">
+        <div class="row g8" style="min-height: 48px; flex-wrap: wrap">
+          <h2 class="t-title-m" id="tq118">Câu 118</h2>
+          <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Chọn một đáp án</span>
+          <span class="grow"></span>
+          <button class="icon-btn" aria-label="Đánh dấu xem lại" aria-pressed="false" style="margin-right: -8px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></button>
+        </div>
+        <p style="font-size: 15px; line-height: 22px">Chất xúc tác được dùng ở giai đoạn 2 là</p>
+        <div class="col g8" role="radiogroup" aria-label="Phương án" style="font-size: 14px; line-height: 20px">
+          <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span><span style="font-weight: 500">A.</span><span class="grow">Fe</span></div>
+          <div role="radio" aria-checked="true" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 2px solid var(--primary); background: var(--primary-container); color: var(--on-primary-container); padding: 13px 15px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--primary)"></span></span><span style="font-weight: 500">B.</span><span class="grow">V<sub>2</sub>O<sub>5</sub></span></div>
+          <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span><span style="font-weight: 500">C.</span><span class="grow">Pt</span></div>
+          <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span><span style="font-weight: 500">D.</span><span class="grow">Ni</span></div>
+        </div>
+      </section>
+      <div class="divider" style="margin: 0"></div>
+      <section class="col g12" aria-labelledby="tq119">
+        <div class="row g8" style="min-height: 48px; flex-wrap: wrap">
+          <h2 class="t-title-m" id="tq119">Câu 119</h2>
+          <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Chọn một đáp án</span>
+          <span class="grow"></span>
+          <button class="icon-btn" aria-label="Đánh dấu xem lại" aria-pressed="false" style="margin-right: -8px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></button>
+        </div>
+        <p style="font-size: 15px; line-height: 22px">Vì sao ở giai đoạn 3 không hấp thụ trực tiếp SO<sub>3</sub> bằng nước?</p>
+        <div class="col g8" role="radiogroup" aria-label="Phương án" style="font-size: 14px; line-height: 20px">
+          <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span><span style="font-weight: 500">A.</span><span class="grow">SO<sub>3</sub> không tan trong nước.</span></div>
+          <div role="radio" aria-checked="true" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 2px solid var(--primary); background: var(--primary-container); color: var(--on-primary-container); padding: 13px 15px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--primary)"></span></span><span style="font-weight: 500">B.</span><span class="grow">Phản ứng tỏa nhiều nhiệt, tạo sương mù acid khó hấp thụ.</span></div>
+          <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span><span style="font-weight: 500">C.</span><span class="grow">Sản phẩm tạo thành là H<sub>2</sub>SO<sub>3</sub>.</span></div>
+          <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px"><span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span><span style="font-weight: 500">D.</span><span class="grow">Nước làm mất tác dụng của xúc tác.</span></div>
+        </div>
+      </section>
+    </section>
+
+    <aside class="pane col" aria-labelledby="tn-title" style="width: 360px; flex: none">
+      <div class="col g12" style="flex: none; padding: 20px 20px 12px">
+        <h2 class="t-title-m" id="tn-title" style="font-size: 18px">Danh sách câu hỏi</h2>
+        <div class="col g4">
+          <span class="t-small">{{answered}}/50 câu đã trả lời</span>
+          <span style="height: 4px; border-radius: 2px; background: var(--surface-high); overflow: hidden" aria-hidden="true"><span style="display: block; width: {{pct}}%; height: 4px; background: var(--primary)"></span></span>
+        </div>
+        <div class="seg" role="group" aria-label="Bộ lọc">
+          <button class="on grow" aria-pressed="true" style="justify-content: center; padding: 0 8px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Tất cả</button>
+          <button class="grow" aria-pressed="false" style="justify-content: center; padding: 0 8px">Chưa làm</button>
+          <button class="grow" aria-pressed="false" style="justify-content: center; padding: 0 8px">Đánh dấu</button>
+        </div>
+      </div>
+      <div class="col grow g12" style="overflow: hidden; padding: 4px 20px 8px; border-top: 1px solid var(--outline-variant)">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+          <div class="col g8" style="padding-top: 8px">
+            <div class="row between" style="min-height: 24px">
+              <span class="strong" style="font-size: 14px">Môn {{g.name}}</span>
+              <span class="t-label">Câu {{g.from}}–{{g.to}} · {{g.count}} câu</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px">
+              <sc-for list="{{ g.cells }}" as="c" hint-placeholder-count="17">
+                <button aria-label="{{c.aria}}" style="position: relative; height: 48px; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; padding: 0; {{c.style}}">{{c.no}}
+                  <sc-if value="{{ c.flag }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="position: absolute; bottom: 3px; right: 3px; width: 10px; height: 10px; stroke-width: 2.5; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></sc-if>
+                  <sc-if value="{{ c.unsaved }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 4px; background: {{wFg}}"></span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--outline-variant); font-size: 12px; line-height: 16px; color: var(--on-surface-variant)" aria-label="Chú giải">
+        <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; background: var(--surface-lowest); box-shadow: 0 0 0 1px var(--surface-lowest), 0 0 0 3px var(--primary)"></span>Đang xem</span>
+        <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; background: var(--primary-container)"></span>Đã trả lời</span>
+        <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; border: 1px solid var(--primary); background: linear-gradient(135deg, var(--primary-container) 50%, var(--surface-lowest) 50%)"></span>Trả lời một phần</span>
+        <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; border: 1px solid var(--outline)"></span>Chưa trả lời</span>
+        <span class="row g8"><span style="flex: none; width: 16px; display: flex; justify-content: center"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{wFg}}"></span></span>Chưa lưu</span>
+        <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; border: 1px solid {{dgFg}}; background: {{dgBg}}; color: {{dgFg}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 9px; height: 9px; stroke-width: 3; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></span>Đánh dấu xem lại</span>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const wFg = dark ? '#fbbf24' : '#b45309';
+const dg = dark ? { solid: '#dc2626', on: '#ffffff', fg: '#f87171', bg: '#2e1517' } : { solid: '#dc2626', on: '#ffffff', fg: '#b91c1c', bg: '#fef2f2' };
+const answered = [101,102,103,104,106,107,108,110,111,113,114,116,118,119,120,122,123,125,126,128,131,135,136,138,139,140,143];
+const partial = [141];
+const flagged = [106,112,124,141,147];
+const unsaved = [104];
+const current = 119;
+const styleOf = (s, cur, flag) => {
+  let st = '';
+  if (flag && s === 'answered') st = 'border: 1px solid ' + dg.solid + '; background: ' + dg.solid + '; color: ' + dg.on + ';';
+  else if (flag && s === 'partial') st = 'border: 1px dashed ' + dg.fg + '; background: ' + dg.bg + '; color: ' + dg.fg + ';';
+  else if (flag) st = 'border: 1px solid ' + dg.fg + '; background: ' + dg.bg + '; color: ' + dg.fg + ';';
+  else if (s === 'answered') st = 'border: 0; background: var(--primary-container); color: var(--on-primary-container);';
+  else if (s === 'partial') st = 'border: 1px solid var(--primary); background: linear-gradient(135deg, var(--primary-container) 50%, var(--surface-lowest) 50%); color: var(--on-surface);';
+  else st = 'border: 1px solid var(--outline); background: var(--surface-lowest); color: var(--on-surface-variant);';
+  if (cur) st += ' box-shadow: 0 0 0 2px var(--surface-lowest), 0 0 0 4px var(--primary);';
+  return st;
+};
+const words = { answered: 'đã trả lời', partial: 'trả lời một phần', blank: 'chưa trả lời' };
+const mk = (name, from, to) => {
+  const cells = [];
+  for (let n = from; n <= to; n++) {
+    const s = answered.includes(n) ? 'answered' : (partial.includes(n) ? 'partial' : 'blank');
+    const parts = [String(n)];
+    if (n === current) parts.push('đang xem');
+    parts.push(words[s]);
+    parts.push(unsaved.includes(n) ? 'chưa lưu' : 'đã lưu');
+    if (flagged.includes(n)) parts.push('đánh dấu xem lại');
+    cells.push({ no: n, style: styleOf(s, n === current, flagged.includes(n)), flag: flagged.includes(n), unsaved: unsaved.includes(n), aria: parts.join(', ') });
+  }
+  return { name: name, from: from, to: to, count: to - from + 1, cells: cells };
+};
+return {
+  theme: dark ? 'dark' : 'light',
+  sFg: dark ? '#34d399' : '#047857',
+  sBg: dark ? '#0f2a21' : '#ecfdf5',
+  wFg: wFg,
+  dgFg: dg.fg,
+  dgBg: dg.bg,
+  wBg: dark ? '#2b2210' : '#fffbeb',
+  answered: answered.length,
+  pct: Math.round(answered.length / 50 * 100),
+  groups: [mk('Vật lí', 101, 117), mk('Hóa học', 118, 134), mk('Sinh học', 135, 150)]
+};
+}
+}
+</script>
+</body>
+</html>

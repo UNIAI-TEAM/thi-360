@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Xác nhận mua</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="nav">
+    <a class="circle" href="#" aria-label="Quay lại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <h1 class="t-headline">Xác nhận mua</h1>
+    <span></span>
+  </div>
+  <div class="grow" style="overflow-y: auto">
+  <div class="col pad g20" style="padding-top: 12px; padding-bottom: 20px">
+    <sc-if value="{{priceChanged}}" hint-placeholder-val="{{ false }}">
+      <div class="banner" style="background: {{warnBg}}; color: {{warnFg}}" role="status">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <span class="col g4">
+          <span style="font-weight: 600">Giá hoặc quyền lợi đã thay đổi</span>
+          <span>Giá hoặc quyền lợi vừa được cập nhật lên {{latest}} (trước đó hiển thị 159.000 đ). Vui lòng kiểm tra lại trước khi thanh toán.</span>
+        </span>
+      </div>
+    </sc-if>
+
+    <section class="col" aria-labelledby="i-co-acc">
+      <h2 id="i-co-acc" class="sec">Tài khoản nhận bài thi</h2>
+      <div class="group">
+        <div class="cell">
+          <span class="avatar" aria-hidden="true">MA</span>
+          <span class="col grow"><span>Trần Minh Anh</span><span class="t-foot">minhanh.tran</span></span>
+        </div>
+      </div>
+      <p class="t-foot" style="padding: 6px 16px 0">Sau khi hoàn tất, bài thi sẽ được cấp cho tài khoản minhanh.tran.</p>
+    </section>
+
+    <section class="col" aria-labelledby="i-co-prod">
+      <h2 id="i-co-prod" class="sec">Thông tin bài thi</h2>
+      <div class="group">
+        <div class="col g6" style="padding: 12px 16px">
+          <span style="display: inline-flex; align-self: flex-start; height: 22px; align-items: center; padding: 0 8px; border-radius: 11px; background: var(--fill); color: var(--label2); font-size: 13px; font-weight: 600">Phiên bản v3</span>
+          <span class="t-headline">HSA 2027 · Đề thi thử Đánh giá năng lực ĐHQG Hà Nội số 03</span>
+          <span class="row g12 t-sub" style="flex-wrap: wrap; row-gap: 0"><span>2 lượt thi</span><span>150 câu</span><span>195 phút</span></span>
+        </div>
+        <div class="row" style="flex-wrap: wrap; gap: 2px 14px; padding: 10px 16px 12px; border-top: 1px solid var(--sep); font-size: 13px; line-height: 18px; color: var(--label2)">
+          <span>Điểm, đáp án và lời giải</span>
+          <span class="row g4"><svg style="width: 14px; height: 14px; color: var(--tint)" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Giải thích bằng AI: Có</span>
+          <span class="row g4"><svg style="width: 14px; height: 14px; color: var(--tint)" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Đánh giá điểm mạnh, điểm yếu: Có</span>
+          <span class="row g4"><svg style="width: 14px; height: 14px" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>Ôn luyện bổ sung: Không</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="col" aria-labelledby="i-co-vou">
+      <h2 id="i-co-vou" class="sec">Mã giảm giá</h2>
+      <div class="group on-cell" style="padding: 12px 16px">
+        <sc-if value="{{vNone}}" hint-placeholder-val="{{ true }}">
+          <div class="row g8" style="align-items: flex-end">
+            <div class="field grow"><label for="i-co-code">Nhập mã giảm giá</label><input id="i-co-code" placeholder="Ví dụ: GIAM20"></div>
+            <button class="btn gray">Áp dụng</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{vHasCode}}" hint-placeholder-val="{{ false }}">
+          <div class="col g8">
+            <div class="row g8" style="align-items: flex-end">
+              <div class="field grow"><label for="i-co-code2">Nhập mã giảm giá</label><input id="i-co-code2" value="{{code}}" readonly></div>
+              <button class="btn gray" style="color: var(--red)">Gỡ mã</button>
+            </div>
+            <p class="row g6" style="font-size: 13px; line-height: 18px; color: var(--tint); align-items: flex-start">
+              <svg style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>
+              <span>Đã áp dụng mã {{code}} (-{{voucherDiscount}}) cùng ưu đãi tự động.</span>
+            </p>
+          </div>
+        </sc-if>
+        <sc-if value="{{vInvalid}}" hint-placeholder-val="{{ false }}">
+          <div class="col g6">
+            <div class="row g8" style="align-items: flex-end">
+              <div class="field grow"><label for="i-co-code3">Nhập mã giảm giá</label><input id="i-co-code3" value="HSA50K" aria-invalid="true" aria-describedby="i-co-err" style="box-shadow: 0 0 0 2px var(--red)"></div>
+              <button class="btn gray">Áp dụng</button>
+            </div>
+            <span class="hint" id="i-co-err" style="color: var(--red)">Mã giảm giá đã hết hạn sử dụng.</span>
+          </div>
+        </sc-if>
+      </div>
+    </section>
+
+    <section class="col" aria-labelledby="i-co-sum">
+      <h2 id="i-co-sum" class="sec">Chi tiết thanh toán</h2>
+      <div class="group">
+        <div class="cell between" style="min-height: 44px"><span>Giá gốc</span><span class="val">199.000 đ</span></div>
+        <div class="cell between" style="min-height: 44px"><span>Ưu đãi tự động (Mừng năm học mới)</span><span style="color: var(--tint); white-space: nowrap">-20.000 đ</span></div>
+        <sc-if value="{{vHasCode}}" hint-placeholder-val="{{ false }}">
+          <div class="cell between" style="min-height: 44px"><span>Mã giảm giá ({{code}})</span><span style="color: var(--tint); white-space: nowrap">-{{voucherDiscount}}</span></div>
+        </sc-if>
+        <div class="cell between" style="min-height: 52px"><span class="t-headline">Thành tiền</span><span class="t-headline" style="text-align: right">{{total}}</span></div>
+      </div>
+    </section>
+
+    <section class="col g4" aria-labelledby="i-co-ref" style="padding: 0 16px">
+      <h2 id="i-co-ref" class="row g6" style="font-size: 15px; line-height: 20px; font-weight: 600"><svg style="width: 18px; height: 18px; color: var(--tint)" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Chính sách hoàn tiền</h2>
+      <p class="t-foot">Bài thi được cấp ngay sau khi giao dịch hoàn tất và không hỗ trợ hoàn tiền sau khi đã kích hoạt lượt thi.</p>
+      <p class="t-foot">Hỗ trợ thanh toán: hotro@thi360.vn · 1900 6868</p>
+    </section>
+  </div>
+  </div>
+  <div class="pad safe-bottom" style="padding-top: 12px; background: var(--glass); border-top: 1px solid var(--sep); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); flex: none">
+    <a class="btn prominent block" href="I-PayResult.dc.html">
+      <sc-if value="{{vFree}}" hint-placeholder-val="{{ false }}">Dùng voucher và nhận bài thi</sc-if>
+      <sc-if value="{{vPaid}}" hint-placeholder-val="{{ true }}">Thanh toán qua VNPAY</sc-if>
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"voucher":{"editor":"enum","options":["none","applied","invalid","free"],"default":"none"},"priceChanged":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const v = this.props.voucher ?? 'none';
+const applied = v === 'applied';
+const free = v === 'free';
+const total = applied ? '149.000 đ' : free ? '0 đ (đã áp dụng voucher)' : '179.000 đ';
+return {
+theme: dark ? 'dark' : 'light',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+warnFg: dark ? '#fbbf24' : '#b45309',
+priceChanged: this.props.priceChanged ?? false,
+vNone: v === 'none',
+vInvalid: v === 'invalid',
+vHasCode: applied || free,
+vFree: free,
+vPaid: !free,
+code: free ? 'THI360FREE' : 'GIAM20',
+voucherDiscount: free ? '179.000 đ' : '30.000 đ',
+total: total,
+latest: applied ? '149.000 đ' : free ? '0 đ' : '179.000 đ'
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Xem lại bài làm</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="nav">
+    <a class="circle" href="I-Result.dc.html" aria-label="Về kết quả"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <h1 class="t-headline">Xem lại bài làm</h1>
+    <span style="width: 44px"></span>
+  </div>
+  <p class="t-foot pad" style="flex: none; padding-top: 2px; padding-bottom: 8px; text-align: center">Đề luyện HSA 2027 · Đề số 03 · Bài thi FULL · Lần 2 · Tổng điểm 98,25/150</p>
+
+  <div role="tablist" aria-label="Các phần của đề" class="row g8" style="flex: none; overflow: hidden; padding: 0 20px 8px">
+    <button role="tab" aria-selected="true" style="flex: none; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--tint); color: var(--on-tint); font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap">Tư duy định lượng</button>
+    <button role="tab" aria-selected="false" style="flex: none; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--fill); color: var(--label); font: inherit; font-size: 15px; font-weight: 500; white-space: nowrap">Tư duy định tính</button>
+    <button role="tab" aria-selected="false" style="flex: none; height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: var(--fill); color: var(--label); font: inherit; font-size: 15px; font-weight: 500; white-space: nowrap">Khoa học</button>
+  </div>
+
+  <sc-if value="{{isAnswers}}" hint-placeholder-val="{{ false }}">
+    <div class="pad" style="flex: none; padding-bottom: 8px">
+      <div class="banner" role="note" style="background: {{infoBg}}; color: {{infoFg}}; padding: 8px 12px">
+        <svg viewBox="0 0 24 24" style="width: 18px; height: 18px" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span>Không hiển thị lời giải cho mức quyền lợi hiện tại.</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <section class="col g8" aria-labelledby="i-rv-pal" style="flex: none; padding: 10px 12px; border-top: 1px solid var(--sep); border-bottom: 1px solid var(--sep); background: var(--glass)">
+    <div class="col" style="padding: 0 8px">
+      <h2 id="i-rv-pal" class="t-foot strong">Danh sách câu</h2>
+      <span class="t-foot">Đúng 31 · Đúng một phần 4 · Sai 11 · Bỏ trống 4</span>
+    </div>
+    <div class="row g6">
+      <button class="circle" aria-label="Câu trước"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+      <div class="row g8 grow" style="overflow: hidden; padding: 4px">
+        <sc-for list="{{cells}}" as="c" hint-placeholder-count="6">
+          <span role="button" aria-label="{{c.aria}}" aria-current="{{c.cur}}" style="position: relative; flex: none; width: {{c.w}}px; height: 44px; border-radius: 12px; background: {{c.bg}}; border: {{c.bd}}; color: {{c.fg}}; box-shadow: {{c.ring}}; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600">
+            {{c.no}}
+            <span style="position: absolute; top: 3px; right: 3px; display: flex">
+              <sc-if value="{{c.isC}}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" style="width: 11px; height: 11px; stroke-width: 3" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></sc-if>
+              <sc-if value="{{c.isP}}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" style="width: 11px; height: 11px; stroke-width: 3" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg></sc-if>
+              <sc-if value="{{c.isW}}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" style="width: 11px; height: 11px; stroke-width: 3" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></sc-if>
+              <sc-if value="{{c.isB}}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" style="width: 11px; height: 11px; stroke-width: 3" aria-hidden="true"><path d="M6 12h12"/></svg></sc-if>
+            </span>
+          </span>
+        </sc-for>
+      </div>
+      <button class="circle" aria-label="Câu sau"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+    </div>
+    <div class="row g12" aria-label="Chú thích trạng thái câu" style="padding: 0 8px; font-size: 12px; line-height: 16px; color: var(--label2); flex-wrap: wrap">
+      <span class="row g4"><span style="width: 12px; height: 12px; border-radius: 3px; background: {{okBg}}; border: 1px solid {{okFg}}"></span>đúng</span>
+      <span class="row g4"><span style="width: 12px; height: 12px; border-radius: 3px; background: {{warnBg}}; border: 1px solid {{warnFg}}"></span>đúng một phần</span>
+      <span class="row g4"><span style="width: 12px; height: 12px; border-radius: 3px; border: 1px dashed var(--red)"></span>sai</span>
+      <span class="row g4"><span style="width: 12px; height: 12px; border-radius: 3px; border: 1px dashed var(--label2)"></span>bỏ trống</span>
+    </div>
+  </section>
+
+  <div class="col g12 grow pad" style="overflow: hidden; padding-top: 12px">
+
+    <article class="group col g12" aria-label="Câu 10" style="flex: none; padding: 16px; margin-top: {{tailOffset}}px">
+      <div class="col g4">
+        <div class="row g8"><span class="t-headline">Câu 10</span><span class="t-foot strong" style="padding: 2px 8px; border-radius: 8px; background: var(--fill)">Tự luận</span><span class="t-foot strong" style="padding: 2px 8px; border-radius: 8px; background: var(--fill)">Chấm tay</span></div>
+        <div class="row g8"><span class="row g4" style="font-size: 13px; line-height: 18px; font-weight: 600; padding: 2px 8px; border-radius: 8px; background: {{warnBg}}; color: {{warnFg}}"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg>Đúng một phần</span><span class="t-foot">1,5 / 2 điểm</span></div>
+      </div>
+      <p class="t-body">Giải phương trình log<sub>2</sub>(x − 1) + log<sub>2</sub>(x + 1) = 3.</p>
+      <div class="col g4">
+        <span class="t-foot strong">Bài viết của bạn</span>
+        <p style="font-size: 15px; line-height: 20px">Điều kiện: x &gt; 1. Phương trình tương đương log<sub>2</sub>(x<sup>2</sup> − 1) = 3, suy ra x<sup>2</sup> − 1 = 8 nên x = 3 hoặc x = −3. Vậy phương trình có nghiệm x = ±3.</p>
+      </div>
+      <sc-if value="{{isFull}}" hint-placeholder-val="{{ true }}">
+        <div class="col g4" style="background: var(--fill); border-radius: 14px; padding: 10px 12px">
+          <span class="t-foot strong" style="color: var(--tint)">Nhận xét của người chấm</span>
+          <p style="font-size: 15px; line-height: 20px">Biến đổi đúng nhưng chưa đối chiếu điều kiện để loại x = −3.</p>
+        </div>
+        <div class="col g6">
+          <h3 class="t-foot strong" style="margin: 0">Điểm từng tiêu chí</h3>
+          <div class="col" style="border: 1px solid var(--sep); border-radius: 14px; overflow: hidden; font-size: 15px; line-height: 20px">
+            <div class="row between g8" style="padding: 6px 12px; background: var(--fill)"><span class="t-foot">Tiêu chí · Nhận xét tiêu chí</span><span class="t-foot">Điểm</span></div>
+            <div class="col" style="padding: 8px 12px; border-top: 1px solid var(--sep)"><div class="row between g8"><span class="strong">Lập luận và biến đổi</span><span style="flex: none">1,5 điểm</span></div><span class="t-foot">Điều kiện và biến đổi logarit đúng.</span></div>
+            <div class="col" style="padding: 8px 12px; border-top: 1px solid var(--sep)"><div class="row between g8"><span class="strong">Kết luận nghiệm</span><span style="flex: none">0 điểm</span></div><span class="t-foot">Chưa loại nghiệm x = −3.</span></div>
+          </div>
+        </div>
+      </sc-if>
+    </article>
+
+    <article class="group col g8" aria-label="Câu 11, sai, đang xem" style="flex: none; padding: 16px; box-shadow: inset 0 0 0 2px var(--tint)">
+      <div class="row g8" style="flex-wrap: wrap"><span class="t-headline">Câu 11</span><span class="t-foot strong" style="padding: 2px 8px; border-radius: 8px; background: var(--fill)">Trả lời ngắn</span><span class="row g4" style="font-size: 13px; line-height: 18px; font-weight: 600; padding: 2px 8px; border-radius: 8px; background: var(--fill); color: var(--red)"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>Sai</span><span class="t-foot">0 / 1 điểm</span></div>
+      <p class="t-body">Cho hàm số f(x) = x<sup>3</sup> − 3x<sup>2</sup> + 2. Tìm giá trị cực tiểu của hàm số.</p>
+      <div class="row" style="height: 48px; padding: 0 12px 0 16px; border-radius: 12px; background: var(--fill)">
+        <span class="grow">2</span>
+        <svg viewBox="0 0 24 24" style="color: var(--red)" role="img" aria-label="Sai"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </div>
+      <p class="t-sub">Đáp án: <span class="strong">−2</span> · −2,0 (0 / 1 điểm)</p>
+      <sc-if value="{{isFull}}" hint-placeholder-val="{{ true }}">
+        <div class="col g8" style="background: var(--fill); border-radius: 14px; padding: 12px">
+          <span class="t-foot strong" style="color: var(--tint)">Lời giải</span>
+          <p style="font-size: 15px; line-height: 20px">f′(x) = 3x<sup>2</sup> − 6x = 0 ⇔ x = 0 hoặc x = 2. Hàm số đạt cực tiểu tại x = 2: y<sub>CT</sub> = f(2) = −2.</p>
+          <div class="col center g4" role="img" aria-label="Bảng biến thiên của f(x)" style="justify-content: center; height: 60px; border-radius: 10px; background: var(--cell); color: var(--label2); font-size: 13px; line-height: 18px">
+            <svg viewBox="0 0 24 24" style="width: 20px; height: 20px" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 9"/></svg>
+            Hình · Bảng biến thiên của f(x)
+          </div>
+        </div>
+      </sc-if>
+    </article>
+
+    <article class="group col g12" aria-label="Câu 12" style="flex: none; padding: 16px">
+      <div class="col g4">
+        <div class="row g8"><span class="t-headline">Câu 12</span><span class="t-foot strong" style="padding: 2px 8px; border-radius: 8px; background: var(--fill)">Chọn một đáp án</span></div>
+        <div class="row g8"><span class="row g4" style="font-size: 13px; line-height: 18px; font-weight: 600; padding: 2px 8px; border-radius: 8px; background: var(--fill); color: var(--red)"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>Sai</span><span class="t-foot">0 / 1 điểm</span></div>
+      </div>
+      <p class="t-body">Đạo hàm của hàm số y = <span style="display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 14px; line-height: 17px"><span style="border-bottom: 1px solid currentColor; padding: 0 2px">2x + 1</span><span>x − 1</span></span> là</p>
+      <div class="col g8" style="font-size: 15px; line-height: 20px">
+        <div class="col g4" style="padding: 8px 12px; border-radius: 12px; border: 2px dashed var(--red)">
+          <span>A. y′ = 3/(x − 1)<sup>2</sup></span>
+          <span class="t-foot strong" style="color: var(--red)">Bạn chọn · Sai</span>
+        </div>
+        <div class="col g4" style="padding: 8px 12px; border-radius: 12px; border: 2px solid {{okFg}}">
+          <span>B. y′ = −3/(x − 1)<sup>2</sup></span>
+          <span class="row g4 t-foot strong" style="color: {{okFg}}"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Đáp án đúng</span>
+        </div>
+        <div style="padding: 10px 12px; border-radius: 12px; background: var(--fill)">C. y′ = 1/(x − 1)<sup>2</sup></div>
+        <div style="padding: 10px 12px; border-radius: 12px; background: var(--fill)">D. y′ = −1/(x − 1)<sup>2</sup></div>
+      </div>
+    </article>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"level":{"editor":"enum","options":["answers","fullSolution"],"default":"fullSolution"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const level = this.props.level ?? 'fullSolution';
+const okBg = dark ? '#0f2a21' : '#ecfdf5';
+const okFg = dark ? '#34d399' : '#047857';
+const warnBg = dark ? '#2b2210' : '#fffbeb';
+const warnFg = dark ? '#fbbf24' : '#b45309';
+const kinds = {
+C: { bg: okBg, bd: '1px solid ' + okFg, fg: okFg, name: 'đúng' },
+P: { bg: warnBg, bd: '1px solid ' + warnFg, fg: warnFg, name: 'đúng một phần' },
+W: { bg: 'transparent', bd: '1px dashed var(--red)', fg: 'var(--red)', name: 'sai' },
+B: { bg: 'transparent', bd: '1px dashed var(--label2)', fg: 'var(--label2)', name: 'bỏ trống' }
+};
+const raw = [['9', 'P'], ['10', 'P'], ['11', 'W', true], ['12', 'W'], ['13–17', 'C'], ['18', 'B']];
+const cells = raw.map((r) => {
+const k = kinds[r[1]];
+const cur = r[2] === true;
+const range = r[0].indexOf('–') > -1;
+return {
+no: r[0], bg: k.bg, bd: k.bd, fg: k.fg,
+w: range ? 64 : 44,
+isC: r[1] === 'C', isP: r[1] === 'P', isW: r[1] === 'W', isB: r[1] === 'B',
+ring: cur ? '0 0 0 2px var(--bg), 0 0 0 4px var(--tint)' : 'none',
+cur: cur ? 'true' : 'false',
+aria: 'Câu ' + r[0] + ', ' + k.name + (cur ? ', đang xem' : '')
+};
+});
+return {
+theme: dark ? 'dark' : 'light',
+okBg: okBg, okFg: okFg, warnBg: warnBg, warnFg: warnFg,
+infoBg: dark ? '#0f2a30' : '#ecfeff',
+infoFg: dark ? '#22d3ee' : '#0e7490',
+tailOffset: level === 'fullSolution' ? -342 : -132,
+isFull: level === 'fullSolution',
+isAnswers: level === 'answers',
+cells: cells
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Xóa tài khoản</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px; --warn-fg: {{warnFg}}; --warn-bg: {{warnBg}}">
+  <div class="nav">
+    <a class="circle" href="I-AccountV2.dc.html" aria-label="Quay lại Tài khoản"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <h1 class="t-headline">Xóa tài khoản</h1>
+    <span style="width: 44px"></span>
+  </div>
+  <div class="col grow" style="overflow-y: auto">
+    <div class="col pad g20" style="padding-top: 16px; padding-bottom: 40px; flex: none">
+
+      <sc-if value="{{ isBlocked }}" hint-placeholder-val="{{ false }}">
+        <section class="group col g16" role="status" style="padding: 16px">
+          <div class="row g12" style="align-items: flex-start">
+            <span class="tile" aria-hidden="true" style="background: var(--fill); color: var(--red)"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+            <sc-if value="{{ isBlockedAttempt }}" hint-placeholder-val="{{ false }}">
+              <p class="t-body grow" style="padding-top: 4px">Bạn đang có lượt thi chưa nộp. Hãy nộp bài rồi quay lại.</p>
+            </sc-if>
+            <sc-if value="{{ isBlockedOrder }}" hint-placeholder-val="{{ false }}">
+              <p class="t-body grow" style="padding-top: 4px">Bạn có đơn hàng đang được kiểm tra. Hãy chờ bài thi được cấp hoặc liên hệ hỗ trợ rồi quay lại.</p>
+            </sc-if>
+          </div>
+          <sc-if value="{{ isBlockedAttempt }}" hint-placeholder-val="{{ false }}">
+            <a class="btn prominent block" href="I-MyExams.dc.html">Bài thi của tôi</a>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <div class="group">
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="tile" aria-hidden="true" style="background: var(--fill); color: var(--red)"><svg viewBox="0 0 24 24"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg></span>
+          <p class="grow" style="font-size: 15px; line-height: 20px; padding-top: 5px">Khi xóa tài khoản, bạn sẽ bị đăng xuất khỏi mọi thiết bị và không đăng nhập lại được.</p>
+        </div>
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="tile" aria-hidden="true" style="background: var(--fill); color: var(--red)"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 8l4 4M21 8l-4 4"/></svg></span>
+          <p class="grow" style="font-size: 15px; line-height: 20px; padding-top: 5px">Họ tên, email, số điện thoại và ảnh đại diện của bạn bị xóa khỏi hồ sơ.</p>
+        </div>
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
+          <p class="grow" style="font-size: 15px; line-height: 20px; padding-top: 5px">Bài làm của bạn được giữ ở dạng không còn gắn với bạn.</p>
+        </div>
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+          <p class="grow" style="font-size: 15px; line-height: 20px; padding-top: 5px">Đơn hàng, thanh toán, nhật ký hệ thống và thư đã gửi được lưu theo quy định của pháp luật và thời hạn lưu trữ.</p>
+        </div>
+      </div>
+
+      <div class="banner" role="status" style="background: var(--warn-bg); color: var(--warn-fg)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <span class="grow">Bạn còn 3 lượt thi chưa dùng. Các lượt này sẽ mất và không được hoàn tiền.</span>
+      </div>
+
+      <sc-if value="{{ showForm }}" hint-placeholder-val="{{ true }}">
+        <div class="col g20">
+          <div class="group on-cell col g12" style="padding: 16px">
+            <sc-if value="{{ isReady }}" hint-placeholder-val="{{ true }}">
+              <div class="field trail">
+                <label for="id-pass">Mật khẩu hiện tại</label>
+                <input id="id-pass" type="password" value="" autocomplete="current-password">
+                <button class="trail-btn" aria-label="Hiện mật khẩu hiện tại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isTyped }}" hint-placeholder-val="{{ false }}">
+              <div class="field trail">
+                <label for="id-pass-t">Mật khẩu hiện tại</label>
+                <input id="id-pass-t" type="password" value="matkhauhientai" autocomplete="current-password">
+                <button class="trail-btn" aria-label="Hiện mật khẩu hiện tại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isWrong }}" hint-placeholder-val="{{ false }}">
+              <div class="col g6">
+                <div class="field trail">
+                  <label for="id-pass-w" style="color: var(--red)">Mật khẩu hiện tại</label>
+                  <input id="id-pass-w" type="password" value="" autocomplete="current-password" aria-invalid="true" aria-describedby="id-pass-err" style="box-shadow: 0 0 0 2px var(--red)">
+                  <button class="trail-btn" aria-label="Hiện mật khẩu hiện tại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                </div>
+                <span class="hint" id="id-pass-err" role="alert" style="color: var(--red)">Mật khẩu hiện tại chưa đúng.</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isReady }}" hint-placeholder-val="{{ true }}">
+              <div class="check" role="checkbox" aria-checked="false" tabindex="0" style="align-items: center">
+                <span class="box" aria-hidden="true" style="background: transparent; border: 1.5px solid var(--label2)"></span>
+                <span class="grow">Tôi hiểu tài khoản bị xóa sẽ không khôi phục được.</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isTicked }}" hint-placeholder-val="{{ false }}">
+              <div class="check" role="checkbox" aria-checked="true" tabindex="0" style="align-items: center">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></span>
+                <span class="grow">Tôi hiểu tài khoản bị xóa sẽ không khôi phục được.</span>
+              </div>
+            </sc-if>
+          </div>
+
+          <div class="group">
+            <sc-if value="{{ canDelete }}" hint-placeholder-val="{{ false }}">
+              <button class="cell red" aria-haspopup="dialog" style="font-weight: 600">Xóa tài khoản</button>
+            </sc-if>
+            <sc-if value="{{ cannotDelete }}" hint-placeholder-val="{{ true }}">
+              <button class="cell red" disabled style="font-weight: 600; opacity: .4">Xóa tài khoản</button>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(0, 0, 0, 0.3)" aria-hidden="true"></div>
+    <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 32px">
+      <section role="alertdialog" aria-modal="true" aria-labelledby="id-dlg-h" class="col" style="width: 100%; max-width: 300px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); box-shadow: var(--shadow); overflow: hidden">
+        <div class="col center" style="padding: 20px 18px 18px">
+          <h2 id="id-dlg-h" class="t-headline">Xóa tài khoản vĩnh viễn?</h2>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--sep)">
+          <button style="min-height: 46px; border: 0; background: transparent; font: inherit; font-weight: 600; color: var(--tint)">Hủy</button>
+          <button style="min-height: 46px; border: 0; border-left: 1px solid var(--sep); background: transparent; font: inherit; color: var(--red)">Xóa tài khoản</button>
+        </div>
+      </section>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["ready","filled","blockedAttempt","blockedOrder","confirm","wrongPassword"],"default":"ready"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.state ?? 'ready';
+const blocked = s === 'blockedAttempt' || s === 'blockedOrder';
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+isBlocked: blocked,
+isBlockedAttempt: s === 'blockedAttempt',
+isBlockedOrder: s === 'blockedOrder',
+showForm: !blocked,
+isReady: s === 'ready',
+isTyped: s === 'filled' || s === 'confirm',
+isWrong: s === 'wrongPassword',
+isTicked: s === 'filled' || s === 'confirm' || s === 'wrongPassword',
+canDelete: s === 'filled' || s === 'confirm',
+cannotDelete: s === 'ready' || s === 'wrongPassword',
+isConfirm: s === 'confirm'
+};
+}
+}
+</script>
+</body>
+</html>

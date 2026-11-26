@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Danh sách câu hỏi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px; background: var(--surface-container)">
+  <div class="col grow" aria-hidden="true" style="overflow: hidden">
+    <div class="row g4" style="height: 56px; padding: 0 4px; flex: none">
+      <span class="icon-btn"><svg viewBox="0 0 24 24"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></span>
+      <div class="col grow" style="min-width: 0">
+        <span style="font-size: 12px; line-height: 16px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thi thử ĐGNL HSA 2027 · Đề số 04</span>
+        <span class="t-title-m">Phần 3 · Khoa học</span>
+      </div>
+      <span class="btn filled" style="height: 40px; padding: 0 16px">Nộp bài</span>
+      <span class="icon-btn"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg></span>
+    </div>
+    <div class="grow" style="margin-top: 8px; background: var(--surface); border-radius: 24px 24px 0 0"></div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(0, 0, 0, 0.32)" aria-hidden="true"></div>
+
+  <section class="col" role="dialog" aria-modal="true" aria-labelledby="pn-title" style="position: absolute; left: 0; right: 0; bottom: 0; top: 88px; background: var(--surface-lowest); border-radius: 28px 28px 0 0; overflow: hidden">
+    <div style="flex: none; display: flex; justify-content: center; padding: 10px 0 2px" aria-hidden="true"><span style="width: 32px; height: 4px; border-radius: 2px; background: var(--outline)"></span></div>
+    <div class="row" style="flex: none; padding: 0 8px 0 24px; min-height: 56px">
+      <h2 class="t-title grow" id="pn-title">Danh sách câu hỏi</h2>
+      <a class="icon-btn" href="A-Player.dc.html" aria-label="Đóng danh sách câu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+    </div>
+    <div class="col g12" style="flex: none; padding: 0 24px 12px">
+      <div class="row g8" aria-label="Các phần của bài thi" style="flex-wrap: wrap">
+        <span class="chip" aria-label="Phần 1, đã hoàn thành" style="height: 28px; padding: 0 10px; border-radius: 14px; background: var(--surface-container); color: var(--on-surface-variant)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Phần 1</span>
+        <span class="chip" aria-label="Phần 2, đã hoàn thành" style="height: 28px; padding: 0 10px; border-radius: 14px; background: var(--surface-container); color: var(--on-surface-variant)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Phần 2</span>
+        <span class="chip" aria-current="step" aria-label="Phần 3 · Khoa học, đang làm, đã trả lời {{answered}} trên 50 câu" style="height: 28px; padding: 0 10px; border-radius: 14px; background: var(--secondary-container); color: var(--on-secondary-container)"><span class="col" style="gap: 2px"><span style="font-variant-numeric: tabular-nums">Phần 3 · Khoa học · {{answered}}/50 câu</span><span aria-hidden="true" style="display: block; height: 2px; border-radius: 1px; background: var(--surface-lowest); overflow: hidden"><span style="display: block; width: {{pct}}%; height: 2px; background: var(--primary)"></span></span></span></span>
+      </div>
+      <div class="col g4">
+        <span class="strong" style="font-size: 14px">{{answered}}/50 câu đã trả lời</span>
+        <span style="height: 4px; border-radius: 2px; background: var(--surface-high); overflow: hidden" aria-hidden="true"><span style="display: block; width: {{pct}}%; height: 4px; background: var(--primary)"></span></span>
+      </div>
+      <div class="seg" role="group" aria-label="Bộ lọc">
+        <button class="on grow" aria-pressed="true" style="justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Tất cả</button>
+        <button class="grow" aria-pressed="false" style="justify-content: center">Chưa làm</button>
+        <button class="grow" aria-pressed="false" style="justify-content: center">Đánh dấu</button>
+      </div>
+    </div>
+    <div class="col grow g16" style="overflow: hidden; padding: 4px 24px 12px; border-top: 1px solid var(--outline-variant)">
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+        <div class="col g8" style="padding-top: 8px">
+          <div class="row between" style="min-height: 28px">
+            <span class="strong" style="font-size: 14px">Môn {{g.name}}</span>
+            <span class="t-label">Câu {{g.from}}–{{g.to}} · {{g.count}} câu</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{ g.cells }}" as="c" hint-placeholder-count="17">
+              <button aria-label="{{c.aria}}" style="position: relative; height: 48px; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; padding: 0; {{c.style}}">{{c.no}}
+                <sc-if value="{{ c.flag }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" aria-hidden="true" style="position: absolute; bottom: 3px; right: 3px; width: 10px; height: 10px; stroke-width: 2.5; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></sc-if>
+                <sc-if value="{{ c.unsaved }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 4px; background: {{wFg}}"></span></sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 8px; padding: 12px 24px 24px; border-top: 1px solid var(--outline-variant); font-size: 12px; line-height: 16px; color: var(--on-surface-variant)" aria-label="Chú giải">
+      <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; background: var(--surface-lowest); box-shadow: 0 0 0 1px var(--surface-lowest), 0 0 0 3px var(--primary)"></span>Đang xem</span>
+      <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; background: var(--primary-container)"></span>Đã trả lời</span>
+      <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; border: 1px solid var(--primary); background: linear-gradient(135deg, var(--primary-container) 50%, var(--surface-lowest) 50%)"></span>Trả lời một phần</span>
+      <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; border: 1px solid var(--outline)"></span>Chưa trả lời</span>
+      <span class="row g8"><span style="flex: none; width: 16px; display: flex; justify-content: center"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{wFg}}"></span></span>Chưa lưu</span>
+      <span class="row g8"><span style="flex: none; width: 16px; height: 16px; border-radius: 5px; border: 1px solid {{dgFg}}; background: {{dgBg}}; color: {{dgFg}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 9px; height: 9px; stroke-width: 3; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></span>Đánh dấu xem lại</span>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const wFg = dark ? '#fbbf24' : '#b45309';
+const dg = dark ? { solid: '#dc2626', on: '#ffffff', fg: '#f87171', bg: '#2e1517' } : { solid: '#dc2626', on: '#ffffff', fg: '#b91c1c', bg: '#fef2f2' };
+const answered = [101,102,103,104,106,107,108,110,111,113,114,116,118,119,120,122,123,125,126,128,131,135,136,138,139,140,143];
+const partial = [141];
+const flagged = [106,112,124,141,147];
+const unsaved = [104];
+const current = 104;
+const styleOf = (s, cur, flag) => {
+  let st = '';
+  if (flag && s === 'answered') st = 'border: 1px solid ' + dg.solid + '; background: ' + dg.solid + '; color: ' + dg.on + ';';
+  else if (flag && s === 'partial') st = 'border: 1px dashed ' + dg.fg + '; background: ' + dg.bg + '; color: ' + dg.fg + ';';
+  else if (flag) st = 'border: 1px solid ' + dg.fg + '; background: ' + dg.bg + '; color: ' + dg.fg + ';';
+  else if (s === 'answered') st = 'border: 0; background: var(--primary-container); color: var(--on-primary-container);';
+  else if (s === 'partial') st = 'border: 1px solid var(--primary); background: linear-gradient(135deg, var(--primary-container) 50%, var(--surface-lowest) 50%); color: var(--on-surface);';
+  else st = 'border: 1px solid var(--outline); background: var(--surface-lowest); color: var(--on-surface-variant);';
+  if (cur) st += ' box-shadow: 0 0 0 2px var(--surface-lowest), 0 0 0 4px var(--primary);';
+  return st;
+};
+const words = { answered: 'đã trả lời', partial: 'trả lời một phần', blank: 'chưa trả lời' };
+const mk = (name, from, to) => {
+  const cells = [];
+  for (let n = from; n <= to; n++) {
+    const s = answered.includes(n) ? 'answered' : (partial.includes(n) ? 'partial' : 'blank');
+    const parts = [String(n)];
+    if (n === current) parts.push('đang xem');
+    parts.push(words[s]);
+    parts.push(unsaved.includes(n) ? 'chưa lưu' : 'đã lưu');
+    if (flagged.includes(n)) parts.push('đánh dấu xem lại');
+    cells.push({ no: n, style: styleOf(s, n === current, flagged.includes(n)), flag: flagged.includes(n), unsaved: unsaved.includes(n), aria: parts.join(', ') });
+  }
+  return { name: name, from: from, to: to, count: to - from + 1, cells: cells };
+};
+return {
+  theme: dark ? 'dark' : 'light',
+  wFg: wFg,
+  dgFg: dg.fg,
+  dgBg: dg.bg,
+  answered: answered.length,
+  pct: Math.round(answered.length / 50 * 100),
+  groups: [mk('Vật lí', 101, 117), mk('Hóa học', 118, 134), mk('Sinh học', 135, 150)]
+};
+}
+}
+</script>
+</body>
+</html>

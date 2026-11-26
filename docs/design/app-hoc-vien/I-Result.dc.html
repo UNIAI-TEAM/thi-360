@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Kết quả lượt thi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="nav">
+    <a class="circle" href="#" aria-label="Quay lại Lịch sử"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <h1 class="t-headline">Kết quả lượt thi</h1>
+    <span style="width: 44px"></span>
+  </div>
+  <div class="col grow pad g16" style="overflow: hidden; padding-top: 12px; padding-bottom: 34px">
+
+    <div class="col g8">
+      <h2 class="t-title2">Đề luyện HSA 2027 · Đề số 03</h2>
+      <div class="row g6" style="flex-wrap: wrap">
+        <span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: var(--fill); color: var(--label2)">Đánh giá năng lực ĐHQG Hà Nội (HSA)</span>
+        <span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: var(--fill); color: var(--label2)">Bài thi FULL</span>
+        <span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: var(--fill); color: var(--label2)">Lần 2</span>
+        <sc-if value="{{stFinal}}" hint-placeholder-val="{{ true }}"><span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: {{okBg}}; color: {{okFg}}"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Đã chấm</span></sc-if>
+        <sc-if value="{{stGrading}}" hint-placeholder-val="{{ false }}"><span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: {{infoBg}}; color: {{infoFg}}"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Đang chấm</span></sc-if>
+        <sc-if value="{{stPending}}" hint-placeholder-val="{{ false }}"><span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: {{warnBg}}; color: {{warnFg}}"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><path d="M6 3h12M6 21h12M8 3v3l4 6-4 6v3M16 3v3l-4 6 4 6v3"/></svg>Chờ chấm</span></sc-if>
+        <sc-if value="{{stRegrading}}" hint-placeholder-val="{{ false }}"><span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: {{infoBg}}; color: {{infoFg}}"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></svg>Đang chấm lại</span></sc-if>
+        <sc-if value="{{stError}}" hint-placeholder-val="{{ false }}"><span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; font-size: 13px; font-weight: 600; background: {{warnBg}}; color: {{warnFg}}"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px; stroke-width: 2.6" aria-hidden="true"><path d="M12 3 2 20h20zM12 10v4M12 17h.01"/></svg>Đang xử lý kết quả</span></sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{compensated}}" hint-placeholder-val="{{ false }}">
+      <div class="banner" role="status" style="background: {{infoBg}}; color: {{infoFg}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <div class="col g4">
+          <span style="font-weight: 600">Lượt bị ảnh hưởng bởi lỗi hệ thống, đã cấp bù 1 lượt</span>
+          <span>Ghi chú: Mất kết nối máy chủ chấm lúc 08:47, đã cộng thêm 1 lượt làm vào bài thi.</span>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{fault}}" hint-placeholder-val="{{ false }}">
+      <div class="banner" role="status" style="background: {{warnBg}}; color: {{warnFg}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20zM12 10v4M12 17h.01"/></svg>
+        <div class="col g4">
+          <span style="font-weight: 600">Lượt kết thúc do lỗi hệ thống</span>
+          <span>Ghi chú: Máy chủ gián đoạn lúc 09:12, lượt được đóng tự động.</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{hasData}}" hint-placeholder-val="{{ true }}">
+      <section class="col" aria-labelledby="i-res-total">
+        <div class="row between" style="padding: 0 16px 6px">
+          <h2 id="i-res-total" class="sec" style="padding: 0">Tổng điểm</h2>
+        </div>
+        <div class="group col g12" style="flex: none; padding: 16px">
+          <sc-if value="{{showScore}}" hint-placeholder-val="{{ true }}">
+            <div class="row" style="align-items: baseline; gap: 6px">
+              <span style="font-size: 52px; line-height: 58px; font-weight: 700; letter-spacing: -.02em">{{score}}</span>
+              <span class="t-title2" style="color: var(--label2); font-weight: 600">/150</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{stFinal}}" hint-placeholder-val="{{ true }}">
+            <p class="t-sub">Tổng điểm các câu trong phạm vi bài làm. Câu bỏ trống được 0 điểm.</p>
+          </sc-if>
+          <sc-if value="{{stRegrading}}" hint-placeholder-val="{{ false }}">
+            <p class="t-sub">Người chấm đang chấm lại câu tự luận. Điểm bên trên là điểm trước khi chấm lại và có thể đổi khi chấm xong.</p>
+          </sc-if>
+          <sc-if value="{{stPending}}" hint-placeholder-val="{{ false }}">
+            <div class="row g8" style="color: {{warnFg}}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12M6 21h12M8 3v3l4 6-4 6v3M16 3v3l-4 6 4 6v3"/></svg>
+              <span class="t-title2">Chờ chấm</span>
+            </div>
+            <p class="t-sub">Bài có câu tự luận chấm tay. Điểm tổng hiện sau khi người chấm chấm xong mọi câu tự luận.</p>
+            <p class="t-sub">Bạn có thể rời màn hình. Khi chấm xong, mở lại lượt này từ Lịch sử luyện thi để xem điểm tổng.</p>
+          </sc-if>
+          <div style="height: 1px; background: var(--sep)"></div>
+          <h3 class="t-foot" style="margin: 0; font-weight: 600">Thống kê câu hỏi</h3>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+            <div class="col g4" style="background: var(--fill); border-radius: 12px; padding: 8px">
+              <span class="row g4" style="font-size: 20px; line-height: 26px; font-weight: 700; color: {{okFg}}"><svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke-width: 2.6" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>{{sCorrect}}</span>
+              <span class="t-foot">Đúng</span>
+            </div>
+            <div class="col g4" style="background: var(--fill); border-radius: 12px; padding: 8px">
+              <span class="row g4" style="font-size: 20px; line-height: 26px; font-weight: 700; color: {{warnFg}}"><svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke-width: 2.6" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v16"/></svg>{{sPartial}}</span>
+              <span class="t-foot">Đúng một phần</span>
+            </div>
+            <div class="col g4" style="background: var(--fill); border-radius: 12px; padding: 8px">
+              <span class="row g4" style="font-size: 20px; line-height: 26px; font-weight: 700; color: var(--red)"><svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke-width: 2.6" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>{{sWrong}}</span>
+              <span class="t-foot">Sai</span>
+            </div>
+            <div class="col g4" style="background: var(--fill); border-radius: 12px; padding: 8px">
+              <span class="row g4" style="font-size: 20px; line-height: 26px; font-weight: 700; color: var(--label2)"><svg viewBox="0 0 24 24" style="width: 15px; height: 15px; stroke-width: 2.6" aria-hidden="true"><path d="M6 12h12"/></svg>{{sBlank}}</span>
+              <span class="t-foot">Bỏ trống</span>
+            </div>
+          </div>
+          <sc-if value="{{pendingAny}}" hint-placeholder-val="{{ false }}">
+            <div class="row g8" style="background: {{warnBg}}; color: {{warnFg}}; border: 1px solid {{warnFg}}; border-radius: 12px; padding: 8px 12px; font-size: 15px; line-height: 20px; font-weight: 600">
+              <svg viewBox="0 0 24 24" style="width: 18px; height: 18px" aria-hidden="true"><path d="M6 3h12M6 21h12M8 3v3l4 6-4 6v3M16 3v3l-4 6 4 6v3"/></svg>
+              <span class="grow">Chờ chấm</span>
+              <span style="font-size: 20px; line-height: 26px; font-weight: 700">1</span>
+            </div>
+          </sc-if>
+          <div class="row" style="height: 8px; border-radius: 4px; overflow: hidden; gap: 2px" aria-hidden="true">
+            <span style="flex: {{sCorrect}} 1 0; height: 8px; background: {{okFg}}"></span>
+            <span style="flex: {{sPartial}} 1 0; height: 8px; background: {{warnFg}}"></span>
+            <span style="flex: {{sWrong}} 1 0; height: 8px; background: var(--red)"></span>
+            <span style="flex: {{sBlank}} 1 0; height: 8px; background: var(--sep)"></span>
+          </div>
+          <p class="t-foot">Trên 150 câu phải làm.</p>
+        </div>
+      </section>
+
+      <div class="col g8">
+        <sc-if value="{{stFinal}}" hint-placeholder-val="{{ true }}">
+          <a class="btn prominent block" href="I-Review.dc.html">Xem lại bài</a>
+        </sc-if>
+        <sc-if value="{{pendingAny}}" hint-placeholder-val="{{ false }}">
+          <a class="btn prominent block" href="I-Review.dc.html">Xem lại câu đã chấm tự động</a>
+          <p class="t-foot" style="text-align: center">Câu tự luận xem lại được sau khi chấm xong.</p>
+        </sc-if>
+        <div class="row g8">
+          <a class="btn gray grow" href="#" style="font-size: 15px; padding: 0 12px">Bài thi của tôi</a>
+          <a class="btn gray grow" href="#" style="font-size: 15px; padding: 0 12px">Lịch sử luyện thi</a>
+        </div>
+      </div>
+
+      <section class="col" aria-labelledby="i-res-parts">
+        <h2 id="i-res-parts" class="sec">Điểm từng phần</h2>
+        <div class="group" style="flex: none">
+          <sc-for list="{{parts}}" as="p" hint-placeholder-count="3">
+            <div class="cell col g8" style="align-items: stretch; padding: 12px 16px">
+              <div class="row between g12" style="align-items: flex-start">
+                <div class="col g4 grow">
+                  <span class="t-headline">{{p.name}}</span>
+                  <sc-if value="{{p.pending}}" hint-placeholder-val="{{ false }}">
+                    <span class="row g8" style="font-size: 13px; line-height: 18px; font-weight: 600">
+                      <span class="row g4" style="color: var(--label2)"><svg viewBox="0 0 24 24" style="width: 14px; height: 14px" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Chấm tay</span>
+                      <span style="color: {{p.warnFg}}">Chờ chấm</span>
+                    </span>
+                  </sc-if>
+                  <sc-if value="{{p.skipped}}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: var(--label2)">Bị bỏ qua</span>
+                  </sc-if>
+                </div>
+                <sc-if value="{{p.hasScore}}" hint-placeholder-val="{{ true }}">
+                  <span class="col" style="align-items: flex-end; flex: none">
+                    <span class="t-foot">Điểm phần</span>
+                    <span class="t-headline">{{p.score}}/50</span>
+                  </span>
+                </sc-if>
+              </div>
+              <sc-if value="{{p.scored}}" hint-placeholder-val="{{ true }}">
+                <div class="row g12" style="flex-wrap: wrap; font-size: 15px; line-height: 20px">
+                  <sc-for list="{{p.counts}}" as="c" hint-placeholder-count="4">
+                    <span><span style="color: var(--label2)">{{c.label}}</span> <span class="strong">{{c.value}}</span></span>
+                  </sc-for>
+                </div>
+                <div class="row" style="height: 6px; border-radius: 3px; overflow: hidden; gap: 2px" aria-hidden="true">
+                  <span style="flex: {{p.c}} 1 0; height: 6px; background: {{p.okFg}}"></span>
+                  <span style="flex: {{p.pa}} 1 0; height: 6px; background: {{p.warnFg}}"></span>
+                  <span style="flex: {{p.w}} 1 0; height: 6px; background: var(--red)"></span>
+                  <span style="flex: {{p.b}} 1 0; height: 6px; background: var(--sep)"></span>
+                </div>
+              </sc-if>
+              <sc-if value="{{p.pending}}" hint-placeholder-val="{{ false }}"><p class="t-foot">Điểm tối đa của phần: 50.</p></sc-if>
+              <sc-if value="{{p.skipped}}" hint-placeholder-val="{{ false }}"><p class="t-foot">Phần bị bỏ qua do lượt kết thúc vì lỗi hệ thống.</p></sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{stFinal}}" hint-placeholder-val="{{ true }}"><p class="t-foot" style="padding: 6px 16px 0">Điểm phần là tổng điểm các câu trong phần.</p></sc-if>
+        <sc-if value="{{pendingAny}}" hint-placeholder-val="{{ false }}"><p class="t-foot" style="padding: 6px 16px 0">Điểm của phần đã chấm xong là điểm riêng của phần đó, chưa phải điểm tổng.</p></sc-if>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{stGrading}}" hint-placeholder-val="{{ false }}">
+      <section class="group col center g12" role="status" style="flex: none; padding: 24px 20px">
+        <span class="hero-ic" style="width: 72px; height: 72px; border-radius: 20px; background: {{infoBg}}; color: {{infoFg}}"><svg viewBox="0 0 24 24" style="width: 36px; height: 36px" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg></span>
+        <h2 class="t-title2">Đang chấm</h2>
+        <p class="t-sub">Bài làm đã được ghi nhận. Hệ thống đang tính điểm, màn hình sẽ tự cập nhật.</p>
+        <div style="width: 100%; height: 4px; border-radius: 2px; background: var(--fill); overflow: hidden" aria-hidden="true"><div style="width: 38%; height: 4px; margin-left: 22%; border-radius: 2px; background: var(--tint)"></div></div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{stError}}" hint-placeholder-val="{{ false }}">
+      <section class="group col center g12" role="status" style="flex: none; padding: 24px 20px">
+        <span class="hero-ic" style="width: 72px; height: 72px; border-radius: 20px; background: {{warnBg}}; color: {{warnFg}}"><svg viewBox="0 0 24 24" style="width: 36px; height: 36px" aria-hidden="true"><path d="M12 3 2 20h20zM12 10v4M12 17h.01"/></svg></span>
+        <h2 class="t-title2">Đang xử lý kết quả</h2>
+        <p class="t-sub">Bài làm đã được ghi nhận, kết quả đang được xử lý</p>
+        <div class="col g8" style="width: 100%">
+          <a class="btn prominent block" href="#">Lịch sử luyện thi</a>
+          <a class="btn gray block" href="#">Bài thi của tôi</a>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{noData}}" hint-placeholder-val="{{ false }}">
+      <section class="col" aria-labelledby="i-res-info">
+        <h2 id="i-res-info" class="sec">Thông tin lượt thi</h2>
+        <div class="group" style="flex: none; font-size: 15px; line-height: 20px">
+          <div class="cell between g16" style="min-height: 44px; align-items: flex-start"><span class="val" style="flex: none">Kỳ thi</span><span style="text-align: right">Đánh giá năng lực ĐHQG Hà Nội (HSA)</span></div>
+          <div class="cell between g16" style="min-height: 44px"><span class="val">Phạm vi thi</span><span>Bài thi FULL</span></div>
+          <div class="cell between g16" style="min-height: 44px"><span class="val">Lần làm</span><span>2</span></div>
+          <div class="cell between g16" style="min-height: 44px; align-items: flex-start"><span class="val" style="flex: none">Lựa chọn đã chọn</span><span style="text-align: right">Khoa học: Vật lí, Hóa học, Sinh học</span></div>
+          <div class="cell between g16" style="min-height: 44px"><span class="val">Bắt đầu</span><span>08:05, 26/11/2026</span></div>
+          <div class="cell between g16" style="min-height: 44px"><span class="val">Kết thúc</span><span>{{finishedAt}}</span></div>
+          <div class="cell between g16" style="min-height: 44px"><span class="val">Thời gian làm bài thực tế</span><span>{{duration}}</span></div>
+          <div class="cell between g16" style="min-height: 44px"><span class="val">Cách kết thúc</span><span>{{endReason}}</span></div>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["final","grading","pendingReview","gradingError"],"default":"final"},"flag":{"editor":"enum","options":["none","regrading","compensated","systemFault"],"default":"none"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const state = this.props.state ?? 'final';
+const flag = this.props.flag ?? 'none';
+const okBg = dark ? '#0f2a21' : '#ecfdf5';
+const okFg = dark ? '#34d399' : '#047857';
+const warnBg = dark ? '#2b2210' : '#fffbeb';
+const warnFg = dark ? '#fbbf24' : '#b45309';
+const infoBg = dark ? '#0f2a30' : '#ecfeff';
+const infoFg = dark ? '#22d3ee' : '#0e7490';
+const regrading = flag === 'regrading' && (state === 'final' || state === 'pendingReview');
+const fault = flag === 'systemFault';
+const isFinal = state === 'final' && !regrading;
+const isPending = state === 'pendingReview' && !regrading;
+const pendingAny = isPending || regrading;
+const hasData = isFinal || pendingAny;
+const colors = { okFg: okFg, warnFg: warnFg, warnBg: warnBg };
+const counts = (c, pa, w, b) => {
+const list = [{ label: 'Đúng', value: c }];
+if (pa > 0) list.push({ label: 'Đúng một phần', value: pa });
+list.push({ label: 'Sai', value: w });
+list.push({ label: 'Bỏ trống', value: b });
+return list;
+};
+const scored = (name, c, pa, w, b, score) => Object.assign({ name: name, scored: true, hasScore: true, pending: false, skipped: false, score: score, counts: counts(c, pa, w, b), c: c, pa: pa, w: w, b: b }, colors);
+const pendingPart = (name) => Object.assign({ name: name, scored: false, hasScore: false, pending: true, skipped: false, score: '', counts: [], c: 0, pa: 0, w: 0, b: 0 }, colors);
+const skippedPart = (name) => Object.assign({ name: name, scored: false, hasScore: true, pending: false, skipped: true, score: '0', counts: [], c: 0, pa: 0, w: 0, b: 0 }, colors);
+const parts = [
+pendingAny ? pendingPart('Tư duy định lượng') : scored('Tư duy định lượng', 31, 4, 11, 4, '36,5'),
+scored('Tư duy định tính', 33, 0, 12, 5, '33'),
+fault ? skippedPart('Khoa học') : scored('Khoa học', 28, 2, 15, 5, '28,75')
+];
+const base = fault ? [64, 4, 23, 59] : [92, 6, 38, 14];
+return {
+theme: dark ? 'dark' : 'light',
+okBg: okBg, okFg: okFg, warnBg: warnBg, warnFg: warnFg, infoBg: infoBg, infoFg: infoFg,
+stFinal: isFinal,
+stGrading: state === 'grading',
+stPending: isPending,
+stRegrading: regrading,
+stError: state === 'gradingError',
+compensated: flag === 'compensated',
+fault: fault,
+hasData: hasData,
+noData: !hasData,
+pendingAny: pendingAny,
+showScore: isFinal || regrading,
+score: fault ? '69,5' : '98,25',
+sCorrect: pendingAny ? base[0] - 1 : base[0],
+sPartial: base[1],
+sWrong: base[2],
+sBlank: base[3],
+parts: parts,
+finishedAt: fault ? '09:12, 26/11/2026' : '11:12, 26/11/2026',
+duration: fault ? '1 giờ 7 phút' : '3 giờ 7 phút',
+endReason: fault ? 'Đóng do lỗi hệ thống' : 'Nộp bài'
+};
+}
+}
+</script>
+</body>
+</html>

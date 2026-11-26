@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Chi tiết bài thi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+<div style="display: contents; {{tones}}">
+  <div class="nav">
+    <a class="circle" href="I-Catalog.dc.html" aria-label="Quay lại Chọn bài thi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <h1 class="t-headline" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Đề thi thử HSA 2027 – Đề số 1</h1>
+    <span style="width: 44px"></span>
+  </div>
+
+  <!-- Đầu trang -->
+  <sc-if value="{{vTop}}" hint-placeholder-val="{{ true }}">
+    <div class="col grow" style="padding: 8px 20px 0; overflow: hidden">
+      <div aria-hidden="true" style="flex: none; height: 131px; border-radius: 18px; background: var(--fill); color: var(--label2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 500"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>Ảnh bìa 16:6</div>
+      <div class="row g4" style="flex-wrap: wrap; padding-top: 12px">
+        <span style="font-size: 12px; line-height: 16px; font-weight: 600; padding: 4px 8px; border-radius: 8px; background: var(--tint-soft); color: var(--on-tint-soft)">HSA</span>
+        <span style="font-size: 12px; line-height: 16px; font-weight: 600; padding: 4px 8px; border-radius: 8px; background: var(--fill); color: var(--label2)">Bài thi FULL</span>
+      </div>
+      <p class="t-foot" style="padding-top: 8px">Mã sản phẩm HSA-FULL-01</p>
+      <h2 class="t-title2" style="padding-top: 2px">Đề thi thử HSA 2027 – Đề số 1</h2>
+      <p class="t-body" style="padding-top: 8px">Đề mô phỏng sát cấu trúc kỳ thi Đánh giá năng lực của ĐHQG Hà Nội năm 2027, gồm ba phần làm liên tiếp.</p>
+      <p class="t-sub" style="padding-top: 8px">Đề do nhóm giáo viên luyện thi biên soạn theo đề tham khảo mới nhất. Mỗi câu có đáp án và lời giải chi tiết để bạn tự đánh giá trước kỳ thi chính thức.</p>
+      <h3 class="t-headline" style="margin: 0; padding-top: 16px">Mục tiêu</h3>
+      <p class="t-sub">Làm quen áp lực 195 phút và luyện cách phân bổ thời gian giữa ba phần thi.</p>
+      <h3 class="t-headline" style="margin: 0; padding-top: 16px">Đối tượng phù hợp</h3>
+      <p class="t-sub">Học sinh lớp 12 dự thi HSA đợt 1 năm 2027.</p>
+    </div>
+  </sc-if>
+
+  <!-- Cấu trúc bài thi và phần được chọn -->
+  <sc-if value="{{vStructure}}" hint-placeholder-val="{{ false }}">
+    <div class="col grow" style="padding: 12px 20px 0; overflow: hidden">
+      <div class="row between" style="flex: none; padding: 0 4px 6px">
+        <h2 class="t-headline">Cấu trúc bài thi</h2>
+        <span class="t-foot strong">150 câu · 195 phút</span>
+      </div>
+      <div class="group" style="flex: none">
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 6px; padding: 12px 16px">
+          <div class="row g12"><span aria-label="Thứ tự 1" class="tile" style="font-size: 14px; font-weight: 700">1</span><span class="t-headline grow">Tư duy định lượng</span><span class="badge">Bắt buộc</span></div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-left: 42px">
+            <span class="col"><span class="t-foot">Số câu</span><span class="strong" style="font-size: 15px">50</span></span>
+            <span class="col"><span class="t-foot">Thời lượng</span><span class="strong" style="font-size: 15px">75 phút</span></span>
+            <span class="col"><span class="t-foot">Điểm tối đa</span><span class="strong" style="font-size: 15px">50</span></span>
+          </div>
+        </div>
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 6px; padding: 12px 16px">
+          <div class="row g12"><span aria-label="Thứ tự 2" class="tile" style="font-size: 14px; font-weight: 700">2</span><span class="t-headline grow">Tư duy định tính</span><span class="badge">Bắt buộc</span></div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-left: 42px">
+            <span class="col"><span class="t-foot">Số câu</span><span class="strong" style="font-size: 15px">50</span></span>
+            <span class="col"><span class="t-foot">Thời lượng</span><span class="strong" style="font-size: 15px">60 phút</span></span>
+            <span class="col"><span class="t-foot">Điểm tối đa</span><span class="strong" style="font-size: 15px">50</span></span>
+          </div>
+        </div>
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 6px; padding: 12px 16px">
+          <div class="row g12"><span aria-label="Thứ tự 3" class="tile" style="font-size: 14px; font-weight: 700">3</span><span class="t-headline grow">Khoa học / Tiếng Anh</span><span class="badge" style="color: var(--label2)">Tự chọn</span></div>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-left: 42px">
+            <span class="col"><span class="t-foot">Số câu</span><span class="strong" style="font-size: 15px">50</span></span>
+            <span class="col"><span class="t-foot">Thời lượng</span><span class="strong" style="font-size: 15px">60 phút</span></span>
+            <span class="col"><span class="t-foot">Điểm tối đa</span><span class="strong" style="font-size: 15px">—</span></span>
+          </div>
+        </div>
+      </div>
+      <h2 class="sec" style="margin: 0; padding-top: 20px">Phần được chọn trong phạm vi mua</h2>
+      <div class="group" style="flex: none">
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 2px; padding: 12px 16px">
+          <span class="t-foot">Khoa học / Tiếng Anh</span>
+          <span class="row between"><span class="t-headline">Khoa học</span><span class="t-foot">Chọn 3 trong 5 môn</span></span>
+          <span class="t-foot">Vật lý, Hóa học, Sinh học, Lịch sử, Địa lý</span>
+          <span class="t-foot">Vật lý: Trắc nghiệm một đáp án, Đúng/Sai</span>
+          <span class="t-foot">Số câu mỗi môn theo số môn đã chọn: 17 · 17 · 16</span>
+        </div>
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 2px; padding: 12px 16px">
+          <span class="t-headline">Tiếng Anh</span>
+          <span class="t-foot">Tiếng Anh: Trắc nghiệm một đáp án</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Cách làm, cách chấm và quyền lợi -->
+  <sc-if value="{{vHow}}" hint-placeholder-val="{{ false }}">
+    <div class="col grow" style="padding: 12px 20px 0; overflow: hidden">
+      <h2 class="sec" style="margin: 0">Cách làm và cách chấm</h2>
+      <div class="group" style="flex: none">
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 2px; min-height: 0; padding: 10px 16px"><span class="t-foot">Dạng câu hỏi</span><span style="font-size: 15px; line-height: 20px">Trắc nghiệm một đáp án: 88 · Trả lời ngắn: 12</span></div>
+        <div class="cell" style="min-height: 44px; padding: 10px 16px"><span class="grow" style="font-size: 15px">Thang điểm</span><span class="val" style="font-size: 15px">150 điểm</span></div>
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 2px; min-height: 0; padding: 10px 16px"><span class="t-foot">Thời gian</span><span style="font-size: 15px; line-height: 20px">195 phút. Tính giờ từng phần. Đồng hồ tính theo máy chủ.</span></div>
+        <div class="cell" style="flex-direction: column; align-items: stretch; gap: 2px; min-height: 0; padding: 10px 16px"><span class="t-foot">Chuyển phần</span><span style="font-size: 15px; line-height: 20px">Làm tuần tự. Hết giờ hoặc nộp sớm thì phần sau mở ngay; không quay lại phần đã đóng.</span></div>
+      </div>
+      <h2 class="sec" style="margin: 0; padding-top: 20px">Quyền lợi sử dụng</h2>
+      <div class="group" style="flex: none">
+        <div class="cell" style="min-height: 40px; padding: 8px 16px; font-size: 15px"><span class="grow">Số lượt</span><span class="val">2 lượt thi mỗi lần mua</span></div>
+        <div class="cell" style="min-height: 40px; padding: 8px 16px; font-size: 15px"><span class="grow">Mức xem kết quả</span><span class="val" style="text-align: right">Điểm, đáp án và lời giải</span></div>
+        <div class="cell" style="min-height: 40px; padding: 8px 16px; font-size: 15px"><span class="grow">Thời điểm xem kết quả</span><span class="val" style="text-align: right">Ngay sau khi chấm xong</span></div>
+        <div class="cell" style="min-height: 40px; padding: 8px 16px; font-size: 15px"><span class="grow">Giải thích bằng AI</span><span class="val">Có</span></div>
+        <div class="cell" style="min-height: 40px; padding: 8px 16px; font-size: 15px"><span class="grow">Đánh giá điểm mạnh, điểm yếu</span><span class="val">Có</span></div>
+        <div class="cell" style="min-height: 40px; padding: 8px 16px; font-size: 15px"><span class="grow">Ôn luyện bổ sung</span><span class="val">Không</span></div>
+      </div>
+      <p class="t-foot" style="padding: 6px 16px 0">Ghi chú: Lượt thi dùng được trong 12 tháng kể từ ngày mua.</p>
+    </div>
+  </sc-if>
+
+  <!-- Giá và chính sách, khung Giá bán -->
+  <sc-if value="{{vPrice}}" hint-placeholder-val="{{ false }}">
+    <div class="col grow" style="padding: 12px 20px 0; overflow: hidden">
+      <h2 class="sec" style="margin: 0">Giá và chính sách</h2>
+      <div class="group col g6" style="flex: none; padding: 12px 16px">
+        <p class="t-sub">Giá bán bằng VND, đã gồm thuế, phí.</p>
+        <p class="t-sub">Hoàn tiền khi lỗi hệ thống: theo chính sách do đơn vị vận hành công bố; cần hỗ trợ, hãy liên hệ qua các kênh ghi ngay bên dưới.</p>
+        <p class="t-sub">Gửi yêu cầu qua: 1900 6868 · hotro@thi360.vn</p>
+        <p class="t-sub">Giờ hỗ trợ: 8:00–21:00, thứ Hai đến Chủ nhật</p>
+      </div>
+      <h2 class="sec" id="i-det-price" style="margin: 0; padding-top: 20px">Giá bán</h2>
+      <section class="group col g8" aria-labelledby="i-det-price" style="flex: none; padding: 14px 16px">
+        <div class="row g8" style="flex-wrap: wrap">
+          <span style="font-size: 28px; line-height: 34px; font-weight: 700">150.000 đ</span>
+          <s class="t-sub" aria-label="Giá gốc 200.000 đ">200.000 đ</s>
+          <span style="font-size: 12px; line-height: 16px; font-weight: 600; padding: 4px 8px; border-radius: 8px; background: var(--fill); color: var(--red)">Giảm 25%</span>
+        </div>
+        <p class="t-sub" style="color: var(--st-warn)">Ưu đãi chào năm mới · Kết thúc 01/01</p>
+        <ul class="col g4" style="margin: 4px 0 0; padding: 0; list-style: none">
+          <li class="row g8 t-sub"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; color: var(--tint)"><path d="m5 12 5 5 9-10"/></svg>Đã gồm thuế, phí</li>
+          <li class="row g8 t-sub"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; color: var(--tint)"><path d="m5 12 5 5 9-10"/></svg>2 lượt thi mỗi lần mua</li>
+          <li class="row g8 t-sub"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; color: var(--tint)"><path d="m5 12 5 5 9-10"/></svg>150 câu · 195 phút mỗi lượt</li>
+        </ul>
+      </section>
+    </div>
+  </sc-if>
+
+  <!-- Khung nút ghim dưới -->
+  <div class="col g8" style="flex: none; background: var(--glass); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); border-top: 1px solid var(--sep); padding: 12px 20px 34px">
+    <div class="row between g8">
+      <div class="col">
+        <span class="t-foot">Giá bán</span>
+        <span class="row g8"><span style="font-size: 22px; line-height: 28px; font-weight: 700">150.000 đ</span><s class="t-foot" aria-label="Giá gốc 200.000 đ">200.000 đ</s></span>
+      </div>
+      <span style="font-size: 12px; line-height: 16px; font-weight: 600; padding: 4px 8px; border-radius: 8px; background: var(--fill); color: var(--red)">Giảm 25%</span>
+    </div>
+    <sc-if value="{{aNone}}" hint-placeholder-val="{{ true }}">
+      <button class="btn prominent block">Mua bài thi</button>
+    </sc-if>
+    <sc-if value="{{aCanStart}}" hint-placeholder-val="{{ false }}">
+      <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Còn 2 lượt</span>
+      <div class="row g8">
+        <button class="btn prominent grow">Vào bài thi</button>
+        <button class="btn gray grow" style="padding: 0 12px; white-space: nowrap">Mua thêm lượt</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{aInProgress}}" hint-placeholder-val="{{ false }}">
+      <p class="t-sub strong" style="font-weight: 600">Bạn có một lượt đang làm dở.</p>
+      <div class="row g8">
+        <button class="btn prominent grow">Tiếp tục</button>
+        <button class="btn gray grow" style="padding: 0 12px; white-space: nowrap">Mua thêm lượt</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{aExhausted}}" hint-placeholder-val="{{ false }}">
+      <p class="t-sub strong" style="font-weight: 600">Bạn đã dùng hết lượt của bài thi này.</p>
+      <button class="btn prominent block">Mua lại</button>
+    </sc-if>
+    <sc-if value="{{aChecking}}" hint-placeholder-val="{{ false }}">
+      <button class="btn gray block" disabled aria-disabled="true" style="color: var(--label2)">Đang kiểm tra</button>
+      <p style="font-size: 13px; line-height: 18px; padding: 8px 12px; border-radius: 10px; background: var(--st-warn-bg); color: var(--st-warn)">Mã đơn DH-20261126-0412. Bạn không cần thanh toán lại. Nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ và gửi kèm mã đơn này.</p>
+    </sc-if>
+    <sc-if value="{{aLoading}}" hint-placeholder-val="{{ false }}">
+      <div role="status" aria-label="Đang tải quyền" style="height: 50px; border-radius: 25px; background: var(--fill)"></div>
+    </sc-if>
+    <sc-if value="{{aError}}" hint-placeholder-val="{{ false }}">
+      <p class="row g6" style="font-size: 15px; line-height: 20px; color: var(--red)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>Chưa xác định được quyền của tài khoản.</p>
+      <button class="btn gray block">Tải lại quyền</button>
+    </sc-if>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"access":{"editor":"enum","options":["none","canStart","inProgress","exhausted","checking","loading","error"],"default":"none"},"scroll":{"editor":"enum","options":["top","structure","how","price"],"default":"top"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const a = this.props.access ?? 'none';
+const sc = this.props.scroll ?? 'top';
+return {
+theme: dark ? 'dark' : 'light',
+tones: dark ? '--st-warn:#fbbf24;--st-warn-bg:#2b2210' : '--st-warn:#b45309;--st-warn-bg:#fffbeb',
+vTop: sc === 'top',
+vStructure: sc === 'structure',
+vHow: sc === 'how',
+vPrice: sc === 'price',
+aNone: a === 'none',
+aCanStart: a === 'canStart',
+aInProgress: a === 'inProgress',
+aExhausted: a === 'exhausted',
+aChecking: a === 'checking',
+aLoading: a === 'loading',
+aError: a === 'error'
+};
+}
+}
+</script>
+</body>
+</html>

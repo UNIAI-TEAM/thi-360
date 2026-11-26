@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Màn hình gập mở, Hồ sơ hai cột</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}}" style="width: 840px; height: 720px; flex-direction: row; --warn-fg: {{warnFg}}; --warn-bg: {{warnBg}}">
+  <nav class="rail" aria-label="Điều hướng chính">
+    <span class="logo sm" style="margin-bottom: 8px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="m9 12 3 3 8-9"/></svg></span>
+    <a class="nav-i" href="A-Tablet-Home.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg></span>Trang chủ</a>
+    <a class="nav-i" href="A-Tablet-Home.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span>Bài thi của tôi</a>
+    <a class="nav-i" href="A-Tablet-Home.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>Lịch sử</a>
+    <a class="nav-i on" href="A-Fold-Profile.dc.html" aria-current="page"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Tài khoản</a>
+  </nav>
+  <div class="col" style="width: 312px; flex: none; padding: 24px 8px 16px 0">
+    <h1 class="t-title" style="padding: 8px 16px 16px">Tài khoản</h1>
+    <a class="row g12" href="A-Fold-Profile.dc.html" aria-label="Trần Minh Anh, mở Hồ sơ" style="padding: 0 16px 8px; color: var(--on-surface); font-weight: 400">
+      <span class="avatar" role="img" aria-label="Ảnh đại diện hiện tại" style="background: var(--surface-high); color: var(--on-surface-variant)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+      <span class="col grow">
+        <span class="t-title-m">Trần Minh Anh</span>
+        <span class="t-small">minhanh.tran</span>
+      </span>
+    </a>
+    <a class="li sel" href="A-Fold-Profile.dc.html" aria-current="true" style="padding: 8px 16px">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a6.5 6.5 0 0 1 11 0"/></svg>
+      <span class="grow">Hồ sơ</span>
+    </a>
+    <a class="li" href="#" style="padding: 8px 16px">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+      <span class="grow">Đơn của tôi</span>
+    </a>
+    <h2 class="t-section" style="padding-left: 16px">Bảo mật</h2>
+    <a class="li" href="A-Fold-Account.dc.html" style="padding: 8px 16px">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/></svg>
+      <span class="grow">Đổi mật khẩu</span>
+    </a>
+    <div class="li" style="padding: 8px 16px">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11v4a6 6 0 0 1-1.5 4"/><path d="M8 15v-4a4 4 0 0 1 8 0v3a10 10 0 0 1-1 4.5"/><path d="M5 17a12 12 0 0 0 .5-3.5V11a6.5 6.5 0 0 1 11-4.7"/><path d="M19 11v2a14 14 0 0 1-.4 3.4"/></svg>
+      <span class="grow" id="afp-bio">Mở khóa sinh trắc học</span>
+      <button class="sw" role="switch" aria-checked="true" aria-labelledby="afp-bio"></button>
+    </div>
+    <h2 class="t-section" style="padding-left: 16px">Hiển thị</h2>
+    <a class="li" href="#" style="padding: 8px 16px">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+      <span class="grow">Ngôn ngữ</span>
+      <span class="val">Tiếng Việt</span>
+    </a>
+    <a class="li" href="#" style="padding: 8px 16px">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <span class="grow">Giao diện</span>
+      <span class="val">Sáng</span>
+    </a>
+    <div class="grow"></div>
+    <div style="padding: 0 16px">
+      <a class="btn danger block" href="A-Tablet-Login.dc.html">Đăng xuất</a>
+    </div>
+  </div>
+  <div class="hinge" aria-hidden="true"></div>
+  <div class="grow" style="padding: 24px 16px 16px 0">
+    <div class="pane on-card col" style="height: 100%">
+      <div class="col g20" style="padding: 24px; overflow-y: auto; height: 100%">
+        <div class="col g4">
+          <h2 class="t-title">Hồ sơ</h2>
+          <p class="t-small">Đổi họ tên, email hay mật khẩu không ảnh hưởng tới bài đã mua, số lượt còn lại và kết quả của bạn.</p>
+        </div>
+        <div class="banner" role="status" style="background: var(--warn-bg); color: var(--warn-fg); flex: none">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>
+          <div class="col g4 grow">
+            <span><span style="font-weight: 700">Email chưa xác minh.</span> Xác minh để dùng email này khôi phục tài khoản và nhận thư về đơn hàng.</span>
+            <a class="btn text" href="A-VerifyEmail.dc.html" style="align-self: flex-start; padding: 0; color: var(--warn-fg)">Xác minh email</a>
+          </div>
+        </div>
+
+        <section class="col g16" aria-labelledby="afp-av-h" style="flex: none">
+          <h3 class="t-title-m" id="afp-av-h" style="margin: 0">Ảnh đại diện</h3>
+          <div class="row g16">
+            <span class="avatar lg" role="img" aria-label="Ảnh đại diện hiện tại" style="flex-direction: column; background: var(--surface-high); color: var(--on-surface-variant); font-size: 11px; line-height: 14px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Ảnh</span>
+            <div class="col grow">
+              <span class="t-title-m">Trần Minh Anh</span>
+              <span class="t-small">minhanh.tran</span>
+            </div>
+          </div>
+          <div class="row g8" style="flex-wrap: wrap">
+            <button class="btn tonal" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Tải ảnh lên</button>
+            <button class="btn text" style="color: var(--error)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Xóa ảnh</button>
+          </div>
+          <p class="t-label" style="font-weight: 400">JPG, PNG hoặc WEBP; tối đa 5 MB và 4.096 × 4.096 px. Ảnh được cắt vuông.</p>
+        </section>
+        <div class="divider" style="margin: 0; flex: none"></div>
+
+        <section class="col g20" aria-labelledby="afp-info-h" style="flex: none">
+          <h3 class="t-title-m" id="afp-info-h" style="margin: 0">Thông tin cá nhân</h3>
+          <div class="tf">
+            <label for="afp-user">Tên đăng nhập</label>
+            <input id="afp-user" type="text" value="minhanh.tran" readonly style="border-color: var(--outline-variant); color: var(--on-surface-variant)">
+            <span class="sup">Tên đăng nhập không đổi được.</span>
+          </div>
+          <div class="tf">
+            <label for="afp-name">Họ và tên</label>
+            <input id="afp-name" type="text" value="Trần Minh Anh" maxlength="200" autocomplete="name">
+          </div>
+          <div class="tf">
+            <label for="afp-phone">Số điện thoại (không bắt buộc)</label>
+            <input id="afp-phone" type="tel" inputmode="tel" value="" placeholder="Ví dụ 0912345678" autocomplete="tel">
+            <span class="sup">Bạn chưa nhập số điện thoại.</span>
+          </div>
+          <div class="row g8 end">
+            <button class="btn outlined" disabled style="opacity: .38">Hủy thay đổi</button>
+            <button class="btn filled" disabled style="opacity: .38">Lưu thay đổi</button>
+          </div>
+        </section>
+        <div class="divider" style="margin: 0; flex: none"></div>
+
+        <section class="col g12" aria-labelledby="afp-mail-h" style="flex: none">
+          <h3 class="t-title-m" id="afp-mail-h" style="margin: 0">Email</h3>
+          <div class="row g12">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--on-surface-variant)"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            <span class="col g4 grow">
+              <span style="overflow-wrap: anywhere">minhanh@example.com</span>
+              <span><span class="chip" style="background: var(--warn-bg); color: var(--warn-fg)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Chưa xác minh</span></span>
+            </span>
+          </div>
+          <a class="btn outlined" href="A-ProfileEmail.dc.html" style="align-self: flex-start">Đổi email</a>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":840,"height":720}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+warnBg: dark ? '#2b2210' : '#fffbeb'
+};
+}
+}
+</script>
+</body>
+</html>

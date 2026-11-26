@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Hộp thoại màn làm bài</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="col grow" aria-hidden="true" style="pointer-events: none">
+    <div class="col" style="flex: none; background: var(--cell); border-bottom: 1px solid var(--sep); padding: 0 12px 10px">
+      <div class="row g8" style="height: 48px">
+        <span class="circle" style="background: transparent; color: var(--tint)"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></span>
+        <div class="col grow">
+          <span class="t-headline" style="font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thi thử ĐGNL HSA 2027 · Đề số 04</span>
+          <span class="t-foot" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{bgPart}}</span>
+        </div>
+        <span class="btn prominent" style="height: 36px; padding: 0 14px; font-size: 15px; {{bgBtnStyle}}">{{bgBtn}}</span>
+        <span class="circle"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg></span>
+      </div>
+      <div class="row g8" style="padding: 4px 0 0">
+        <div class="row g6" style="height: 34px; padding: 0 12px; border-radius: 17px; color: var(--label); background: var(--fill)">
+          <svg viewBox="0 0 24 24" style="width: 18px; height: 18px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>
+          <span style="font-size: 13px">{{bgClockLabel}}</span>
+          <span style="font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums">{{bgClock}}</span>
+        </div>
+        <div class="grow"></div>
+        <span class="row g4" style="height: 30px; padding: 0 10px; border-radius: 15px; font-size: 13px; font-weight: 600; {{bgSaveStyle}}">{{bgSave}}</span>
+      </div>
+    </div>
+    <div class="row g8" style="flex: none; padding: 10px 16px; border-bottom: 1px solid var(--sep)">
+      <span class="t-headline" style="font-size: 15px">{{bgGroup}}</span>
+      <span class="t-foot">{{bgRange}}</span>
+    </div>
+    <div class="col g12" style="padding: 12px 16px">
+      <section class="col g12" style="background: var(--cell); border-radius: 22px; padding: 16px">
+        <div class="row g8">
+          <span class="t-headline grow">{{bgQNo}}</span>
+          <span style="flex: none; height: 44px; border-radius: 22px; padding: 0 14px; background: var(--fill); color: var(--label); font-size: 15px; display: inline-flex; align-items: center; gap: 6px"><svg viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Đánh dấu xem lại</span>
+        </div>
+        <span style="align-self: flex-start; font-size: 13px; line-height: 18px; font-weight: 600; padding: 3px 10px; border-radius: 8px; background: var(--fill); color: var(--label2)">Chọn một đáp án</span>
+        <p>{{bgQText}}</p>
+        <div class="col g8">
+          <span style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 7px 14px; border-radius: 14px; border: 2px solid var(--tint); background: var(--tint-soft)"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--tint); display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--tint)"></span></span><span style="font-weight: 600">A.</span><span>{{bgA}}</span></span>
+          <span style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep)"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">B.</span><span>{{bgB}}</span></span>
+          <span style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep)"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">C.</span><span>{{bgC}}</span></span>
+          <span style="display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep)"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">D.</span><span>{{bgD}}</span></span>
+        </div>
+      </section>
+    </div>
+    <div class="row g12 safe-bottom" style="position: absolute; left: 0; right: 0; bottom: 0; padding-top: 10px; padding-left: 16px; padding-right: 16px; background: var(--glass); border-top: 1px solid var(--sep)">
+      <span class="btn gray" style="padding: 0 16px">{{bgPos}}</span>
+      <span class="t-foot grow" style="color: var(--label)">{{bgAnswered}}</span>
+    </div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(0,0,0,.4)"></div>
+
+  <sc-if value="{{isSubmit}}" hint-placeholder-val="{{true}}">
+    <section role="dialog" aria-modal="true" aria-labelledby="dlg-submit" class="col g16" style="position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 20px 34px; background: var(--bg); border-radius: 22px 22px 0 0; box-shadow: var(--shadow)">
+      <div style="width: 36px; height: 5px; border-radius: 3px; background: var(--sep); margin: 0 auto"></div>
+      <div class="col g4">
+        <h2 id="dlg-submit" class="t-title2">Nộp bài?</h2>
+        <p class="t-sub">Nộp xong thì lượt thi kết thúc và không thể sửa câu trả lời.</p>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <div class="col" style="padding: 10px 12px; border-radius: 14px; background: var(--cell)"><span class="t-headline">122/150 câu đã làm</span></div>
+        <div class="col" style="padding: 10px 12px; border-radius: 14px; background: var(--cell)"><span class="t-headline" style="font-weight: 500">Số câu làm dở: 2</span></div>
+        <div class="col" style="padding: 10px 12px; border-radius: 14px; background: {{warnBg}}; color: {{warnFg}}"><span class="t-headline">Số câu bỏ trống: 26</span></div>
+        <div class="col" style="padding: 10px 12px; border-radius: 14px; background: var(--cell)"><span class="t-headline" style="font-weight: 500">Đánh dấu xem lại: 6</span></div>
+      </div>
+      <div class="col">
+        <h3 class="sec" style="margin: 0">Số câu còn thiếu theo từng phần</h3>
+        <div class="group">
+          <div class="cell" style="min-height: 48px"><span class="grow" style="font-size: 15px">1 · Toán học và xử lý số liệu</span><span class="val" style="font-size: 15px; white-space: nowrap">Còn thiếu 3/50 câu</span></div>
+          <div class="cell" style="min-height: 48px"><span class="grow" style="font-size: 15px">2 · Văn học – Ngôn ngữ</span><span class="val" style="font-size: 15px; white-space: nowrap">Còn thiếu 2/50 câu</span></div>
+          <div class="cell" style="min-height: 48px"><span class="grow" style="font-size: 15px">3 · Khoa học</span><span class="val" style="font-size: 15px; white-space: nowrap; color: {{warnFg}}; font-weight: 600">Còn thiếu 23/50 câu</span></div>
+        </div>
+      </div>
+      <div class="col g8">
+        <a class="btn prominent block" href="I-Player.dc.html">Nộp bài</a>
+        <a class="btn gray block" href="I-Player.dc.html">Quay lại kiểm tra</a>
+      </div>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{isAlert}}" hint-placeholder-val="{{false}}">
+    <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 32px">
+      <section role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" class="col" style="width: 100%; max-width: 320px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); box-shadow: var(--shadow); overflow: hidden">
+        <div class="col g8 center" style="padding: 20px 18px 16px">
+          <h2 id="dlg-title" class="t-headline">{{aTitle}}</h2>
+          <p style="font-size: 13px; line-height: 18px">{{aMessage}}</p>
+
+          <sc-if value="{{isFinishPart}}" hint-placeholder-val="{{false}}">
+            <div class="col g6" style="width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 12px; background: var(--fill); text-align: left; font-size: 13px; line-height: 18px">
+              <span class="strong">Phần 2 · Văn học – Ngôn ngữ</span>
+              <span style="color: {{warnFg}}; font-weight: 600">Còn 1/50 câu chưa trả lời</span>
+              <span>Có 1 câu đang làm dở</span>
+            </div>
+            <p style="font-size: 13px; line-height: 18px; text-align: left; color: var(--label2)">Tiếp theo là bước chọn phần 3. Bạn có tối đa 15 phút để xác nhận lựa chọn; quá thời gian thì lượt kết thúc và phần 3 được 0 điểm.</p>
+          </sc-if>
+
+          <sc-if value="{{isTakeover}}" hint-placeholder-val="{{false}}">
+            <div class="col g6" style="width: 100%; margin-top: 4px; padding: 10px 12px; border-radius: 12px; background: var(--fill); text-align: left; font-size: 13px; line-height: 18px">
+              <span><span style="color: var(--label2)">Bài thi: </span><span class="strong">Thi thử ĐGNL HSA 2027 · Đề số 04</span></span>
+              <span><span style="color: var(--label2)">Phiên kia hoạt động lần cuối: </span><span class="strong">14:32 26/11/2026</span></span>
+            </div>
+            <ul class="col g4" style="margin: 0; padding: 0 0 0 16px; text-align: left; font-size: 13px; line-height: 18px; color: var(--label2)">
+              <li>Đồng hồ vẫn tiếp tục chạy trong lúc bạn chọn.</li>
+              <li>Các thay đổi chưa kịp lưu trên thiết bị kia sẽ không có ở đây.</li>
+            </ul>
+          </sc-if>
+        </div>
+        <div class="col" style="border-top: 1px solid var(--sep)">
+          <a href="I-Player.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 46px; font-weight: 600; color: var(--tint)">{{aPrimary}}</a>
+          <sc-if value="{{hasSecondary}}" hint-placeholder-val="{{true}}">
+            <a href="{{aSecondaryHref}}" style="display: flex; align-items: center; justify-content: center; min-height: 46px; border-top: 1px solid var(--sep); color: var(--tint)">{{aSecondary}}</a>
+          </sc-if>
+        </div>
+      </section>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"dialog":{"editor":"enum","options":["submit","submitUnconfirmed","finishPart","finishPartUnconfirmed","takeover","leave"],"default":"submit"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const d = this.props.dialog ?? 'submit';
+const c = dark
+  ? { okFg: '#34d399', okBg: '#0f2a21', warnFg: '#fbbf24', warnBg: '#2b2210', infoFg: '#22d3ee', infoBg: '#0f2a30' }
+  : { okFg: '#047857', okBg: '#ecfdf5', warnFg: '#b45309', warnBg: '#fffbeb', infoFg: '#0e7490', infoBg: '#ecfeff' };
+const p2 = d === 'finishPart' || d === 'finishPartUnconfirmed';
+const unc = d === 'submitUnconfirmed' || d === 'finishPartUnconfirmed';
+const alerts = {
+  finishPart: { t: 'Hoàn thành phần?', m: 'Sau khi hoàn thành bạn không thể quay lại phần này.', p: 'Hoàn thành phần', s: 'Quay lại làm tiếp', h: 'I-Player.dc.html' },
+  finishPartUnconfirmed: { t: 'Chưa xác nhận hoàn thành phần', m: 'Mất kết nối trước khi máy chủ trả lời, nên chưa biết phần thi đã đóng hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.', p: 'Kiểm tra trạng thái lượt', s: '', h: '#' },
+  submitUnconfirmed: { t: 'Chưa xác nhận nộp bài', m: 'Mất kết nối trước khi máy chủ trả lời, nên chưa biết bài đã nộp hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.', p: 'Kiểm tra trạng thái lượt', s: '', h: '#' },
+  takeover: { t: 'Bài thi đang mở ở một phiên khác', m: 'Bạn có muốn tiếp tục làm bài trên thiết bị này? Thiết bị kia sẽ không sửa bài được nữa.', p: 'Tiếp tục tại đây', s: 'Hủy', h: 'I-MyExams.dc.html' },
+  leave: { t: 'Rời màn làm bài?', m: 'Một số câu trả lời chưa được lưu lên máy chủ. Câu trả lời vẫn được giữ trên thiết bị và gửi khi bạn quay lại; đồng hồ vẫn chạy.', p: 'Ở lại', s: 'Rời màn', h: '#' },
+  submit: { t: '', m: '', p: '', s: '', h: '#' }
+};
+const a = alerts[d] || alerts.submit;
+const okSave = 'color: ' + c.okFg + '; background: ' + c.okBg;
+const warnSave = 'color: ' + c.warnFg + '; background: ' + c.warnBg;
+const readOnly = d === 'takeover' || unc;
+return {
+  theme: dark ? 'dark' : 'light',
+  ...c,
+  isSubmit: d === 'submit',
+  isAlert: d !== 'submit',
+  isFinishPart: d === 'finishPart',
+  isTakeover: d === 'takeover',
+  hasSecondary: a.s !== '',
+  aTitle: a.t, aMessage: a.m, aPrimary: a.p, aSecondary: a.s, aSecondaryHref: a.h,
+  bgPart: p2 ? 'Phần 2 · Văn học – Ngôn ngữ' : 'Phần 3 · Khoa học',
+  bgBtn: p2 ? 'Hoàn thành phần' : 'Nộp bài',
+  bgBtnStyle: readOnly ? 'opacity: .4' : '',
+  bgClockLabel: p2 ? 'Phần 2 còn' : 'Phần 3 còn',
+  bgClock: p2 ? '11:06' : '42:17',
+  bgSave: d === 'leave' ? 'Chưa lưu · Lỗi kết nối' : unc ? 'Chưa lưu · Mất kết nối' : 'Đã lưu',
+  bgSaveStyle: (d === 'leave' || unc) ? warnSave : okSave,
+  bgGroup: p2 ? 'Ngôn ngữ' : 'Môn Vật lí',
+  bgRange: p2 ? 'Câu 51–70 · 20 câu' : 'Câu 101–117 · 17 câu',
+  bgQNo: p2 ? 'Câu 62' : 'Câu 104',
+  bgQText: p2 ? 'Từ nào sau đây viết đúng chính tả?' : 'Một vật dao động điều hòa với phương trình x = 5cos(4πt + π/3) cm. Chu kì dao động của vật là',
+  bgA: p2 ? 'chuẩn đoán' : '0,5 s',
+  bgB: p2 ? 'chẩn đoán' : '2 s',
+  bgC: p2 ? 'chẩn đoáng' : '4 s',
+  bgD: p2 ? 'chuẩn đoáng' : '0,25 s',
+  bgPos: p2 ? '12/50' : '4/50',
+  bgAnswered: p2 ? '48/50 câu đã trả lời' : '27/50 câu đã trả lời'
+};
+}
+}
+</script>
+</body>
+</html>

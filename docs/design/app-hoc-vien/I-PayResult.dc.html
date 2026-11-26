@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Kết quả thanh toán</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px">
+  <div class="nav">
+    <a class="circle" href="I-Checkout.dc.html" aria-label="Quay lại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></a>
+    <h1 class="t-headline">Kết quả thanh toán</h1>
+    <span></span>
+  </div>
+  <div class="col grow pad g24" style="padding-top: 28px">
+
+    <sc-if value="{{isSuccess}}" hint-placeholder-val="{{ true }}">
+      <div class="col center g12" role="status">
+        <span class="hero-ic" style="background: {{okBg}}; color: {{okFg}}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>
+        <h2 class="t-title2">Đã cấp bài thi</h2>
+        <span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{okBg}}; color: {{okFg}}; font-size: 13px; font-weight: 600"><svg style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Đã cấp bài thi</span>
+        <p class="t-sub">Đơn DH261126K7Q2MX đã được xác nhận thành công. Bài thi đã được cấp vào tài khoản của bạn.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isChecking}}" hint-placeholder-val="{{ false }}">
+      <div class="col center g12" role="status">
+        <span class="hero-ic" style="background: {{warnBg}}; color: {{warnFg}}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <h2 class="t-title2">Đang chờ xác nhận thanh toán</h2>
+        <span class="row g4" style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{warnBg}}; color: {{warnFg}}; font-size: 13px; font-weight: 600"><svg style="width: 14px; height: 14px; stroke-width: 2.6" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>Đang kiểm tra</span>
+        <p class="t-sub">Hệ thống đang đối soát phản hồi từ VNPAY cho đơn DH261126K7Q2MX. Vui lòng đợi trong giây lát.</p>      </div>
+    </sc-if>
+
+    <sc-if value="{{isNoResult}}" hint-placeholder-val="{{ false }}">
+      <div class="col center g12" role="status">
+        <span class="hero-ic warn"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
+        <h2 class="t-title2">Chưa nhận được kết quả thanh toán</h2>
+        <span class="row" style="height: 26px; padding: 0 10px; border-radius: 13px; background: {{warnBg}}; color: {{warnFg}}; font-size: 13px; font-weight: 600">Chờ thanh toán</span>
+        <p class="t-sub">Nếu bạn đã thanh toán xong trên VNPAY, trạng thái đơn DH261126K7Q2MX sẽ cập nhật trong giây lát. Nếu bạn đã đóng trang thanh toán, đơn vẫn giữ giá tới 14:37.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isFailed}}" hint-placeholder-val="{{ false }}">
+      <div class="col center g12" role="alert">
+        <span class="hero-ic" style="background: var(--fill); color: var(--red)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg></span>
+        <h2 class="t-title2">Thanh toán chưa thành công</h2>
+        <p class="t-sub">Giao dịch cho đơn DH261126K7Q2MX chưa hoàn tất.</p>
+        <p class="t-body strong">Bạn đã hủy giao dịch trên VNPAY.</p>
+      </div>
+    </sc-if>
+
+    <div class="group">
+      <div class="cell between" style="align-items: flex-start; min-height: 44px"><span class="val" style="flex: none">Sản phẩm</span><span style="text-align: right; font-size: 15px; line-height: 20px">HSA 2027 · Đề thi thử Đánh giá năng lực ĐHQG Hà Nội số 03</span></div>
+      <div class="cell between" style="min-height: 44px"><span class="val">Mã đơn</span><span>DH261126K7Q2MX</span></div>
+      <div class="cell between" style="min-height: 44px"><span class="val">Số tiền</span><span class="strong">149.000 đ</span></div>
+      <sc-if value="{{isSuccess}}" hint-placeholder-val="{{ true }}">
+        <div class="cell between" style="min-height: 44px; border-top: 1px solid var(--sep)"><span class="val">Cấp bài thi lúc</span><span>26/11/2026 14:24</span></div>
+      </sc-if>
+      <sc-if value="{{isFailed}}" hint-placeholder-val="{{ false }}">
+        <div class="cell" style="min-height: 44px; border-top: 1px solid var(--sep)"><span class="t-sub">Mã giao dịch: DH261126K7Q2MX01 · 149.000 đ</span></div>
+      </sc-if>
+    </div>
+
+    <div class="grow"></div>
+
+    <sc-if value="{{isSuccess}}" hint-placeholder-val="{{ true }}">
+      <div class="col g8">
+        <a class="btn prominent block" href="#">Vào Bài thi của tôi</a>
+        <a class="btn gray block" href="I-OrderDetail.dc.html">Xem chi tiết đơn</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{isChecking}}" hint-placeholder-val="{{ false }}">
+      <div class="col g8">
+        <button class="btn prominent block">Kiểm tra lại ngay</button>
+        <a class="btn gray block" href="I-OrderDetail.dc.html">Xem chi tiết đơn</a>
+        <a class="btn text block" href="#">Vào Bài thi của tôi</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{isNoResult}}" hint-placeholder-val="{{ false }}">
+      <div class="col g8">
+        <button class="btn prominent block">Tiếp tục thanh toán</button>
+        <a class="btn gray block" href="I-OrderDetail.dc.html">Xem chi tiết đơn</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{isFailed}}" hint-placeholder-val="{{ false }}">
+      <div class="col g8">
+        <button class="btn prominent block">Thanh toán lại</button>
+        <a class="btn gray block" href="I-OrderDetail.dc.html">Xem chi tiết đơn</a>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["success","checking","noResult","failed"],"default":"success"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.state ?? 'success';
+return {
+theme: dark ? 'dark' : 'light',
+okBg: dark ? '#0f2a21' : '#ecfdf5',
+okFg: dark ? '#34d399' : '#047857',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+warnFg: dark ? '#fbbf24' : '#b45309',
+isSuccess: s === 'success',
+isChecking: s === 'checking',
+isNoResult: s === 'noResult',
+isFailed: s === 'failed'
+};
+}
+}
+</script>
+</body>
+</html>

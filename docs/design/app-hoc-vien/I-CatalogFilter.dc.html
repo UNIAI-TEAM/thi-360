@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Trang chủ, bộ lọc và sắp xếp</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+<div style="display: contents; {{tones}}">
+  <div class="col" aria-hidden="true" style="flex: none">
+    <div class="nav">
+      <span></span>
+      <div class="row g8">
+        <span class="circle" style="color: var(--tint)"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></span>
+        <span class="circle" style="background: transparent"><span class="avatar">MA</span></span>
+      </div>
+    </div>
+    <h1 class="t-large" style="padding: 4px 20px 8px">Chọn bài thi</h1>
+    <div class="field" style="padding: 0 20px">
+      <label>Tìm theo tên hoặc mã</label>
+      <input type="search" tabindex="-1" placeholder="Ví dụ: HSA FULL hoặc HSA-FULL-01" style="height: 44px; border-radius: 12px; padding-left: 42px; background: var(--fill)">
+    </div>
+    <div style="padding: 20px">
+      <div class="group" style="height: 300px"></div>
+    </div>
+  </div>
+
+  <div aria-hidden="true" style="position: absolute; inset: 0; z-index: 2; background: var(--scrim); opacity: var(--scrim-o)"></div>
+
+  <section class="col" role="dialog" aria-modal="true" aria-labelledby="i-flt-title" style="position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 22px 22px 0 0; padding: 0 20px 34px; box-shadow: var(--shadow)">
+    <div style="display: flex; justify-content: center; padding: 6px 0 4px"><span aria-hidden="true" style="width: 36px; height: 5px; border-radius: 3px; background: var(--sep)"></span></div>
+    <div class="row between" style="min-height: 44px; margin-bottom: 8px">
+      <h2 id="i-flt-title" class="t-title2">Tìm và lọc bài thi</h2>
+      <button class="btn text">Xóa bộ lọc</button>
+    </div>
+
+    <h3 class="sec" id="i-flt-format" style="margin: 0; padding-left: 4px">Hình thức</h3>
+    <div class="group" style="padding: 4px 12px 8px; margin-bottom: 8px">
+      <div class="row" role="radiogroup" aria-labelledby="i-flt-format" style="flex-wrap: wrap; column-gap: 8px">
+        <button role="radio" aria-checked="true" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 12px 0 8px; border-radius: 17px; background: var(--tint); color: var(--on-tint); font-size: 15px; font-weight: 600; white-space: nowrap"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px; stroke-width: 2.6"><path d="m5 12 5 5 9-10"/></svg>Tất cả hình thức</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Bài thi FULL</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Bài thi theo phần</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Bài thi theo môn</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Bộ đề</span></button>
+      </div>
+    </div>
+    <p class="t-foot" style="padding: 0 4px 12px"><span class="strong">Hình thức:</span> Bài thi FULL gồm các phần thi liên tiếp trong một lượt. Bài thi theo phần hoặc theo môn giúp bạn luyện riêng phần hoặc môn ghi trên thẻ.</p>
+
+    <h3 class="sec" id="i-flt-part" style="margin: 0; padding-left: 4px">Phần/môn</h3>
+    <div class="group" style="padding: 4px 12px 8px; margin-bottom: 16px">
+      <div class="row" role="radiogroup" aria-labelledby="i-flt-part" style="flex-wrap: wrap; column-gap: 8px">
+        <button role="radio" aria-checked="true" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; gap: 4px; height: 34px; padding: 0 12px 0 8px; border-radius: 17px; background: var(--tint); color: var(--on-tint); font-size: 15px; font-weight: 600; white-space: nowrap"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px; stroke-width: 2.6"><path d="m5 12 5 5 9-10"/></svg>Tất cả phần, môn</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Tư duy định lượng</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Tư duy định tính</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Khoa học</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Toán</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Ngữ văn</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Tiếng Anh</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Vật lý</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Hóa học</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Sinh học</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Lịch sử</span></button>
+        <button role="radio" aria-checked="false" style="flex: none; height: 44px; border: 0; background: transparent; padding: 0; font: inherit; color: inherit"><span style="display: flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); color: var(--label); font-size: 15px; font-weight: 500; white-space: nowrap">Địa lý</span></button>
+      </div>
+    </div>
+
+    <h3 class="sec" id="i-flt-sort" style="margin: 0; padding-left: 4px">Sắp xếp</h3>
+    <div class="seg" role="radiogroup" aria-labelledby="i-flt-sort">
+      <button role="radio" aria-checked="false" style="flex: 1 1 0; height: 40px; padding: 0 6px">Mới công bố</button>
+      <button role="radio" aria-checked="true" class="on" style="flex: 1 1 0; height: 40px; padding: 0 6px">Giá tăng dần</button>
+      <button role="radio" aria-checked="false" style="flex: 1 1 0; height: 40px; padding: 0 6px">Giá giảm dần</button>
+    </div>
+  </section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+return {
+theme: dark ? 'dark' : 'light',
+tones: dark ? '--scrim:var(--bg);--scrim-o:.6' : '--scrim:var(--label);--scrim-o:.3'
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Câu chọn đáp án</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <header class="col" style="flex: none; background: var(--cell); border-bottom: 1px solid var(--sep); padding: 0 12px 8px">
+    <div class="row g8" style="height: 48px">
+      <button class="circle" aria-label="Rời màn làm bài" style="background: transparent; color: var(--tint)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+      <div class="col grow">
+        <span class="t-headline" style="font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">HSA 2026 · Đề luyện tổng hợp số 03</span>
+        <span class="t-foot" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Phần 1 · Tư duy Toán học</span>
+      </div>
+      <button class="circle" aria-label="Mở rộng thanh đầu trang" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="row g8" style="padding-top: 4px">
+      <div class="row g6" role="timer" aria-label="Cả bài còn: 42 phút 18 giây" style="height: 34px; padding: 0 12px; border-radius: 17px; color: var(--label); background: var(--fill)">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>
+        <span style="font-size: 13px; line-height: 18px">Cả bài còn</span>
+        <span style="font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums">42:18</span>
+      </div>
+      <div class="grow"></div>
+      <span class="row g4" role="status" style="height: 30px; padding: 0 10px; border-radius: 15px; font-size: 13px; font-weight: 600; color: {{okFg}}; background: {{okBg}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px; stroke-width: 2.4"><path d="m5 12 5 5 9-10"/></svg>Đã lưu</span>
+    </div>
+  </header>
+
+  <main class="grow" style="position: relative; overflow: hidden">
+    <div class="col g12" style="position: absolute; left: 0; right: 0; {{anchor}}; padding: 12px 16px 16px">
+
+      <section class="col g12" aria-labelledby="ch-q1" style="background: var(--cell); border-radius: 22px; padding: 16px">
+        <div class="row g8">
+          <h2 id="ch-q1" class="t-headline grow">Câu 1</h2>
+          <button aria-pressed="false" style="height: 44px; border: 0; border-radius: 22px; padding: 0 14px; background: var(--fill); color: var(--label); font: inherit; font-size: 15px; display: inline-flex; align-items: center; gap: 6px">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Đánh dấu xem lại
+          </button>
+        </div>
+        <span style="align-self: flex-start; font-size: 13px; line-height: 18px; font-weight: 600; padding: 3px 10px; border-radius: 8px; background: var(--fill); color: var(--label2)">Chọn một đáp án</span>
+        <div class="row g12" style="align-items: flex-start">
+          <p class="grow" style="line-height: 26px">
+            Cho hàm số <i style="font-family: 'Times New Roman', serif; font-size: 19px">y</i> = <i style="font-family: 'Times New Roman', serif; font-size: 19px">f</i>(<i style="font-family: 'Times New Roman', serif; font-size: 19px">x</i>) liên tục trên [0; 2], có đồ thị như hình bên và
+            <span style="white-space: nowrap"><span style="font-family: 'Times New Roman', serif; font-size: 22px">∫</span><span style="display: inline-flex; flex-direction: column; font-size: 11px; line-height: 12px; vertical-align: middle; margin-right: 2px"><span>2</span><span>0</span></span><i style="font-family: 'Times New Roman', serif; font-size: 19px">f</i>(<i style="font-family: 'Times New Roman', serif; font-size: 19px">x</i>)<i style="font-family: 'Times New Roman', serif; font-size: 19px">dx</i> = <span style="display: inline-flex; flex-direction: column; align-items: center; vertical-align: -0.5em; font-size: 15px; line-height: 17px"><span style="padding: 0 2px; border-bottom: 1px solid currentColor">3</span><span style="padding: 0 2px">2</span></span></span>.
+            Giá trị của <span style="white-space: nowrap"><span style="font-family: 'Times New Roman', serif; font-size: 22px">∫</span><span style="display: inline-flex; flex-direction: column; font-size: 11px; line-height: 12px; vertical-align: middle; margin-right: 2px"><span>2</span><span>0</span></span>[2<i style="font-family: 'Times New Roman', serif; font-size: 19px">f</i>(<i style="font-family: 'Times New Roman', serif; font-size: 19px">x</i>) + <i style="font-family: 'Times New Roman', serif; font-size: 19px">x</i>]<i style="font-family: 'Times New Roman', serif; font-size: 19px">dx</i></span> bằng
+          </p>
+          <figure class="col g6" style="margin: 0; width: 132px; flex: none">
+            <div style="position: relative; width: 132px; height: 112px; border-radius: 10px; background: var(--fill); color: var(--label2); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; line-height: 16px; padding: 8px" role="img" aria-label="Đồ thị hàm số y = f(x) trên đoạn [0; 2]">
+              Ảnh · đồ thị<br>y = f(x)
+              <button aria-label="Phóng to ảnh" style="position: absolute; right: 4px; bottom: 4px; width: 44px; height: 44px; border: 0; border-radius: 22px; background: transparent; color: var(--label); display: flex; align-items: center; justify-content: center; padding: 0">
+                <span style="width: 28px; height: 28px; border-radius: 14px; background: var(--glass); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></span>
+              </button>
+            </div>
+            <figcaption class="t-foot" style="text-align: center">Hình 1</figcaption>
+          </figure>
+        </div>
+        <div class="col g8" role="radiogroup" aria-labelledby="ch-q1">
+          <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span>
+            <span style="font-weight: 600">A.</span>
+            <span style="display: inline-flex; flex-direction: column; align-items: center; font-size: 15px; line-height: 17px"><span style="padding: 0 2px; border-bottom: 1px solid currentColor">7</span><span style="padding: 0 2px">2</span></span>
+          </button>
+          <button role="radio" aria-checked="true" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 7px 14px; border-radius: 14px; border: 2px solid var(--tint); background: var(--tint-soft); color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--tint); display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--tint)"></span></span>
+            <span style="font-weight: 600">B.</span>
+            <span>5</span>
+          </button>
+          <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span>
+            <span style="font-weight: 600">C.</span>
+            <span style="display: inline-flex; flex-direction: column; align-items: center; font-size: 15px; line-height: 17px"><span style="padding: 0 2px; border-bottom: 1px solid currentColor">11</span><span style="padding: 0 2px">2</span></span>
+          </button>
+          <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span>
+            <span style="font-weight: 600">D.</span>
+            <span>3 + <span style="white-space: nowrap">√<span style="border-top: 1px solid currentColor; padding: 0 1px">2</span></span></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="col g12" aria-labelledby="ch-q2" style="background: var(--cell); border-radius: 22px; padding: 16px">
+        <div class="row g8">
+          <h2 id="ch-q2" class="t-headline grow">Câu 2</h2>
+          <button aria-pressed="true" style="height: 44px; border: 0; border-radius: 22px; padding: 0 14px; background: var(--tint-soft); color: var(--on-tint-soft); font: inherit; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; fill: currentColor"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Bỏ đánh dấu
+          </button>
+        </div>
+        <span style="align-self: flex-start; font-size: 13px; line-height: 18px; font-weight: 600; padding: 3px 10px; border-radius: 8px; background: var(--fill); color: var(--label2)">Chọn một hoặc nhiều đáp án</span>
+        <p>Chất nào sau đây phản ứng được với dung dịch H<sub>2</sub>SO<sub>4</sub> loãng ở điều kiện thường?</p>
+        <p class="t-sub">Chọn các phương án đúng</p>
+        <div class="col g8" role="group" aria-labelledby="ch-q2">
+          <button role="checkbox" aria-checked="true" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 7px 14px; border-radius: 14px; border: 2px solid var(--tint); background: var(--tint-soft); color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--tint); color: var(--on-tint); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 3"><path d="m5 12 5 5 9-10"/></svg></span>
+            <span style="font-weight: 600">A.</span>
+            <span>Fe</span>
+          </button>
+          <button role="checkbox" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--label2)"></span>
+            <span style="font-weight: 600">B.</span>
+            <span>Cu</span>
+          </button>
+          <button role="checkbox" aria-checked="true" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 7px 14px; border-radius: 14px; border: 2px solid var(--tint); background: var(--tint-soft); color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--tint); color: var(--on-tint); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 3"><path d="m5 12 5 5 9-10"/></svg></span>
+            <span style="font-weight: 600">C.</span>
+            <span>NaHCO<sub>3</sub></span>
+          </button>
+          <button role="checkbox" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--label2)"></span>
+            <span style="font-weight: 600">D.</span>
+            <span>Ag</span>
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <nav class="row g12" aria-label="Điều hướng câu hỏi" style="flex: none; padding: 10px 16px 34px; background: var(--glass); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); border-top: 1px solid var(--sep)">
+      <button class="btn gray" aria-label="Danh sách câu 1/40" style="padding: 0 16px; font-variant-numeric: tabular-nums"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>1/40</button>
+      <span class="t-foot grow" style="color: var(--label)">12/40 câu đã trả lời</span>
+      <button class="btn prominent" style="padding: 0 22px">Nộp bài</button>
+    </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"scroll":{"editor":"enum","options":["top","bottom"],"default":"top"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const scroll = this.props.scroll ?? 'top';
+return {
+theme: dark ? 'dark' : 'light',
+anchor: scroll === 'bottom' ? 'bottom: 0' : 'top: 0',
+okFg: dark ? '#34d399' : '#047857',
+okBg: dark ? '#0f2a21' : '#ecfdf5'
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Màn hình gập mở, Bài thi của tôi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}}" style="width: 840px; height: 720px; flex-direction: row; {{statusVars}}">
+  <nav class="rail" aria-label="Điều hướng chính">
+    <span class="logo sm" style="margin-bottom: 8px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="m9 12 3 3 8-9"/></svg></span>
+    <a class="nav-i" href="A-Home.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg></span>Trang chủ</a>
+    <a class="nav-i on" href="A-Fold-MyExams.dc.html" aria-current="page"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span>Bài thi của tôi</a>
+    <a class="nav-i" href="A-History.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>Lịch sử</a>
+    <a class="nav-i" href="A-Fold-Account.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Tài khoản</a>
+  </nav>
+  <div class="col grow">
+    <div class="row between g16" style="padding: 24px 24px 8px 8px; flex: none">
+      <div class="col g4">
+        <h1 class="t-title">Bài thi của tôi</h1>
+        <p class="t-small">Chào Trần Minh Anh. Đây là các bài thi bạn đã mua và số lượt còn lại.</p>
+      </div>
+      <a class="icon-btn" href="A-Fold-Account.dc.html" aria-label="Tài khoản của Trần Minh Anh"><span class="avatar" style="width: 32px; height: 32px; font-size: 13px">MA</span></a>
+    </div>
+    <div class="grow" style="overflow-y: auto; scrollbar-width: none">
+      <div class="col g12" style="padding: 0 24px 24px 8px; margin-top: -{{offset}}px">
+
+        <div class="row between" style="padding: 4px 0 0 8px">
+          <div class="row g8">
+            <h2 class="t-title-m">Bài đã mua</h2>
+            <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">6 bài</span>
+          </div>
+          <a class="btn tonal" href="A-Home.dc.html">Khám phá bài thi</a>
+        </div>
+
+        <h2 id="g-checking" class="t-section" style="padding: 4px 8px 0">Đang kiểm tra</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start">
+        <article class="card out col g12">
+          <div class="row g8" style="flex-wrap: wrap">
+            <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đánh giá năng lực ĐHQG Hà Nội (HSA)</span>
+            <span class="chip" style="background: var(--info-bg); color: var(--info)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Đang kiểm tra</span>
+          </div>
+          <h3 class="t-title-m" style="margin: 0">HSA 2027 – Đề thi thử tổng hợp số 4</h3>
+          <p class="t-small">Đã nhận thanh toán cho đơn DH261126-0187. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ kèm mã đơn. Thông tin liên hệ đang được cập nhật.</p>
+          <div class="row g8">
+            <a class="btn outlined grow" href="#">Xem đơn</a>
+            <button class="btn tonal grow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>Tải lại</button>
+          </div>
+        </article>
+</div>
+
+        <section id="g-vact" class="col g12" aria-labelledby="g-vact-title" style="margin-top: 8px; background: var(--surface-container); border-radius: 24px; padding: 12px">
+          <div class="col" style="padding: 4px 4px 0 8px">
+            <div class="row g8">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary)"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>
+              <h3 id="g-vact-title" class="t-title-m grow" style="margin: 0">Bộ đề V-ACT 2027 trọn bộ</h3>
+            </div>
+            <div class="row between">
+              <span class="t-label">3 bài · BD-VACT-2027</span>
+              <a class="btn text" href="#">Xem bộ đề</a>
+            </div>
+          </div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start">
+          <article class="card out col g12">
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đánh giá năng lực ĐHQG TP.HCM (V-ACT)</span>
+              <span class="chip" style="background: var(--secondary-container); color: var(--on-secondary-container)">Đã mua</span>
+              <span class="chip" style="background: var(--info-bg); color: var(--info)">Đang làm</span>
+            </div>
+            <h3 class="t-title-m" style="margin: 0">V-ACT 2027 – Phần Tiếng Việt</h3>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Bài thi theo phần</span>
+              <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Tiếng Việt</span>
+            </div>
+            <div class="row between g8"><span class="t-small">40 câu · 40 phút mỗi lượt</span><span class="t-small" style="white-space: nowrap">Lượt còn lại <span class="strong" style="font-size: 16px">1</span></span></div>
+            <div class="col g8">
+              <a class="btn filled block" href="#">Tiếp tục</a>
+              <div class="row g8">
+                <a class="btn outlined grow" href="#">Xem kết quả</a>
+                <a class="btn outlined grow" href="A-History.dc.html">Lịch sử</a>
+              </div>
+              <a class="btn tonal block" href="#">Mua thêm lượt</a>
+            </div>
+          </article>
+
+          <article id="c-vact-math" class="card out col g12">
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đánh giá năng lực ĐHQG TP.HCM (V-ACT)</span>
+              <span class="chip" style="background: var(--secondary-container); color: var(--on-secondary-container)">Đã mua</span>
+              <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Hết lượt</span>
+            </div>
+            <h3 class="t-title-m" style="margin: 0">V-ACT 2027 – Phần Toán học</h3>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Bài thi theo phần</span>
+              <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Toán học</span>
+            </div>
+            <div class="row between g8"><span class="t-small">30 câu · 40 phút mỗi lượt</span><span class="t-small" style="white-space: nowrap">Lượt còn lại <span class="strong" style="font-size: 16px">0</span></span></div>
+            <div class="col g8">
+              <a class="btn filled block" href="#">Mua lại</a>
+              <div class="row g8">
+                <a class="btn outlined grow" href="#">Xem kết quả</a>
+                <a class="btn outlined grow" href="A-History.dc.html">Lịch sử</a>
+              </div>
+            </div>
+          </article>
+</div>
+
+          <div class="row g12" style="padding: 12px 16px; border-radius: 16px; background: var(--surface-lowest)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; color: var(--on-surface-variant)"><path d="M7 17 17 7M9 7h8v8"/></svg>
+            <p class="t-small">Bài <span class="strong">V-ACT 2027 – Đề tổng hợp số 2</span> đang hiện ở nhóm <a href="#g-combo" style="white-space: nowrap">Combo nước rút V-ACT</a></p>
+          </div>
+          <p class="t-label" style="font-weight: 400; padding: 0 8px 4px">Nộp bài một môn chỉ kết thúc lượt của bài đó; các bài khác trong bộ không đổi. Lượt còn lại gồm cả lượt mua lẻ của cùng bài.</p>
+        </section>
+
+        <section id="g-combo" class="col g12" aria-labelledby="g-combo-title" style="background: var(--surface-container); border-radius: 24px; padding: 12px">
+          <div class="col" style="padding: 4px 4px 0 8px">
+            <div class="row g8">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary)"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>
+              <h3 id="g-combo-title" class="t-title-m grow" style="margin: 0">Combo nước rút V-ACT</h3>
+            </div>
+            <div class="row between">
+              <span class="t-label">1 bài · BD-VACT-1126</span>
+              <a class="btn text" href="#">Xem bộ đề</a>
+            </div>
+          </div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start">
+          <article class="card out col g12">
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đánh giá năng lực ĐHQG TP.HCM (V-ACT)</span>
+              <span class="chip" style="background: var(--secondary-container); color: var(--on-secondary-container)">Đã mua</span>
+              <span class="chip" style="background: var(--succ-bg); color: var(--succ)">Có thể bắt đầu</span>
+            </div>
+            <h3 class="t-title-m" style="margin: 0">V-ACT 2027 – Đề tổng hợp số 2</h3>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Bài thi FULL</span>
+            </div>
+            <div class="row between g8"><span class="t-small">120 câu · 150 phút mỗi lượt</span><span class="t-small" style="white-space: nowrap">Lượt còn lại <span class="strong" style="font-size: 16px">3</span></span></div>
+            <div class="col g8">
+              <a class="btn filled block" href="#">Bắt đầu</a>
+              <a class="btn tonal block" href="#">Mua thêm lượt</a>
+            </div>
+          </article>
+</div>
+          <p class="t-label" style="font-weight: 400; padding: 0 8px 4px">Nộp bài một môn chỉ kết thúc lượt của bài đó; các bài khác trong bộ không đổi. Lượt còn lại gồm cả lượt mua lẻ của cùng bài.</p>
+        </section>
+
+        <div id="g-single" class="row g8" style="padding: 12px 8px 0">
+          <h3 class="t-section" style="margin: 0; padding: 0">Bài mua lẻ</h3>
+          <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">2 bài</span>
+        </div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start">
+        <article class="card out col g12">
+          <div class="row g8" style="flex-wrap: wrap">
+            <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Tốt nghiệp THPT (THPTQG)</span>
+            <span class="chip" style="background: var(--secondary-container); color: var(--on-secondary-container)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Bài theo lớp · 12A1</span>
+            <span class="chip" style="background: var(--succ-bg); color: var(--succ)">Có thể bắt đầu</span>
+          </div>
+          <h3 class="t-title-m" style="margin: 0">Toán THPT 2027 – Đề luyện số 5</h3>
+          <div class="row g8" style="flex-wrap: wrap">
+            <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Bài thi theo môn</span>
+            <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Toán học</span>
+          </div>
+          <div class="row between g8"><span class="t-small">50 câu · 90 phút mỗi lượt</span><span class="t-small" style="white-space: nowrap">Lượt còn lại <span class="strong" style="font-size: 16px">2</span></span></div>
+          <div class="col g8">
+            <a class="btn filled block" href="#">Bắt đầu</a>
+            <a class="btn outlined block" href="A-History.dc.html">Lịch sử</a>
+          </div>
+        </article>
+
+        <article id="c-qda" class="card out col g12">
+          <div class="row g8" style="flex-wrap: wrap">
+            <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đánh giá năng lực Bộ Quốc phòng (QDA)</span>
+            <span class="chip" style="background: var(--secondary-container); color: var(--on-secondary-container)">Đã mua</span>
+            <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Hết lượt</span>
+          </div>
+          <h3 class="t-title-m" style="margin: 0">QDA 2026 – Đề thi thử số 1</h3>
+          <div class="row g8" style="flex-wrap: wrap">
+            <span class="chip" style="background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant)">Bài thi FULL</span>
+          </div>
+          <div class="row between g8"><span class="t-small">150 câu · 195 phút mỗi lượt</span><span class="t-small" style="white-space: nowrap">Lượt còn lại <span class="strong" style="font-size: 16px">0</span></span></div>
+          <div class="row g12" style="align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--surface-container)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; color: var(--on-surface-variant)"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>
+            <p class="t-small">Bài thi đã ngừng bán, không mua thêm được. Kết quả và lịch sử vẫn xem được.</p>
+          </div>
+          <div class="row g8">
+            <a class="btn outlined grow" href="#">Xem kết quả</a>
+            <a class="btn outlined grow" href="A-History.dc.html">Lịch sử</a>
+          </div>
+        </article>
+</div>
+      
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"scroll":{"editor":"enum","options":["top","middle","bottom"],"default":"top"},"$preview":{"width":840,"height":720}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const offsets = { top: 0, middle: 636, bottom: 1272 };
+return {
+theme: dark ? 'dark' : 'light',
+statusVars: dark
+? '--succ: #34d399; --succ-bg: #0f2a21; --warn: #fbbf24; --warn-bg: #2b2210; --info: #22d3ee; --info-bg: #0f2a30'
+: '--succ: #047857; --succ-bg: #ecfdf5; --warn: #b45309; --warn-bg: #fffbeb; --info: #0e7490; --info-bg: #ecfeff',
+offset: offsets[this.props.scroll ?? 'top'] ?? 0
+};
+}
+}
+</script>
+</body>
+</html>

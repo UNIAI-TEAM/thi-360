@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iPad · Hồ sơ hai cột</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}}" style="width: 1180px; height: 820px; flex-direction: row; --warn-fg: {{warnFg}}; --warn-bg: {{warnBg}}">
+  <nav class="sidebar" aria-label="Điều hướng chính">
+    <div class="brand" style="padding: 0 12px 20px">
+      <span class="logo sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-4-6.9"/><path d="m9 12 3 3 8-9"/></svg></span>
+      <span class="wordmark">Thi 360</span>
+    </div>
+    <a class="side-i" href="I-Pad-Profile.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>Trang chủ</a>
+    <a class="side-i" href="I-Pad-Profile.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>Bài thi của tôi</a>
+    <a class="side-i" href="I-Pad-Profile.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Lịch sử</a>
+    <a class="side-i on" href="I-Pad-Profile.dc.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Tài khoản</a>
+    <div class="grow"></div>
+    <div class="row g12" style="padding: 0 12px">
+      <span class="avatar" role="img" aria-label="Ảnh đại diện hiện tại" style="background: var(--fill); color: var(--label2)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+      <span class="col">
+        <span class="t-headline">Trần Minh Anh</span>
+        <span class="t-foot">minhanh.tran</span>
+      </span>
+    </div>
+  </nav>
+
+  <div class="col g16" style="width: 380px; flex: none; padding: 40px 20px 24px; border-right: 1px solid var(--sep); overflow: hidden">
+    <h1 class="t-large">Tài khoản</h1>
+    <div class="group">
+      <a class="cell" href="I-Pad-Profile.dc.html" aria-label="Trần Minh Anh, mở Hồ sơ" style="padding: 12px 16px">
+        <span class="avatar" role="img" aria-label="Ảnh đại diện hiện tại" style="width: 56px; height: 56px; border-radius: 28px; flex-direction: column; background: var(--fill); color: var(--label2); font-size: 10px; line-height: 12px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Ảnh</span>
+        <span class="col grow" style="min-width: 0; gap: 2px">
+          <span class="t-headline">Trần Minh Anh</span>
+          <span class="t-foot">minhanh.tran</span>
+          <span class="t-foot" style="overflow-wrap: anywhere">minhanh@example.com</span>
+          <span class="badge" style="color: var(--warn-fg)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Chưa xác minh</span>
+        </span>
+      </a>
+    </div>
+    <div class="group">
+      <a class="cell" href="I-Pad-Profile.dc.html" aria-current="true" style="background: var(--fill); font-weight: 600">
+        <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18.5a6.5 6.5 0 0 1 11 0"/></svg></span>
+        <span class="grow">Hồ sơ</span>
+      </a>
+      <a class="cell" href="#">
+        <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+        <span class="grow">Đơn của tôi</span>
+      </a>
+    </div>
+    <div class="col">
+      <h2 class="sec">Bảo mật</h2>
+      <div class="group">
+        <a class="cell" href="I-Pad-Account.dc.html">
+          <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/></svg></span>
+          <span class="grow">Đổi mật khẩu</span>
+        </a>
+        <div class="cell">
+          <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 11v4a6 6 0 0 1-1.5 4"/><path d="M8 15v-4a4 4 0 0 1 8 0v3a10 10 0 0 1-1 4.5"/><path d="M5 17a12 12 0 0 0 .5-3.5V11a6.5 6.5 0 0 1 11-4.7"/><path d="M19 11v2a14 14 0 0 1-.4 3.4"/></svg></span>
+          <span class="col grow">
+            <span id="ipp-bio">Mở khóa bằng Touch ID</span>
+            <span class="t-foot">Tự khóa sau 5 phút rời ứng dụng</span>
+          </span>
+          <button class="sw" role="switch" aria-checked="true" aria-labelledby="ipp-bio"></button>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <h2 class="sec">Hiển thị</h2>
+      <div class="group">
+        <a class="cell" href="#">
+          <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+          <span class="grow">Ngôn ngữ</span>
+          <span class="val">Tiếng Việt</span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </a>
+        <div class="cell">
+          <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+          <span class="grow" id="ipp-theme">Giao diện</span>
+          <span class="seg" role="group" aria-labelledby="ipp-theme">
+            <button class="on" aria-pressed="true">Sáng</button>
+            <button aria-pressed="false">Tối</button>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="group">
+      <a class="cell red" href="I-Pad-Login.dc.html">Đăng xuất</a>
+    </div>
+  </div>
+
+  <div class="col grow" style="overflow-y: auto">
+    <div class="col g20" style="padding: 40px 32px 32px; flex: none">
+      <div class="col g8">
+        <h2 class="t-large">Hồ sơ</h2>
+        <p class="t-sub">Đổi họ tên, email hay mật khẩu không ảnh hưởng tới bài đã mua, số lượt còn lại và kết quả của bạn.</p>
+      </div>
+      <div class="banner" role="status" style="background: var(--warn-bg); color: var(--warn-fg)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <div class="col g4 grow">
+          <span><span style="font-weight: 700">Email chưa xác minh.</span> Xác minh để dùng email này khôi phục tài khoản và nhận thư về đơn hàng.</span>
+          <a class="btn text" href="I-VerifyEmail.dc.html" style="align-self: flex-start; padding: 0; font-weight: 600; color: var(--warn-fg)">Xác minh email</a>
+        </div>
+      </div>
+
+      <section class="col" aria-labelledby="ipp-av-h">
+        <h3 class="sec" id="ipp-av-h" style="margin: 0">Ảnh đại diện</h3>
+        <div class="group">
+          <div class="cell" style="padding: 12px 16px; gap: 16px">
+            <span class="avatar lg" role="img" aria-label="Ảnh đại diện hiện tại" style="flex-direction: column; background: var(--fill); color: var(--label2); font-size: 11px; line-height: 14px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Ảnh</span>
+            <span class="col grow">
+              <span class="t-headline">Trần Minh Anh</span>
+              <span class="t-sub">minhanh.tran</span>
+            </span>
+          </div>
+          <div class="cell" style="gap: 8px">
+            <button class="btn gray" aria-haspopup="dialog" style="height: 44px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Tải ảnh lên</button>
+            <button class="btn text" style="color: var(--red)">Xóa ảnh</button>
+          </div>
+        </div>
+        <p class="hint" style="padding: 6px 16px 0">JPG, PNG hoặc WEBP; tối đa 5 MB và 4.096 × 4.096 px. Ảnh được cắt vuông.</p>
+      </section>
+
+      <section class="col" aria-labelledby="ipp-info-h">
+        <h3 class="sec" id="ipp-info-h" style="margin: 0">Thông tin cá nhân</h3>
+        <div class="group on-cell col g16" style="padding: 16px">
+          <div class="field">
+            <label for="ipp-user">Tên đăng nhập</label>
+            <input id="ipp-user" type="text" value="minhanh.tran" readonly style="color: var(--label2)">
+            <span class="hint">Tên đăng nhập không đổi được.</span>
+          </div>
+          <div class="field">
+            <label for="ipp-name">Họ và tên</label>
+            <input id="ipp-name" type="text" value="Trần Minh Anh" maxlength="200" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="ipp-phone">Số điện thoại (không bắt buộc)</label>
+            <input id="ipp-phone" type="tel" inputmode="tel" value="" placeholder="Ví dụ 0912345678" autocomplete="tel">
+            <span class="hint">Bạn chưa nhập số điện thoại.</span>
+          </div>
+          <div class="row g12 end">
+            <button class="btn gray" disabled style="opacity: .4; background: var(--bg)">Hủy thay đổi</button>
+            <button class="btn prominent" disabled style="opacity: .4">Lưu thay đổi</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="col" aria-labelledby="ipp-mail-h">
+        <h3 class="sec" id="ipp-mail-h" style="margin: 0">Email</h3>
+        <div class="group">
+          <div class="cell">
+            <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+            <span class="grow" style="overflow-wrap: anywhere">minhanh@example.com</span>
+            <span class="badge" style="color: var(--warn-fg)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Chưa xác minh</span>
+          </div>
+          <a class="cell" href="I-ProfileEmail.dc.html">
+            <span class="grow" style="color: var(--tint)">Đổi email</span>
+            <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          </a>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1180,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+warnBg: dark ? '#2b2210' : '#fffbeb'
+};
+}
+}
+</script>
+</body>
+</html>
