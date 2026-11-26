@@ -23,10 +23,12 @@ export type PromotionScope = PromotionSummary["scope"];
 export type PromotionAudience = "ALL" | "NEW_ACCOUNT" | "SELECTED";
 
 export type PromotionStateFilter = "ALL" | "UPCOMING" | "RUNNING" | "ENDED" | "STOPPED";
+/** Lọc nhanh theo loại trên danh sách gộp (uniworkos UNI-1713); `ALL` gửi API không kèm `kind`. */
+export type PromotionKindFilter = "ALL" | PromotionKind;
 export type RedemptionStateFilter = "ALL" | "RESERVED" | "CONFIRMED" | "RELEASED";
 
 export interface PromotionsListQueryParams {
-  kind: PromotionKind;
+  kind: PromotionKindFilter;
   stateFilter: PromotionStateFilter;
   q: string;
   page: number;
