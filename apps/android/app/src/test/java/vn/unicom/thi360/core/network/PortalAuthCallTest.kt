@@ -22,9 +22,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import retrofit2.Response
-import retrofit2.http.GET
 import vn.unicom.thi360.core.config.Environment
+import vn.unicom.thi360.core.network.generated.api.MyExamsApi
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.session.SessionCleanup
@@ -35,14 +34,10 @@ import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.feature.login.LoginTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.testing.ContractFakeServer
+import vn.unicom.thi360.testing.ContractFixtureIndex
 
 @RunWith(RobolectricTestRunner::class)
 class PortalAuthCallTest {
-
-    private interface PortalProbeApi {
-        @GET("/api/v1/me/profile")
-        suspend fun probeProtected(): Response<String>
-    }
 
     @get:Rule
     val composeRule = createComposeRule()
@@ -65,11 +60,12 @@ class PortalAuthCallTest {
         val freshAccess = "fresh-portal-access-2"
         val refreshBody = ContractFixtureLoader.readAuthFixture("refresh-200.json")
             .replace("fixture-access-token", freshAccess)
-        val profileBody = ContractFixtureLoader.readApiFixture("me-profile-200.json")
+        val myExamsBody = ContractFixtureIndex.find("listMyExams", 200, "")
+            .file.readText(Charsets.UTF_8)
 
-        server.respondDynamic("GET", "/api/v1/me/profile") { req ->
+        server.respondDynamic("GET", "/api/v1/me/exams") { req ->
             if (req.getHeader("Authorization") == "Bearer $freshAccess") {
-                ContractFakeServer.jsonResponse(200, profileBody)
+                ContractFakeServer.jsonResponse(200, myExamsBody)
             } else {
                 ContractFakeServer.apiFixtureResponse(401, "me-401-unauthenticated.json")
             }
@@ -86,12 +82,13 @@ class PortalAuthCallTest {
             localeProvider = { AppLocale.VI },
         )
 
-        val probeApi = stack.authenticatedService(PortalProbeApi::class.java)
-        val response = runBlocking(Dispatchers.IO) { probeApi.probeProtected() }
+        val myExamsApi = stack.authenticatedService(MyExamsApi::class.java)
+        val response = runBlocking(Dispatchers.IO) { myExamsApi.listMyExams() }
 
         assertTrue("Expected retried protected call to succeed", response.isSuccessful)
+        assertTrue(response.body() != null)
         assertEquals(1, server.requestCount("POST", "/api/v1/auth/mobile/refresh"))
-        val calls = server.requests("GET", "/api/v1/me/profile")
+        val calls = server.requests("GET", "/api/v1/me/exams")
         assertEquals(2, calls.size)
         assertEquals("Bearer $expiredAccess", calls[0].getHeader("Authorization"))
         assertEquals("Bearer $freshAccess", calls[1].getHeader("Authorization"))
@@ -104,13 +101,14 @@ class PortalAuthCallTest {
         val freshAccess = "fresh-concurrent-2"
         val refreshBody = ContractFixtureLoader.readAuthFixture("refresh-200.json")
             .replace("fixture-access-token", freshAccess)
-        val profileBody = ContractFixtureLoader.readApiFixture("me-profile-200.json")
+        val myExamsBody = ContractFixtureIndex.find("listMyExams", 200, "")
+            .file.readText(Charsets.UTF_8)
         val refreshCount = AtomicInteger(0)
         val arrived = CountDownLatch(3)
 
-        server.respondDynamic("GET", "/api/v1/me/profile") { req ->
+        server.respondDynamic("GET", "/api/v1/me/exams") { req ->
             if (req.getHeader("Authorization") == "Bearer $freshAccess") {
-                ContractFakeServer.jsonResponse(200, profileBody)
+                ContractFakeServer.jsonResponse(200, myExamsBody)
             } else {
                 arrived.countDown()
                 arrived.await(5, TimeUnit.SECONDS)
@@ -132,18 +130,18 @@ class PortalAuthCallTest {
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
         )
-        val probeApi = stack.authenticatedService(PortalProbeApi::class.java)
+        val myExamsApi = stack.authenticatedService(MyExamsApi::class.java)
 
         val responses = runBlocking {
             (1..3).map {
-                async(Dispatchers.IO) { probeApi.probeProtected() }
+                async(Dispatchers.IO) { myExamsApi.listMyExams() }
             }.awaitAll()
         }
 
         assertEquals("Three concurrent 401 calls must trigger only one refresh", 1, refreshCount.get())
-        assertTrue(responses.all { it.isSuccessful && it.code() == 200 })
+        assertTrue(responses.all { it.isSuccessful && it.code() == 200 && it.body() != null })
         assertTrue(
-            server.requests("GET", "/api/v1/me/profile").all {
+            server.requests("GET", "/api/v1/me/exams").all {
                 it.getHeader("Authorization")?.startsWith("Bearer ") == true
             },
         )
@@ -169,11 +167,10 @@ class PortalAuthCallTest {
                 cleanupRuns.incrementAndGet()
             }
 
-            // Write account-scoped draft before 401 session expiration.
             val storeBefore = checkNotNull(storeProvider.current())
             storeBefore.write("drafts", "attempt-1", """{"q1":"A"}""".toByteArray(Charsets.UTF_8))
 
-            server.respondApiFixture("GET", "/api/v1/me/profile", 401, "me-401-session-revoked.json")
+            server.respondApiFixture("GET", "/api/v1/me/exams", 401, "me-401-session-revoked.json")
             server.respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 401, "refresh-401-session-revoked.json")
 
             val stack = Thi360ApiFactory.createSessionStack(
@@ -194,8 +191,8 @@ class PortalAuthCallTest {
                 )
             }
 
-            val probeApi = stack.authenticatedService(PortalProbeApi::class.java)
-            val resp = runBlocking(Dispatchers.IO) { probeApi.probeProtected() }
+            val myExamsApi = stack.authenticatedService(MyExamsApi::class.java)
+            val resp = runBlocking(Dispatchers.IO) { myExamsApi.listMyExams() }
             assertEquals(401, resp.code())
             assertNull("Tokens must be cleared on 401 refresh", tokenStore.read())
             assertEquals(SessionState.SignedOut(SignOutReason.Expired), stack.sessionManager.state.value)

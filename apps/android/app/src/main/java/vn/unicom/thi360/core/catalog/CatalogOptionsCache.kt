@@ -3,6 +3,8 @@ package vn.unicom.thi360.core.catalog
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import vn.unicom.thi360.core.network.ApiResult
+import vn.unicom.thi360.core.network.generated.api.CatalogOptionsApi
+import vn.unicom.thi360.core.network.safeApiCall
 
 enum class CatalogOptionType(val queryValue: String) {
     EXAM("EXAM"),
@@ -63,5 +65,29 @@ class CatalogOptionsCache(
 
     companion object {
         const val DEFAULT_TTL_MILLIS: Long = 5L * 60L * 1_000L
+
+        fun fromApi(
+            api: CatalogOptionsApi,
+            ttlMillis: Long = DEFAULT_TTL_MILLIS,
+            clockMillis: () -> Long = { System.nanoTime() / 1_000_000L },
+        ): CatalogOptionsCache = CatalogOptionsCache(
+            fetcher = { type ->
+                when (val result = safeApiCall { api.getOptions(type.queryValue) }) {
+                    is ApiResult.Success -> ApiResult.Success(
+                        result.data.map { option ->
+                            CatalogOptionItem(
+                                code = option.code,
+                                nameVi = option.nameVi,
+                                nameEn = option.nameEn ?: option.nameVi,
+                            )
+                        },
+                    )
+                    is ApiResult.HttpFailure -> result
+                    is ApiResult.NetworkFailure -> result
+                }
+            },
+            ttlMillis = ttlMillis,
+            clockMillis = clockMillis,
+        )
     }
 }

@@ -1,44 +1,40 @@
 package vn.unicom.thi360.core.catalog
 
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.scalars.ScalarsConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Query
+import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.safeApiCall
+import vn.unicom.thi360.core.network.AppLogger
+import vn.unicom.thi360.core.network.InMemoryTokenStore
+import vn.unicom.thi360.core.network.Thi360ApiFactory
+import vn.unicom.thi360.core.network.generated.api.CatalogOptionsApi
+import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.testing.ContractFakeServer
+import vn.unicom.thi360.testing.ContractFixtureIndex
 
 class CatalogOptionsCacheTest {
 
-    private interface OptionsProbeApi {
-        @GET("/api/v1/catalog/options")
-        suspend fun options(@Query("type") type: String): Response<String>
-    }
-
-    @Serializable
-    private data class WireOption(val code: String, val nameVi: String, val nameEn: String)
-
     private lateinit var server: ContractFakeServer
-    private lateinit var api: OptionsProbeApi
-    private val json = Json { ignoreUnknownKeys = true }
+    private lateinit var api: CatalogOptionsApi
 
     @Before
     fun setUp() {
         server = ContractFakeServer().start()
-        api = Retrofit.Builder()
-            .baseUrl(server.url("/"))
-            .addConverterFactory(ScalarsConverterFactory.create())
-            .build()
-            .create(OptionsProbeApi::class.java)
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/"),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(),
+            localeProvider = { AppLocale.VI },
+            logger = object : AppLogger {
+                override fun debug(tag: String, message: String) = Unit
+                override fun warn(tag: String, message: String) = Unit
+            },
+        )
+        api = stack.publicService(CatalogOptionsApi::class.java)
     }
 
     @After
@@ -50,65 +46,61 @@ class CatalogOptionsCacheTest {
     fun cachesExamAndSubjectIndependentlyForFiveMinutesAndNeverCachesErrors() = runTest {
         var nowMillis = 1_000_000L
 
-        server.respondJson(
-            "GET",
-            "/api/v1/catalog/options?type=EXAM",
-            200,
-            """[{"code":"TOEIC","nameVi":"TOEIC","nameEn":"TOEIC"}]""",
+        val subjectFixtureBody = ContractFixtureIndex.find("getOptions", 200, "subject")
+            .file.readText(Charsets.UTF_8)
+
+        server.respondIndexed(
+            operationId = "getOptions",
+            statusCode = 200,
+            pathOverride = "/api/v1/catalog/options?group=EXAM",
+            fixtureNameFilter = "exam",
         )
         server.respondSequence(
             "GET",
-            "/api/v1/catalog/options?type=SUBJECT",
+            "/api/v1/catalog/options?group=SUBJECT",
             { ContractFakeServer.jsonResponse(500, """{"code":"INTERNAL_ERROR"}""") },
-            { ContractFakeServer.jsonResponse(200, """[{"code":"MATH","nameVi":"Toán","nameEn":"Math"}]""") },
+            { ContractFakeServer.jsonResponse(200, subjectFixtureBody) },
         )
 
-        val cache = CatalogOptionsCache(
-            fetcher = { type ->
-                when (val raw = safeApiCall { api.options(type.queryValue) }) {
-                    is ApiResult.Success -> {
-                        val decoded = json.decodeFromString<List<WireOption>>(raw.data)
-                            .map { CatalogOptionItem(it.code, it.nameVi, it.nameEn) }
-                        ApiResult.Success(decoded)
-                    }
-                    is ApiResult.HttpFailure -> raw
-                    is ApiResult.NetworkFailure -> raw
-                }
-            },
+        val cache = CatalogOptionsCache.fromApi(
+            api = api,
             clockMillis = { nowMillis },
         )
 
-        // First EXAM read calls server once.
         val exam1 = cache.get(CatalogOptionType.EXAM)
         assertTrue(exam1 is ApiResult.Success)
-        assertEquals("TOEIC", (exam1 as ApiResult.Success).data.single().code)
-        assertEquals(1, server.requestCount("GET", "/api/v1/catalog/options?type=EXAM"))
+        val examItems = (exam1 as ApiResult.Success).data
+        assertTrue(examItems.isNotEmpty())
+        assertEquals("HSA", examItems.first().code)
+        assertEquals(1, server.requestCount("GET", "/api/v1/catalog/options?group=EXAM"))
 
-        // At 4m59s (299_000 ms), still served from cache -> zero extra call.
+        // 4m59s (299_000 ms): still within TTL -> cache hit, zero extra call.
         nowMillis += 299_000L
         val exam2 = cache.get(CatalogOptionType.EXAM)
         assertTrue(exam2 is ApiResult.Success)
-        assertEquals(1, server.requestCount("GET", "/api/v1/catalog/options?type=EXAM"))
+        assertEquals(1, server.requestCount("GET", "/api/v1/catalog/options?group=EXAM"))
 
-        // At exact 5m00s (300_000 ms), TTL expires -> calls server again.
+        // Exact 5m00s (300_000 ms): TTL expired -> refetches from server.
         nowMillis += 1_000L
         val exam3 = cache.get(CatalogOptionType.EXAM)
         assertTrue(exam3 is ApiResult.Success)
-        assertEquals(2, server.requestCount("GET", "/api/v1/catalog/options?type=EXAM"))
+        assertEquals(2, server.requestCount("GET", "/api/v1/catalog/options?group=EXAM"))
 
         // Failed SUBJECT call is NOT cached; immediate next call fetches again and succeeds.
         val subjErr = cache.get(CatalogOptionType.SUBJECT)
         assertTrue(subjErr is ApiResult.HttpFailure)
-        assertEquals(1, server.requestCount("GET", "/api/v1/catalog/options?type=SUBJECT"))
+        assertEquals(1, server.requestCount("GET", "/api/v1/catalog/options?group=SUBJECT"))
 
         val subjOk = cache.get(CatalogOptionType.SUBJECT)
         assertTrue(subjOk is ApiResult.Success)
-        assertEquals("MATH", (subjOk as ApiResult.Success).data.single().code)
-        assertEquals(2, server.requestCount("GET", "/api/v1/catalog/options?type=SUBJECT"))
+        val subjItems = (subjOk as ApiResult.Success).data
+        assertTrue(subjItems.isNotEmpty())
+        assertEquals("TOAN", subjItems.first().code)
+        assertEquals(2, server.requestCount("GET", "/api/v1/catalog/options?group=SUBJECT"))
 
         // Immediate third SUBJECT call hits cache.
         val subjCached = cache.get(CatalogOptionType.SUBJECT)
         assertTrue(subjCached is ApiResult.Success)
-        assertEquals(2, server.requestCount("GET", "/api/v1/catalog/options?type=SUBJECT"))
+        assertEquals(2, server.requestCount("GET", "/api/v1/catalog/options?group=SUBJECT"))
     }
 }

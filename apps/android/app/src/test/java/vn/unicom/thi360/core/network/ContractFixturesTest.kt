@@ -6,6 +6,7 @@ import java.lang.reflect.WildcardType
 import kotlin.coroutines.Continuation
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -47,11 +48,16 @@ class ContractFixturesTest {
         server.shutdown()
     }
 
+    private data class ResponseSchemaSpec(
+        val schemaName: String,
+        val isArray: Boolean,
+    )
+
     private data class SpecOperation(
         val method: String,
         val path: String,
         val operationId: String,
-        val responseSchemas: Map<Int, String?>,
+        val responseSchemas: Map<Int, ResponseSchemaSpec?>,
     )
 
     private data class GeneratedEndpoint(
@@ -74,14 +80,23 @@ class ContractFixturesTest {
                 val opObj = pathItem[httpMethod]?.jsonObject ?: continue
                 val opId = opObj["operationId"]?.jsonPrimitive?.content.orEmpty()
                 val responsesObj = opObj["responses"]?.jsonObject ?: JsonObject(emptyMap())
-                val schemas = linkedMapOf<Int, String?>()
+                val schemas = linkedMapOf<Int, ResponseSchemaSpec?>()
                 for ((codeStr, respEl) in responsesObj) {
                     val status = codeStr.toIntOrNull() ?: continue
-                    val ref = respEl.jsonObject["content"]?.jsonObject
-                        ?.get("application/json")?.jsonObject
-                        ?.get("schema")?.jsonObject
-                        ?.get("\$ref")?.jsonPrimitive?.content
-                    schemas[status] = ref?.substringAfterLast('/')
+                    val contentObj = respEl.jsonObject["content"]?.jsonObject
+                    val mediaObj = (contentObj?.get("application/json") ?: contentObj?.get("*/*"))?.jsonObject
+                    val schemaObj = mediaObj?.get("schema")?.jsonObject
+                    val directRef = schemaObj?.get("\$ref")?.jsonPrimitive?.content
+                    val arrayItemRef = if (schemaObj?.get("type")?.jsonPrimitive?.content == "array") {
+                        schemaObj["items"]?.jsonObject?.get("\$ref")?.jsonPrimitive?.content
+                    } else {
+                        null
+                    }
+                    schemas[status] = when {
+                        directRef != null -> ResponseSchemaSpec(directRef.substringAfterLast('/'), isArray = false)
+                        arrayItemRef != null -> ResponseSchemaSpec(arrayItemRef.substringAfterLast('/'), isArray = true)
+                        else -> null
+                    }
                 }
                 ops += SpecOperation(
                     method = httpMethod.uppercase(),
@@ -177,52 +192,83 @@ class ContractFixturesTest {
         }
     }
 
+    private fun validateIndexCoverage(
+        entries: List<vn.unicom.thi360.testing.IndexedFixtureEntry>,
+        folderFiles: Set<String>,
+        specOps: List<SpecOperation>,
+    ): List<String> {
+        val violations = mutableListOf<String>()
+        val specByMethodPath = specOps.associateBy { it.method to it.path }
+        val specByOpId = specOps.filter { it.operationId.isNotBlank() }.associateBy { it.operationId }
+        val indexedFiles = entries.map { it.fileName }.toSet()
+
+        val missingFromIndex = (folderFiles - indexedFiles).sorted()
+        for (file in missingFromIndex) {
+            violations += "Fixture present on disk but missing from index.json: $file"
+        }
+        val missingOnDisk = (indexedFiles - folderFiles).sorted()
+        for (file in missingOnDisk) {
+            violations += "Fixture listed in index.json but missing on disk: $file"
+        }
+        for (entry in entries) {
+            val opMatches = (entry.method to entry.path) in specByMethodPath &&
+                (entry.operationId.isBlank() || entry.operationId in specByOpId)
+            if (!opMatches) {
+                violations += "index.json entry ${entry.fileName} points to unknown operation ${entry.method} ${entry.path} (${entry.operationId})"
+            }
+        }
+        return violations
+    }
+
     @Test
     fun indexCoversFolder() {
         val indexFile = ContractFixtureIndex.indexFile()
         assertTrue(
-            "Missing contracts/mobile/api/index.json (waiting for BE-1 merge): ${indexFile.canonicalPath}",
+            "Missing contracts/mobile/api/index.json: ${indexFile.canonicalPath}",
             indexFile.isFile,
         )
         val specOps = parseSpecOperations()
-        val specByMethodPath = specOps.associateBy { it.method to it.path }
-        val specByOpId = specOps.filter { it.operationId.isNotBlank() }.associateBy { it.operationId }
-
         val entries = ContractFixtureIndex.loadAll()
         assertTrue("index.json must contain fixture entries", entries.isNotEmpty())
 
-        val indexedFiles = entries.map { it.fileName }.toSet()
-        val folderFiles = ContractFixtureLoader.apiFixtureFiles()
-            .map { it.name }
-            .filter { it != "index.json" }
-            .toSet()
-
-        val missingFromIndex = folderFiles - indexedFiles
-        assertTrue(
-            "Fixture files present in contracts/mobile/api/ but missing from index.json: $missingFromIndex",
-            missingFromIndex.isEmpty(),
-        )
-        val missingOnDisk = indexedFiles - folderFiles
-        assertTrue(
-            "Fixture files listed in index.json but missing on disk: $missingOnDisk",
-            missingOnDisk.isEmpty(),
-        )
-
-        for (entry in entries) {
-            val opMatches = (entry.method to entry.path) in specByMethodPath ||
-                (entry.operationId.isNotBlank() && entry.operationId in specByOpId)
-            assertTrue(
-                "index.json entry ${entry.fileName} points to unknown operation ${entry.method} ${entry.path} (${entry.operationId})",
-                opMatches,
-            )
+        val folderFiles = buildSet {
+            ContractFixtureLoader.apiFixtureFiles()
+                .filter { it.name != "index.json" }
+                .forEach { add("api/${it.name}") }
+            ContractFixtureLoader.authFixtureFiles()
+                .forEach { add("auth/${it.name}") }
         }
+
+        val violations = validateIndexCoverage(entries, folderFiles, specOps)
+        assertTrue(violations.joinToString("\n"), violations.isEmpty())
+
+        val orphanViolations = validateIndexCoverage(entries, folderFiles + "api/orphan-fixture.json", specOps)
+        assertTrue(
+            "Orphan file must fail coverage validation naming the file",
+            orphanViolations.any { it.contains("api/orphan-fixture.json") },
+        )
+
+        val badOpEntry = entries.first().copy(
+            fileName = "api/ghost-operation-200.json",
+            operationId = "nonExistentOperationId",
+            path = "/api/v1/does-not-exist",
+        )
+        val unknownOpViolations = validateIndexCoverage(
+            entries + badOpEntry,
+            folderFiles + badOpEntry.fileName,
+            specOps,
+        )
+        assertTrue(
+            "Unknown operation must fail coverage validation naming the file",
+            unknownOpViolations.any { it.contains("api/ghost-operation-200.json") },
+        )
     }
 
     @Test
     fun everyIndexedFixtureDecodes() {
         val indexFile = ContractFixtureIndex.indexFile()
         assertTrue(
-            "Missing contracts/mobile/api/index.json (waiting for BE-1 merge): ${indexFile.canonicalPath}",
+            "Missing contracts/mobile/api/index.json: ${indexFile.canonicalPath}",
             indexFile.isFile,
         )
 
@@ -257,8 +303,10 @@ class ContractFixturesTest {
         val specByMethodPath = specOps.associateBy { it.method to it.path }
         val generatedByMethodPath = discoverGeneratedEndpoints().associateBy { it.method to it.path }
         val entries = ContractFixtureIndex.loadAll()
+        assertTrue("Expected at least 200 indexed contract fixtures", entries.size >= 200)
 
         for (entry in entries) {
+            assertTrue("Indexed fixture file missing on disk: ${entry.fileName}", entry.file.isFile)
             val body = entry.file.readText(Charsets.UTF_8)
             if (entry.statusCode in 200..299) {
                 if (body.isBlank()) continue
@@ -277,17 +325,24 @@ class ContractFixturesTest {
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun resolveSuccessSerializer(
         entry: vn.unicom.thi360.testing.IndexedFixtureEntry,
         specOp: SpecOperation?,
         endpoint: GeneratedEndpoint?,
     ): KSerializer<Any> {
         val modelPkg = "vn.unicom.thi360.core.network.generated.model"
-        val schemaName = entry.schema ?: specOp?.responseSchemas?.get(entry.statusCode)
-        if (!schemaName.isNullOrBlank()) {
-            val candidate = runCatching { Class.forName("$modelPkg.$schemaName") }.getOrNull()
+        val explicitSchema = entry.schema?.let { ResponseSchemaSpec(it, isArray = false) }
+        val schemaSpec = explicitSchema ?: specOp?.responseSchemas?.get(entry.statusCode)
+        if (schemaSpec != null && schemaSpec.schemaName.isNotBlank()) {
+            val candidate = runCatching { Class.forName("$modelPkg.${schemaSpec.schemaName}") }.getOrNull()
             if (candidate != null) {
-                return Serializer.kotlinxSerializationJson.serializersModule.serializer(candidate)
+                val elementSerializer = Serializer.kotlinxSerializationJson.serializersModule.serializer(candidate)
+                return if (schemaSpec.isArray) {
+                    ListSerializer(elementSerializer) as KSerializer<Any>
+                } else {
+                    elementSerializer
+                }
             }
         }
         val responseType = endpoint?.responseType

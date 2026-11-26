@@ -385,6 +385,7 @@ data class IndexedFixtureEntry(
     val operationId: String,
     val statusCode: Int,
     val schema: String?,
+    val variant: String = "",
 )
 
 internal object ContractFixtureIndex {
@@ -401,7 +402,8 @@ internal object ContractFixtureIndex {
     fun loadAll(): List<IndexedFixtureEntry> {
         val file = indexFile()
         require(file.isFile) { "Missing fixture index: ${file.canonicalPath}" }
-        val apiDir = file.parentFile
+        val apiDir = checkNotNull(file.parentFile) { "Missing parent directory for ${file.canonicalPath}" }
+        val specDir = checkNotNull(apiDir.parentFile) { "Missing contracts/mobile directory for ${apiDir.canonicalPath}" }
         val root = json.parseToJsonElement(file.readText(Charsets.UTF_8))
         val items: List<JsonElement> = when (root) {
             is JsonArray -> root
@@ -433,14 +435,17 @@ internal object ContractFixtureIndex {
             val statusCode = obj.intField("status", "statusCode", "httpStatus")
                 ?: error("Missing statusCode in index entry for $fileName")
             val schema = obj.stringField("schema", "model", "responseSchema", "responseModel")
+            val variant = obj.stringField("variant") ?: ""
+            val resolvedFile = if (fileName.contains('/')) File(specDir, fileName) else File(apiDir, fileName)
             IndexedFixtureEntry(
                 fileName = fileName,
-                file = File(apiDir, fileName),
+                file = resolvedFile,
                 method = method,
                 path = path,
                 operationId = operationId,
                 statusCode = statusCode,
                 schema = schema,
+                variant = variant,
             )
         }
     }
@@ -450,7 +455,11 @@ internal object ContractFixtureIndex {
         return entries.firstOrNull { entry ->
             entry.operationId == operationId &&
                 entry.statusCode == statusCode &&
-                (fixtureNameFilter == null || entry.fileName.contains(fixtureNameFilter))
+                (
+                    fixtureNameFilter == null ||
+                        entry.variant == fixtureNameFilter ||
+                        entry.fileName.contains(fixtureNameFilter)
+                    )
         } ?: error("No indexed fixture matching operationId=$operationId status=$statusCode filter=$fixtureNameFilter")
     }
 
