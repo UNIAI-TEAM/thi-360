@@ -6,7 +6,7 @@ import { DevUiGallery } from "./dev-ui-gallery";
 export async function generateMetadata(): Promise<Metadata> {
   if (process.env.NODE_ENV === "production") return {};
   const t = await getTranslations("devUi");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 /** Chỉ mở ngoài production (plan D/T06). */

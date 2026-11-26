@@ -733,7 +733,7 @@
     }
   },
   "common": {
-    "appName": "Thi 360",
+    "appName": "Thi360",
     "backHome": "Về trang chủ",
     "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
@@ -1123,8 +1123,8 @@
   },
   "metadata": {
     "description": "Luyện thi trực tuyến theo đúng cấu trúc đề: HSA, QDA, BCA, V-ACT, SPT, SP2E, tốt nghiệp THPT",
-    "title": "Thi 360 — Luyện thi trực tuyến",
-    "titleTemplate": "{title} · Thi 360"
+    "title": "Thi360 — Luyện thi trực tuyến",
+    "titleTemplate": "{title} · Thi360"
   },
   "notFound": {
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",

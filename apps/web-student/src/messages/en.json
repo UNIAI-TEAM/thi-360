@@ -733,7 +733,7 @@
     }
   },
   "common": {
-    "appName": "Thi 360",
+    "appName": "Thi360",
     "backHome": "Back to home",
     "closeToast": "Close toast",
     "loading": "Loading",
@@ -1123,8 +1123,8 @@
   },
   "metadata": {
     "description": "Online practice that follows the real exam structure: HSA, QDA, BCA, V-ACT, SPT, SP2E, high school graduation",
-    "title": "Thi 360 — Online exam practice",
-    "titleTemplate": "{title} · Thi 360"
+    "title": "Thi360 — Online exam practice",
+    "titleTemplate": "{title} · Thi360"
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",

@@ -12,6 +12,8 @@ const CONTRACTS_LEGAL_DIR = path.join(REPO_ROOT, "contracts/mobile/legal");
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const WEB_HOST_RE = /\b(?:https?:\/\/)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)(?:\/[^\s,.;:)"']*)?/gi;
 const VERSION_OR_DECIMAL_RE = /^\d+(?:\.\d+)+$/;
+const LEGACY_SPACED_BRAND = ["Thi", "360"].join(" ");
+const LEGACY_SPACED_BRAND_RE = new RegExp(["thi", "[ \\t\\u00A0]+", "360"].join(""), "i");
 
 function collectAllText(doc: LegalDocument): string[] {
   const parts: string[] = [doc.title];
@@ -56,8 +58,8 @@ function validateLegalContent(
     if (!joined.includes("Thi360")) {
       errors.push(`${label}: missing product name "Thi360"`);
     }
-    if (/Thi 360/.test(joined)) {
-      errors.push(`${label}: contains disallowed legacy name "Thi 360"`);
+    if (LEGACY_SPACED_BRAND_RE.test(joined)) {
+      errors.push(`${label}: contains disallowed legacy name "${LEGACY_SPACED_BRAND}"`);
     }
 
     for (const text of allTexts) {
@@ -147,7 +149,7 @@ describe("legal content audit (ĐT 753)", () => {
     expect(validateLegalContent(docs, sources)).toEqual([]);
   });
 
-  it("báo lỗi khi xuất hiện địa chỉ khác host, tên Thi 360 hoặc lệch mã số thuế", () => {
+  it("báo lỗi khi xuất hiện địa chỉ khác host, tên thương hiệu cũ có dấu cách hoặc lệch mã số thuế", () => {
     const docs = loadCommittedDocs();
     const sources = loadSourceDocs();
 
@@ -172,8 +174,8 @@ describe("legal content audit (ĐT 753)", () => {
     expect(validateLegalContent(withWrongTax, sources).join("\n")).toContain("operator line");
 
     const withLegacyName: LegalDocument[] = docs.map((doc, idx) =>
-      idx === 1 ? { ...doc, title: "Thi 360 Terms" } : doc,
+      idx === 1 ? { ...doc, title: `${LEGACY_SPACED_BRAND} Terms` } : doc,
     );
-    expect(validateLegalContent(withLegacyName, sources).join("\n")).toContain("Thi 360");
+    expect(validateLegalContent(withLegacyName, sources).join("\n")).toContain(LEGACY_SPACED_BRAND);
   });
 });

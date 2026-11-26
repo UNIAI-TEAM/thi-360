@@ -8,11 +8,11 @@ vi.mock("next-intl/server", () => ({
 }));
 
 describe("web-admin tiêu đề trang", () => {
-  it("Bảng điều khiển, trang 403 và trang 404 cùng mẫu '<tên trang> · Thi 360'", async () => {
-    expect((await (await import("./(shell)/page")).generateMetadata()).title).toBe("Bảng điều khiển · Thi 360");
+  it("Bảng điều khiển, trang 403 và trang 404 cùng mẫu '<tên trang> · Thi360'", async () => {
+    expect((await (await import("./(shell)/page")).generateMetadata()).title).toBe("Bảng điều khiển · Thi360");
     expect((await (await import("./forbidden/page")).generateMetadata()).title).toBe(
-      "Bạn không có quyền vào trang này · Thi 360",
+      "Bạn không có quyền vào trang này · Thi360",
     );
-    expect((await (await import("./not-found")).generateMetadata()).title).toBe("Không tìm thấy trang · Thi 360");
+    expect((await (await import("./not-found")).generateMetadata()).title).toBe("Không tìm thấy trang · Thi360");
   });
 });

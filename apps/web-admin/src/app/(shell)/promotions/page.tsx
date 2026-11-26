@@ -6,7 +6,7 @@ import { PromotionListView } from "@/features/promotions/components/promotion-li
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("promotions.list");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default function PromotionsPage() {

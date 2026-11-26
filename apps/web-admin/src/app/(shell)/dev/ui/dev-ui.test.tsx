@@ -98,9 +98,9 @@ describe("/dev/ui", () => {
 
   it("generateMetadata trả tiêu đề tab đã dịch theo locale vi và en", async () => {
     mocks.locale = "vi";
-    expect(await generateMetadata()).toEqual({ title: "Thành phần giao diện (/dev/ui) · Thi 360" });
+    expect(await generateMetadata()).toEqual({ title: "Thành phần giao diện (/dev/ui) · Thi360" });
 
     mocks.locale = "en";
-    expect(await generateMetadata()).toEqual({ title: "UI components (/dev/ui) · Thi 360" });
+    expect(await generateMetadata()).toEqual({ title: "UI components (/dev/ui) · Thi360" });
   });
 });

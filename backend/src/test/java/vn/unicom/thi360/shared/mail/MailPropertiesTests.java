@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -152,6 +155,79 @@ class MailPropertiesTests {
     @Test
     void defaultIsStarttls() {
         runner.run(context -> assertThat(context.getBean(MailProperties.class).tls()).isEqualTo(SmtpTls.STARTTLS));
+    }
+
+    @Test
+    void defaultFromAndProductName() {
+        runner.run(context -> {
+            assertThat(context).hasNotFailed();
+            MailProperties mail = context.getBean(MailProperties.class);
+            assertThat(mail.from()).isEqualTo("Thi360 <no-reply@thi360.local>");
+            assertThat(mail.productName()).isEqualTo("Thi360");
+        });
+        assertThat(MailProperties.normalizeProductName(null)).isEqualTo("Thi360");
+    }
+
+    @Test
+    void productNameFromEnvironment() {
+        runner.withPropertyValues("thi360.mail.product-name=Acme Học").run(context -> {
+            assertThat(context).hasNotFailed();
+            MailProperties mail = context.getBean(MailProperties.class);
+            assertThat(mail.productName()).isEqualTo("Acme Học");
+            assertThat(mail.from()).isEqualTo("Thi360 <no-reply@thi360.local>");
+
+            MailTemplateRenderer renderer = context.getBean(MailTemplateRenderer.class);
+            for (MailKind kind : MailKind.values()) {
+                for (String locale : MailLocale.SUPPORTED) {
+                    RenderedMail rendered = renderer.render(kind, locale, MailSamples.model(kind));
+                    String where = kind + "/" + locale;
+                    assertThat(rendered.subject()).as("subject of %s", where)
+                            .contains("Acme Học")
+                            .doesNotContain("Thi360");
+                    assertThat(rendered.text()).as("text of %s", where)
+                            .contains("Acme Học")
+                            .doesNotContain("Thi360");
+                    assertThat(rendered.html()).as("html of %s", where)
+                            .contains("Acme Học")
+                            .doesNotContain("Thi360");
+                }
+            }
+        });
+
+        runner.withPropertyValues(
+                        "thi360.mail.product-name=Acme Học",
+                        "thi360.mail.from=Acme Support <support@acme.test>")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    MailProperties mail = context.getBean(MailProperties.class);
+                    assertThat(mail.productName()).isEqualTo("Acme Học");
+                    assertThat(mail.from()).isEqualTo("Acme Support <support@acme.test>");
+                });
+    }
+
+    @ParameterizedTest(name = "product-name=\"{0}\" normalizes to \"{1}\"")
+    @MethodSource("productNameNormalizationCases")
+    void blankProductNameFallsBack(String raw, String expected) {
+        runner.withPropertyValues("thi360.mail.product-name=" + raw).run(context -> {
+            assertThat(context).hasNotFailed();
+            MailProperties mail = context.getBean(MailProperties.class);
+            assertThat(mail.productName()).isEqualTo(expected);
+
+            MailTemplateRenderer renderer = context.getBean(MailTemplateRenderer.class);
+            RenderedMail rendered =
+                    renderer.render(MailKind.EMAIL_VERIFY, "vi", MailSamples.model(MailKind.EMAIL_VERIFY));
+            assertThat(rendered.subject()).contains(expected);
+            assertThat(rendered.text()).contains(expected);
+            assertThat(rendered.html()).contains(expected);
+        });
+    }
+
+    private static Stream<Arguments> productNameNormalizationCases() {
+        return Stream.of(
+                Arguments.of("", "Thi360"),
+                Arguments.of("   ", "Thi360"),
+                Arguments.of("\t", "Thi360"),
+                Arguments.of("  Acme  ", "Acme"));
     }
 
     @Test
