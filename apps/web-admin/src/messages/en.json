@@ -6057,7 +6057,7 @@
         "SECTION_SET_COUNT_RANGE": "Subject {subject}: the number of sets must be 1 to 2, with 3 sub-questions per set.",
         "SHORT_ANSWER_MIN": "Subject {subject}: at least 1 short-answer question is required.",
         "STORED_ID_COLLISION": "The stored id \"{id}\" is the name reserved for the direct blocks of an option (the option id followed by :blocks), so no path of this exam can be checked or published. Rename or recreate the item with this id, then check again.",
-        "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Rule {rules} needs at least {required, number} questions but the group only has {available, number}.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the group rule needs at least {required, number}.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the groups need {required, number} in total.} EXACT_COUNTS_DIFFER {Rules {rules} conflict: in the same scope one asks for exactly {available, number} questions and the other for exactly {required, number}.} EXACT_BELOW_MINIMUM {Rules {rules} conflict: in the same scope one allows exactly {available, number} questions while the other needs at least {required, number}.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Rules {rules} conflict: the MAPID may appear in one group only, so the other group cannot have at least {required, number} questions of it.} other {Rules {rules} conflict and cannot all hold.}}",
+        "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Rule {rules} needs at least {required, number} questions but the group only has {available, number}.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the group rule needs at least {required, number}.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Rules {rules} conflict: the whole-subject rule allows exactly {available, number} questions while the groups need {required, number} in total.} EXACT_COUNTS_DIFFER {Rules {rules} conflict: in the same scope one asks for exactly {available, number} questions and the other for exactly {required, number}.} EXACT_BELOW_MINIMUM {Rules {rules} conflict: in the same scope one allows exactly {available, number} questions while the other needs at least {required, number}.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Rules {rules} conflict: the MAPID may appear in one group only, so the other group cannot have at least {required, number} questions of it.} GROUP_RULE_OUTSIDE_SUBJECT_SOURCE {Rules {rules} conflict: the group rule uses MAPIDs outside the whole-subject source.} SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS {Rules {rules} conflict: the MAPID may appear only in a group of {available, number} questions, but the whole subject needs at least {required, number} of it.} other {Rules {rules} conflict and cannot all hold.}}",
         "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule.",
         "STATEMENT_POINTS_UNEVEN": "Block {block}: question {codes} awards unequal points to its True/False statements, while a block scored per statement needs every statement to carry the same points. Replace this question."
       },
@@ -6936,7 +6936,9 @@
           "SUBSUMES_RULE": "This stricter rule already covers the existing rule ({rules}). You can save or click «Replace old rule».",
           "openRule": "Open rule to edit",
           "openRuleNamed": "Edit: {rule}",
-          "replaceRule": "Replace old rule"
+          "replaceRule": "Replace old rule",
+          "OUTSIDE_SUBJECT_SOURCE": "{topics} is outside the whole-subject source ({rules}). A group rule can only use MAPIDs inside the whole-subject source.",
+          "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP": "Conflicts with {rule}: {topics} may appear only in group {onlyGroup} ({available, number} questions), so the whole subject cannot have {required, number} questions on it."
         },
         "count": "Questions",
         "countAria": "Question count of the rule",
@@ -6957,7 +6959,10 @@
           "PERCENT_POOL": "Percent is not available for an elective subject because its question count depends on the subjects the student picks. Switch to entering a question count.",
           "PERCENT_RANGE": "Percent must be between 0 and 100.",
           "TYPE_CLEARED_FOR_SUBJECT": "“MAPID only appears in this group” does not apply to the whole subject. Select a valid rule type.",
-          "TYPE_REQUIRED": "Select a rule type."
+          "TYPE_REQUIRED": "Select a rule type.",
+          "BELOW_GROUP_SHARES": "The groups already need {allocated, number} questions on {topics} ({shares}). Enter at least {allocated, number}.",
+          "ABOVE_ONLY_GROUP": "{topics} may appear only in group {group} ({units, number} questions), so the whole subject can have at most {units, number}. Enter {units, number} or less.",
+          "ABOVE_SUBJECT_REMAINING": "The whole subject has only {remaining, number} questions on {topics} left to share ({rule}). Enter {remaining, number} or less."
         },
         "nodeRemove": "Remove MAPID {code} {name}",
         "nodesEmpty": "No MAPID picked.",
@@ -7039,7 +7044,20 @@
         },
         "withNumber": "With a count",
         "withNumberHint": "Leave unchecked to restrict placement only (0 questions allowed).",
-        "overTotal": "These rules would need {allocated, number} questions, {over, number} more than the {total, number} questions set in the structure. You can still save, but the exam may not meet every rule."
+        "overTotal": "These rules would need {allocated, number} questions, {over, number} more than the {total, number} questions set in the structure. You can still save, but the exam may not meet every rule.",
+        "budget": {
+          "share": "{group} {count, number}",
+          "subjectExact": "The groups already need {allocated, number} questions on {topics} ({shares}); {free, number} remain for random picks.",
+          "subjectEnough": "Already met by the groups ({shares}).",
+          "subjectPartial": "The groups already need {allocated, number} questions on {topics} ({shares}); the whole subject needs {more, number} more.",
+          "groupRemaining": "The whole subject has {remaining, number} questions on {topics} not yet shared."
+        },
+        "narrowSource": {
+          "message": "{count, plural, one {The new whole-subject source no longer contains the MAPIDs of the group rule below.} other {The new whole-subject source no longer contains the MAPIDs of the # group rules below.}} If you save anyway, they will show a warning to fix.",
+          "confirm": "Save anyway",
+          "back": "Go back"
+        },
+        "pickerDescriptionLimited": "Rule of {name}: only MAPIDs inside the whole-subject source and not limited to another group are shown. You can pick a Chapter, Lesson or Knowledge item."
       },
       "edit": "Edit",
       "editAria": "Edit rule: {sentence}",
@@ -7094,7 +7112,18 @@
       },
       "title": "MAPID rules",
       "topicsPending": "(loading MAPID)",
-      "untitledGroup": "Untitled group"
+      "untitledGroup": "Untitled group",
+      "warning": {
+        "SUBJECT_BELOW_GROUPS": "The groups need {allocated, number} questions ({shares}), more than this rule allows.",
+        "GROUP_ABOVE_SUBJECT": "The whole subject has only {remaining, number} questions on {topics} left for this group ({rule}).",
+        "ABOVE_UNITS_GROUP": "The group has only {units, number} questions after the structure change.",
+        "ABOVE_UNITS_SUBJECT": "The subject has only {units, number} questions after the structure change.",
+        "ABOVE_ONLY_GROUP": "{topics} may appear only in group {group}, which has {units, number} questions.",
+        "OUTSIDE_SUBJECT_SOURCE": "The MAPIDs are outside the whole-subject source ({rules}). Change the MAPIDs or delete the rule.",
+        "fixGroup": "Lower group {group} to {count, number}",
+        "fixRaiseSubject": "Raise whole subject to {count, number}",
+        "fixLowerSubject": "Lower whole subject to {count, number}"
+      }
     },
     "scopeField": {
       "legend": "Knowledge scope",

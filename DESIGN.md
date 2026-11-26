@@ -335,7 +335,7 @@ Từ QA đợt 2 (UNI-2621) Ngân hàng câu hỏi, Nhập câu hỏi và Bài t
 - **Bốn trạng thái:** mỗi màn có đủ bốn trạng thái tải đầu, rỗng, lỗi, có dữ liệu (kèm trạng thái ngoại tuyến theo mục 5.9).
 - **Mã quyền:** menu và trang dùng `QUESTION.VIEW`, `EXAM.VIEW`, `GRADING.VIEW`; các thao tác ghi kiểm tra theo `QUESTION.MODIFY`, `EXAM.MODIFY`, `EXAM.PUBLISH`, `GRADING.MODIFY` (backend trả 403 khi thiếu quyền).
 - **Trang soạn bài thi** `/exams/[id]` có khung chung `ExamEditorLayout` (tiêu đề, chip trạng thái, dải tóm tắt `<dl>`, `NavTabs` năm trang con: `/exams/[id]`, `/structure`, `/listing`, `/review`, `/versions`). Trang con đọc bài thi bằng `useExam(id)`.
-- **Chọn kiến thức (MAPID):** dùng `KnowledgePickerDialog` (`features/content/components`) cho mọi nơi chọn nút của cây Cấu trúc kiến thức; câu hỏi chỉ tick cấp Kiến thức và có một kiến thức chính, phạm vi khối của bài thi cho tick cả Chương và Bài (`selectableLevels`, `withPrimary={false}`).
+- **Chọn kiến thức (MAPID):** dùng `KnowledgePickerDialog` (`features/content/components`) cho mọi nơi chọn nút của cây Cấu trúc kiến thức; câu hỏi chỉ tick cấp Kiến thức và có một kiến thức chính, phạm vi khối của bài thi cho tick cả Chương và Bài (`selectableLevels`, `withPrimary={false}`). Nơi gọi giới hạn được cây: `withinNodeIds` chỉ giữ nhánh nằm trong các nút đó (tổ tiên hiện để dẫn đường, không tick được), `excludedNodeIds` ẩn nút cùng nhánh con; quy tắc MAPID của nhóm HSA dùng để chỉ hiện nút trong nguồn toàn môn và ẩn MAPID chỉ được ở nhóm khác (`UNI-2824`).
 
 Quy ước rút ra khi làm các màn đợt 2 (UNI-2590), áp dụng cho mọi màn sau:
 

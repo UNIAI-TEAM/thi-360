@@ -159,6 +159,108 @@ class MapidRuleConflictTest {
     }
 
     @Test
+    void groupRuleInsideTheSubjectSourceIsFine() {
+        var subjectSource = source("src", null, PARENT);
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, subjectSource,
+                count("same", "g1", MapidComparator.AT_LEAST, 2, PARENT)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE")).isEmpty();
+        // A node below the source node is inside the boundary, for a count and for a group source alike.
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, subjectSource,
+                count("nested", "g1", MapidComparator.AT_LEAST, 2, CHILD),
+                source("groupSource", "g3", CHILD)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE")).isEmpty();
+        // Several subject sources make one boundary: their nodes together.
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, subjectSource, source("src2", null, B),
+                count("onB", "g1", MapidComparator.AT_LEAST, 1, B)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE")).isEmpty();
+    }
+
+    @Test
+    void groupRuleOnANodeOutsideTheSubjectSourceNamesTheSourceAndTheGroupRule() {
+        var outside = ofKind(conflicts(MapidMode.MATRIX,
+                source("src", null, PARENT),
+                count("sibling", "g1", MapidComparator.AT_LEAST, 2, A)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE");
+        assertThat(outside).singleElement().satisfies(issue -> {
+            assertThat(ruleIds(issue)).containsExactly("src", "sibling");
+            assertThat(issue.path("severity").asText()).isEqualTo("ERROR");
+            assertThat(issue.path("blockId").asText()).isEqualTo("g1");
+            assertThat(issue.path("required").isNull()).isTrue();
+            assertThat(issue.path("available").isNull()).isTrue();
+        });
+        // Declared before the subject source, a group source and a presence: one conflict each, in declaration order.
+        var reversed = ofKind(conflicts(MapidMode.MATRIX,
+                source("groupSource", "g3", A),
+                new MapidRule("present", MapidRuleType.PRESENT, "g2", List.of(A), null, null, null),
+                source("src", null, PARENT)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE");
+        assertThat(reversed).hasSize(2);
+        assertThat(reversed).anySatisfy(issue -> {
+            assertThat(ruleIds(issue)).containsExactly("groupSource", "src");
+            assertThat(issue.path("blockId").asText()).isEqualTo("g3");
+        });
+        assertThat(reversed).anySatisfy(issue -> {
+            assertThat(ruleIds(issue)).containsExactly("present", "src");
+            assertThat(issue.path("blockId").asText()).isEqualTo("g2");
+        });
+        // One node out of two is enough; the wider parent of the source node is outside as well.
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, source("src", null, CHILD),
+                count("mixed", "g1", MapidComparator.AT_LEAST, 1, CHILD, A)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE"))
+                .hasSize(1);
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, source("src", null, CHILD),
+                count("wider", "g1", MapidComparator.AT_LEAST, 1, PARENT)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE"))
+                .hasSize(1);
+        // Two subject sources: both are named.
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, source("src", null, PARENT), source("src2", null, B),
+                count("onA", "g1", MapidComparator.AT_LEAST, 1, A)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE"))
+                .singleElement().satisfies(issue -> assertThat(ruleIds(issue)).containsExactly("src", "src2", "onA"));
+    }
+
+    @Test
+    void groupRulesAreFreeWithoutASubjectSource() {
+        assertThat(ofKind(conflicts(MapidMode.MATRIX,
+                source("groupSource", "g3", PARENT),
+                count("onA", "g1", MapidComparator.AT_LEAST, 2, A),
+                count("subject", null, MapidComparator.AT_LEAST, 2, B)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE")).isEmpty();
+        // A subject source leaves subject rules and the rules of a gone group alone.
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, source("src", null, PARENT),
+                count("subject", null, MapidComparator.AT_LEAST, 2, A),
+                count("gone", "missing", MapidComparator.AT_LEAST, 1, A)), "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE")).isEmpty();
+    }
+
+    @Test
+    void subjectMinimumAboveTheOnlyGroupUnitsIsFlaggedOnTheGroup() {
+        var only = new MapidRule("only", MapidRuleType.ONLY_IN_GROUP, "g2", List.of(A), null, null, null);
+        var over = ofKind(conflicts(MapidMode.MATRIX, only, count("subject", null, MapidComparator.AT_LEAST, 5, A)),
+                "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS");
+        assertThat(over).singleElement().satisfies(issue -> {
+            assertThat(ruleIds(issue)).containsExactly("only", "subject");
+            assertThat(issue.path("severity").asText()).isEqualTo("ERROR");
+            assertThat(issue.path("blockId").asText()).isEqualTo("g2");
+            assertThat(issue.path("required").asInt()).isEqualTo(5);
+            assertThat(issue.path("available").asInt()).isEqualTo(3);
+        });
+        // Declared first, an exact subject rule on a child node is caught too.
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, count("subject", null, MapidComparator.EXACT, 4, CHILD),
+                new MapidRule("only", MapidRuleType.ONLY_IN_GROUP, "g2", List.of(PARENT), null, null, null)),
+                "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS"))
+                .singleElement().satisfies(issue -> assertThat(ruleIds(issue)).containsExactly("subject", "only"));
+    }
+
+    @Test
+    void subjectMinimumWithinTheOnlyGroupUnitsIsFine() {
+        var only = new MapidRule("only", MapidRuleType.ONLY_IN_GROUP, "g2", List.of(A), null, null, null);
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, only, count("subject", null, MapidComparator.AT_LEAST, 3, A)),
+                "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS")).isEmpty();
+        // Another node, a wider subject node the group does not cover, and a group-level count are not compared.
+        assertThat(ofKind(conflicts(MapidMode.MATRIX, only, count("subject", null, MapidComparator.AT_LEAST, 5, B)),
+                "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS")).isEmpty();
+        assertThat(ofKind(conflicts(MapidMode.MATRIX,
+                new MapidRule("only", MapidRuleType.ONLY_IN_GROUP, "g2", List.of(CHILD), null, null, null),
+                count("subject", null, MapidComparator.AT_LEAST, 5, PARENT)),
+                "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS")).isEmpty();
+        assertThat(ofKind(conflicts(MapidMode.MATRIX,
+                new MapidRule("only", MapidRuleType.ONLY_IN_GROUP, "g1", List.of(A), null, null, null),
+                count("subject", null, MapidComparator.AT_LEAST, 5, A)),
+                "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS")).isEmpty();
+    }
+
+    @Test
     void rulesAreOnlyCheckedWhenTheyCompile() {
         var rules = new MapidRule[] {
                 count("subject", null, MapidComparator.EXACT, 2, A),
@@ -191,6 +293,14 @@ class MapidRuleConflictTest {
         List<String> ids = new ArrayList<>();
         issue.path("ruleIds").forEach(id -> ids.add(id.asText()));
         return ids;
+    }
+
+    private static List<ObjectNode> ofKind(List<ObjectNode> issues, String kind) {
+        return issues.stream().filter(issue -> kind.equals(issue.path("conflictKind").asText())).toList();
+    }
+
+    private static MapidRule source(String id, String groupId, UUID... nodes) {
+        return new MapidRule(id, MapidRuleType.SOURCE, groupId, List.of(nodes), null, null, null);
     }
 
     private static MapidRule count(String id, String groupId, MapidComparator comparator, int count, UUID... nodes) {

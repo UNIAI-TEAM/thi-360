@@ -333,9 +333,9 @@ describe("checkMapidRuleConflicts — 3-way cross-row check (AC-1707-7)", () => 
       code: "EXACT_ZERO_CONFLICTS_SOURCE",
     });
 
-    // Subject SOURCE vs non-empty Group EXACT 0 in both orders (R1-5)
+    // Subject SOURCE vs non-empty Group EXACT 0 in both orders (R1-5). UNI-2824: the group rule sits inside the subject source.
     const srcSubj: MapidRule = { id: "src-subj", type: "SOURCE", groupId: null, nodeIds: ["kn-hs-1"] };
-    const exact0Short: MapidRule = { id: "z-short", type: "COUNT", groupId: "b-short", nodeIds: ["les-hamso"], comparator: "EXACT", count: 0 };
+    const exact0Short: MapidRule = { id: "z-short", type: "COUNT", groupId: "b-short", nodeIds: ["kn-hs-1"], comparator: "EXACT", count: 0 };
     expect(checkMapidRuleConflicts({ candidate: exact0Short, section: makeSection([srcSubj]), knowledgeIndex })).toMatchObject({
       kind: "CONFLICT",
       code: "EXACT_ZERO_CONFLICTS_SOURCE",
