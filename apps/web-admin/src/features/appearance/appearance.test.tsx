@@ -123,6 +123,7 @@ describe("AppearanceView", () => {
     for (const preset of PRESET_PALETTES) {
       expect(screen.getByRole("button", { name: new RegExp(preset.name) })).toBeInTheDocument();
     }
+    expect(screen.getByRole("button", { name: /Thi360 Xanh lá/ })).toBeInTheDocument();
 
     // Chọn "Ngọc lục bảo & Vàng" rồi mở "Tự tùy chỉnh" -> điền sẵn #00695C, #FFD740
     await userEvent.click(screen.getByRole("button", { name: /Ngọc lục bảo & Vàng/ }));
@@ -316,6 +317,7 @@ describe("AppearanceView", () => {
     // Khôi phục mặc định qua ConfirmDialog
     await userEvent.click(screen.getByRole("button", { name: "Khôi phục mặc định" }));
     const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText(/Thi360 Xanh lá/)).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole("button", { name: "Khôi phục mặc định" }));
 
     await waitFor(() => expect(resetMock).toHaveBeenCalledWith({ version: 4 }));

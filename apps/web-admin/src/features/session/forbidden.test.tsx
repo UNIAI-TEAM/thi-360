@@ -74,7 +74,7 @@ describe("ForbiddenView", () => {
   });
 
   it("trang riêng /forbidden: tự dựng <main>, không đổi tiêu đề thẻ trình duyệt", async () => {
-    document.title = "Bạn không có quyền vào trang này · Thi 360";
+    document.title = "Bạn không có quyền vào trang này · Thi360";
     renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <ForbiddenView />
@@ -84,11 +84,11 @@ describe("ForbiddenView", () => {
 
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(mocks.statusPageProps.at(-1)).not.toHaveProperty("embedded");
-    expect(document.title).toBe("Bạn không có quyền vào trang này · Thi 360");
+    expect(document.title).toBe("Bạn không có quyền vào trang này · Thi360");
   });
 
   it("trong khung trang: yêu cầu StatusPage không dựng <main> riêng, đổi tiêu đề thẻ trình duyệt và trả lại khi rời đi", async () => {
-    document.title = "Tùy chỉnh giao diện · Thi 360";
+    document.title = "Tùy chỉnh giao diện · Thi360";
     const view = renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
@@ -100,14 +100,14 @@ describe("ForbiddenView", () => {
 
     expect(mocks.statusPageProps.at(-1)).toMatchObject({ embedded: true });
     expect(screen.getByRole("heading", { level: 1, name: "Bạn không có quyền vào trang này" })).toBeInTheDocument();
-    await waitFor(() => expect(document.title).toBe("Bạn không có quyền vào trang này · Thi 360"));
+    await waitFor(() => expect(document.title).toBe("Bạn không có quyền vào trang này · Thi360"));
 
     view.unmount();
-    expect(document.title).toBe("Tùy chỉnh giao diện · Thi 360");
+    expect(document.title).toBe("Tùy chỉnh giao diện · Thi360");
   });
 
   it("trong khung trang: rời đi sau khi trang mới đã đặt tiêu đề thì không ghi đè tiêu đề đó", async () => {
-    document.title = "Tùy chỉnh giao diện · Thi 360";
+    document.title = "Tùy chỉnh giao diện · Thi360";
     const view = renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
@@ -115,11 +115,11 @@ describe("ForbiddenView", () => {
         </AppShell>
       </SessionProvider>,
     );
-    await waitFor(() => expect(document.title).toBe("Bạn không có quyền vào trang này · Thi 360"));
+    await waitFor(() => expect(document.title).toBe("Bạn không có quyền vào trang này · Thi360"));
 
-    document.title = "Bảng điều khiển · Thi 360";
+    document.title = "Bảng điều khiển · Thi360";
     view.unmount();
-    expect(document.title).toBe("Bảng điều khiển · Thi 360");
+    expect(document.title).toBe("Bảng điều khiển · Thi360");
   });
 
   it("báo lỗi bằng toast khi đăng xuất đổi tài khoản thất bại", async () => {

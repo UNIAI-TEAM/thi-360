@@ -34,7 +34,7 @@ if ! "$KCADM" get "roles/${PLATFORM_ROLE}" -r "$PLATFORM_REALM" --config "$KCADM
   echo "Creating realm role ${PLATFORM_ROLE} in realm ${PLATFORM_REALM}..."
   "$KCADM" create roles -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
     -s "name=${PLATFORM_ROLE}" \
-    -s "description=Thi 360 platform administrator"
+    -s "description=Thi360 platform administrator"
 fi
 
 CLIENT_UUID=$("$KCADM" get clients -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
@@ -44,7 +44,7 @@ if [ -z "$CLIENT_UUID" ]; then
   echo "Creating client ${PLATFORM_CLIENT_ID} in realm ${PLATFORM_REALM}..."
   "$KCADM" create clients -r "$PLATFORM_REALM" --config "$KCADM_CFG" \
     -s "clientId=${PLATFORM_CLIENT_ID}" \
-    -s "name=Thi 360 platform auth" \
+    -s "name=Thi360 platform auth" \
     -s "enabled=true" \
     -s "protocol=openid-connect" \
     -s "publicClient=false" \

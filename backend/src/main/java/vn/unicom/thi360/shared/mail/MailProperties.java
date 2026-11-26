@@ -10,6 +10,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * {@code spring.mail.*}; ở đây là phần của ứng dụng. Giá trị sai làm ứng dụng không khởi động.
  *
  * @param from       địa chỉ người gửi ({@code THI360_MAIL_FROM}), có thể kèm tên hiển thị
+ * @param productName tên sản phẩm trong tiêu đề, nội dung và chữ ký thư ({@code THI360_MAIL_PRODUCT_NAME}),
+ *                    rỗng hoặc chỉ khoảng trắng rơi về {@value #DEFAULT_PRODUCT_NAME}
  * @param tls        chế độ mã hóa SMTP ({@code THI360_SMTP_TLS}): {@code starttls} (mặc định), {@code tls}, {@code none}
  * @param connectTimeout thời gian chờ kết nối SMTP; số mili giây dương, vừa một {@code int}
  * @param readTimeout    thời gian chờ đọc, ghi SMTP; số mili giây dương, vừa một {@code int}
@@ -27,6 +29,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties("thi360.mail")
 public record MailProperties(
         String from,
+        String productName,
         SmtpTls tls,
         Duration connectTimeout,
         Duration readTimeout,
@@ -38,6 +41,8 @@ public record MailProperties(
         String cleanupCron,
         String templatesLocation) {
 
+    public static final String DEFAULT_FROM = "Thi360 <no-reply@thi360.local>";
+    public static final String DEFAULT_PRODUCT_NAME = "Thi360";
     public static final int MAX_BATCH_SIZE = 20;
 
     /** Mặc định dùng chung cho {@link MailProperties} và các chú thích {@code @Scheduled} của {@link MailWorker}. */
@@ -59,6 +64,7 @@ public record MailProperties(
     private static final Duration MAX_INT_MILLIS = Duration.ofMillis(Integer.MAX_VALUE);
 
     public MailProperties {
+        productName = normalizeProductName(productName);
         requireInProviderRange("thi360.mail.connect-timeout", connectTimeout);
         requireInProviderRange("thi360.mail.read-timeout", readTimeout);
         requireInProviderRange("thi360.mail.attempt-timeout", attemptTimeout);
@@ -84,7 +90,8 @@ public record MailProperties(
     /** Hàm dựng mà Spring Boot dùng khi gắn cấu hình: {@code tls} đọc qua {@link SmtpTls#parse}. */
     @ConstructorBinding
     public MailProperties(
-            @DefaultValue("Thi 360 <no-reply@thi360.local>") String from,
+            @DefaultValue(DEFAULT_FROM) String from,
+            @DefaultValue(DEFAULT_PRODUCT_NAME) String productName,
             @DefaultValue("starttls") String tls,
             @DefaultValue("PT10S") Duration connectTimeout,
             @DefaultValue("PT30S") Duration readTimeout,
@@ -97,6 +104,7 @@ public record MailProperties(
             @DefaultValue("classpath:mail/templates/") String templatesLocation) {
         this(
                 from,
+                productName,
                 SmtpTls.parse(tls),
                 connectTimeout,
                 readTimeout,
@@ -107,6 +115,14 @@ public record MailProperties(
                 pollDelay,
                 cleanupCron,
                 templatesLocation);
+    }
+
+    static String normalizeProductName(String value) {
+        if (value == null) {
+            return DEFAULT_PRODUCT_NAME;
+        }
+        String stripped = value.strip();
+        return stripped.isEmpty() ? DEFAULT_PRODUCT_NAME : stripped;
     }
 
     private static void requirePositive(String name, Duration value) {

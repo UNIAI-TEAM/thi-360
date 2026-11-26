@@ -265,10 +265,10 @@ describe("ClassDetailView", () => {
   });
 
   it("tiêu đề tab mang mã lớp đang xem (C-20)", async () => {
-    document.title = "Chi tiết lớp học · Thi 360";
+    document.title = "Chi tiết lớp học · Thi360";
     renderDetail(makeDeps());
     await screen.findByRole("heading", { name: "Lớp A" });
-    await waitFor(() => expect(document.title).toBe("LOP-A · Lớp học · Thi 360"));
+    await waitFor(() => expect(document.title).toBe("LOP-A · Lớp học · Thi360"));
   });
 
   it("đọc số học viên tìm được qua vùng status (C-05)", async () => {

@@ -134,7 +134,7 @@ abstract class AbstractMailIT extends AbstractIntegrationTest {
         sender.getJavaMailProperties().put("mail.smtp.connectiontimeout", "3000");
         sender.getJavaMailProperties().put("mail.smtp.timeout", Integer.toString(readTimeoutMillis));
         SmtpMailTransport scripted =
-                spy(new SmtpMailTransport(sender, "Thi 360 <no-reply@thi360.local>", clock));
+                spy(new SmtpMailTransport(sender, MailProperties.DEFAULT_FROM, clock));
         doAnswer(invocation -> {
                     Session session = (Session) invocation.callRealMethod();
                     scriptedSessions.add(session);

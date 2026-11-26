@@ -5,7 +5,7 @@ import { ExamGeneralForm } from "@/features/exams/components/exam-general-form";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("exams.general");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 /** Tab 1 Thông tin chung của bài thi (`/exams/[id]`), dựng trong `ExamEditorLayout`. */

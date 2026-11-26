@@ -6,7 +6,7 @@ import { RbacLayoutView } from "@/features/rbac";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("rbac");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 /** Tiêu đề và thanh tab dùng chung cho `/rbac/roles`, `/permissions`, `/users`, `/bulk-assign`. */

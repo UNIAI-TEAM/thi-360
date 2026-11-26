@@ -29,14 +29,14 @@ describe("AuthPageStage & AuthBrandDecor (UNI-2775)", () => {
     render(
       <section className={AUTH_BRAND_PANEL_CLASS}>
         <AuthBrandDecor />
-        <h2>Thi 360</h2>
+        <h2>Thi360</h2>
       </section>,
     );
 
     const decor = screen.getByTestId("auth-brand-decor");
     expect(decor).toHaveAttribute("aria-hidden", "true");
     expect(decor.querySelectorAll("svg path").length).toBeGreaterThanOrEqual(6);
-    expect(screen.getByRole("heading", { level: 2, name: "Thi 360" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Thi360" })).toBeInTheDocument();
   });
 
   it("chỉ dùng biến token ngữ nghĩa, không chứa mã màu hex, rgb hay hsl cứng trong auth-backdrop.tsx", () => {

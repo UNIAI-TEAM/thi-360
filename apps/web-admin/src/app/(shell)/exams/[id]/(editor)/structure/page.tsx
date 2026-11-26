@@ -5,7 +5,7 @@ import { ExamStructureView } from "@/features/exams/components/exam-structure-vi
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("exams.structure");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 /** Cấu trúc và ma trận (bản vẽ BaiThiCauTruc, BaiThiToHop), trong khung ExamEditorLayout. */

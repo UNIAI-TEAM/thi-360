@@ -5,7 +5,7 @@ import { QuestionEditorView } from "@/features/questions/components/question-edi
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("questions.editor");
-  return { title: `${t("editTitle")} · Thi 360` };
+  return { title: `${t("editTitle")} · Thi360` };
 }
 
 export default async function QuestionEditPage({ params }: { params: Promise<{ id: string }> }) {

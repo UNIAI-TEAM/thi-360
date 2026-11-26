@@ -209,7 +209,7 @@ test.describe("phép kiểm lẫn ngôn ngữ của visual-matrix (AC-23)", () =
     expect(
       await inBlank("<main><h1>Câu hỏi</h1></main>", (page) => auditMixedLanguage(page, "vi"), {
         lang: "vi",
-        head: "<title>Thử bộ câu hỏi · Thi 360</title>",
+        head: "<title>Thử bộ câu hỏi · Thi360</title>",
       }),
     ).toEqual([]);
   });
@@ -225,7 +225,7 @@ test.describe("phép kiểm lẫn ngôn ngữ của visual-matrix (AC-23)", () =
     expect(await audit(`<button aria-label="Your choice">Chọn</button>`)).toEqual([
       { kind: "attribute", value: "Your choice" },
     ]);
-    expect(await audit("<table><tr><th>Điểm</th><th>Cột trái</th></tr><tr><td>Thi 360</td></tr></table>")).toEqual([]);
+    expect(await audit("<table><tr><th>Điểm</th><th>Cột trái</th></tr><tr><td>Thi360</td></tr></table>")).toEqual([]);
   });
 
   test("chữ gợi ý (placeholder) của ô trống được kiểm tương phản (R1-22)", async () => {

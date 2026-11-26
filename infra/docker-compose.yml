@@ -1,4 +1,4 @@
-# Môi trường dev của Thi 360. Chạy: docker compose --env-file ../.env -f infra/docker-compose.yml up -d
+# Môi trường dev của Thi360. Chạy: docker compose --env-file ../.env -f infra/docker-compose.yml up -d
 # (hoặc `cd infra && docker compose up -d`; mọi biến đều có giá trị mặc định cho máy dev).
 # Cổng mặc định lệch khỏi cổng chuẩn để không đụng các dự án khác trên cùng máy.
 name: thi360

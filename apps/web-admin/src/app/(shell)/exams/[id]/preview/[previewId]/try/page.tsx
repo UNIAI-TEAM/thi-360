@@ -6,7 +6,7 @@ import { PreviewTrialView } from "@/features/exams/trial/preview-trial-view";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("exams.trial");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default async function ExamPreviewTrialPage({
