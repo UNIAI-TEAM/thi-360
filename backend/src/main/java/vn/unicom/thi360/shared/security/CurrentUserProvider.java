@@ -31,4 +31,12 @@ public class CurrentUserProvider {
     public CurrentUser requireCurrentUser() {
         return getCurrentUser().orElseThrow(UnauthenticatedException::new);
     }
+
+    public LoginChannel requireLoginChannel() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof CurrentUserAuthenticationToken token && token.isAuthenticated()) {
+            return token.getChannel();
+        }
+        throw new UnauthenticatedException();
+    }
 }

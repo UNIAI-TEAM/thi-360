@@ -11,11 +11,17 @@ public class CurrentUserAuthenticationToken extends AbstractAuthenticationToken 
 
     private final CurrentUser principal;
     private final String sessionId;
+    private final LoginChannel channel;
 
     public CurrentUserAuthenticationToken(CurrentUser principal, String sessionId) {
+        this(principal, sessionId, LoginChannel.WEB);
+    }
+
+    public CurrentUserAuthenticationToken(CurrentUser principal, String sessionId, LoginChannel channel) {
         super(buildAuthorities(principal));
         this.principal = Objects.requireNonNull(principal, "principal must not be null");
         this.sessionId = sessionId;
+        this.channel = Objects.requireNonNull(channel, "channel must not be null");
         setAuthenticated(true);
     }
 
@@ -41,5 +47,9 @@ public class CurrentUserAuthenticationToken extends AbstractAuthenticationToken 
 
     public String getSessionId() {
         return sessionId;
+    }
+
+    public LoginChannel getChannel() {
+        return channel;
     }
 }
