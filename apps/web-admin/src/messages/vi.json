@@ -1513,6 +1513,12 @@
       "ascending": "tăng dần",
       "descending": "giảm dần",
       "sortBy": "Sắp xếp theo"
+    },
+    "unsaved": {
+      "title": "Rời trang khi chưa lưu?",
+      "description": "Các thay đổi chưa lưu trên trang này sẽ mất.",
+      "leave": "Rời trang",
+      "stay": "Ở lại"
     }
   },
   "dashboard": {
@@ -4947,12 +4953,6 @@
         "scale": "Thang điểm",
         "sharedMinutes": "{count, number} phút, chung cả bài",
         "pointsOfScale": "{points} / {scale} điểm"
-      },
-      "unsaved": {
-        "title": "Rời trang khi chưa lưu?",
-        "description": "Các thay đổi chưa lưu trên trang này sẽ mất.",
-        "leave": "Rời trang",
-        "stay": "Ở lại"
       },
       "check": {
         "all": "Kiểm tra toàn bài",
@@ -9219,7 +9219,8 @@
         "period": "Hiệu lực",
         "scopeAndAudience": "Phạm vi & đối tượng",
         "status": "Trạng thái",
-        "used": "Đã dùng"
+        "used": "Đã dùng",
+        "kind": "Loại khuyến mãi"
       },
       "description": "Quản lý khuyến mãi tự động và mã ưu đãi áp dụng cho bài thi.",
       "emptyDescription": "Chưa có chương trình nào trong nhóm này. Tạo khuyến mãi để bắt đầu ưu đãi.",
@@ -9247,11 +9248,13 @@
       },
       "stateGroupAria": "Lọc theo trạng thái hiệu lực",
       "summaryCount": "{total, plural, other {# khuyến mãi}}",
-      "tabs": {
-        "AUTO": "Khuyến mãi tự động",
+      "title": "Khuyến mãi",
+      "kindGroupAria": "Lọc theo loại khuyến mãi",
+      "kindFilters": {
+        "ALL": "Tất cả loại",
+        "AUTO": "Tự động",
         "VOUCHER": "Mã ưu đãi"
-      },
-      "title": "Khuyến mãi"
+      }
     },
     "pricePreview": {
       "appliedStatus": "Áp dụng: {label}",

@@ -73,7 +73,7 @@ import { CreateExamScopeFields } from "./create-exam-scope-fields";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
 import { ExamOverviewTable } from "./exam-overview-table";
 import { ExamName, richNodes } from "./exam-review-shared";
-import { UnsavedChangesDialog, useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
+import { UnsavedChangesDialog, useUnsavedChangesGuard } from "@/features/shell/unsaved-changes-guard";
 import { ReloadStructureDialog } from "./reload-structure-dialog";
 
 const EXAMS_HREF = "/exams";

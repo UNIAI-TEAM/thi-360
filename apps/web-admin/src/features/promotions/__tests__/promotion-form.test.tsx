@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
+import Link from "next/link";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UiStringsProvider } from "@thi360/ui";
@@ -102,6 +103,8 @@ describe("PromotionForm & PromotionEditPage (AC-2, AC-3, AC-4, AC-9, AC-10)", ()
 
     const body = postCalls[0]?.options?.body as Record<string, unknown>;
     expect(body.kind).toBe("AUTO");
+    // UNI-1715: form tạo mới không có trường Trạng thái, luôn gửi ACTIVE.
+    expect(body.status).toBe("ACTIVE");
     expect(body.code).toBeUndefined();
     expect(body.perUserLimit).toBeUndefined();
     expect(body.audience).toBeUndefined();
@@ -670,5 +673,68 @@ describe("PromotionForm & PromotionEditPage (AC-2, AC-3, AC-4, AC-9, AC-10)", ()
     // R1-47: Bấm mục checklist "Nhập tên khuyến mãi" đưa focus vào ô Tên khuyến mãi
     await user.click(screen.getByRole("link", { name: /Nhập tên khuyến mãi/ }));
     expect(screen.getByLabelText(/Tên khuyến mãi/)).toHaveFocus();
+  });
+});
+
+describe("PromotionForm: trường Trạng thái và cảnh báo rời trang (uniworkos UNI-1714, UNI-1715)", () => {
+  it("UNI-1715: tạo mới không có trường Trạng thái; sửa vẫn có", () => {
+    const { unmount } = renderWithPermissions(<PromotionForm mode="create" initialKind="AUTO" />);
+    expect(screen.queryByLabelText("Trạng thái")).not.toBeInTheDocument();
+    unmount();
+
+    renderWithPermissions(
+      <PromotionForm mode="edit" initialDetail={promotionDetailFixture({ id: PROMO_ID_1, usedCount: 0 })} />,
+    );
+    expect(screen.getByLabelText("Trạng thái")).toBeInTheDocument();
+  });
+
+  it("UNI-1714: form chưa đổi thì Hủy đi thẳng; đã đổi thì Hủy hoặc bấm menu khác phải hỏi trước khi rời", async () => {
+    const user = userEvent.setup();
+    renderWithPermissions(
+      <>
+        <nav aria-label="Menu chính">
+          <Link href="/orders">Đơn hàng</Link>
+        </nav>
+        <PromotionForm mode="create" initialKind="AUTO" />
+      </>,
+    );
+
+    // Chưa đổi gì: bấm Hủy không hiện hộp thoại.
+    const cancel = screen.getByRole("link", { name: "Hủy" });
+    cancel.addEventListener("click", (event) => event.preventDefault());
+    await user.click(cancel);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rời trang khi chưa lưu?")).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/Tên khuyến mãi/), "Khuyến mãi mới");
+
+    // Đã đổi: Hủy -> hỏi; chọn Ở lại thì giữ nguyên trang và dữ liệu.
+    await user.click(screen.getByRole("link", { name: "Hủy" }));
+    expect(await screen.findByText("Rời trang khi chưa lưu?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Ở lại" }));
+    await waitFor(() => expect(screen.queryByText("Rời trang khi chưa lưu?")).not.toBeInTheDocument());
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/Tên khuyến mãi/)).toHaveValue("Khuyến mãi mới");
+
+    // Bấm mục menu khác -> hỏi; chọn Rời trang thì điều hướng tới mục đó.
+    await user.click(screen.getByRole("link", { name: "Đơn hàng" }));
+    expect(await screen.findByText("Rời trang khi chưa lưu?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Rời trang" }));
+    expect(mockPush).toHaveBeenCalledWith("/orders");
+  });
+
+  it("UNI-1714: sửa khuyến mãi rồi bấm Hủy cũng hỏi trước khi về trang chi tiết", async () => {
+    const user = userEvent.setup();
+    renderWithPermissions(
+      <PromotionForm mode="edit" initialDetail={promotionDetailFixture({ id: PROMO_ID_1, usedCount: 0 })} />,
+    );
+
+    const name = screen.getByLabelText(/Tên khuyến mãi/);
+    await user.clear(name);
+    await user.type(name, "Tên đã sửa");
+    await user.click(screen.getByRole("link", { name: "Hủy" }));
+    expect(await screen.findByText("Rời trang khi chưa lưu?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Rời trang" }));
+    expect(mockPush).toHaveBeenCalledWith(`/promotions/${PROMO_ID_1}`);
   });
 });

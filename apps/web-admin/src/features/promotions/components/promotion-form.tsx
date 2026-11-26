@@ -23,6 +23,7 @@ import { type FormEvent, useId, useMemo, useRef, useState } from "react";
 import { type FieldErrors, Controller, type FieldPath, useForm, useWatch } from "react-hook-form";
 
 import { withIdempotencyKey } from "@/features/content/idempotency";
+import { UnsavedChangesDialog, useUnsavedChangesGuard } from "@/features/shell/unsaved-changes-guard";
 
 import { getSuggestedPromotionCode } from "../api";
 import {
@@ -199,7 +200,7 @@ export function PromotionForm({
     setError,
     setFocus,
     clearErrors,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PromotionFormValues>({
     defaultValues,
     resolver: zodResolver(schema),
@@ -225,6 +226,8 @@ export function PromotionForm({
   const submittingRef = useRef(false);
 
   const values = useWatch({ control, defaultValue: defaultValues }) as PromotionFormValues;
+  // Hủy, Quay lại hay bấm mục menu khác khi form đã đổi thì hỏi trước khi rời (uniworkos UNI-1714).
+  const unsavedGuard = useUnsavedChangesGuard(isDirty);
   const pending = createMutation.isPending || updateMutation.isPending;
   const isBundleScope = values.scope === "BUNDLE";
   const scopeDisabled = isUsed || isBundleScope;
@@ -526,6 +529,7 @@ export function PromotionForm({
 
   return (
     <div className="@container flex flex-col gap-5">
+      <UnsavedChangesDialog guard={unsavedGuard} />
       {conflictBanner}
 
       {isUsed && (
@@ -709,25 +713,28 @@ export function PromotionForm({
               )}
             </FormField>
 
-            <FormField label={t("form.fields.status")}>
-              {(controlProps) => (
-                <Controller
-                  control={control}
-                  name="status"
-                  render={({ field }) => (
-                    <Select
-                      {...controlProps}
-                      value={field.value}
-                      onValueChange={(next) => field.onChange(next as PromotionStatus)}
-                      options={[
-                        { value: "ACTIVE", label: t("form.fields.statusActive") },
-                        { value: "STOPPED", label: t("form.fields.statusStopped") },
-                      ]}
-                    />
-                  )}
-                />
-              )}
-            </FormField>
+            {/* Tạo mới luôn ở trạng thái Hoạt động; chỉ màn sửa mới cho dừng (uniworkos UNI-1715). */}
+            {mode === "edit" && (
+              <FormField label={t("form.fields.status")}>
+                {(controlProps) => (
+                  <Controller
+                    control={control}
+                    name="status"
+                    render={({ field }) => (
+                      <Select
+                        {...controlProps}
+                        value={field.value}
+                        onValueChange={(next) => field.onChange(next as PromotionStatus)}
+                        options={[
+                          { value: "ACTIVE", label: t("form.fields.statusActive") },
+                          { value: "STOPPED", label: t("form.fields.statusStopped") },
+                        ]}
+                      />
+                    )}
+                  />
+                )}
+              </FormField>
+            )}
           </Card>
 
           {/* 2. Schedule */}
