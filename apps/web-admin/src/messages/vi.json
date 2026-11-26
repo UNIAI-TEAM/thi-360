@@ -6117,6 +6117,7 @@
     },
     "versions": {
       "title": "Phiên bản và công bố",
+      "loading": "Đang tải danh sách phiên bản...",
       "errorTitle": "Không tải được phiên bản",
       "errorDescription": "Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại",

@@ -151,7 +151,7 @@ function buildEntry(kind: SubjectFormExamKind, subject: string, form: SubjectFor
     ...(limited ? { setCount: { ...SCIENCE_SET_COUNT }, shortAnswerMin: SCIENCE_LIMITS[subject]! } : {}),
     flexibleSets: kind === "VACT" && subject === "TOAN",
     mapidFlow: !matrix ? "NONE" : usesMapidRules ? "HSA_RULES" : "SCOPE_AND_QUOTA",
-    setSource: matrix && !usesMapidRules,
+    setSource: matrix && (!usesMapidRules || (kind === "BCA" && subject === "SU")),
     rowsEditable: (kind === "HSCA" && subject === "ANH") || (kind === "VACT" && subject === "SCIENTIFIC_THINKING") ? "ADD_AND_SPLIT" : "NONE",
     ...(kind === "THPTQG" && subject === "VAN" ? { readOnlyNotice: "ESSAY_SKIPPED" as const } : {}),
   };

@@ -331,12 +331,52 @@ describe("MT: QDA/BCA dùng quy tắc MAPID giống HSA (UNI-1729, UNI-1731) & V
     expect(await screen.findByTestId("mapid-rules-table")).toBeInTheDocument();
   });
 
-  it("UNI-1729: BCA Lịch sử dùng quy tắc MAPID & mạch kiến thức giống HSA, ẩn Khối lớp và không còn Nguồn chùm", async () => {
+  it("UNI-1729: BCA Lịch sử dùng quy tắc MAPID & mạch kiến thức giống HSA, ẩn Khối lớp và giữ Nguồn chùm chỉ cho Nhãn nguồn", async () => {
+    const user = userEvent.setup();
     await openSection("sec-su", [wirePart([wireBcaHistory("sec-su")])], "BCA");
     expect(await screen.findByTestId("hsa-strand-section")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 4, name: "Khối lớp" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { level: 4, name: "Nguồn chùm" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 4, name: "Độ khó" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 4, name: "Nguồn chùm" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Thêm điều kiện" }));
+    expect(screen.getByRole("menuitem", { name: /Nhãn nguồn/ })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Phạm vi MAPID/ })).not.toBeInTheDocument();
+  });
+
+  it("bài QDA cũ có knowledgeScope.nodeIds mở lên không bị báo có thay đổi chưa lưu và không tự chuyển sang mapidMode", async () => {
+    await openSection(
+      "sec-toan",
+      [wirePart([wireQdaScience("sec-toan", "TOAN", { section: { knowledgeScope: { nodeIds: ["n-alg"] } } })])],
+      "QDA",
+    );
+    expect(await screen.findByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).toBeInTheDocument();
+    expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
+  });
+
+  it("môn ẩn khối lớp (BCA Sử): sửa độ khó không xóa âm thầm byGrade REQUIRED đã lưu, nhưng xóa byGrade REFERENCE", async () => {
+    const user = userEvent.setup();
+    const { server } = await openSection(
+      "sec-su",
+      [
+        wirePart([
+          wireBcaHistory("sec-su", {
+            matrix: matrixOf({
+              byGrade: [{ code: "GRADE_11", value: 4 }, { code: "GRADE_12", value: 6 }],
+              gradeEnforcement: "REQUIRED",
+              difficultyEnforcement: "REFERENCE",
+            }),
+          }),
+        ]),
+      ],
+      "BCA",
+    );
+    const difficulty = within(screen.getByRole("heading", { level: 4, name: "Độ khó" }).closest("[data-form-field]") as HTMLElement);
+    await type(user, difficulty.getByLabelText("Nhận biết"), "3");
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    const saved = sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix as Wire;
+    expect(saved.byGrade).toEqual([{ code: "GRADE_11", value: 4 }, { code: "GRADE_12", value: 6 }]);
+    expect(saved.gradeEnforcement).toBe("REQUIRED");
   });
 
   it("scopeAndQuotaFlow: V-ACT Toán có Phạm vi kiến thức và nút Thêm chỉ tiêu chủ đề; chưa có dòng thì không hiện bảng, bấm mới hiện", async () => {

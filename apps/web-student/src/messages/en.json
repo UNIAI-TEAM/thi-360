@@ -775,11 +775,9 @@
       "title": "CATEGORIES"
     },
     "company": {
-      "email": "hsaeducation.jsc@gmail.com",
       "hanoiOffice": "Hanoi Office: No. 11B, Alley 3/29, Lane 3, Pham Tuan Tai St., Nghia Do Ward, Hanoi",
       "hcmcOffice": "Ho Chi Minh City Office: 2/26 Nguyen The Truyen St., Tan Son Nhi Ward, Tan Phu Dist., Ho Chi Minh City",
       "name": "HSA EDUCATION INVESTMENT AND DEVELOPMENT JSC",
-      "phone": "0988.371.194",
       "taxId": "Tax ID: 0109600534 issued on 16/04/2021 by Hanoi Department of Planning and Investment"
     },
     "moitBadge": {
@@ -794,16 +792,9 @@
       "terms": "General transaction terms",
       "title": "POLICIES & TERMS"
     },
-    "social": {
-      "facebook": "Facebook",
-      "tiktok": "TikTok",
-      "youtube": "YouTube"
-    },
     "support": {
       "booksContactLabel": "Books – Mr. Cong:",
-      "booksContactPhone": "0961.167.606",
       "coursesContactLabel": "Courses – Ms. Thuy:",
-      "coursesContactPhone": "0961.167.606",
       "hoursLabel": "Working hours:",
       "hoursValue": "8:00 – 21:30 daily",
       "subtitle": "Class & book consultation",

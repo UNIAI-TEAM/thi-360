@@ -1,3 +1,4 @@
+import { mapidViewMode } from "../mapid-rules";
 import type { BlockMatrix, ExamSection, KnowledgeScope, QuestionBlock, TopicQuota } from "../types";
 import { limitsOfEntry, limitViolations } from "./limits";
 import type { SubjectFormEntry } from "./registry";
@@ -114,17 +115,19 @@ function answerQuotasFit(section: ExamSection): boolean {
   return types.every((type) => ANSWER_QUOTA_TYPES.includes(type)) && new Set(types).size === types.length;
 }
 
-function matrixFormReason(section: ExamSection, entry: SubjectFormEntry, context: FitContext): FitReason | null {
-  const usesMapidRules = entry.mapidFlow === "HSA_RULES";
+function matrixFormReason(section: ExamSection, entry: SubjectFormEntry): FitReason | null {
+  // Chỉ bỏ qua phạm vi/chỉ tiêu riêng cấp nhóm khi môn thực sự ở chế độ quy tắc MAPID (mapidViewMode !== null);
+  // dữ liệu cũ chưa chuyển đổi hoặc có tag nguồn khi không có khung Nguồn chùm phải rơi về MD để xem/sửa được.
+  const inMapidMode = entry.mapidFlow === "HSA_RULES" && mapidViewMode(section) !== null;
   for (const block of section.blocks) {
     const isSet = block.questionType === "QUESTION_SET";
     if (block.matrix !== null) return "BLOCK_MATRIX";
-    if (!usesMapidRules && (block.topicQuotas?.length ?? 0) > 0) return "BLOCK_TOPIC_QUOTAS";
+    if (!inMapidMode && (block.topicQuotas?.length ?? 0) > 0) return "BLOCK_TOPIC_QUOTAS";
     if ((block.childConditions?.length ?? 0) > 0) return "POSITION_CONDITION";
     if ((block.slots?.length ?? 0) > 0) return "SET_CONDITION";
-    // HSA Địa lí đã bỏ khung Điều kiện tư liệu (UNI-1724): bản cũ còn thẻ tư liệu trên chùm mở màn đầy đủ để xem/gỡ.
-    if (context.kindCode === "HSA" && context.subjectCode === "DIA" && block.tagCodes.length > 0) return "BLOCK_SCOPE_OR_TAGS";
-    if (!isSet && ((!usesMapidRules && hasOwnScope(block.knowledgeScope)) || block.tagCodes.length > 0)) return "BLOCK_SCOPE_OR_TAGS";
+    if ((!isSet || !entry.setSource) && block.tagCodes.length > 0) return "BLOCK_SCOPE_OR_TAGS";
+    const setScopeEditable = isSet && entry.setSource && entry.mapidFlow !== "HSA_RULES";
+    if (!inMapidMode && !setScopeEditable && hasOwnScope(block.knowledgeScope)) return "BLOCK_SCOPE_OR_TAGS";
   }
   if (!answerQuotasFit(section)) return "ANSWER_QUOTAS_SHAPE";
   if (section.blocks.some(setSizeMismatch)) return "SET_SIZE_MISMATCH";
@@ -145,6 +148,6 @@ function rowsFormReason(section: ExamSection, context: FitContext): FitReason | 
 }
 
 export function fitsForm(section: ExamSection, entry: SubjectFormEntry, context: FitContext): FitResult {
-  const reason = commonReason(section, entry) ?? (entry.form === "MATRIX" ? matrixFormReason(section, entry, context) : rowsFormReason(section, context));
+  const reason = commonReason(section, entry) ?? (entry.form === "MATRIX" ? matrixFormReason(section, entry) : rowsFormReason(section, context));
   return reason ? unfit(reason) : FITS;
 }

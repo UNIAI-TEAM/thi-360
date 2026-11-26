@@ -6117,6 +6117,7 @@
     },
     "versions": {
       "title": "Versions and publishing",
+      "loading": "Loading versions...",
       "errorTitle": "Could not load versions",
       "errorDescription": "Check your connection and try again.",
       "retry": "Try again",

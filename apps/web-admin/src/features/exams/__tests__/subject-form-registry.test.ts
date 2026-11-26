@@ -48,6 +48,7 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(at("HSA", "TOAN")).toMatchObject({ percentEntry: "NONE", enforcement: "FIXED_REQUIRED", combinedMatrix: "NONE", mapidFlow: "HSA_RULES", setSource: false });
     expect(at("QDA", "LY")).toMatchObject({ percentEntry: "NONE", enforcement: "DECLARED_REQUIRED", mapidFlow: "HSA_RULES", setSource: false });
     expect(at("BCA", "TOAN")).toMatchObject({ enforcement: "FIXED_REFERENCE", mapidFlow: "HSA_RULES", setSource: false });
+    expect(at("BCA", "SU")).toMatchObject({ enforcement: "FIXED_REFERENCE", mapidFlow: "HSA_RULES", setSource: true });
     expect(at("VACT", "TOAN")).toMatchObject({ percentEntry: "TWO_COLUMNS", enforcement: "REFERENCE_WITH_APPLY", gradeMixedColumn: true, flexibleSets: true, mapidFlow: "SCOPE_AND_QUOTA", setSource: true });
     expect(at("VACT", "VIETNAMESE")).toMatchObject({ gradeOptional: true, flexibleSets: false, gradeMixedColumn: false });
     expect(at("VACT", "ANH")).toMatchObject({ form: "ROWS", percentEntry: "COUNT_OR_PERCENT" });

@@ -82,12 +82,12 @@ export function MatrixForm(props: SubjectFormRendererProps) {
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
   // Khi sửa Cấu trúc câu hay bất kỳ phần nào của môn dùng quy tắc MAPID (HSA, QDA, BCA), tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
-  // Với môn MT ẩn khối lớp (HSA/QDA/BCA Sử, Địa), xóa `byGrade` và `gradeEnforcement` cũ khi người dùng chỉnh sửa để không phát sinh lỗi ngầm lệch tổng khối lớp.
+  // Với môn MT ẩn khối lớp, chỉ xóa `byGrade` Tham khảo (không xóa âm thầm phân bố Bắt buộc đã lưu).
   const handleChange: MatrixBlockProps["onChange"] = (update) =>
     onChange((current) => {
       let next = update(current);
       if (entry.mapidFlow === "HSA_RULES") next = recomputeMapidRules(next);
-      if (entry.hideGrade && next.matrix && next.matrix.byGrade.length > 0) {
+      if (entry.hideGrade && next.matrix && next.matrix.byGrade.length > 0 && next.matrix.gradeEnforcement === "REFERENCE") {
         const cleaned = { ...next.matrix, byGrade: [] };
         delete cleaned.gradeEnforcement;
         next = { ...next, matrix: cleaned };

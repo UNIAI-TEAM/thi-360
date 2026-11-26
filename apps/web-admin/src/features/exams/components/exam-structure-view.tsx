@@ -17,8 +17,6 @@ import {
   hsaNeedsNormalizing,
   isHsaExam,
   normalizeHsaParts,
-  normalizeMapidParts,
-  supportsMapidRules,
   useHsaNormalizedDraft,
 } from "../hsa-enforcement";
 import { strandTable } from "../reference-distribution";
@@ -239,14 +237,9 @@ function StructureEditor({
   const [fromReview] = useState(() => (typeof window !== "undefined" ? isFromReview(window.location.search) : false));
 
   const hsa = isHsaExam(exam.kind);
-  const mapidKinds = supportsMapidRules(exam.kind);
   const [draft, setDraft] = useState<ExamPart[]>(structure.parts);
   const [quotas, setQuotas] = useState<ExamQuota[]>(structure.examQuotas ?? []);
   useHsaNormalizedDraft(hsa, draft, setDraft, quotas, setQuotas);
-  if (!hsa && mapidKinds) {
-    const normalizedMapid = normalizeMapidParts(draft);
-    if (normalizedMapid !== draft) setDraft(normalizedMapid);
-  }
   const [baseline, setBaseline] = useState(() => JSON.stringify(structure.parts));
   const [quotaBaseline, setQuotaBaseline] = useState(() => JSON.stringify(structure.examQuotas ?? []));
   const [syncedKey, setSyncedKey] = useState(syncKey);
@@ -278,10 +271,9 @@ function StructureEditor({
   // Bản đã lưu còn mức Tham khảo mà HSA không cho: ghi chú hiện cho tới khi lưu.
   const hsaNormalizing = useMemo(() => hsaNeedsNormalizing(hsa, baselineParts, quotaBaseline), [hsa, baselineParts, quotaBaseline]);
 
-  // Biểu mẫu theo môn (FTM R-1, R-2): tính một lần khi mở và khi nạp mẫu (sau chuẩn hóa HSA-C / MAPID), ghim trong phiên; sửa bản nháp không đổi.
+  // Biểu mẫu theo môn (FTM R-1, R-2): tính một lần khi mở và khi nạp mẫu (sau chuẩn hóa HSA-C), ghim trong phiên; sửa bản nháp không đổi.
   const selectionExam = useMemo(() => ({ kind: exam.kind, buildMode: exam.buildMode }), [exam.kind, exam.buildMode]);
-  const pinForms = (parts: readonly ExamPart[]): SubjectFormPins =>
-    selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : mapidKinds ? normalizeMapidParts(parts) : parts);
+  const pinForms = (parts: readonly ExamPart[]): SubjectFormPins => selectAllSubjectForms(selectionExam, hsa ? normalizeHsaParts(parts) : parts);
   const [pinnedForms, setPinnedForms] = useState<SubjectFormPins>(() => pinForms(structure.parts));
   const [focusRequest, setFocusRequest] = useState<{ target: FormTarget; nonce: number } | null>(null);
   const formRegionRef = useRef<HTMLDivElement>(null);

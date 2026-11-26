@@ -15,10 +15,17 @@ type SourceCondition = "MAPID" | "TAGS";
 
 const hasScope = (scope: KnowledgeScope | null) => (scope?.nodeIds.length ?? 0) > 0;
 
-export function MatrixSetSource({ section, subjectName, reference, onChange }: MatrixBlockProps) {
+export function MatrixSetSource({ section, entry, subjectName, reference, onChange }: MatrixBlockProps) {
   const t = useTranslations("exams.subjectForm.matrix.setSource");
   const set = roleBlocks(section).set;
-  const [shown, setShown] = useState<ReadonlySet<SourceCondition>>(() => new Set([...(hasScope(set?.knowledgeScope ?? null) ? (["MAPID"] as const) : []), ...((set?.tagCodes.length ?? 0) > 0 ? (["TAGS"] as const) : [])]));
+  const allowMapid = entry.mapidFlow !== "HSA_RULES";
+  const [shown, setShown] = useState<ReadonlySet<SourceCondition>>(
+    () =>
+      new Set([
+        ...(allowMapid && hasScope(set?.knowledgeScope ?? null) ? (["MAPID"] as const) : []),
+        ...((set?.tagCodes.length ?? 0) > 0 ? (["TAGS"] as const) : []),
+      ]),
+  );
   const [openRequest, setOpenRequest] = useState(0);
   if (!set) return null;
 
@@ -36,7 +43,7 @@ export function MatrixSetSource({ section, subjectName, reference, onChange }: M
     });
     patchSet(kind === "MAPID" ? { knowledgeScope: null } : { tagCodes: [] });
   };
-  const kinds: SourceCondition[] = ["MAPID", "TAGS"];
+  const kinds: SourceCondition[] = allowMapid ? ["MAPID", "TAGS"] : ["TAGS"];
   const scopeLabel = t("groupName");
 
   return (

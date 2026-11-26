@@ -454,6 +454,14 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
             assertThat(structure(exam).path("parts").get(0).path("sections").get(0).path("mapidMode").asText())
                     .isEqualTo("MATRIX");
         }
+        // Non-matrix subjects (VAN, ANH — e.g. BCA:VAN essay) reject mapidMode even on supported kinds.
+        for (String disallowedSubject : List.of("VAN", "ANH")) {
+            UUID bca = examRow("bca");
+            String disallowed = "{\"id\":\"section\",\"subjectCode\":\"" + disallowedSubject
+                    + "\",\"questionCount\":3,\"mapidMode\":\"MATRIX\",\"mapidRules\":["
+                    + rule("present", "PRESENT", null, a()) + "],\"blocks\":[" + block("g1", "SINGLE_CHOICE", 3) + "]}";
+            putStructure(bca, disallowed).andExpect(status().isUnprocessableEntity());
+        }
         UUID vact = examRow("vact");
         putStructure(vact, section).andExpect(status().isUnprocessableEntity());
         assertThat(structure(vact).path("parts")).isEmpty();

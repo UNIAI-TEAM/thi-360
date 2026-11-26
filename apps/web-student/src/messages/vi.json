@@ -775,11 +775,9 @@
       "title": "DANH MỤC"
     },
     "company": {
-      "email": "hsaeducation.jsc@gmail.com",
       "hanoiOffice": "Văn phòng Hà Nội: Số 11B, Ngách 3/29, Ngõ 3, Đường Phạm Tuấn Tài, Phường Nghĩa Đô, Thành phố Hà Nội",
       "hcmcOffice": "Văn phòng Hồ Chí Minh: 2/26 Nguyễn Thế Truyện, Phường Tân Sơn Nhì, Quận Tân Phú, Thành phố Hồ Chí Minh",
       "name": "CÔNG TY CỔ PHẦN ĐẦU TƯ VÀ PHÁT TRIỂN GIÁO DỤC HSA",
-      "phone": "0988.371.194",
       "taxId": "Mã số thuế: 0109600534 cấp ngày 16/04/2021 bởi Sở Kế hoạch và Đầu tư Tp Hà Nội"
     },
     "moitBadge": {
@@ -794,16 +792,9 @@
       "terms": "Điều khoản giao dịch chung",
       "title": "CHÍNH SÁCH & ĐIỀU KHOẢN"
     },
-    "social": {
-      "facebook": "Facebook",
-      "tiktok": "TikTok",
-      "youtube": "YouTube"
-    },
     "support": {
       "booksContactLabel": "Sách – Mr. Công:",
-      "booksContactPhone": "0961.167.606",
       "coursesContactLabel": "Khóa học – Ms. Thủy:",
-      "coursesContactPhone": "0961.167.606",
       "hoursLabel": "Giờ làm việc:",
       "hoursValue": "8h00 – 21h30 hằng ngày",
       "subtitle": "Tư vấn lớp học & sách",

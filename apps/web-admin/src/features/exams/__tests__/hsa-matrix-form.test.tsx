@@ -413,7 +413,7 @@ describe("HSA Sử & Địa lí: UNI-1723 & UNI-1724 (Cấu trúc lên đầu, �
     expect(document.querySelector('[data-form-field="STRUCTURE"]')).not.toHaveAttribute("data-structure-variant");
   });
 
-  it("hsaHistoryGeographyHidesGrade: HSA Sử và Địa ẩn Khối lớp (chỉ giữ Độ khó) và xóa byGrade cũ khi chỉnh sửa lưu", async () => {
+  it("hsaHistoryGeographyHidesGrade: HSA Sử và Địa ẩn Khối lớp (chỉ giữ Độ khó) và giữ nguyên byGrade REQUIRED đã lưu khi chỉnh sửa độ khó", async () => {
     const user = userEvent.setup();
     const { server } = await openHsa("sec-su", [wirePart([wireHsaSocial("sec-su", "SU")])]);
     expect(screen.queryByRole("heading", { level: 4, name: "Khối lớp" })).not.toBeInTheDocument();
@@ -422,7 +422,11 @@ describe("HSA Sử & Địa lí: UNI-1723 & UNI-1724 (Cấu trúc lên đầu, �
     await type(user, within(diffSection).getByLabelText("Nhận biết"), "6");
     await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
-    expect((sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix as Wire).byGrade).toEqual([]);
+    expect((sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix as Wire).byGrade).toEqual([
+      { code: "GRADE_10", value: 2 },
+      { code: "GRADE_11", value: 5 },
+      { code: "GRADE_12", value: 10 },
+    ]);
   });
 
   it("hsaGeographyOmitsMaterialAndGrade: HSA Địa lí không còn Điều kiện tư liệu và Khối lớp, Cấu trúc câu đứng trước Mạch kiến thức", async () => {
