@@ -5,7 +5,7 @@ import { CatalogPageSkeleton, CatalogView } from "@/features/catalog/components/
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("catalog");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default function CatalogPage() {

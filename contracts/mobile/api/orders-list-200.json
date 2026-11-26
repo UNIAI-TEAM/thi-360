@@ -1,0 +1,29 @@
+{
+  "items" : [
+    {
+      "id" : "00000000-0000-7000-8000-000000000001",
+      "code" : "DH261126000001",
+      "productType" : "EXAM",
+      "examId" : "00000000-0000-7000-8000-000000000002",
+      "bundleId" : null,
+      "productCode" : "EXAM-DEMO-03",
+      "productName" : "Exam DEMO",
+      "listPriceVnd" : 200000,
+      "promotionDiscountVnd" : 0,
+      "voucherDiscountVnd" : 0,
+      "discountApplied" : "NONE",
+      "amountDueVnd" : 200000,
+      "attemptsGranted" : 3,
+      "paymentMethod" : "VNPAY",
+      "state" : "PENDING_PAYMENT",
+      "expiresAt" : "2026-11-20T10:00:00Z",
+      "paidAt" : null,
+      "fulfilledAt" : null,
+      "createdAt" : "2026-11-20T10:00:00Z"
+    }
+  ],
+  "page" : 0,
+  "size" : 20,
+  "totalItems" : 1,
+  "totalPages" : 1
+}

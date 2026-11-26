@@ -1,0 +1,1762 @@
+[
+  {
+    "file": "api/attempts-answers-200-rejected-invalid-answer.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 200,
+    "variant": "rejected-invalid-answer"
+  },
+  {
+    "file": "api/attempts-answers-200-rejected-not-in-scope.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 200,
+    "variant": "rejected-not-in-scope"
+  },
+  {
+    "file": "api/attempts-answers-200-rejected-part-closed.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 200,
+    "variant": "rejected-part-closed"
+  },
+  {
+    "file": "api/attempts-answers-200-rejected-time-up.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 200,
+    "variant": "rejected-time-up"
+  },
+  {
+    "file": "api/attempts-answers-200-saved.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 200,
+    "variant": "saved"
+  },
+  {
+    "file": "api/attempts-answers-200-stale.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 200,
+    "variant": "stale"
+  },
+  {
+    "file": "api/attempts-answers-409-attempt-session-revoked.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 409,
+    "variant": "attempt-session-revoked"
+  },
+  {
+    "file": "api/attempts-answers-429-rate-limited.json",
+    "operationId": "saveAnswers",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/answers",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "api/attempts-asset-401-unauthenticated.json",
+    "operationId": "downloadAttemptAsset",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/assets/{assetId}",
+    "status": 401,
+    "variant": "unauthenticated"
+  },
+  {
+    "file": "api/attempts-asset-404-not-found.json",
+    "operationId": "downloadAttemptAsset",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/assets/{assetId}",
+    "status": 404,
+    "variant": "not-found"
+  },
+  {
+    "file": "api/attempts-choice-200-replayed.json",
+    "operationId": "confirmPartChoice",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+    "status": 200,
+    "variant": "replayed"
+  },
+  {
+    "file": "api/attempts-choice-202.json",
+    "operationId": "confirmPartChoice",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+    "status": 202,
+    "variant": ""
+  },
+  {
+    "file": "api/attempts-choice-409-choice-locked.json",
+    "operationId": "confirmPartChoice",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+    "status": 409,
+    "variant": "choice-locked"
+  },
+  {
+    "file": "api/attempts-choice-409-choice-window-closed.json",
+    "operationId": "confirmPartChoice",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+    "status": 409,
+    "variant": "choice-window-closed"
+  },
+  {
+    "file": "api/attempts-choice-409-part-not-awaiting.json",
+    "operationId": "confirmPartChoice",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+    "status": 409,
+    "variant": "part-not-awaiting"
+  },
+  {
+    "file": "api/attempts-choice-422-choice-not-allowed.json",
+    "operationId": "confirmPartChoice",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+    "status": 422,
+    "variant": "choice-not-allowed"
+  },
+  {
+    "file": "api/attempts-choice-422-subjects-invalid.json",
+    "operationId": "confirmPartChoice",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+    "status": 422,
+    "variant": "subjects-invalid"
+  },
+  {
+    "file": "api/attempts-detail-200-aborted.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "aborted"
+  },
+  {
+    "file": "api/attempts-detail-200-audio-playing.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "audio-playing"
+  },
+  {
+    "file": "api/attempts-detail-200-awaiting-choice.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "awaiting-choice"
+  },
+  {
+    "file": "api/attempts-detail-200-closed-choice-timeout.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "closed-choice-timeout"
+  },
+  {
+    "file": "api/attempts-detail-200-closed-submitted.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "closed-submitted"
+  },
+  {
+    "file": "api/attempts-detail-200-closed-time-up.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "closed-time-up"
+  },
+  {
+    "file": "api/attempts-detail-200-generating.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "generating"
+  },
+  {
+    "file": "api/attempts-detail-200-generation-failed.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "generation-failed"
+  },
+  {
+    "file": "api/attempts-detail-200-in-progress-per-part.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "in-progress-per-part"
+  },
+  {
+    "file": "api/attempts-detail-200-in-progress-shared.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "in-progress-shared"
+  },
+  {
+    "file": "api/attempts-detail-200-starting.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 200,
+    "variant": "starting"
+  },
+  {
+    "file": "api/attempts-detail-404-attempt-not-found.json",
+    "operationId": "getState",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}",
+    "status": 404,
+    "variant": "attempt-not-found"
+  },
+  {
+    "file": "api/attempts-finish-200.json",
+    "operationId": "finishPart",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/attempts-finish-409-attempt-part-is-last.json",
+    "operationId": "finishPart",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+    "status": 409,
+    "variant": "attempt-part-is-last"
+  },
+  {
+    "file": "api/attempts-finish-409-attempt-session-revoked.json",
+    "operationId": "finishPart",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+    "status": 409,
+    "variant": "attempt-session-revoked"
+  },
+  {
+    "file": "api/attempts-finish-409-part-closed.json",
+    "operationId": "finishPart",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+    "status": 409,
+    "variant": "part-closed"
+  },
+  {
+    "file": "api/attempts-finish-409-part-finish-not-allowed.json",
+    "operationId": "finishPart",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+    "status": 409,
+    "variant": "part-finish-not-allowed"
+  },
+  {
+    "file": "api/attempts-finish-409-time-up.json",
+    "operationId": "finishPart",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+    "status": 409,
+    "variant": "time-up"
+  },
+  {
+    "file": "api/attempts-heartbeat-200.json",
+    "operationId": "heartbeat",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/heartbeat",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/attempts-heartbeat-409-attempt-session-revoked.json",
+    "operationId": "heartbeat",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/heartbeat",
+    "status": 409,
+    "variant": "attempt-session-revoked"
+  },
+  {
+    "file": "api/attempts-list-200-empty.json",
+    "operationId": "listHistory",
+    "method": "GET",
+    "path": "/api/v1/me/attempts",
+    "status": 200,
+    "variant": "empty"
+  },
+  {
+    "file": "api/attempts-list-200.json",
+    "operationId": "listHistory",
+    "method": "GET",
+    "path": "/api/v1/me/attempts",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/attempts-list-403-attempt-access-forbidden.json",
+    "operationId": "listHistory",
+    "method": "GET",
+    "path": "/api/v1/me/attempts",
+    "status": 403,
+    "variant": "attempt-access-forbidden"
+  },
+  {
+    "file": "api/attempts-list-422-invalid-date-filter.json",
+    "operationId": "listHistory",
+    "method": "GET",
+    "path": "/api/v1/me/attempts",
+    "status": 422,
+    "variant": "invalid-date-filter"
+  },
+  {
+    "file": "api/attempts-result-200-compensated.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "compensated"
+  },
+  {
+    "file": "api/attempts-result-200-grading-error.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "grading-error"
+  },
+  {
+    "file": "api/attempts-result-200-grading.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "grading"
+  },
+  {
+    "file": "api/attempts-result-200-pending-review.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "pending-review"
+  },
+  {
+    "file": "api/attempts-result-200-regrading.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "regrading"
+  },
+  {
+    "file": "api/attempts-result-200-scored.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "scored"
+  },
+  {
+    "file": "api/attempts-result-200-system-fault.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "system-fault"
+  },
+  {
+    "file": "api/attempts-result-200-vact.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "vact"
+  },
+  {
+    "file": "api/attempts-result-200-zero-score.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 200,
+    "variant": "zero-score"
+  },
+  {
+    "file": "api/attempts-result-404-attempt-not-found.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 404,
+    "variant": "attempt-not-found"
+  },
+  {
+    "file": "api/attempts-result-409-attempt-not-finished.json",
+    "operationId": "getResult",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/result",
+    "status": 409,
+    "variant": "attempt-not-finished"
+  },
+  {
+    "file": "api/attempts-retry-200-replayed.json",
+    "operationId": "retryPartGeneration",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry",
+    "status": 200,
+    "variant": "replayed"
+  },
+  {
+    "file": "api/attempts-retry-202.json",
+    "operationId": "retryPartGeneration",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry",
+    "status": 202,
+    "variant": ""
+  },
+  {
+    "file": "api/attempts-retry-409-part-generating.json",
+    "operationId": "retryPartGeneration",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry",
+    "status": 409,
+    "variant": "part-generating"
+  },
+  {
+    "file": "api/attempts-retry-409-part-not-awaiting.json",
+    "operationId": "retryPartGeneration",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry",
+    "status": 409,
+    "variant": "part-not-awaiting"
+  },
+  {
+    "file": "api/attempts-review-200-full-solution.json",
+    "operationId": "getReview",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/review",
+    "status": 200,
+    "variant": "full-solution"
+  },
+  {
+    "file": "api/attempts-review-200-pending-review.json",
+    "operationId": "getReview",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/review",
+    "status": 200,
+    "variant": "pending-review"
+  },
+  {
+    "file": "api/attempts-review-200-score-and-answers.json",
+    "operationId": "getReview",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/review",
+    "status": 200,
+    "variant": "score-and-answers"
+  },
+  {
+    "file": "api/attempts-review-403-review-not-included.json",
+    "operationId": "getReview",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/review",
+    "status": 403,
+    "variant": "review-not-included"
+  },
+  {
+    "file": "api/attempts-review-404-attempt-not-found.json",
+    "operationId": "getReview",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/review",
+    "status": 404,
+    "variant": "attempt-not-found"
+  },
+  {
+    "file": "api/attempts-review-409-review-not-available.json",
+    "operationId": "getReview",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/review",
+    "status": 409,
+    "variant": "review-not-available"
+  },
+  {
+    "file": "api/attempts-session-200.json",
+    "operationId": "claimSession",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/session",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/attempts-session-409-attempt-not-open.json",
+    "operationId": "claimSession",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/session",
+    "status": 409,
+    "variant": "attempt-not-open"
+  },
+  {
+    "file": "api/attempts-session-409-attempt-open-elsewhere.json",
+    "operationId": "claimSession",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/session",
+    "status": 409,
+    "variant": "attempt-open-elsewhere"
+  },
+  {
+    "file": "api/attempts-session-409-time-up.json",
+    "operationId": "claimSession",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/session",
+    "status": 409,
+    "variant": "time-up"
+  },
+  {
+    "file": "api/attempts-solution-asset-401-unauthenticated.json",
+    "operationId": "downloadSolutionAsset",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
+    "status": 401,
+    "variant": "unauthenticated"
+  },
+  {
+    "file": "api/attempts-solution-asset-404-not-found.json",
+    "operationId": "downloadSolutionAsset",
+    "method": "GET",
+    "path": "/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
+    "status": 404,
+    "variant": "not-found"
+  },
+  {
+    "file": "api/attempts-start-200-aborted.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 200,
+    "variant": "aborted"
+  },
+  {
+    "file": "api/attempts-start-200-resumed.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 200,
+    "variant": "resumed"
+  },
+  {
+    "file": "api/attempts-start-202-starting.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 202,
+    "variant": "starting"
+  },
+  {
+    "file": "api/attempts-start-400-idempotency-key-required.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 400,
+    "variant": "idempotency-key-required"
+  },
+  {
+    "file": "api/attempts-start-409-no-attempts-left.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 409,
+    "variant": "no-attempts-left"
+  },
+  {
+    "file": "api/attempts-start-409-no-serving-option.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 409,
+    "variant": "no-serving-option"
+  },
+  {
+    "file": "api/attempts-start-422-choice-not-allowed.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 422,
+    "variant": "choice-not-allowed"
+  },
+  {
+    "file": "api/attempts-start-422-subjects-invalid.json",
+    "operationId": "start",
+    "method": "POST",
+    "path": "/api/v1/me/attempts",
+    "status": 422,
+    "variant": "subjects-invalid"
+  },
+  {
+    "file": "api/attempts-submit-200.json",
+    "operationId": "submit",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/submit",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/attempts-submit-409-attempt-session-revoked.json",
+    "operationId": "submit",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/submit",
+    "status": 409,
+    "variant": "attempt-session-revoked"
+  },
+  {
+    "file": "api/attempts-submit-409-part-not-last.json",
+    "operationId": "submit",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/submit",
+    "status": 409,
+    "variant": "part-not-last"
+  },
+  {
+    "file": "api/audio-plays-end-200-closed.json",
+    "operationId": "endAudioPlay",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end",
+    "status": 200,
+    "variant": "closed"
+  },
+  {
+    "file": "api/audio-plays-end-200.json",
+    "operationId": "endAudioPlay",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/audio-plays-progress-200.json",
+    "operationId": "updateAudioProgress",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/audio-plays-progress-409-attempt-session-revoked.json",
+    "operationId": "updateAudioProgress",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
+    "status": 409,
+    "variant": "attempt-session-revoked"
+  },
+  {
+    "file": "api/audio-plays-progress-409-audio-play-stale.json",
+    "operationId": "updateAudioProgress",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
+    "status": 409,
+    "variant": "audio-play-stale"
+  },
+  {
+    "file": "api/audio-plays-progress-409-audio-seek-rejected.json",
+    "operationId": "updateAudioProgress",
+    "method": "PUT",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
+    "status": 409,
+    "variant": "audio-seek-rejected"
+  },
+  {
+    "file": "api/audio-plays-resume-200.json",
+    "operationId": "resumeAudioPlay",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/audio-plays-resume-409-part-closed.json",
+    "operationId": "resumeAudioPlay",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume",
+    "status": 409,
+    "variant": "part-closed"
+  },
+  {
+    "file": "api/audio-plays-start-200.json",
+    "operationId": "openAudioPlay",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/audio-plays-start-409-audio-play-in-progress.json",
+    "operationId": "openAudioPlay",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays",
+    "status": 409,
+    "variant": "audio-play-in-progress"
+  },
+  {
+    "file": "api/audio-plays-start-409-audio-plays-exhausted.json",
+    "operationId": "openAudioPlay",
+    "method": "POST",
+    "path": "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays",
+    "status": 409,
+    "variant": "audio-plays-exhausted"
+  },
+  {
+    "file": "api/catalog-options-200-exam.json",
+    "operationId": "getOptions",
+    "method": "GET",
+    "path": "/api/v1/catalog/options",
+    "status": 200,
+    "variant": "exam"
+  },
+  {
+    "file": "api/catalog-options-200-subject.json",
+    "operationId": "getOptions",
+    "method": "GET",
+    "path": "/api/v1/catalog/options",
+    "status": 200,
+    "variant": "subject"
+  },
+  {
+    "file": "api/change-password-400-password-weak.json",
+    "operationId": "changePassword",
+    "method": "POST",
+    "path": "/api/v1/auth/change-password",
+    "status": 400,
+    "variant": "password-weak"
+  },
+  {
+    "file": "api/change-password-400-wrong-old-password.json",
+    "operationId": "changePassword",
+    "method": "POST",
+    "path": "/api/v1/auth/change-password",
+    "status": 400,
+    "variant": "wrong-old-password"
+  },
+  {
+    "file": "api/entitlements-prepare-200-class.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "class"
+  },
+  {
+    "file": "api/entitlements-prepare-200-exhausted-class.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "exhausted-class"
+  },
+  {
+    "file": "api/entitlements-prepare-200-exhausted-compensation.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "exhausted-compensation"
+  },
+  {
+    "file": "api/entitlements-prepare-200-exhausted-purchase.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "exhausted-purchase"
+  },
+  {
+    "file": "api/entitlements-prepare-200-free-navigation.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "free-navigation"
+  },
+  {
+    "file": "api/entitlements-prepare-200-open-in-progress.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "open-in-progress"
+  },
+  {
+    "file": "api/entitlements-prepare-200-open-starting.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "open-starting"
+  },
+  {
+    "file": "api/entitlements-prepare-200-per-part.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "per-part"
+  },
+  {
+    "file": "api/entitlements-prepare-200-pre-choice.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "pre-choice"
+  },
+  {
+    "file": "api/entitlements-prepare-200-shared.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 200,
+    "variant": "shared"
+  },
+  {
+    "file": "api/entitlements-prepare-403-attempt-access-forbidden.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 403,
+    "variant": "attempt-access-forbidden"
+  },
+  {
+    "file": "api/entitlements-prepare-404-not-found.json",
+    "operationId": "prepare",
+    "method": "GET",
+    "path": "/api/v1/me/entitlements/{entitlementId}/prepare",
+    "status": 404,
+    "variant": "not-found"
+  },
+  {
+    "file": "api/exam-access-query-200.json",
+    "operationId": "queryMyExamAccess",
+    "method": "POST",
+    "path": "/api/v1/me/exam-access/query",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/exam-access-query-400-validation-failed.json",
+    "operationId": "queryMyExamAccess",
+    "method": "POST",
+    "path": "/api/v1/me/exam-access/query",
+    "status": 400,
+    "variant": "validation-failed"
+  },
+  {
+    "file": "api/me-200.json",
+    "operationId": "me",
+    "method": "GET",
+    "path": "/api/v1/me",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/me-401-session-revoked.json",
+    "operationId": "me",
+    "method": "GET",
+    "path": "/api/v1/me",
+    "status": 401,
+    "variant": "session-revoked"
+  },
+  {
+    "file": "api/me-401-unauthenticated.json",
+    "operationId": "me",
+    "method": "GET",
+    "path": "/api/v1/me",
+    "status": 401,
+    "variant": "unauthenticated"
+  },
+  {
+    "file": "api/me-avatar-put-200.json",
+    "operationId": "replaceMyAvatar",
+    "method": "PUT",
+    "path": "/api/v1/me/avatar",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/me-avatar-put-413-avatar-too-large.json",
+    "operationId": "replaceMyAvatar",
+    "method": "PUT",
+    "path": "/api/v1/me/avatar",
+    "status": 413,
+    "variant": "avatar-too-large"
+  },
+  {
+    "file": "api/me-avatar-put-413-upload-too-large.json",
+    "operationId": "replaceMyAvatar",
+    "method": "PUT",
+    "path": "/api/v1/me/avatar",
+    "status": 413,
+    "variant": "upload-too-large"
+  },
+  {
+    "file": "api/me-avatar-put-422-avatar-dimensions-exceeded.json",
+    "operationId": "replaceMyAvatar",
+    "method": "PUT",
+    "path": "/api/v1/me/avatar",
+    "status": 422,
+    "variant": "avatar-dimensions-exceeded"
+  },
+  {
+    "file": "api/me-avatar-put-422-avatar-invalid-image.json",
+    "operationId": "replaceMyAvatar",
+    "method": "PUT",
+    "path": "/api/v1/me/avatar",
+    "status": 422,
+    "variant": "avatar-invalid-image"
+  },
+  {
+    "file": "api/me-email-change-400-new-email.json",
+    "operationId": "requestChange",
+    "method": "POST",
+    "path": "/api/v1/me/email/change",
+    "status": 400,
+    "variant": "new-email"
+  },
+  {
+    "file": "api/me-email-change-400-wrong-old-password.json",
+    "operationId": "requestChange",
+    "method": "POST",
+    "path": "/api/v1/me/email/change",
+    "status": 400,
+    "variant": "wrong-old-password"
+  },
+  {
+    "file": "api/me-email-change-409-email-taken.json",
+    "operationId": "requestChange",
+    "method": "POST",
+    "path": "/api/v1/me/email/change",
+    "status": 409,
+    "variant": "email-taken"
+  },
+  {
+    "file": "api/me-email-change-429-login-throttled.json",
+    "operationId": "requestChange",
+    "method": "POST",
+    "path": "/api/v1/me/email/change",
+    "status": 429,
+    "variant": "login-throttled"
+  },
+  {
+    "file": "api/me-email-change-429-rate-limited.json",
+    "operationId": "requestChange",
+    "method": "POST",
+    "path": "/api/v1/me/email/change",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "api/me-email-change-confirm-422-email-code-invalid.json",
+    "operationId": "confirmChange",
+    "method": "POST",
+    "path": "/api/v1/me/email/change/confirm",
+    "status": 422,
+    "variant": "email-code-invalid"
+  },
+  {
+    "file": "api/me-email-verification-429-rate-limited.json",
+    "operationId": "sendVerification",
+    "method": "POST",
+    "path": "/api/v1/me/email/verification",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "api/me-email-verify-422-email-code-expired.json",
+    "operationId": "verify",
+    "method": "POST",
+    "path": "/api/v1/me/email/verify",
+    "status": 422,
+    "variant": "email-code-expired"
+  },
+  {
+    "file": "api/me-email-verify-422-email-code-invalid.json",
+    "operationId": "verify",
+    "method": "POST",
+    "path": "/api/v1/me/email/verify",
+    "status": 422,
+    "variant": "email-code-invalid"
+  },
+  {
+    "file": "api/me-profile-200-avatar-pending-email.json",
+    "operationId": "getMyProfile",
+    "method": "GET",
+    "path": "/api/v1/me/profile",
+    "status": 200,
+    "variant": "avatar-pending-email"
+  },
+  {
+    "file": "api/me-profile-200-no-email.json",
+    "operationId": "getMyProfile",
+    "method": "GET",
+    "path": "/api/v1/me/profile",
+    "status": 200,
+    "variant": "no-email"
+  },
+  {
+    "file": "api/me-profile-200.json",
+    "operationId": "getMyProfile",
+    "method": "GET",
+    "path": "/api/v1/me/profile",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/me-profile-update-200.json",
+    "operationId": "updateMyProfile",
+    "method": "PATCH",
+    "path": "/api/v1/me/profile",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/me-profile-update-400-phone.json",
+    "operationId": "updateMyProfile",
+    "method": "PATCH",
+    "path": "/api/v1/me/profile",
+    "status": 400,
+    "variant": "phone"
+  },
+  {
+    "file": "api/my-exams-list-200-empty.json",
+    "operationId": "listMyExams",
+    "method": "GET",
+    "path": "/api/v1/me/exams",
+    "status": 200,
+    "variant": "empty"
+  },
+  {
+    "file": "api/my-exams-list-200.json",
+    "operationId": "listMyExams",
+    "method": "GET",
+    "path": "/api/v1/me/exams",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/my-exams-list-403-forbidden.json",
+    "operationId": "listMyExams",
+    "method": "GET",
+    "path": "/api/v1/me/exams",
+    "status": 403,
+    "variant": "forbidden"
+  },
+  {
+    "file": "api/orders-cancel-200.json",
+    "operationId": "cancelMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/cancel",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/orders-cancel-409-order-not-pending.json",
+    "operationId": "cancelMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/cancel",
+    "status": 409,
+    "variant": "order-not-pending"
+  },
+  {
+    "file": "api/orders-create-201-checking.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 201,
+    "variant": "checking"
+  },
+  {
+    "file": "api/orders-create-201-fulfilled.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 201,
+    "variant": "fulfilled"
+  },
+  {
+    "file": "api/orders-create-201-redirect.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 201,
+    "variant": "redirect"
+  },
+  {
+    "file": "api/orders-create-201-reused.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 201,
+    "variant": "reused"
+  },
+  {
+    "file": "api/orders-create-409-account-changed.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 409,
+    "variant": "account-changed"
+  },
+  {
+    "file": "api/orders-create-409-idempotency-key-reused.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 409,
+    "variant": "idempotency-key-reused"
+  },
+  {
+    "file": "api/orders-create-409-price-changed.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 409,
+    "variant": "price-changed"
+  },
+  {
+    "file": "api/orders-create-409-product-unavailable.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 409,
+    "variant": "product-unavailable"
+  },
+  {
+    "file": "api/orders-create-410-product-discontinued.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 410,
+    "variant": "product-discontinued"
+  },
+  {
+    "file": "api/orders-create-422-payment-attempts-exceeded.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 422,
+    "variant": "payment-attempts-exceeded"
+  },
+  {
+    "file": "api/orders-create-422-voucher-invalid.json",
+    "operationId": "createMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders",
+    "status": 422,
+    "variant": "voucher-invalid"
+  },
+  {
+    "file": "api/orders-detail-200-cancelled.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "cancelled"
+  },
+  {
+    "file": "api/orders-detail-200-duplicate-payment.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "duplicate-payment"
+  },
+  {
+    "file": "api/orders-detail-200-expired.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "expired"
+  },
+  {
+    "file": "api/orders-detail-200-free-voucher.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "free-voucher"
+  },
+  {
+    "file": "api/orders-detail-200-fulfilled.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "fulfilled"
+  },
+  {
+    "file": "api/orders-detail-200-paid.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "paid"
+  },
+  {
+    "file": "api/orders-detail-200-payment-failed.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "payment-failed"
+  },
+  {
+    "file": "api/orders-detail-200-pending-payment.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "pending-payment"
+  },
+  {
+    "file": "api/orders-detail-200-refunded.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "refunded"
+  },
+  {
+    "file": "api/orders-detail-200-replaced.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 200,
+    "variant": "replaced"
+  },
+  {
+    "file": "api/orders-detail-404-order-not-found.json",
+    "operationId": "getMyOrder",
+    "method": "GET",
+    "path": "/api/v1/me/orders/{code}",
+    "status": 404,
+    "variant": "order-not-found"
+  },
+  {
+    "file": "api/orders-list-200-empty.json",
+    "operationId": "listMyOrders",
+    "method": "GET",
+    "path": "/api/v1/me/orders",
+    "status": 200,
+    "variant": "empty"
+  },
+  {
+    "file": "api/orders-list-200.json",
+    "operationId": "listMyOrders",
+    "method": "GET",
+    "path": "/api/v1/me/orders",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/orders-pay-200.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/orders-pay-404-order-not-found.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 404,
+    "variant": "order-not-found"
+  },
+  {
+    "file": "api/orders-pay-404-product-not-found.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 404,
+    "variant": "product-not-found"
+  },
+  {
+    "file": "api/orders-pay-409-order-expired.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 409,
+    "variant": "order-expired"
+  },
+  {
+    "file": "api/orders-pay-409-order-not-pending.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 409,
+    "variant": "order-not-pending"
+  },
+  {
+    "file": "api/orders-pay-409-product-unavailable.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 409,
+    "variant": "product-unavailable"
+  },
+  {
+    "file": "api/orders-pay-410-product-discontinued.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 410,
+    "variant": "product-discontinued"
+  },
+  {
+    "file": "api/orders-pay-422-payment-attempts-exceeded.json",
+    "operationId": "payMyOrder",
+    "method": "POST",
+    "path": "/api/v1/me/orders/{code}/pay",
+    "status": 422,
+    "variant": "payment-attempts-exceeded"
+  },
+  {
+    "file": "api/password-forgot-202.json",
+    "operationId": "forgotPassword",
+    "method": "POST",
+    "path": "/api/v1/auth/password/forgot",
+    "status": 202,
+    "variant": ""
+  },
+  {
+    "file": "api/password-forgot-400-validation-failed.json",
+    "operationId": "forgotPassword",
+    "method": "POST",
+    "path": "/api/v1/auth/password/forgot",
+    "status": 400,
+    "variant": "validation-failed"
+  },
+  {
+    "file": "api/password-reset-400-password-weak.json",
+    "operationId": "resetPasswordByToken",
+    "method": "POST",
+    "path": "/api/v1/auth/password/reset",
+    "status": 400,
+    "variant": "password-weak"
+  },
+  {
+    "file": "api/password-reset-422-reset-token-invalid.json",
+    "operationId": "resetPasswordByToken",
+    "method": "POST",
+    "path": "/api/v1/auth/password/reset",
+    "status": 422,
+    "variant": "reset-token-invalid"
+  },
+  {
+    "file": "api/price-quote-200-changed.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 200,
+    "variant": "changed"
+  },
+  {
+    "file": "api/price-quote-200-voucher.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 200,
+    "variant": "voucher"
+  },
+  {
+    "file": "api/price-quote-200.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/price-quote-404-product-not-found.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 404,
+    "variant": "product-not-found"
+  },
+  {
+    "file": "api/price-quote-410-product-discontinued.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 410,
+    "variant": "product-discontinued"
+  },
+  {
+    "file": "api/price-quote-422-voucher-exhausted.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 422,
+    "variant": "voucher-exhausted"
+  },
+  {
+    "file": "api/price-quote-422-voucher-expired.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 422,
+    "variant": "voucher-expired"
+  },
+  {
+    "file": "api/price-quote-422-voucher-invalid.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 422,
+    "variant": "voucher-invalid"
+  },
+  {
+    "file": "api/price-quote-422-voucher-not-applicable.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 422,
+    "variant": "voucher-not-applicable"
+  },
+  {
+    "file": "api/price-quote-422-voucher-not-eligible.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 422,
+    "variant": "voucher-not-eligible"
+  },
+  {
+    "file": "api/price-quote-422-voucher-user-limit.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 422,
+    "variant": "voucher-user-limit"
+  },
+  {
+    "file": "api/price-quote-429-rate-limited.json",
+    "operationId": "quoteMyPrice",
+    "method": "POST",
+    "path": "/api/v1/me/price-quote",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "api/register-200.json",
+    "operationId": "startRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/register-400-validation-failed.json",
+    "operationId": "startRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "status": 400,
+    "variant": "validation-failed"
+  },
+  {
+    "file": "api/register-409-email-taken.json",
+    "operationId": "startRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "status": 409,
+    "variant": "email-taken"
+  },
+  {
+    "file": "api/register-409-username-taken.json",
+    "operationId": "startRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "status": 409,
+    "variant": "username-taken"
+  },
+  {
+    "file": "api/register-429-otp-rate-limited.json",
+    "operationId": "startRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/register",
+    "status": 429,
+    "variant": "otp-rate-limited"
+  },
+  {
+    "file": "api/register-resend-200.json",
+    "operationId": "resendRegistrationCode",
+    "method": "POST",
+    "path": "/api/v1/auth/register/resend",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/register-resend-422-email-code-expired.json",
+    "operationId": "resendRegistrationCode",
+    "method": "POST",
+    "path": "/api/v1/auth/register/resend",
+    "status": 422,
+    "variant": "email-code-expired"
+  },
+  {
+    "file": "api/register-resend-429-rate-limited.json",
+    "operationId": "resendRegistrationCode",
+    "method": "POST",
+    "path": "/api/v1/auth/register/resend",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "api/storefront-filters-200.json",
+    "operationId": "getStorefrontFilters",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/filters",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/storefront-filters-429-rate-limited.json",
+    "operationId": "getStorefrontFilters",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/filters",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "api/storefront-products-detail-200-bundle.json",
+    "operationId": "getStorefrontProduct",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/products/{code}",
+    "status": 200,
+    "variant": "bundle"
+  },
+  {
+    "file": "api/storefront-products-detail-200-exam.json",
+    "operationId": "getStorefrontProduct",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/products/{code}",
+    "status": 200,
+    "variant": "exam"
+  },
+  {
+    "file": "api/storefront-products-detail-404-not-found.json",
+    "operationId": "getStorefrontProduct",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/products/{code}",
+    "status": 404,
+    "variant": "not-found"
+  },
+  {
+    "file": "api/storefront-products-detail-410-product-discontinued.json",
+    "operationId": "getStorefrontProduct",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/products/{code}",
+    "status": 410,
+    "variant": "product-discontinued"
+  },
+  {
+    "file": "api/storefront-products-list-200-empty.json",
+    "operationId": "listStorefrontProducts",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/products",
+    "status": 200,
+    "variant": "empty"
+  },
+  {
+    "file": "api/storefront-products-list-200.json",
+    "operationId": "listStorefrontProducts",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/products",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/storefront-products-list-429-rate-limited.json",
+    "operationId": "listStorefrontProducts",
+    "method": "GET",
+    "path": "/api/v1/public/storefront/products",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "api/vnpay-return-200-failed.json",
+    "operationId": "verifyVnpayReturn",
+    "method": "GET",
+    "path": "/api/v1/public/payments/vnpay/return",
+    "status": 200,
+    "variant": "failed"
+  },
+  {
+    "file": "api/vnpay-return-200-pending.json",
+    "operationId": "verifyVnpayReturn",
+    "method": "GET",
+    "path": "/api/v1/public/payments/vnpay/return",
+    "status": 200,
+    "variant": "pending"
+  },
+  {
+    "file": "api/vnpay-return-200-succeeded.json",
+    "operationId": "verifyVnpayReturn",
+    "method": "GET",
+    "path": "/api/v1/public/payments/vnpay/return",
+    "status": 200,
+    "variant": "succeeded"
+  },
+  {
+    "file": "api/vnpay-return-404-order-not-found.json",
+    "operationId": "verifyVnpayReturn",
+    "method": "GET",
+    "path": "/api/v1/public/payments/vnpay/return",
+    "status": 404,
+    "variant": "order-not-found"
+  },
+  {
+    "file": "api/vnpay-return-422-vnpay-signature-invalid.json",
+    "operationId": "verifyVnpayReturn",
+    "method": "GET",
+    "path": "/api/v1/public/payments/vnpay/return",
+    "status": 422,
+    "variant": "vnpay-signature-invalid"
+  },
+  {
+    "file": "auth/login-200-must-change-password.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 200,
+    "variant": "must-change-password"
+  },
+  {
+    "file": "auth/login-200.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "auth/login-400-validation-failed.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 400,
+    "variant": "validation-failed"
+  },
+  {
+    "file": "auth/login-401-invalid-credentials.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 401,
+    "variant": "invalid-credentials"
+  },
+  {
+    "file": "auth/login-403-account-inactive.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 403,
+    "variant": "account-inactive"
+  },
+  {
+    "file": "auth/login-403-app-student-only.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 403,
+    "variant": "app-student-only"
+  },
+  {
+    "file": "auth/login-429-login-throttled.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 429,
+    "variant": "login-throttled"
+  },
+  {
+    "file": "auth/login-429-rate-limited.json",
+    "operationId": "mobileLogin",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/login",
+    "status": 429,
+    "variant": "rate-limited"
+  },
+  {
+    "file": "auth/refresh-200.json",
+    "operationId": "mobileRefresh",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/refresh",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "auth/refresh-401-session-revoked.json",
+    "operationId": "mobileRefresh",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/refresh",
+    "status": 401,
+    "variant": "session-revoked"
+  },
+  {
+    "file": "auth/refresh-403-app-student-only.json",
+    "operationId": "mobileRefresh",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/refresh",
+    "status": 403,
+    "variant": "app-student-only"
+  },
+  {
+    "file": "auth/register-verify-201.json",
+    "operationId": "mobileVerifyRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/register/verify",
+    "status": 201,
+    "variant": ""
+  },
+  {
+    "file": "auth/register-verify-422-email-code-expired.json",
+    "operationId": "mobileVerifyRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/register/verify",
+    "status": 422,
+    "variant": "email-code-expired"
+  },
+  {
+    "file": "auth/register-verify-422-email-code-invalid.json",
+    "operationId": "mobileVerifyRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/register/verify",
+    "status": 422,
+    "variant": "email-code-invalid"
+  },
+  {
+    "file": "auth/register-verify-429-rate-limited.json",
+    "operationId": "mobileVerifyRegistration",
+    "method": "POST",
+    "path": "/api/v1/auth/mobile/register/verify",
+    "status": 429,
+    "variant": "rate-limited"
+  }
+]

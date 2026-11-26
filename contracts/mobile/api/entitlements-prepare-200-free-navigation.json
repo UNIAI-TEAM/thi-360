@@ -1,0 +1,66 @@
+{
+  "entitlementId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examCode" : "EXAM-DEMO-01",
+  "examName" : "Đề thi THPTQG Toán",
+  "examKind" : {
+    "id" : "00000000-0000-7000-8400-000000000107",
+    "code" : "THPTQG",
+    "nameVi" : "Tốt nghiệp THPT (THPTQG)",
+    "nameEn" : "National high school graduation exam (THPTQG)"
+  },
+  "scope" : "SUBJECT",
+  "partCode" : null,
+  "subject" : {
+    "id" : "00000000-0000-7000-8200-000000000201",
+    "code" : "TOAN",
+    "nameVi" : "Toán học",
+    "nameEn" : "Mathematics"
+  },
+  "buildMode" : "STANDARD",
+  "grantSource" : {
+    "source" : "PURCHASE",
+    "orderCode" : "DH261126000001",
+    "grantedAt" : "2026-11-20T10:00:00Z"
+  },
+  "instructions" : null,
+  "timing" : "SHARED",
+  "durationMinutes" : 90,
+  "navigationMode" : "FREE",
+  "attemptsLeft" : 2,
+  "servingStatus" : "PUBLISHED",
+  "openAttempt" : null,
+  "omittedGroups" : [ ],
+  "parts" : [ {
+    "partCode" : "1fa851a2-7b2c-555e-ac24-4adb758831a6",
+    "ord" : 0,
+    "name" : "Phần I · Trắc nghiệm",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : null,
+    "questionCount" : 12,
+    "maxPoints" : 3.0
+  }, {
+    "partCode" : "c3648228-0254-54ae-9929-31c53e27d07e",
+    "ord" : 1,
+    "name" : "Phần II · Đúng/Sai",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : null,
+    "questionCount" : 4,
+    "maxPoints" : 4
+  }, {
+    "partCode" : "04152b67-d42f-5df9-bd6c-0bd5b10fad2b",
+    "ord" : 2,
+    "name" : "Phần III · Trả lời ngắn",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : null,
+    "questionCount" : 6,
+    "maxPoints" : 3.0
+  } ],
+  "preChoice" : null,
+  "afterStartChoices" : [ ],
+  "answerFormats" : [ "SINGLE_CHOICE", "TRUE_FALSE", "SHORT_ANSWER" ],
+  "listeningPolicy" : null
+}

@@ -1,0 +1,22 @@
+{
+  "productCode" : "EXAM-DEMO-01",
+  "productName" : "Exam DEMO",
+  "versionNo" : 1,
+  "attemptsGranted" : 3,
+  "listPrice" : 200000,
+  "promotion" : null,
+  "voucher" : {
+    "id" : "00000000-0000-7000-8000-000000000002",
+    "code" : "EXAM-DEMO-03",
+    "name" : "Voucher MCVDEMO",
+    "discountType" : "AMOUNT",
+    "discountValue" : 40000,
+    "maxDiscountVnd" : null,
+    "combinable" : false,
+    "discountVnd" : 40000
+  },
+  "discountApplied" : "VOUCHER_ONLY",
+  "voucherNotBetter" : false,
+  "finalPrice" : 160000,
+  "changed" : false
+}

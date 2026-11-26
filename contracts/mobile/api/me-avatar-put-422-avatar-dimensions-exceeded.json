@@ -1,0 +1,12 @@
+{
+  "code" : "AVATAR_DIMENSIONS_EXCEEDED",
+  "message" : "Ảnh đại diện vượt quá 4.096 × 4.096 điểm ảnh",
+  "fieldErrors" : [
+    {
+      "field" : "file",
+      "code" : "AVATAR_DIMENSIONS_EXCEEDED",
+      "message" : "Ảnh đại diện vượt quá 4.096 × 4.096 điểm ảnh"
+    }
+  ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

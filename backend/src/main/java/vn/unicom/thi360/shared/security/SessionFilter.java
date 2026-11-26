@@ -100,7 +100,8 @@ public class SessionFilter extends OncePerRequestFilter {
             permissions = PermissionSet.empty();
         }
         CurrentUser currentUser = new CurrentUser(userId, username, realm, access, permissions);
-        SecurityContextHolder.getContext().setAuthentication(new CurrentUserAuthenticationToken(currentUser, sid));
+        SecurityContextHolder.getContext().setAuthentication(
+                new CurrentUserAuthenticationToken(currentUser, sid, sessionResult.session().channel()));
         runWithUserMdc(currentUser, request, response, filterChain);
     }
 

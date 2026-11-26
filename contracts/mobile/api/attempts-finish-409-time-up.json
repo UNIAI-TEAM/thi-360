@@ -1,0 +1,6 @@
+{
+  "code" : "TIME_UP",
+  "message" : "Đã hết thời gian làm bài",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

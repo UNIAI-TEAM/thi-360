@@ -1,0 +1,6 @@
+{
+  "code" : "PART_CLOSED",
+  "message" : "Phần thi đã đóng hoặc chưa mở",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

@@ -33,7 +33,7 @@ import vn.unicom.thi360.shared.web.AppMessages;
  * Hồ sơ của chính tài khoản (TM 5.5): đọc và sửa họ tên, số điện thoại. Tên đăng nhập chỉ đọc; email đi qua
  * luồng xác minh và đổi email (ID-1), không sửa ở đây nên {@code email_verified_at} không bao giờ đổi.
  *
- * <p>Họ tên bắt buộc khi gửi, tối đa 100 ký tự. Số điện thoại Việt Nam 10 chữ số bắt đầu bằng 0; chuỗi rỗng xóa
+ * <p>Họ tên bắt buộc khi gửi, tối đa 200 ký tự. Số điện thoại Việt Nam 10 chữ số bắt đầu bằng 0; chuỗi rỗng xóa
  * số; không gửi {@code phone} thì giữ nguyên, kể cả số cũ do admin nhập theo quy tắc rộng hơn (tối đa 30 ký tự).
  * Mọi lần sửa ghi nhật ký {@code USER_PROFILE_UPDATED} với giá trị trước và sau.
  */

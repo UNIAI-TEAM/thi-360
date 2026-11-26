@@ -8,7 +8,7 @@ import {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("grading");
-  return { title: `${t("detail.title")} · ${t("list.title")} · Thi 360` };
+  return { title: `${t("detail.title")} · ${t("list.title")} · Thi360` };
 }
 
 export default async function GradingItemPage({

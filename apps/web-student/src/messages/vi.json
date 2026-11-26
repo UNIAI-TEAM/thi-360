@@ -177,13 +177,8 @@
       "passwordSameAsUsername": "Mật khẩu không được trùng tên đăng nhập.",
       "passwordWeak": "Mật khẩu chưa đáp ứng đủ các điều kiện.",
       "submit": "Đăng ký",
-      "termsBody": "[NỘI DUNG ĐIỀU KHOẢN SỬ DỤNG, BẢN TẠM CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]",
-      "termsClose": "Đóng",
-      "termsDraft": "Bản tạm, chờ đơn vị vận hành xác nhận.",
-      "termsLabel": "Tôi đã đọc và đồng ý với Điều khoản sử dụng của Thi 360.",
-      "termsRequired": "Bạn cần đồng ý với Điều khoản sử dụng để đăng ký.",
-      "termsTitle": "Điều khoản sử dụng",
-      "termsView": "Xem Điều khoản sử dụng",
+      "termsLabel": "Tôi đã đọc và đồng ý với <terms>Điều kiện giao dịch chung</terms> và <privacy>Chính sách bảo mật thông tin</privacy> của Thi360.",
+      "termsRequired": "Bạn cần đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin để đăng ký.",
       "title": "Đăng ký",
       "usernameHint": "4–30 ký tự gồm chữ cái không dấu, chữ số và . @ _ -; bắt đầu bằng chữ cái hoặc chữ số. Không phân biệt chữ hoa, chữ thường.",
       "usernameLabel": "Tên đăng nhập",
@@ -691,7 +686,11 @@
       "verifyNotFoundBody": "Không tìm thấy đơn hàng tương ứng với phản hồi thanh toán này.",
       "viewMyExams": "Vào Bài thi của tôi",
       "viewOrder": "Xem chi tiết đơn",
-      "viewOrders": "Xem đơn của tôi"
+      "viewOrders": "Xem đơn của tôi",
+      "app": {
+        "openApp": "Mở ứng dụng Thi360",
+        "returnHint": "Quay lại ứng dụng Thi360 để xem bài thi của bạn."
+      }
     },
     "resultPageTitle": "Kết quả thanh toán",
     "subtitle": "Kiểm tra thông tin tài khoản, bài thi và chi tiết thanh toán trước khi tiếp tục.",
@@ -734,7 +733,7 @@
     }
   },
   "common": {
-    "appName": "Thi 360",
+    "appName": "Thi360",
     "backHome": "Về trang chủ",
     "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
@@ -1084,166 +1083,12 @@
   "legal": {
     "breadcrumbHome": "Trang chủ",
     "breadcrumbLabel": "Đường dẫn trang",
+    "draftBanner": "Bản nháp, chờ đơn vị vận hành xác nhận.",
+    "effectiveFrom": "Có hiệu lực từ {date}",
     "privacy": {
-      "heading": "CHÍNH SÁCH BẢO MẬT THÔNG TIN",
-      "intro": "Công Ty CP Đầu Tư Và Phát Triển Giáo Dục HSA ({siteHost}) xin thông báo về chính sách bảo vệ thông tin cá nhân của người tiêu dùng như sau:",
-      "s1": {
-        "heading": "1. Mục đích và phạm vi thu thập thông tin",
-        "p1": "Website {siteUrl} không bán, chia sẻ hay trao đổi thông tin cá nhân của khách hàng thu thập trên trang web cho một bên thứ ba nào khác.",
-        "p2": "Thông tin cá nhân thu thập được sẽ chỉ được sử dụng để công ty cung cấp sản phẩm, dịch vụ đến khách hàng.",
-        "p3": "Khi bạn liên hệ đăng ký nhận thông tin, chat với nhân viên, gửi bình luận và thực hiện nhập thông tin để mua hàng, thông tin cá nhân mà website {siteUrl} thu thập bao gồm: Họ và tên, Địa chỉ, Điện thoại, Email…",
-        "p4": "Ngoài thông tin cá nhân là các thông tin về dịch vụ: Tên sản phẩm, Số lượng, Thời gian giao nhận sản phẩm…"
-      },
-      "s2": {
-        "b1": "Hỗ trợ khách hàng",
-        "b2": "Cung cấp thông tin liên quan đến dịch vụ",
-        "b3": "Xử lý đơn đặt hàng và cung cấp dịch vụ và thông tin qua trang web của chúng tôi theo yêu cầu của bạn",
-        "b4": "Chúng tôi có thể sẽ gửi thông tin sản phẩm, dịch vụ mới, thông tin về các sự kiện sắp tới hoặc thông tin tuyển dụng nếu Quý khách đăng ký nhận email thông báo.",
-        "b5": "Ngoài ra, chúng tôi sẽ sử dụng thông tin bạn cung cấp để hỗ trợ quản lý tài khoản khách hàng; xác nhận và thực hiện các giao dịch tài chính liên quan đến các khoản thanh toán trực tuyến của bạn.",
-        "heading": "2. Phạm vi sử dụng thông tin",
-        "intro": "Thông tin cá nhân thu thập được sẽ chỉ được website {siteUrl} sử dụng trong nội bộ công ty và cho một hoặc tất cả các mục đích sau đây:"
-      },
-      "s3": {
-        "heading": "3. Thời gian lưu trữ thông tin",
-        "p1": "Đối với thông tin cá nhân, website {siteUrl} chỉ xóa đi dữ liệu này nếu khách hàng có yêu cầu, khách hàng yêu cầu gửi mail về {email}"
-      },
-      "s4": {
-        "b1": "Công ty Cổ phần Đầu tư và Phát triển giáo dục HSA",
-        "b2": "Các đối tác có ký hợp đồng thực hiện một phần dịch vụ do Công ty. Các đối tác này sẽ nhận được những thông tin theo thỏa thuận hợp đồng (có thể một phần hoặc toàn bộ thông tin tùy theo điều khoản hợp đồng) để tiến hành hỗ trợ người dùng sử dụng dịch vụ do Công ty cung cấp.",
-        "heading": "4. Những người hoặc tổ chức có thể được tiếp cận với thông tin cá nhân",
-        "intro": "Đối tượng được tiếp cận với thông tin cá nhân của khách hàng thuộc một trong những trường hợp sau:"
-      },
-      "s5": {
-        "company": "Công ty Cổ phần Đầu tư và Phát triển giáo dục HSA",
-        "emailLabel": "Email:",
-        "hanoi": "Văn phòng Hà Nội: Số 11B, Ngách 3/29, Ngõ 3, Đường Phạm Tuấn Tài, Phường Nghĩa Đô, Thành phố Hà Nội",
-        "hcmc": "Văn phòng Hồ Chí Minh: 2/26 Nguyễn Thế Truyện, Phường Tân Sơn Nhì, Quận Tân Phú, Thành phố Hồ Chí Minh",
-        "heading": "5. Địa chỉ của đơn vị thu thập và quản lý thông tin cá nhân",
-        "phoneLabel": "Điện thoại:",
-        "websiteLabel": "Website:"
-      },
-      "s6": {
-        "heading": "6. Phương tiện và công cụ để người dùng tiếp cận và chỉnh sửa dữ liệu cá nhân của mình",
-        "p1": "Website {siteUrl} không thu thập thông tin khách hàng qua trang web. Thông tin cá nhân khách hàng được thực hiện thu thập qua email liên hệ đặt mua sản phẩm gửi về email của chúng tôi: {email} hoặc số điện thoại liên hệ đặt mua sản phẩm gọi về hotline {phone}",
-        "p2": "Bạn có thể liên hệ địa chỉ email cùng số điện thoại trên để yêu cầu Website {siteUrl} chỉnh sửa dữ liệu cá nhân của mình."
-      },
-      "s7": {
-        "b1": "Nâng cao chất lượng dịch vụ cho khách hàng",
-        "b2": "Giải quyết các tranh chấp, khiếu nại",
-        "b3": "Khi cơ quan pháp luật có yêu cầu",
-        "heading": "7. Cơ chế tiếp nhận và giải quyết khiếu nại của người tiêu dùng liên quan đến việc thông tin cá nhân bị sử dụng sai mục đích hoặc phạm vi đã thông báo",
-        "intro": "Tại website {siteUrl}, việc bảo vệ thông tin cá nhân của bạn là rất quan trọng. Bạn được đảm bảo rằng thông tin cung cấp cho chúng tôi sẽ được bảo mật. Website {siteUrl} cam kết không chia sẻ, bán hoặc cho thuê thông tin cá nhân của bạn cho bất kỳ người nào khác. Website {siteUrl} cam kết chỉ sử dụng các thông tin của bạn vào các trường hợp sau:",
-        "p2": "Website {siteUrl} hiểu rằng quyền lợi của bạn trong việc bảo vệ thông tin cá nhân cũng chính là trách nhiệm của chúng tôi nên trong bất kỳ trường hợp có thắc mắc, góp ý nào liên quan đến chính sách bảo mật của website {siteUrl} và liên quan đến việc thông tin cá nhân bị sử dụng sai mục đích hoặc phạm vi đã thông báo, vui lòng liên hệ qua số hotline {phone} hoặc email {email}"
-      },
       "title": "Chính sách bảo mật thông tin"
     },
     "terms": {
-      "heading": "ĐIỀU KIỆN GIAO DỊCH CHUNG",
-      "intro": "Điều kiện giao dịch chung này áp dụng đối với tất cả người truy cập, người được cấp quyền truy cập, học viên đăng ký/tham gia khóa học (sau đây gọi chung là “Khách hàng”) của Thi360.",
-      "s1": {
-        "heading": "1. Cung cấp dịch vụ",
-        "sub1Body": "Thi360 cung cấp các khóa học trực tuyến thông qua nền tảng học tập điện tử, bao gồm nhưng không giới hạn ở: Bài giảng trực tuyến qua Zoom, bài giảng video, tài liệu học tập, bài kiểm tra, hệ thống hỗ trợ học viên và các dịch vụ liên quan khác.",
-        "sub1Title": "1.1 Phạm vi dịch vụ:",
-        "sub2B1": "Nội dung khóa học được xây dựng theo chương trình đào tạo cụ thể, được công bố công khai trên website;",
-        "sub2B2": "Thông tin khóa học (nội dung, thời lượng, học phí, thời hạn truy cập) được công khai rõ ràng trước khi khách hàng đăng ký;",
-        "sub2B3": "Thi360 đảm bảo cung cấp đúng nội dung và thời lượng khóa học đã công bố.",
-        "sub2Title": "1.2 Tiêu chuẩn dịch vụ",
-        "sub3B1": "Khách hàng lựa chọn khóa học phù hợp trên website;",
-        "sub3B2": "Khách hàng cung cấp thông tin đăng ký và thực hiện thanh toán;",
-        "sub3B3": "Thi360 xác nhận thanh toán hợp lệ;",
-        "sub3B4": "Hệ thống cấp tài khoản truy cập khóa học cho khách hàng;",
-        "sub3B5": "Khách hàng tham gia học tập theo nội dung và thời hạn của khóa học;",
-        "sub3B6": "Thi360 hỗ trợ kỹ thuật và giải đáp trong quá trình học.",
-        "sub3Intro": "Quy trình cung cấp dịch vụ được thực hiện như sau:",
-        "sub3Title": "1.3 Quy trình cung cấp dịch vụ",
-        "sub4B1": "Học phí của từng khóa học được công bố công khai trên website tại thời điểm đăng ký;",
-        "sub4B2": "Khách hàng thực hiện thanh toán bằng phương thức chuyển khoản theo thông tin tài khoản do Thi360 cung cấp;",
-        "sub4B3": "Thi360 không thu thêm bất kỳ khoản phí nào ngoài các khoản đã được công bố, trừ trường hợp khách hàng lựa chọn thêm dịch vụ phát sinh.",
-        "sub4Title": "1.4 Biểu phí và phương thức thanh toán",
-        "sub5B1": "Khách hàng từ đủ 15 tuổi trở lên; trường hợp chưa đủ 15 tuổi phải có sự đồng ý của cha mẹ/người giám hộ;",
-        "sub5B2": "Mỗi tài khoản chỉ được cấp cho 01 cá nhân và không được chia sẻ;",
-        "sub5B3": "Khách hàng phải đảm bảo thiết bị và kết nối internet phù hợp để sử dụng dịch vụ;",
-        "sub5B4": "Dịch vụ có thể bị gián đoạn tạm thời trong các trường hợp:",
-        "sub5Sub1": "Bảo trì hệ thống;",
-        "sub5Sub2": "Sự cố kỹ thuật ngoài kiểm soát;",
-        "sub5Sub3": "Sự kiện bất khả kháng theo quy định pháp luật.",
-        "sub5Title": "1.5 Điều kiện và hạn chế cung cấp dịch vụ"
-      },
-      "s2": {
-        "heading": "2. Chính sách truy cập",
-        "p1": "Sau khi khách hàng hoàn tất thanh toán hợp lệ, hệ thống sẽ kích hoạt quyền truy cập khóa học trong vòng 48 (bốn mươi tám) giờ, tính từ 08h00 – 17h00 các ngày từ thứ Hai đến thứ Sáu (trừ ngày lễ, Tết). Việc khách hàng thực hiện thanh toán được hiểu là khách hàng đã đọc, hiểu và đồng ý bị ràng buộc với toàn bộ điều kiện giao dịch chung này.",
-        "p2": "Khách hàng có trách nhiệm kiểm tra và đảm bảo tính chính xác của các thông tin đăng ký trước khi xác nhận giao dịch (Tên khóa học, thông tin khách hàng cung cấp, thời hạn khóa học, mức học phí). Trong thời hạn 24 (hai mươi tư) giờ làm việc sau khi được kích hoạt quyền truy cập, khách hàng kiểm tra lại các thông tin, nếu phát hiện sai sót thông tin hoặc không thể truy cập được thì phải thông báo lại tới email {email} để thay đổi thông tin và khắc phục.",
-        "p3": "Quá thời hạn này, Thi360 không chịu trách nhiệm đối với các sai sót phát sinh nêu trên."
-      },
-      "s3": {
-        "b1": "Hỗ trợ lỗi kỹ thuật: Trong vòng 24 (hai mươi tư) giờ tính từ 08h00 – 17h30 các ngày từ thứ Hai đến thứ Sáu (trừ ngày lễ, Tết) kể từ khi nhận phản ánh qua các kênh chính thức qua:",
-        "b1Email": "Email: {email}",
-        "b1Hotline": "Hotline: {phone}",
-        "b1Note": "Trường hợp bất khả kháng hoặc sự cố phức tạp cần thêm thời gian xử lý, Thi360 sẽ thông báo cụ thể cho khách hàng.",
-        "b2": "Cập nhật nội dung: Thi360 thực hiện cập nhật, bổ sung nội dung khóa học trong trường hợp có thay đổi từ chương trình thi chính thức (ĐGNL, ĐGTD, v.v.) mà không thu thêm phí trong thời hạn khóa học còn hiệu lực.",
-        "b3": "Gia hạn truy cập: Trường hợp dịch vụ bị gián đoạn từ 48 giờ trở lên do lỗi từ phía Thi360, Khách hàng sẽ được gia hạn thời gian học tương ứng với thời gian bị gián đoạn.",
-        "heading": "3. Chính sách bảo hành dịch vụ",
-        "intro": "Thi360 cam kết hỗ trợ kỹ thuật và chất lượng nội dung trong suốt thời hạn khóa học:"
-      },
-      "s4": {
-        "heading": "4. Chính sách chuyển nhượng",
-        "p1": "Tài khoản học là tài khoản cá nhân không được chuyển nhượng, cho thuê, chia sẻ hoặc sử dụng chung cho người khác dưới bất kỳ hình thức nào sau khi đã được kích hoạt.",
-        "p2": "Miễn trừ trách nhiệm: Thi360 không chịu trách nhiệm pháp lý và có quyền đơn phương chấm dứt dịch vụ mà không phải hoàn tiền hay bồi thường cho khách hàng nếu phát hiện hành vi tự ý chuyển nhượng, chia sẻ hoặc sử dụng chung tài khoản."
-      },
-      "s5": {
-        "heading": "5. Chính sách chuyển đổi khóa học",
-        "p1": "Khách hàng có thể được xem xét chuyển đổi sang một khóa học khác do Thi360 cung cấp, với điều kiện yêu cầu được gửi trong vòng 07 ngày kể từ ngày kích hoạt tài khoản và khách hàng chưa hoàn thành quá 20% nội dung khóa học. Yêu cầu chuyển đổi phải được gửi tới email {email} hoặc hotline: {phone}"
-      },
-      "s6": {
-        "aTitle": "a. Các trường hợp được xem xét hoàn tiền",
-        "b1": "Khách hàng đã truy cập và xem từ 01 bài học trở lên, bất kể lý do ngừng học.",
-        "b2": "Khách hàng thay đổi nhu cầu cá nhân (không có thời gian học, thay đổi mục tiêu, lựa chọn đơn vị khác, v.v.).",
-        "b3": "Khách hàng không đạt kết quả như kỳ vọng do không hoàn thành đủ lộ trình học được đề xuất.",
-        "b4": "Khóa học thuộc chương trình khuyến mãi, giảm giá đặc biệt, hoặc mua theo gói (combo).",
-        "b5": "Tài khoản đã được tặng/ chuyển nhượng từ bên thứ ba.",
-        "b6": "Vi phạm điều khoản sử dụng dịch vụ.",
-        "b7": "Phụ huynh/học sinh mua thay cho người khác mà không thông báo trước.",
-        "bIntro": "Thi360 không thực hiện hoàn tiền trong các trường hợp sau:",
-        "bTitle": "b. Chính sách hoàn tiền theo mục a nêu trên sẽ không được áp dụng nếu thuộc các trường hợp sau:",
-        "c1": "Gửi yêu cầu tới email {email} trong thời hạn 24 giờ kể từ thời điểm phát sinh sự kiện thuộc trường hợp được xem xét hoàn tiền.",
-        "c2": "Cung cấp đầy đủ thông tin: họ tên, số điện thoại đăng ký, tên khóa học, lý do yêu cầu hoàn tiền, bằng chứng liên quan (nếu có).",
-        "c3": "Thi360 xác minh và phản hồi trong vòng 03 ngày làm việc.",
-        "c4": "Nếu được chấp thuận, tiền sẽ được hoàn trả theo đúng hình thức thanh toán ban đầu trong vòng 07 ngày làm việc.",
-        "cNote": "Lưu ý: Phí dịch vụ thanh toán (nếu có) sẽ không được hoàn lại trong mọi trường hợp.",
-        "cTitle": "c. Quy trình yêu cầu hoàn tiền (nếu thuộc diện được xét)",
-        "colCase": "Trường hợp",
-        "colCondition": "Điều kiện",
-        "colRate": "Mức hoàn",
-        "heading": "6. Chính sách hoàn tiền",
-        "intro": "Việc hoàn tiền được thực hiện theo quy định tại Điều này, đảm bảo phù hợp với quy định pháp luật về bảo vệ quyền lợi người tiêu dùng.",
-        "row1Case": "Lỗi kỹ thuật từ phía Thi360 khiến học viên không thể truy cập trong vòng 72h",
-        "row1Condition": "Có xác nhận từ bộ phận kỹ thuật và khách hàng chưa truy cập bất kỳ bài học nào.",
-        "row1Rate": "Hoàn 100%",
-        "row2Case": "Thi360 hủy khóa học hoặc thay đổi nội dung trọng yếu mà không thông báo",
-        "row2Condition": "Trong vòng 7 ngày kể từ khi phát sinh sự thay đổi",
-        "row2Rate": "Hoàn 100%"
-      },
-      "s7": {
-        "a1": "Tiến hành cung cấp các dịch vụ cho khách hàng sau khi khách hàng đã hoàn thành các thủ tục và các điều kiện bắt buộc mà nêu ra.",
-        "a2": "Cung cấp dịch vụ theo đúng thời gian, thời lượng và nội dung của chương trình.",
-        "a3": "Hỗ trợ về kỹ thuật và nội dung trong quá trình cung cấp dịch vụ.",
-        "a4": "Thông báo các thay đổi nếu có trong quá trình cung cấp dịch vụ.",
-        "aTitle": "a. Nghĩa vụ của Thi360",
-        "b1": "Tất cả các thông tin đăng ký mà khách hàng cung cấp là hợp pháp, trung thực và chính xác. Khách hàng chịu trách nhiệm trước pháp luật về các thông tin này. Khi có sự thay đổi thông tin mà khách hàng cung cấp, khách hàng phải thông báo lại cho Thi360 trong thời gian 48 giờ để cập nhật. Thi360 không chịu trách nhiệm đối với quá trình hoặc kết quả cung cấp dịch vụ bị ảnh hưởng do có thông tin thay đổi mà khách hàng không cập nhật.",
-        "b2": "Khách hàng không được sử dụng dịch vụ mà Thi360 cung cấp để vi phạm bất kỳ điều luật hoặc quy định hiện hành nào.",
-        "b3": "Khách hàng trong quá trình sử dụng dịch vụ không được thực hiện các hành vi chống đối, xúc phạm danh dự, nhân phẩm của nhân viên Thi360, bên thứ ba, có các hành động và lời nói xâm phạm đến uy tín của Thi360.",
-        "b4": "Khách hàng hoàn toàn chịu trách nhiệm duy trì bảo mật tài khoản và dữ liệu của mình và cho tất cả các nội dung được tải lên và mọi hoạt động liên quan đến tài khoản của khách hàng ngay cả khi nội dung và/hoặc hoạt động được tạo, được tải lên hoặc tiến hành bởi Thi360 hoặc một số bên thứ ba đã có quyền truy cập vào tài khoản của khách hàng.",
-        "b5": "Khách hàng thừa nhận và đồng ý rằng Thi360 và tất cả nội dung Thi360/nhân viên Thi360/đối tác của chúng tôi cung cấp cho khách hàng thông qua việc cung cấp dịch vụ được bảo hộ quyền sở hữu trí tuệ thuộc về Thi360. Trừ khi được Thi360 đồng ý bằng văn bản, khách hàng đồng ý chỉ được sử dụng các dịch vụ, nội dung mà chúng tôi cung cấp để phục vụ mục đích học tập của cá nhân; không sửa đổi, thuê, cho thuê, cho mượn, bán, phân phối hoặc tạo ra các tác phẩm phái sinh dựa trên toàn bộ hoặc một phần dịch vụ hoặc nội dung mà chúng tôi cung cấp.",
-        "bTitle": "b. Nghĩa vụ của khách hàng",
-        "heading": "7. Nghĩa vụ của mỗi bên"
-      },
-      "s8": {
-        "effectiveDate": "Điều khoản giao dịch chung này có hiệu lực kể từ ngày 01/01/2026",
-        "heading": "8. Điều khoản chung",
-        "p1": "Thi360 có quyền kiểm tra và tiến hành các hành động thích hợp (bao gồm cả tố tụng), từ chối hoặc tạm ngừng/ngừng cung cấp dịch vụ mà không phải báo trước, hoàn trả tiền hoặc bồi thường đối với khách hàng vi phạm một trong các điều kiện giao dịch chung hoặc thông tin đăng ký không chính xác, không đầy đủ, có dấu hiệu vi phạm pháp luật. Trường hợp các vi phạm của khách hàng gây ra thiệt hại cho Thi360 thì Thi360 có quyền yêu cầu khách hàng bồi thường toàn bộ thiệt hại.",
-        "p2": "Khi truy cập, sử dụng website {siteUrl}, khách hàng đã mặc nhiên đồng ý với các điều khoản và điều kiện đề ra ở đây. Để biết được các sửa đổi mới nhất, khách hàng nên thường xuyên kiểm tra lại “Điều kiện giao dịch chung”. Thi360 có quyền thay đổi, điều chỉnh, thêm hay bớt các nội dung của “Điều kiện giao dịch chung” tại bất kỳ thời điểm nào và thông báo đến khách hàng trên website. Phiên bản mới nhất được cập nhật tại website có hiệu lực kể từ thời điểm đăng tải cập nhật. Nếu khách hàng vẫn tiếp tục sử dụng dịch vụ sau khi có các thay đổi như vậy thì có nghĩa là khách hàng đã chấp thuận các thay đổi đó.",
-        "p3": "Mọi tranh chấp phát sinh sẽ được ưu tiên giải quyết thông qua thương lượng. Trường hợp không đạt được thỏa thuận, tranh chấp sẽ được giải quyết tại cơ quan có thẩm quyền theo pháp luật Việt Nam."
-      },
       "title": "Điều kiện giao dịch chung"
     }
   },
@@ -1278,8 +1123,8 @@
   },
   "metadata": {
     "description": "Luyện thi trực tuyến theo đúng cấu trúc đề: HSA, QDA, BCA, V-ACT, SPT, SP2E, tốt nghiệp THPT",
-    "title": "Thi 360 — Luyện thi trực tuyến",
-    "titleTemplate": "{title} · Thi 360"
+    "title": "Thi360 — Luyện thi trực tuyến",
+    "titleTemplate": "{title} · Thi360"
   },
   "notFound": {
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",

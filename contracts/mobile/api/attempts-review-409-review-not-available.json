@@ -1,0 +1,6 @@
+{
+  "code" : "REVIEW_NOT_AVAILABLE",
+  "message" : "Chưa thể xem lại bài làm ở trạng thái hiện tại",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

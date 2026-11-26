@@ -1,0 +1,23 @@
+{
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examVersionNo" : 1,
+  "examName" : "HSA theo phần Toán (thu nhỏ)",
+  "examKindCode" : "HSA",
+  "scope" : "PART",
+  "partCode" : "TOAN",
+  "choices" : { },
+  "attemptNo" : 2,
+  "state" : "GRADING_ERROR",
+  "regrading" : false,
+  "statusMessage" : "Bài làm đã được ghi nhận, kết quả đang được xử lý",
+  "endReason" : "SUBMITTED",
+  "startedAt" : "2026-11-20T10:00:00Z",
+  "finishedAt" : "2026-11-20T10:00:00Z",
+  "practiceScoring" : "RAW",
+  "resultView" : "SCORE",
+  "reviewAvailable" : false,
+  "compensated" : false,
+  "parts" : [ ],
+  "subjects" : [ ]
+}

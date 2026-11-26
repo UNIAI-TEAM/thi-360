@@ -1,0 +1,12 @@
+{
+  "code" : "AVATAR_INVALID_IMAGE",
+  "message" : "Tệp không phải ảnh jpg, png hoặc webp hợp lệ",
+  "fieldErrors" : [
+    {
+      "field" : "file",
+      "code" : "AVATAR_INVALID_IMAGE",
+      "message" : "Tệp không phải ảnh jpg, png hoặc webp hợp lệ"
+    }
+  ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

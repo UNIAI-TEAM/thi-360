@@ -1,0 +1,180 @@
+{
+  "serverNow" : "2026-11-20T10:00:00Z",
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "GRADING",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examVersionNo" : 1,
+  "examName" : "HSA theo phần Toán (thu nhỏ)",
+  "examKindCode" : "HSA",
+  "scope" : "PART",
+  "partCode" : "TOAN",
+  "timing" : "PER_PART",
+  "navigationMode" : "SEQUENTIAL",
+  "attemptNo" : 1,
+  "choices" : { },
+  "startedAt" : "2026-11-20T10:00:00Z",
+  "maxScore" : 5.0,
+  "audioPlays" : [ ],
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000003",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "partName" : "Toán học và xử lí số liệu",
+    "ord" : 0,
+    "state" : "CLOSED",
+    "durationMinutes" : 5,
+    "questionCount" : 5,
+    "maxPoints" : 5.0,
+    "startedAt" : "2026-11-20T10:00:00Z",
+    "deadlineAt" : "2026-11-20T10:00:00Z",
+    "closedAt" : "2026-11-20T10:00:00Z",
+    "choice" : null,
+    "choiceDeadlineAt" : null,
+    "items" : [ {
+      "itemId" : "00000000-0000-7000-8000-000000000004",
+      "parentItemId" : null,
+      "displayNo" : 1,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 1.0,
+      "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+      "componentCode" : "TOAN",
+      "blockId" : "d5faf5d5-1022-55b4-b74b-bff3a29c099b",
+      "optionOrder" : [ "a", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>TESTQ-TOAN-MC1-017 content</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "a",
+          "content" : "<p>One</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Two</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000005",
+      "parentItemId" : null,
+      "displayNo" : 2,
+      "unitCount" : 1,
+      "questionType" : "SHORT_ANSWER",
+      "points" : 1.0,
+      "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+      "componentCode" : "TOAN",
+      "blockId" : "b32c53f2-665f-5322-9ce4-20f6cee065d9",
+      "optionOrder" : [ ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>Math example 6</p>",
+      "questionBody" : {
+        "type" : "SHORT_ANSWER",
+        "inputHint" : "",
+        "answerFormat" : null
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000006",
+      "parentItemId" : null,
+      "displayNo" : null,
+      "unitCount" : 0,
+      "questionType" : "QUESTION_SET",
+      "points" : 3.0,
+      "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+      "componentCode" : "TOAN",
+      "blockId" : "4a44e6e6-071c-5cf4-b636-7c654515f51e",
+      "optionOrder" : [ ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>Mapid set</p>",
+      "questionBody" : {
+        "type" : "QUESTION_SET",
+        "passage" : "<p>Mapid context</p>",
+        "blankNumberStart" : null
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000007",
+      "parentItemId" : "00000000-0000-7000-8000-000000000008",
+      "displayNo" : 3,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 1.0,
+      "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+      "componentCode" : "TOAN",
+      "blockId" : "4a44e6e6-071c-5cf4-b636-7c654515f51e",
+      "optionOrder" : [ "b", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>Mapid child</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Two</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>One</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000009",
+      "parentItemId" : "00000000-0000-7000-8000-000000000010",
+      "displayNo" : 4,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 1.0,
+      "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+      "componentCode" : "TOAN",
+      "blockId" : "4a44e6e6-071c-5cf4-b636-7c654515f51e",
+      "optionOrder" : [ "a", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>Mapid child</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "a",
+          "content" : "<p>One</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Two</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000011",
+      "parentItemId" : "00000000-0000-7000-8000-000000000012",
+      "displayNo" : 5,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 1.0,
+      "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+      "componentCode" : "TOAN",
+      "blockId" : "4a44e6e6-071c-5cf4-b636-7c654515f51e",
+      "optionOrder" : [ "b", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>Mapid child</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Two</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>One</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    } ]
+  } ]
+}

@@ -1,0 +1,6 @@
+{
+  "code" : "NO_SERVING_OPTION",
+  "message" : "Bài thi không còn phương án phục vụ phù hợp với quyền dùng của bạn",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

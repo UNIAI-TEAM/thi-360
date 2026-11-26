@@ -1,0 +1,69 @@
+{
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examVersionNo" : 1,
+  "examName" : "HSA theo phần Toán (thu nhỏ)",
+  "examKindCode" : "HSA",
+  "scope" : "PART",
+  "partCode" : "TOAN",
+  "choices" : { },
+  "attemptNo" : 1,
+  "state" : "SCORED",
+  "regrading" : false,
+  "endReason" : "SUBMITTED",
+  "startedAt" : "2026-11-20T10:00:00Z",
+  "finishedAt" : "2026-11-20T10:00:00Z",
+  "gradedAt" : "2026-11-20T10:00:00Z",
+  "practiceScoring" : "RAW",
+  "rawScore" : 0.0,
+  "displayScore" : 0.0,
+  "rawMaxScore" : 5.0,
+  "scaleMax" : 5.0,
+  "resultView" : "SCORE",
+  "reviewAvailable" : false,
+  "faultFlag" : "SYSTEM_FAULT",
+  "faultReason" : "Transient worker fault",
+  "compensated" : false,
+  "faultMessage" : "Lượt kết thúc do lỗi hệ thống",
+  "statistics" : {
+    "correctCount" : 0,
+    "partialCount" : 0,
+    "wrongCount" : 0,
+    "blankCount" : 5,
+    "pendingReviewCount" : 0,
+    "totalCount" : 5
+  },
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000003",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "partName" : "Toán học và xử lí số liệu",
+    "ord" : 0,
+    "skipped" : false,
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 5.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 5,
+      "pendingReviewCount" : 0,
+      "totalCount" : 5
+    }
+  } ],
+  "subjects" : [ {
+    "code" : "TOAN",
+    "name" : "Toán học",
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 5.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 5,
+      "pendingReviewCount" : 0,
+      "totalCount" : 5
+    }
+  } ]
+}

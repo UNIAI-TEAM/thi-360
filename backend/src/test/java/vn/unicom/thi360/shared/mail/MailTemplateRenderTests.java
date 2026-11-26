@@ -29,7 +29,8 @@ class MailTemplateRenderTests {
     static void startContext() {
         context = new GenericApplicationContext();
         context.refresh();
-        renderer = new MailTemplateRenderer(context, "classpath:mail/templates/", WEB_URL);
+        renderer = new MailTemplateRenderer(
+                context, "classpath:mail/templates/", WEB_URL, MailProperties.DEFAULT_PRODUCT_NAME);
     }
 
     @AfterAll
@@ -104,7 +105,8 @@ class MailTemplateRenderTests {
                         .lines()
                         .findFirst()
                         .orElseThrow()
-                        .strip();
+                        .strip()
+                        .replace("[(${productName})]", MailProperties.DEFAULT_PRODUCT_NAME);
 
                 RenderedMail mail = renderer.render(kind, locale, MailSamples.model(kind));
 
@@ -128,7 +130,8 @@ class MailTemplateRenderTests {
             }
         }
         Files.writeString(templates.resolve("email_verify.en.txt"), "Code for [(${fullName})]\nbody [(${code})]\n");
-        MailTemplateRenderer custom = new MailTemplateRenderer(context, templates.toUri().toString(), WEB_URL);
+        MailTemplateRenderer custom = new MailTemplateRenderer(
+                context, templates.toUri().toString(), WEB_URL, MailProperties.DEFAULT_PRODUCT_NAME);
         Map<String, Object> model = new HashMap<>(MailSamples.model(MailKind.EMAIL_VERIFY));
         model.put("fullName", "Alex\r\nBcc: attacker@example.test");
 
@@ -171,6 +174,83 @@ class MailTemplateRenderTests {
                         .as("%s without '%s'", kind, missing)
                         .isInstanceOf(IllegalArgumentException.class)
                         .hasMessageContaining(missing);
+            }
+        }
+    }
+
+    @Test
+    void defaultProductNameEverywhere() {
+        assertProductNameEverywhere(renderer, MailProperties.DEFAULT_PRODUCT_NAME, false);
+    }
+
+    @Test
+    void configuredProductNameEverywhere() {
+        MailTemplateRenderer custom =
+                new MailTemplateRenderer(context, "classpath:mail/templates/", WEB_URL, "Acme Học");
+        assertProductNameEverywhere(custom, "Acme Học", true);
+    }
+
+    @Test
+    void productNameIsHtmlEscaped() {
+        MailTemplateRenderer custom =
+                new MailTemplateRenderer(context, "classpath:mail/templates/", WEB_URL, HOSTILE);
+        RenderedMail mail = custom.render(MailKind.PASSWORD_RESET, "en", MailSamples.model(MailKind.PASSWORD_RESET));
+
+        assertThat(mail.html()).doesNotContain("<script>").contains("&lt;script&gt;");
+    }
+
+    private static void assertProductNameEverywhere(
+            MailTemplateRenderer target, String productName, boolean forbidDefaultBrand) {
+        String spacedLegacy = "Thi" + " 360";
+        String headerPattern = "#065F46[^>]*>\\s*" + java.util.regex.Pattern.quote(productName) + "\\s*</td>";
+
+        for (MailKind kind : MailKind.values()) {
+            for (String locale : MailLocale.SUPPORTED) {
+                String where = kind + "/" + locale;
+                RenderedMail mail = target.render(kind, locale, MailSamples.model(kind));
+
+                assertThat(mail.subject()).as("subject of %s", where)
+                        .contains(productName)
+                        .doesNotContain(spacedLegacy)
+                        .doesNotContain("productName");
+
+                List<String> nonBlankLines = mail.text().lines()
+                        .map(String::strip)
+                        .filter(line -> !line.isEmpty())
+                        .toList();
+                assertThat(nonBlankLines).as("text lines of %s", where).isNotEmpty();
+                assertThat(nonBlankLines.getLast()).as("text signature of %s", where).isEqualTo(productName);
+                assertThat(mail.text()).as("text of %s", where)
+                        .doesNotContain(spacedLegacy)
+                        .doesNotContain("productName");
+
+                String footerPhrase = locale.equals("vi")
+                        ? "Đây là thư tự động từ " + productName + "."
+                        : "This is an automated message from " + productName + ".";
+                assertThat(mail.html()).as("html of %s", where)
+                        .contains("<title>" + mail.subject() + "</title>")
+                        .containsPattern(headerPattern)
+                        .contains(footerPhrase)
+                        .doesNotContain(spacedLegacy)
+                        .doesNotContain("productName");
+
+                if (kind == MailKind.EMAIL_CHANGED_NOTICE || kind == MailKind.PASSWORD_RESET) {
+                    String bodyBeforeSignature = String.join("\n", nonBlankLines.subList(0, nonBlankLines.size() - 1));
+                    assertThat(bodyBeforeSignature).as("text body of %s", where).contains(productName);
+                    String bodyPhrase = locale.equals("vi")
+                            ? "tài khoản " + productName
+                            : "your " + productName + " account";
+                    assertThat(mail.html()).as("html body of %s", where).contains(bodyPhrase);
+                }
+
+                if (forbidDefaultBrand) {
+                    assertThat(mail.subject()).as("subject of %s has no default brand", where)
+                            .doesNotContain(MailProperties.DEFAULT_PRODUCT_NAME);
+                    assertThat(mail.text()).as("text of %s has no default brand", where)
+                            .doesNotContain(MailProperties.DEFAULT_PRODUCT_NAME);
+                    assertThat(mail.html()).as("html of %s has no default brand", where)
+                            .doesNotContain(MailProperties.DEFAULT_PRODUCT_NAME);
+                }
             }
         }
     }

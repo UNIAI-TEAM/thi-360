@@ -1,0 +1,6 @@
+{
+  "code" : "AUDIO_PLAYS_EXHAUSTED",
+  "message" : "Đã hết số lần nghe cho phép của tệp audio này",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

@@ -18,9 +18,9 @@ vi.mock("next/font/google", () => ({ Be_Vietnam_Pro: () => ({ variable: "--font-
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
 
 describe("web-student tiêu đề trang", () => {
-  it("layout gốc đặt mẫu '<tên trang> · Thi 360'; các trang con chỉ trả tên trang, not-found tự ghép theo cùng mẫu", async () => {
+  it("layout gốc đặt mẫu '<tên trang> · Thi360'; các trang con chỉ trả tên trang, not-found tự ghép theo cùng mẫu", async () => {
     const layout = await (await import("./layout")).generateMetadata();
-    expect(layout.title).toEqual({ default: "Thi 360 — Luyện thi trực tuyến", template: "%s · Thi 360" });
+    expect(layout.title).toEqual({ default: "Thi360 — Luyện thi trực tuyến", template: "%s · Thi360" });
     expect(layout.description).not.toMatch(/HSA và QDA/);
 
     expect((await (await import("./login/page")).generateMetadata()).title).toBe("Đăng nhập");
@@ -30,24 +30,38 @@ describe("web-student tiêu đề trang", () => {
     expect((await (await import("./account/orders/[code]/page")).generateMetadata()).title).toBe("Chi tiết đơn hàng");
     expect((await (await import("./checkout/[code]/page")).generateMetadata()).title).toBe("Xác nhận mua");
     expect((await (await import("./checkout/result/page")).generateMetadata()).title).toBe("Kết quả thanh toán");
+    expect((await (await import("./checkout/result/app/page")).generateMetadata()).title).toBe("Kết quả thanh toán");
+    expect((await (await import("./dieu-khoan-giao-dich-chung/page")).generateMetadata()).title).toBe(
+      "Điều kiện giao dịch chung",
+    );
+    expect((await (await import("./chinh-sach-bao-mat-thong-tin/page")).generateMetadata()).title).toBe(
+      "Chính sách bảo mật thông tin",
+    );
     expect((await (await import("./forbidden/page")).generateMetadata()).title).toBe(
       "Bạn không có quyền vào trang này",
     );
-    expect((await (await import("./not-found")).generateMetadata()).title).toBe("Không tìm thấy trang · Thi 360");
+    expect((await (await import("./not-found")).generateMetadata()).title).toBe("Không tìm thấy trang · Thi360");
   });
 
   it("bản tiếng Anh dùng cùng mẫu", async () => {
     state.locale = "en";
     try {
       const layout = await (await import("./layout")).generateMetadata();
-      expect(layout.title).toMatchObject({ template: "%s · Thi 360" });
+      expect(layout.title).toMatchObject({ template: "%s · Thi360" });
       expect((await (await import("./home/page")).generateMetadata()).title).toBe("My exams");
       expect((await (await import("./account/orders/page")).generateMetadata()).title).toBe("My orders");
       expect((await (await import("./account/orders/[code]/page")).generateMetadata()).title).toBe("Order details");
       expect((await (await import("./checkout/[code]/page")).generateMetadata()).title).toBe("Confirm purchase");
       expect((await (await import("./checkout/result/page")).generateMetadata()).title).toBe("Payment result");
+      expect((await (await import("./checkout/result/app/page")).generateMetadata()).title).toBe("Payment result");
+      expect((await (await import("./dieu-khoan-giao-dich-chung/page")).generateMetadata()).title).toBe(
+        "General transaction terms",
+      );
+      expect((await (await import("./chinh-sach-bao-mat-thong-tin/page")).generateMetadata()).title).toBe(
+        "Information privacy policy",
+      );
       expect((await (await import("./not-found")).generateMetadata()).title).toBe(
-        `${enMessages.notFound.title} · Thi 360`,
+        `${enMessages.notFound.title} · Thi360`,
       );
     } finally {
       state.locale = "vi";

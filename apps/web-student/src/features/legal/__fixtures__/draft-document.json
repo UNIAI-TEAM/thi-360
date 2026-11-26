@@ -1,0 +1,41 @@
+{
+  "id": "terms",
+  "locale": "vi",
+  "version": "2026-12-01-draft-1",
+  "status": "draft",
+  "contentHash": "b39df91c44383b51ff1f84c644c9422cf69fb0e94a4ad422eff0c837137ddceb",
+  "effectiveDate": null,
+  "title": "Điều kiện giao dịch chung (bản mẫu kiểm thử)",
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "1. Mục mẫu"
+    },
+    {
+      "type": "paragraph",
+      "text": "Đoạn văn bản mẫu dùng riêng cho kiểm thử trạng thái bản nháp."
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Mục danh sách thứ nhất",
+        "Mục danh sách thứ hai"
+      ]
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Cột 1",
+        "Cột 2"
+      ],
+      "rows": [
+        [
+          "Giá trị A",
+          "Giá trị B"
+        ]
+      ]
+    }
+  ]
+}

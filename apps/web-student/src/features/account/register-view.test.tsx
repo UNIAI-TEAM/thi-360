@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import termsVi from "../../../../../contracts/mobile/legal/terms.vi.json";
 import { EmailCodeStatusError } from "@/features/account/api";
 import { ApiStatusError } from "@/lib/api/client";
 import en_messages from "@/messages/en.json";
@@ -101,7 +102,7 @@ describe("RegisterView (2-step OTP)", () => {
         email: "an@thi360.vn",
         password: "Thi360@abc",
         acceptTerms: true,
-        termsVersion: "2026-11",
+        termsVersion: termsVi.version,
         callbackUrl: "/checkout/BCA-FULL",
       }),
     );
@@ -244,14 +245,16 @@ describe("RegisterView (2-step OTP)", () => {
     await waitFor(() => expect(field).toHaveFocus());
   });
 
-  it("chưa đồng ý điều khoản: báo lỗi tại ô, không gọi API (AC-12)", async () => {
+  it("consentRequired", async () => {
     const user = userEvent.setup();
     renderView();
 
     await fillValid(user);
     await user.click(screen.getByRole("button", { name: "Đăng ký" }));
 
-    expect(await screen.findByText("Bạn cần đồng ý với Điều khoản sử dụng để đăng ký.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Bạn cần đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin để đăng ký."),
+    ).toBeInTheDocument();
     expect(mocks.startRegisterApi).not.toHaveBeenCalled();
   });
 
@@ -290,16 +293,49 @@ describe("RegisterView (2-step OTP)", () => {
     );
   });
 
-  it("điều khoản mở trong hộp thoại và đóng được (AC-12)", async () => {
+  it("consentLinks", () => {
+    const { container } = renderView();
+
+    const termsLink = screen.getByRole("link", { name: "Điều kiện giao dịch chung" });
+    expect(termsLink).toHaveAttribute("href", "/dieu-khoan-giao-dich-chung");
+    expect(termsLink).toHaveAttribute("target", "_blank");
+    expect(termsLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    const privacyLink = screen.getByRole("link", { name: "Chính sách bảo mật thông tin" });
+    expect(privacyLink).toHaveAttribute("href", "/chinh-sach-bao-mat-thong-tin");
+    expect(privacyLink).toHaveAttribute("target", "_blank");
+    expect(privacyLink).toHaveAttribute("rel", "noopener noreferrer");
+
+    const checkboxLabel = termsLink.closest("label");
+    expect(checkboxLabel).toHaveTextContent(
+      "Tôi đã đọc và đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin của Thi360.",
+    );
+    expect(screen.queryByRole("button", { name: "Xem Điều khoản sử dụng" })).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain("NỘI DUNG ĐIỀU KHOẢN SỬ DỤNG");
+  });
+
+  it("sendsTermsVersionFromFile", async () => {
+    mocks.startRegisterApi.mockResolvedValue({
+      registrationId: REG_ID,
+      email: "an@thi360.vn",
+      resendAfterSeconds: 60,
+    });
     const user = userEvent.setup();
     renderView();
 
-    await user.click(screen.getByRole("button", { name: "Xem Điều khoản sử dụng" }));
-    const dialog = await screen.findByRole("dialog", { name: "Điều khoản sử dụng" });
-    expect(within(dialog).getByText(/NỘI DUNG ĐIỀU KHOẢN SỬ DỤNG/)).toBeInTheDocument();
+    await fillValid(user);
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Đăng ký" }));
 
-    await user.click(within(dialog).getAllByRole("button", { name: "Đóng" })[0]!);
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() =>
+      expect(mocks.startRegisterApi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          acceptTerms: true,
+          termsVersion: termsVi.version,
+        }),
+      ),
+    );
+    expect(termsVi.version).toBe("2026-11-26");
   });
 
   it("liên kết Đăng nhập giữ callbackUrl hợp lệ", () => {

@@ -1,0 +1,12 @@
+{
+  "code" : "VALIDATION_FAILED",
+  "message" : "Dữ liệu không hợp lệ",
+  "fieldErrors" : [
+    {
+      "field" : "phone",
+      "code" : "PHONE_INVALID",
+      "message" : "Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0"
+    }
+  ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

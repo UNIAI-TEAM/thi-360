@@ -5,7 +5,7 @@ import { QuestionVersionsView } from "@/features/questions/components/question-v
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("questions.detail");
-  return { title: `${t("tabs.versions")} · ${t("title")} · Thi 360` };
+  return { title: `${t("tabs.versions")} · ${t("title")} · Thi360` };
 }
 
 export default async function QuestionVersionsPage({ params }: { params: Promise<{ id: string }> }) {

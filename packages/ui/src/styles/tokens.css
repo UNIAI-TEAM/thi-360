@@ -1,5 +1,5 @@
 /*
- * Token giao diện Thi 360 — bảng màu mặc định "Thi 360 Xanh lá" (DESIGN.md mục 2–4, 10).
+ * Token giao diện Thi360 — bảng màu mặc định "Thi360 Xanh lá" (DESIGN.md mục 2–4, 10).
  * Thành phần chỉ dùng token, không viết mã màu trực tiếp; file này là nơi duy nhất chứa mã màu.
  * Cấu hình giao diện toàn hệ thống (T17) ghi đè các biến này trên thẻ <html>.
  * `static`: phát ra mọi biến kể cả khi chưa có lớp tiện ích dùng tới, để ghi đè và `var()` trực tiếp luôn hoạt động.

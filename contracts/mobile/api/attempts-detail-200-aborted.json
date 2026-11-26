@@ -1,0 +1,7 @@
+{
+  "serverNow" : "2026-11-20T10:00:00Z",
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "ABORTED",
+  "abortReason" : "STALE_STARTING",
+  "retryable" : true
+}

@@ -177,13 +177,8 @@
       "passwordSameAsUsername": "Password must not match the username.",
       "passwordWeak": "Password does not meet all the requirements.",
       "submit": "Register",
-      "termsBody": "[TERMS OF USE TEXT, DRAFT PENDING CONFIRMATION BY THE OPERATOR]",
-      "termsClose": "Close",
-      "termsDraft": "Draft text, pending confirmation by the operator.",
-      "termsLabel": "I have read and agree to the Terms of Use of Thi 360.",
-      "termsRequired": "You must agree to the Terms of Use to register.",
-      "termsTitle": "Terms of Use",
-      "termsView": "View the Terms of Use",
+      "termsLabel": "I have read and agree to the <terms>General Transaction Terms</terms> and <privacy>Information Privacy Policy</privacy> of Thi360.",
+      "termsRequired": "You must agree to the General Transaction Terms and Information Privacy Policy to register.",
       "title": "Register",
       "usernameHint": "4–30 characters: unaccented letters, digits and . @ _ -; starts with a letter or digit. Not case-sensitive.",
       "usernameLabel": "Username",
@@ -691,7 +686,11 @@
       "verifyNotFoundBody": "No order was found for this payment response.",
       "viewMyExams": "Go to My exams",
       "viewOrder": "View order details",
-      "viewOrders": "View my orders"
+      "viewOrders": "View my orders",
+      "app": {
+        "openApp": "Open Thi360 app",
+        "returnHint": "Return to the Thi360 app to view your exam."
+      }
     },
     "resultPageTitle": "Payment result",
     "subtitle": "Review your account, exam details, and payment breakdown before continuing.",
@@ -734,7 +733,7 @@
     }
   },
   "common": {
-    "appName": "Thi 360",
+    "appName": "Thi360",
     "backHome": "Back to home",
     "closeToast": "Close toast",
     "loading": "Loading",
@@ -1084,166 +1083,12 @@
   "legal": {
     "breadcrumbHome": "Home",
     "breadcrumbLabel": "Breadcrumb",
+    "draftBanner": "Draft, pending confirmation by the operator.",
+    "effectiveFrom": "Effective from {date}",
     "privacy": {
-      "heading": "INFORMATION PRIVACY POLICY",
-      "intro": "HSA Education Investment and Development JSC ({siteHost}) announces our personal information protection policy for consumers as follows:",
-      "s1": {
-        "heading": "1. Purpose and scope of information collection",
-        "p1": "Website {siteUrl} does not sell, share, or exchange customers' personal information collected on the website with any third party.",
-        "p2": "Collected personal information is used solely for the company to provide products and services to customers.",
-        "p3": "When you register for information, chat with staff, post comments, or enter details to make a purchase, personal information collected by website {siteUrl} includes: Full name, Address, Phone number, Email...",
-        "p4": "In addition to personal information, service information includes: Product name, Quantity, Delivery time..."
-      },
-      "s2": {
-        "b1": "Customer support",
-        "b2": "Providing service-related information",
-        "b3": "Processing orders and delivering services and information via our website upon your request",
-        "b4": "We may send information about new products, services, upcoming events, or recruitment if you subscribe to email notifications.",
-        "b5": "In addition, we use the information you provide to support customer account management and verify and process financial transactions related to your online payments.",
-        "heading": "2. Scope of information use",
-        "intro": "Personal information collected is used internally by website {siteUrl} solely for one or all of the following purposes:"
-      },
-      "s3": {
-        "heading": "3. Information retention period",
-        "p1": "For personal information, website {siteUrl} only deletes this data upon customer request sent by email to {email}"
-      },
-      "s4": {
-        "b1": "HSA Education Investment and Development JSC",
-        "b2": "Contracted partners performing part of the Company's services. Such partners receive information as agreed by contract (in part or in full depending on contract terms) to support users in using the Company's services.",
-        "heading": "4. Persons or organizations with access to personal information",
-        "intro": "Parties who may access customer personal information fall under the following cases:"
-      },
-      "s5": {
-        "company": "HSA Education Investment and Development JSC",
-        "emailLabel": "Email:",
-        "hanoi": "Hanoi Office: No. 11B, Alley 3/29, Lane 3, Pham Tuan Tai St., Nghia Do Ward, Hanoi",
-        "hcmc": "Ho Chi Minh City Office: 2/26 Nguyen The Truyen St., Tan Son Nhi Ward, Tan Phu Dist., Ho Chi Minh City",
-        "heading": "5. Address of the entity collecting and managing personal information",
-        "phoneLabel": "Phone:",
-        "websiteLabel": "Website:"
-      },
-      "s6": {
-        "heading": "6. Means and tools for users to access and edit their personal data",
-        "p1": "Website {siteUrl} does not collect customer data directly through the web page without consent. Customer personal information is collected via product purchase inquiries sent to our email {email} or via our hotline {phone}",
-        "p2": "You may contact the email address and phone number above to request Website {siteUrl} to modify your personal data."
-      },
-      "s7": {
-        "b1": "Improving service quality for customers",
-        "b2": "Resolving disputes and complaints",
-        "b3": "When required by competent law enforcement agencies",
-        "heading": "7. Complaint reception and resolution mechanism regarding misuse of personal information",
-        "intro": "At website {siteUrl}, protecting your personal information is very important. You are assured that the information you provide will be kept confidential. Website {siteUrl} commits not to share, sell, or rent your personal information to anyone else. Website {siteUrl} commits to using your information only in the following cases:",
-        "p2": "Website {siteUrl} understands that your right to personal data protection is also our responsibility. For any questions or feedback regarding the privacy policy of website {siteUrl} or any concern that personal information has been used beyond its stated purpose or scope, please contact hotline {phone} or email {email}"
-      },
       "title": "Information privacy policy"
     },
     "terms": {
-      "heading": "GENERAL TRANSACTION TERMS",
-      "intro": "These general transaction terms apply to all visitors, authorized users, and learners registering for or participating in courses (hereinafter collectively referred to as \"Customers\") of Thi360.",
-      "s1": {
-        "heading": "1. Service provision",
-        "sub1Body": "Thi360 provides online courses through an e-learning platform, including but not limited to: Live lectures via Zoom, video lectures, study materials, practice tests, student support systems, and related services.",
-        "sub1Title": "1.1 Scope of services:",
-        "sub2B1": "Course content is developed according to a specific curriculum publicly announced on the website;",
-        "sub2B2": "Course details (content, duration, tuition fee, access period) are publicly disclosed before customers register;",
-        "sub2B3": "Thi360 guarantees delivery of the announced course content and duration.",
-        "sub2Title": "1.2 Service standards",
-        "sub3B1": "Customers select a suitable course on the website;",
-        "sub3B2": "Customers provide registration details and complete payment;",
-        "sub3B3": "Thi360 verifies valid payment;",
-        "sub3B4": "The system issues course access credentials to the customer;",
-        "sub3B5": "Customers study in accordance with the course content and period;",
-        "sub3B6": "Thi360 provides technical and academic support throughout the course.",
-        "sub3Intro": "The service delivery process is carried out as follows:",
-        "sub3Title": "1.3 Service delivery process",
-        "sub4B1": "Tuition fees for each course are publicly listed on the website at the time of registration;",
-        "sub4B2": "Customers pay via bank transfer using the account details provided by Thi360;",
-        "sub4B3": "Thi360 charges no additional fees beyond those published, unless the customer elects optional add-on services.",
-        "sub4Title": "1.4 Fees and payment methods",
-        "sub5B1": "Customers must be at least 15 years old; customers under 15 require consent from a parent or legal guardian;",
-        "sub5B2": "Each account is issued to 01 individual only and may not be shared;",
-        "sub5B3": "Customers are responsible for maintaining a suitable device and internet connection to use the service;",
-        "sub5B4": "Service may be temporarily interrupted in the following cases:",
-        "sub5Sub1": "System maintenance;",
-        "sub5Sub2": "Technical incidents beyond reasonable control;",
-        "sub5Sub3": "Force majeure events under applicable law.",
-        "sub5Title": "1.5 Conditions and limitations of service"
-      },
-      "s2": {
-        "heading": "2. Access policy",
-        "p1": "After the customer completes a valid payment, the system activates course access within 48 (forty-eight) hours, counted from 08:00 to 17:00 Monday through Friday (excluding public holidays). Completing payment constitutes the customer's reading, understanding, and agreement to be bound by all of these general transaction terms.",
-        "p2": "Customers are responsible for verifying the accuracy of registration information before confirming a transaction (Course name, submitted customer details, course period, tuition fee). Within 24 (twenty-four) business hours after access activation, customers must check these details and notify {email} if any discrepancy or access issue is found for correction and resolution.",
-        "p3": "After this timeframe, Thi360 bears no liability for the aforementioned errors."
-      },
-      "s3": {
-        "b1": "Technical error support: Within 24 (twenty-four) hours counted from 08:00 to 17:30 Monday through Friday (excluding public holidays) upon receiving a report through official channels:",
-        "b1Email": "Email: {email}",
-        "b1Hotline": "Hotline: {phone}",
-        "b1Note": "In cases of force majeure or complex issues requiring additional time, Thi360 will notify the customer specifically.",
-        "b2": "Content updates: Thi360 updates and supplements course materials if official examination frameworks change, at no extra charge during the active course period.",
-        "b3": "Access extension: If service is interrupted for 48 hours or more due to an issue on Thi360's side, the Customer will receive an access extension equivalent to the downtime.",
-        "heading": "3. Service warranty policy",
-        "intro": "Thi360 commits to providing technical support and content quality throughout the course period:"
-      },
-      "s4": {
-        "heading": "4. Transfer policy",
-        "p1": "A learning account is personal and may not be transferred, rented, shared, or co-used by another person in any form after activation.",
-        "p2": "Disclaimer: Thi360 assumes no legal liability and reserves the right to unilaterally terminate service without refund or compensation if unauthorized transfer, sharing, or shared account use is detected."
-      },
-      "s5": {
-        "heading": "5. Course switching policy",
-        "p1": "Customers may be considered for switching to another course offered by Thi360, provided the request is submitted within 07 days of account activation and the customer has completed no more than 20% of the course content. Switching requests must be sent to {email} or hotline: {phone}"
-      },
-      "s6": {
-        "aTitle": "a. Cases eligible for refund consideration",
-        "b1": "The customer has accessed and viewed 01 or more lessons, regardless of the reason for stopping.",
-        "b2": "The customer changes personal needs (lack of study time, changed goals, choosing another provider, etc.).",
-        "b3": "The customer does not achieve expected results due to not completing the recommended study roadmap.",
-        "b4": "The course is part of a special promotion, discount program, or bundle (combo) purchase.",
-        "b5": "The account was gifted or transferred from a third party.",
-        "b6": "Violation of the terms of service.",
-        "b7": "A parent or student purchased on behalf of another person without prior notice.",
-        "bIntro": "Thi360 does not issue refunds in the following cases:",
-        "bTitle": "b. The refund policy in section a above does not apply in the following cases:",
-        "c1": "Send a request to {email} within 24 hours from the occurrence of an eligible refund event.",
-        "c2": "Provide complete information: full name, registered phone number, course name, reason for refund request, and supporting evidence (if any).",
-        "c3": "Thi360 verifies and responds within 03 business days.",
-        "c4": "If approved, funds are returned via the original payment method within 07 business days.",
-        "cNote": "Note: Payment processing fees (if any) are non-refundable in all cases.",
-        "cTitle": "c. Refund request process (where eligible)",
-        "colCase": "Case",
-        "colCondition": "Condition",
-        "colRate": "Refund amount",
-        "heading": "6. Refund policy",
-        "intro": "Refunds are processed under this Article in compliance with consumer protection laws.",
-        "row1Case": "Technical failure on Thi360's side preventing learner access for 72 hours",
-        "row1Condition": "Confirmed by the technical team and the customer has not accessed any lesson.",
-        "row1Rate": "100% refund",
-        "row2Case": "Thi360 cancels a course or makes material content changes without notice",
-        "row2Condition": "Within 7 days from the date the change occurs",
-        "row2Rate": "100% refund"
-      },
-      "s7": {
-        "a1": "Deliver services to customers once all required procedures and mandatory conditions have been fulfilled.",
-        "a2": "Provide services in accordance with the published schedule, duration, and curriculum.",
-        "a3": "Provide technical and academic content support throughout service delivery.",
-        "a4": "Notify customers of any changes occurring during service delivery.",
-        "aTitle": "a. Obligations of Thi360",
-        "b1": "All registration information provided by the customer must be lawful, truthful, and accurate. Customers are legally responsible for this information. Whenever submitted details change, customers must notify Thi360 within 48 hours for updates. Thi360 is not responsible for service impacts resulting from outdated information.",
-        "b2": "Customers must not use services provided by Thi360 to violate any applicable laws or regulations.",
-        "b3": "While using the service, customers must not engage in disruptive conduct, insult the honor or dignity of Thi360 staff or third parties, or act or speak in ways that harm Thi360's reputation.",
-        "b4": "Customers bear full responsibility for safeguarding their account and data, as well as all uploaded content and activities related to their account, even if created, uploaded, or performed by Thi360 or a third party who gained access to the customer's account.",
-        "b5": "Customers acknowledge and agree that Thi360 and all content provided by Thi360, its staff, or partners through the service are protected by intellectual property rights owned by Thi360. Unless expressly agreed in writing by Thi360, customers agree to use the services and content solely for personal study, and not to modify, rent, lease, lend, sell, distribute, or create derivative works from all or any part of the services or content provided.",
-        "bTitle": "b. Obligations of customers",
-        "heading": "7. Obligations of each party"
-      },
-      "s8": {
-        "effectiveDate": "These general transaction terms take effect from 01/01/2026",
-        "heading": "8. General provisions",
-        "p1": "Thi360 reserves the right to inspect and take appropriate action (including legal proceedings), refuse, suspend, or terminate service without prior notice, refund, or compensation for customers who violate any of these general transaction terms or submit inaccurate, incomplete, or unlawful registration information. If customer violations cause damages to Thi360, Thi360 reserves the right to claim full compensation.",
-        "p2": "By accessing and using website {siteUrl}, customers implicitly agree to the terms and conditions set forth herein. To stay informed of the latest updates, customers should periodically review the \"General Transaction Terms\". Thi360 reserves the right to modify, adjust, add, or remove provisions of these \"General Transaction Terms\" at any time and notify customers on the website. The latest published version takes effect upon posting. Continued use of the service after such changes constitutes acceptance of those changes.",
-        "p3": "Any arising disputes shall first be resolved through negotiation. If no agreement is reached, disputes shall be resolved by competent authorities under Vietnamese law."
-      },
       "title": "General transaction terms"
     }
   },
@@ -1278,8 +1123,8 @@
   },
   "metadata": {
     "description": "Online practice that follows the real exam structure: HSA, QDA, BCA, V-ACT, SPT, SP2E, high school graduation",
-    "title": "Thi 360 — Online exam practice",
-    "titleTemplate": "{title} · Thi 360"
+    "title": "Thi360 — Online exam practice",
+    "titleTemplate": "{title} · Thi360"
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",

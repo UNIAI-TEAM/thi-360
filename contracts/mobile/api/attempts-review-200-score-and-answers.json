@@ -1,0 +1,277 @@
+{
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "SCORED",
+  "resultView" : "SCORE_AND_ANSWERS",
+  "selectedPartCode" : null,
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000002",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "partName" : "Toán học và xử lí số liệu",
+    "ord" : 0,
+    "state" : "CLOSED",
+    "pendingReview" : false,
+    "score" : 1.0,
+    "maxScore" : 5.0
+  } ],
+  "items" : [ {
+    "itemId" : "00000000-0000-7000-8000-000000000003",
+    "partId" : "00000000-0000-7000-8000-000000000004",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "displayNo" : 1,
+    "ord" : 1,
+    "unitCount" : 1,
+    "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>TESTQ-TOAN-MC1-017 content</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "studentAnswer" : {
+      "type" : "SINGLE_CHOICE",
+      "optionId" : "a"
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 1.0,
+    "outcome" : "CORRECT",
+    "flagged" : false,
+    "gradingDetail" : {
+      "selectedOptionId" : "a"
+    },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000005",
+    "partId" : "00000000-0000-7000-8000-000000000006",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "displayNo" : 2,
+    "ord" : 2,
+    "unitCount" : 1,
+    "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+    "componentCode" : "TOAN",
+    "questionType" : "SHORT_ANSWER",
+    "content" : "<p>Math example 6</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : "",
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : null,
+      "acceptedTexts" : [ "1" ],
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000007",
+    "partId" : "00000000-0000-7000-8000-000000000008",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "ord" : 3,
+    "unitCount" : 0,
+    "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+    "componentCode" : "TOAN",
+    "questionType" : "QUESTION_SET",
+    "content" : "<p>Mapid set</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : "<p>Mapid context</p>",
+      "blankNumberStart" : null,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 3.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : {
+      "itemType" : "QUESTION_SET",
+      "childCount" : 3
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000009",
+    "partId" : "00000000-0000-7000-8000-000000000010",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "parentItemId" : "00000000-0000-7000-8000-000000000011",
+    "displayNo" : 3,
+    "ord" : 4,
+    "unitCount" : 1,
+    "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Mapid child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000012",
+    "partId" : "00000000-0000-7000-8000-000000000013",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "parentItemId" : "00000000-0000-7000-8000-000000000014",
+    "displayNo" : 4,
+    "ord" : 5,
+    "unitCount" : 1,
+    "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Mapid child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000015",
+    "partId" : "00000000-0000-7000-8000-000000000016",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "parentItemId" : "00000000-0000-7000-8000-000000000017",
+    "displayNo" : 5,
+    "ord" : 6,
+    "unitCount" : 1,
+    "sectionId" : "b0952870-b2d5-513b-a411-e7096f393091",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Mapid child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  } ]
+}

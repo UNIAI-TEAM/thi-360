@@ -8,6 +8,7 @@ const PUBLIC_PATHS: Record<string, true> = {
   "/forgot-password": true,
   "/reset-password": true,
   "/checkout/result": true,
+  "/checkout/result/app": true,
   "/mobile/appearance-tokens.json": true,
   "/chinh-sach-bao-mat-thong-tin": true,
   "/dieu-khoan-giao-dich-chung": true,

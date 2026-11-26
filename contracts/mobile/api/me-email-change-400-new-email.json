@@ -1,0 +1,12 @@
+{
+  "code" : "VALIDATION_FAILED",
+  "message" : "Dữ liệu không hợp lệ",
+  "fieldErrors" : [
+    {
+      "field" : "newEmail",
+      "code" : "EMAIL_INVALID",
+      "message" : "Email không đúng định dạng"
+    }
+  ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

@@ -1,0 +1,119 @@
+{
+  "code" : "BUNDLE-DEMO-01",
+  "name" : "Bộ đề luyện thi HSA DEMO",
+  "summary" : "Tóm tắt bộ đề BD-DEMO",
+  "coverUrl" : null,
+  "examKind" : {
+    "code" : "HSA",
+    "nameVi" : "Đánh giá năng lực ĐHQGHN",
+    "nameEn" : "HSA"
+  },
+  "format" : "BUNDLE",
+  "scopeLabel" : null,
+  "buildMode" : "STANDARD",
+  "questionCount" : {
+    "min" : 90,
+    "max" : 90
+  },
+  "durationMinutes" : {
+    "min" : 135,
+    "max" : 135
+  },
+  "maxPoints" : {
+    "min" : 100,
+    "max" : 100
+  },
+  "attemptsGranted" : 4,
+  "listPrice" : 320000,
+  "price" : 320000,
+  "promotion" : null,
+  "versionNo" : 1,
+  "description" : "Mô tả bộ đề BD-DEMO",
+  "objectives" : "Ôn luyện trọn bộ",
+  "audience" : "Thí sinh thi HSA",
+  "parts" : [ ],
+  "choices" : [ ],
+  "scoring" : {
+    "timing" : "PER_PART",
+    "maxScore" : 100,
+    "referenceMax" : null,
+    "practiceScoring" : "RAW"
+  },
+  "omittedEssayGroups" : [ ],
+  "benefits" : {
+    "aiExplanation" : true,
+    "strengthWeakness" : true,
+    "practice" : false,
+    "note" : "Kèm giải thích chi tiết"
+  },
+  "resultView" : "FULL_SOLUTION",
+  "productType" : "BUNDLE",
+  "items" : [
+    {
+      "examId" : "00000000-0000-7000-8000-000000000001",
+      "code" : "EXAM-DEMO-02",
+      "name" : "Phần Tư duy định lượng",
+      "scope" : "PART",
+      "partCode" : "P1",
+      "subjectName" : {
+        "nameVi" : "Toán học",
+        "nameEn" : "Mathematics"
+      },
+      "buildMode" : "STANDARD",
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "maxPoints" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "attemptsGranted" : 4,
+      "benefits" : {
+        "aiExplanation" : true,
+        "strengthWeakness" : true,
+        "practice" : false,
+        "note" : "Kèm giải thích chi tiết"
+      },
+      "resultView" : "FULL_SOLUTION",
+      "versionNo" : 1
+    },
+    {
+      "examId" : "00000000-0000-7000-8000-000000000003",
+      "code" : "EXAM-DEMO-04",
+      "name" : "Môn Ngữ văn",
+      "scope" : "SUBJECT",
+      "partCode" : null,
+      "subjectName" : {
+        "nameVi" : "Ngữ văn",
+        "nameEn" : "Literature"
+      },
+      "buildMode" : "STANDARD",
+      "questionCount" : {
+        "min" : 40,
+        "max" : 40
+      },
+      "durationMinutes" : {
+        "min" : 60,
+        "max" : 60
+      },
+      "maxPoints" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "attemptsGranted" : 4,
+      "benefits" : {
+        "aiExplanation" : true,
+        "strengthWeakness" : true,
+        "practice" : false,
+        "note" : "Kèm giải thích chi tiết"
+      },
+      "resultView" : "FULL_SOLUTION",
+      "versionNo" : 1
+    }
+  ]
+}

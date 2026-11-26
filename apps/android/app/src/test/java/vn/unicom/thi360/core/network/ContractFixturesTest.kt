@@ -2,6 +2,8 @@ package vn.unicom.thi360.core.network
 
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -53,8 +55,44 @@ class ContractFixturesTest {
                 "/api/v1/auth/password/reset",
                 "/api/v1/auth/register",
                 "/api/v1/auth/register/resend",
+                "/api/v1/avatars/{assetId}",
+                "/api/v1/catalog/options",
                 "/api/v1/me",
+                "/api/v1/me/attempts",
+                "/api/v1/me/attempts/{attemptId}",
+                "/api/v1/me/attempts/{attemptId}/answers",
+                "/api/v1/me/attempts/{attemptId}/assets/{assetId}",
+                "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays",
+                "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end",
+                "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress",
+                "/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume",
+                "/api/v1/me/attempts/{attemptId}/heartbeat",
+                "/api/v1/me/attempts/{attemptId}/parts/{partId}/choice",
+                "/api/v1/me/attempts/{attemptId}/parts/{partId}/finish",
+                "/api/v1/me/attempts/{attemptId}/parts/{partId}/retry",
+                "/api/v1/me/attempts/{attemptId}/result",
+                "/api/v1/me/attempts/{attemptId}/review",
+                "/api/v1/me/attempts/{attemptId}/session",
+                "/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}",
+                "/api/v1/me/attempts/{attemptId}/submit",
+                "/api/v1/me/avatar",
+                "/api/v1/me/email/change",
+                "/api/v1/me/email/change/confirm",
+                "/api/v1/me/email/verification",
+                "/api/v1/me/email/verify",
+                "/api/v1/me/entitlements/{entitlementId}/prepare",
+                "/api/v1/me/exam-access/query",
+                "/api/v1/me/exams",
+                "/api/v1/me/orders",
+                "/api/v1/me/orders/{code}",
+                "/api/v1/me/orders/{code}/cancel",
+                "/api/v1/me/orders/{code}/pay",
+                "/api/v1/me/price-quote",
                 "/api/v1/me/profile",
+                "/api/v1/public/payments/vnpay/return",
+                "/api/v1/public/storefront/filters",
+                "/api/v1/public/storefront/products",
+                "/api/v1/public/storefront/products/{code}",
             ),
             paths,
         )
@@ -91,6 +129,9 @@ class ContractFixturesTest {
         }
 
         for (file in apiFixtures) {
+            if (file.name == "index.json") {
+                continue
+            }
             val body = file.readText(Charsets.UTF_8)
             when {
                 file.name == "me-200.json" -> {
@@ -111,6 +152,15 @@ class ContractFixturesTest {
                 file.name == "password-forgot-202.json" -> {
                     val parsed = generatedJson.decodeFromString(PasswordForgotResponse.serializer(), body)
                     assertTrue(parsed.message.isNotBlank())
+                }
+
+                file.name.contains("-200") || file.name.contains("-201") || file.name.contains("-202") -> {
+                    val parsed = Json.parseToJsonElement(body)
+                    assertTrue(
+                        "Expected non-empty JSON object or array for ${file.name}",
+                        (parsed is JsonObject && parsed.isNotEmpty()) ||
+                            (parsed is JsonArray && parsed.isNotEmpty()),
+                    )
                 }
 
                 else -> {

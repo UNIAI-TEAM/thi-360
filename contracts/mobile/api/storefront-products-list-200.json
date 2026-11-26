@@ -1,0 +1,67 @@
+{
+  "items" : [
+    {
+      "code" : "EXAM-DEMO-01",
+      "name" : "Đề thi HSA tổng hợp DEMO",
+      "summary" : "Tóm tắt EXAM-DEMO",
+      "coverUrl" : null,
+      "examKind" : {
+        "code" : "HSA",
+        "nameVi" : "Đánh giá năng lực ĐHQGHN",
+        "nameEn" : "HSA"
+      },
+      "format" : "FULL",
+      "scopeLabel" : null,
+      "buildMode" : "STANDARD",
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "attemptsGranted" : 3,
+      "listPrice" : 250000,
+      "price" : 200000,
+      "promotion" : {
+        "name" : "Ưu đãi khai giảng",
+        "endsAt" : "2026-11-20T10:00:00Z"
+      },
+      "versionNo" : 1,
+      "productType" : "EXAM"
+    },
+    {
+      "code" : "BUNDLE-DEMO-01",
+      "name" : "Bộ đề luyện thi HSA DEMO",
+      "summary" : "Tóm tắt bộ đề BD-DEMO",
+      "coverUrl" : null,
+      "examKind" : {
+        "code" : "HSA",
+        "nameVi" : "Đánh giá năng lực ĐHQGHN",
+        "nameEn" : "HSA"
+      },
+      "format" : "BUNDLE",
+      "scopeLabel" : null,
+      "buildMode" : "STANDARD",
+      "questionCount" : {
+        "min" : 90,
+        "max" : 90
+      },
+      "durationMinutes" : {
+        "min" : 135,
+        "max" : 135
+      },
+      "attemptsGranted" : 4,
+      "listPrice" : 320000,
+      "price" : 320000,
+      "promotion" : null,
+      "versionNo" : 1,
+      "productType" : "BUNDLE"
+    }
+  ],
+  "page" : 0,
+  "size" : 12,
+  "totalItems" : 2,
+  "totalPages" : 1
+}

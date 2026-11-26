@@ -134,12 +134,12 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
   // Mục cuối breadcrumb: họ tên của tài khoản (tên đăng nhập khi họ tên trống).
   useSetBreadcrumbLeaf(detailQuery.data?.fullName || detailQuery.data?.username);
 
-  // Mỗi tài khoản một tiêu đề trang riêng ("<tên đăng nhập> · Tài khoản · Thi 360"); tiêu đề chung của route chỉ
+  // Mỗi tài khoản một tiêu đề trang riêng ("<tên đăng nhập> · Tài khoản · Thi360"); tiêu đề chung của route chỉ
   // dùng tới khi dữ liệu về. Trang kế tiếp tự đặt lại tiêu đề của nó khi điều hướng.
   const loadedUsername = detailQuery.data?.username;
   const accountsTitle = t("list.title");
   useEffect(() => {
-    if (loadedUsername) document.title = `${loadedUsername} · ${accountsTitle} · Thi 360`;
+    if (loadedUsername) document.title = `${loadedUsername} · ${accountsTitle} · Thi360`;
   }, [loadedUsername, accountsTitle]);
 
   function refreshUser() {

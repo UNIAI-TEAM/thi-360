@@ -12,7 +12,7 @@ describe("PublicFooter", () => {
   it("renders web logo, company details, 4 columns, legal links and copyright bar in Vietnamese without dead social links", () => {
     renderWithProviders(<PublicFooter variant="landing" />);
 
-    expect(screen.getByRole("img", { name: "Thi 360" })).toHaveAttribute("src", "/logo-full.png");
+    expect(screen.getByRole("img", { name: "Thi360" })).toHaveAttribute("src", "/logo-full.png");
     expect(screen.getByText("CÔNG TY CỔ PHẦN ĐẦU TƯ VÀ PHÁT TRIỂN GIÁO DỤC HSA")).toBeInTheDocument();
     expect(screen.getByText(/0109600534/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "hsaeducation.jsc@gmail.com" })).toHaveAttribute(

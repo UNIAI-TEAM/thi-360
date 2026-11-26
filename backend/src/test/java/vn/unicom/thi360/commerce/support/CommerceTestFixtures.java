@@ -39,6 +39,7 @@ import vn.unicom.thi360.commerce.storefront.api.IntRange;
 import vn.unicom.thi360.commerce.storefront.api.ProductCard;
 import vn.unicom.thi360.commerce.storefront.api.ProductDetail;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.security.LoginChannel;
 import vn.unicom.thi360.shared.security.TestSecurity.SimulatedPrincipal;
 import vn.unicom.thi360.shared.security.TestSecurity.TestSecuritySupport;
 
@@ -122,6 +123,11 @@ public class CommerceTestFixtures {
     public RequestPostProcessor asLearner(LearnerAccount account) {
         return securitySupport.apply(new SimulatedPrincipal(
                 account.id(), account.username(), "STUDENT", false, List.of()));
+    }
+
+    public RequestPostProcessor asMobileLearner(LearnerAccount account) {
+        return securitySupport.apply(new SimulatedPrincipal(
+                account.id(), account.username(), "STUDENT", false, List.of(), LoginChannel.MOBILE));
     }
 
     public RequestPostProcessor asManager(UUID userId, String username, String... permissions) {

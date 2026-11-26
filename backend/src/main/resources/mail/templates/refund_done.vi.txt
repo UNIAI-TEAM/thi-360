@@ -1,6 +1,6 @@
-Thi 360 đã hoàn tiền cho đơn hàng của bạn
+[(${productName})] đã hoàn tiền cho đơn hàng của bạn
 Xin chào [(${fullName})],
 
 Khoản hoàn [(${refundAmount})] cho đơn [(${orderCode})] đã được ghi nhận. Thời điểm tiền về tài khoản phụ thuộc vào ngân hàng của bạn.
 
-Thi 360
+[(${productName})]

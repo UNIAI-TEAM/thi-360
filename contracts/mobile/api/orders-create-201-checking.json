@@ -1,0 +1,80 @@
+{
+  "order" : {
+    "id" : "00000000-0000-7000-8000-000000000001",
+    "code" : "DH261126000001",
+    "userId" : "00000000-0000-7000-8000-000000000002",
+    "buyerUsername" : "student.demo",
+    "buyerFullName" : "Nguyễn Văn An",
+    "productType" : "EXAM",
+    "examId" : "00000000-0000-7000-8000-000000000003",
+    "examVersionNo" : 1,
+    "bundleId" : null,
+    "bundleVersionNo" : null,
+    "optionCodes" : [
+      "OPT-A",
+      "OPT-B"
+    ],
+    "productCode" : "EXAM-DEMO-04",
+    "productName" : "Exam DEMO",
+    "listPriceVnd" : 200000,
+    "promotionId" : null,
+    "promotionDiscountVnd" : 0,
+    "voucherId" : "00000000-0000-7000-8000-000000000005",
+    "voucherCode" : "VOUCHER-DEMO",
+    "voucherDiscountVnd" : 200000,
+    "discountApplied" : "VOUCHER_ONLY",
+    "amountDueVnd" : 0,
+    "attemptsGranted" : 3,
+    "benefits" : {
+      "note" : "Luyện tập nâng cao",
+      "practice" : true,
+      "aiExplanation" : true,
+      "strengthWeakness" : false
+    },
+    "resultView" : "FULL_SOLUTION",
+    "paymentMethod" : "FREE",
+    "state" : "PAID",
+    "replacedByOrderId" : null,
+    "replacedByOrderCode" : null,
+    "expiresAt" : null,
+    "paidAt" : "2026-11-20T10:00:00Z",
+    "fulfilledAt" : null,
+    "createdAt" : "2026-11-20T10:00:00Z",
+    "updatedAt" : "2026-11-20T10:00:00Z",
+    "items" : [
+      {
+        "id" : "00000000-0000-7000-8000-000000000006",
+        "examId" : "00000000-0000-7000-8000-000000000003",
+        "examVersionNo" : 1,
+        "examCode" : "EXAM-DEMO-04",
+        "examName" : "Exam DEMO",
+        "optionCodes" : [
+          "OPT-A",
+          "OPT-B"
+        ],
+        "attemptsGranted" : 3,
+        "benefits" : {
+          "note" : "Luyện tập nâng cao",
+          "practice" : true,
+          "aiExplanation" : true,
+          "strengthWeakness" : false
+        },
+        "resultView" : "FULL_SOLUTION",
+        "position" : 1
+      }
+    ],
+    "payments" : [ ],
+    "history" : [
+      {
+        "id" : "00000000-0000-7000-8000-000000000007",
+        "fromState" : null,
+        "toState" : "PAID",
+        "actor" : "LEARNER",
+        "reason" : "FREE_ORDER_PAID",
+        "at" : "2026-11-20T10:00:00Z"
+      }
+    ]
+  },
+  "next" : "CHECKING",
+  "paymentUrl" : null
+}

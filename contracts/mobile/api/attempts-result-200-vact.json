@@ -1,0 +1,145 @@
+{
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examVersionNo" : 1,
+  "examName" : "V-ACT đầy đủ (bộ dữ liệu)",
+  "examKindCode" : "VACT",
+  "scope" : "FULL",
+  "choices" : { },
+  "attemptNo" : 1,
+  "state" : "SCORED",
+  "regrading" : false,
+  "endReason" : "SUBMITTED",
+  "startedAt" : "2026-11-20T10:00:00Z",
+  "finishedAt" : "2026-11-20T10:00:00Z",
+  "gradedAt" : "2026-11-20T10:00:00Z",
+  "practiceScoring" : "LINEAR",
+  "rawScore" : 50.0,
+  "displayScore" : 50.0,
+  "rawMaxScore" : 1200.0,
+  "scaleMax" : 1200.0,
+  "scoreLabel" : "Điểm luyện tập",
+  "practiceScoreNote" : "Không phải điểm V-ACT chính thức",
+  "resultView" : "SCORE_AND_ANSWERS",
+  "reviewAvailable" : true,
+  "compensated" : false,
+  "statistics" : {
+    "correctCount" : 5,
+    "partialCount" : 0,
+    "wrongCount" : 0,
+    "blankCount" : 115,
+    "pendingReviewCount" : 0,
+    "totalCount" : 120
+  },
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000003",
+    "partCode" : "f1f4ad6a-83f6-54b5-ac31-f0c3d9467194",
+    "partName" : "Sử dụng ngôn ngữ",
+    "ord" : 0,
+    "skipped" : false,
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 600.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 60,
+      "pendingReviewCount" : 0,
+      "totalCount" : 60
+    }
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000004",
+    "partCode" : "4d90c6b5-3f13-5d98-a9f0-9b60df20c514",
+    "partName" : "Toán học",
+    "ord" : 1,
+    "skipped" : false,
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 300.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 30,
+      "pendingReviewCount" : 0,
+      "totalCount" : 30
+    }
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000005",
+    "partCode" : "288ca739-3e0f-54fa-8b0f-3991e94c36f7",
+    "partName" : "Tư duy khoa học",
+    "ord" : 2,
+    "skipped" : false,
+    "pendingReview" : false,
+    "score" : 50.0,
+    "maxScore" : 300.0,
+    "stats" : {
+      "correctCount" : 5,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 25,
+      "pendingReviewCount" : 0,
+      "totalCount" : 30
+    }
+  } ],
+  "subjects" : [ ],
+  "vactComponents" : [ {
+    "componentCode" : "VIETNAMESE",
+    "name" : "Tiếng Việt",
+    "correctCount" : 0,
+    "partialCount" : 0,
+    "wrongCount" : 0,
+    "blankCount" : 30,
+    "totalCount" : 30,
+    "correctRate" : 0.0
+  }, {
+    "componentCode" : "ANH",
+    "name" : "Tiếng Anh",
+    "correctCount" : 0,
+    "partialCount" : 0,
+    "wrongCount" : 0,
+    "blankCount" : 30,
+    "totalCount" : 30,
+    "correctRate" : 0.0
+  }, {
+    "componentCode" : "TOAN",
+    "name" : "Toán học",
+    "correctCount" : 0,
+    "partialCount" : 0,
+    "wrongCount" : 0,
+    "blankCount" : 30,
+    "totalCount" : 30,
+    "correctRate" : 0.0
+  }, {
+    "componentCode" : "SCIENTIFIC_THINKING",
+    "name" : "Tư duy khoa học",
+    "correctCount" : 5,
+    "partialCount" : 0,
+    "wrongCount" : 0,
+    "blankCount" : 25,
+    "totalCount" : 30,
+    "correctRate" : 16.67,
+    "subsections" : [ {
+      "sectionId" : "94de53b5-f0db-5610-a643-4df4c8a397c9",
+      "label" : "Logic và phân tích số liệu",
+      "questionCount" : 12,
+      "correctCount" : 2,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 10,
+      "totalCount" : 12,
+      "correctRate" : 16.67
+    }, {
+      "sectionId" : "ac4678d6-92e8-5f42-a403-4c7e9ba4366f",
+      "label" : "Suy luận khoa học",
+      "questionCount" : 18,
+      "correctCount" : 3,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 15,
+      "totalCount" : 18,
+      "correctRate" : 16.67
+    } ]
+  } ]
+}

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "sources": {
+    "richTextSamples": {
+      "path": "docs/specs/fixtures/rich-text-samples.json",
+      "validCount": 12,
+      "invalidCount": 31
+    },
+    "questionSamples": {
+      "path": "apps/web-student/src/app/dev/question-kit/question-samples.json",
+      "sampleCount": 11
+    },
+    "formulaCatalogue": {
+      "path": "docs/specs/fixtures/formula-catalogue.json",
+      "groupCount": 225,
+      "formulaCount": 1915,
+      "rejectedCount": 93
+    }
+  },
+  "artifacts": {
+    "formulas": "contracts/mobile/rich-text/formulas.json",
+    "formulaExemptions": "contracts/mobile/rich-text/formula-exemptions.json",
+    "webRendersManifest": "contracts/mobile/rich-text/web-renders/manifest.json",
+    "attempt50": "contracts/mobile/rich-text/attempt-50.json",
+    "essays": "contracts/mobile/rich-text/essays.json",
+    "wordCount": "contracts/mobile/rich-text/word-count.json"
+  }
+}

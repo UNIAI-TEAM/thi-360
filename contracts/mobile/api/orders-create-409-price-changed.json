@@ -1,0 +1,19 @@
+{
+  "code" : "PRICE_CHANGED",
+  "message" : "Giá hoặc phiên bản bài thi đã thay đổi, vui lòng kiểm tra lại báo giá mới",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000",
+  "quote" : {
+    "productCode" : "EXAM-DEMO-01",
+    "productName" : "Exam DEMO",
+    "versionNo" : 1,
+    "attemptsGranted" : 3,
+    "listPrice" : 200000,
+    "promotion" : null,
+    "voucher" : null,
+    "discountApplied" : "NONE",
+    "voucherNotBetter" : false,
+    "finalPrice" : 200000,
+    "changed" : true
+  }
+}

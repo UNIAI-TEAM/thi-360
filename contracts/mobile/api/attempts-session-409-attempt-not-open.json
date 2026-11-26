@@ -1,0 +1,6 @@
+{
+  "code" : "ATTEMPT_NOT_OPEN",
+  "message" : "Lượt thi không ở trạng thái đang làm bài",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

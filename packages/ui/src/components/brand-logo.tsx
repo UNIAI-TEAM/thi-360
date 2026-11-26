@@ -55,7 +55,7 @@ export function BrandLogo({ className, label, ...props }: BrandLogoProps) {
 }
 
 /**
- * Full horizontal Thi 360 brand lockup (icon + wordmark). Adds a subtle light backing under
+ * Full horizontal Thi360 brand lockup (icon + wordmark). Adds a subtle light backing under
  * `[data-theme="dark"]` so the navy lettering stays crisp on dark surfaces.
  */
 export function BrandWordmark({ alt, src = "/logo-full.png", className, ...props }: BrandWordmarkProps) {

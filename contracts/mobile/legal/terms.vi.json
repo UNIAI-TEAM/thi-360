@@ -1,0 +1,292 @@
+{
+  "id": "terms",
+  "locale": "vi",
+  "version": "2026-11-26",
+  "status": "published",
+  "contentHash": "88658ddc160866a639a9250c6f900ac58883a11bdb297cf30b50cb8a450c3dbd",
+  "effectiveDate": "2026-11-26",
+  "title": "Điều kiện giao dịch chung của Thi360",
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "Điều kiện giao dịch chung này áp dụng cho mọi người truy cập, đăng ký tài khoản và mua bài thi trên Thi360 (sau đây gọi là \"Khách hàng\"), qua website thi360.vn và ứng dụng Thi360 trên Android, iOS. Thi360 do Công ty Cổ phần Đầu tư và Phát triển Giáo dục HSA (sau đây gọi là \"Thi360\") vận hành."
+    },
+    {
+      "type": "paragraph",
+      "text": "Khi đăng ký tài khoản hoặc thanh toán một đơn hàng, Khách hàng xác nhận đã đọc và đồng ý với các điều kiện dưới đây."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "1. Cung cấp dịch vụ"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.1. Phạm vi dịch vụ"
+    },
+    {
+      "type": "paragraph",
+      "text": "Thi360 cung cấp dịch vụ luyện thi trực tuyến, gồm:"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "bài thi thử theo cấu trúc của các kỳ thi (ví dụ đánh giá năng lực, đánh giá tư duy, tốt nghiệp trung học phổ thông), bán lẻ từng bài hoặc theo bộ đề;",
+        "làm bài trên website và ứng dụng, có tính giờ, tự lưu bài làm;",
+        "chấm điểm, kết quả theo phần và theo môn, xem lại bài làm, đáp án và lời giải theo quyền lợi của từng bài thi;",
+        "lịch sử các lượt thi và hỗ trợ kỹ thuật trong quá trình sử dụng."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.2. Tiêu chuẩn dịch vụ"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Số câu, thời lượng, cấu trúc, số lượt làm và mức xem kết quả của mỗi bài thi được công bố ở trang chi tiết bài thi trước khi mua. Thi360 cung cấp đúng nội dung đã công bố tại thời điểm Khách hàng thanh toán.",
+        "Bài thi trên Thi360 là bài thi thử. Điểm số có giá trị tham khảo cho việc ôn luyện, không phải kết quả của kỳ thi chính thức và không thay thế thông báo của đơn vị tổ chức thi."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.3. Quy trình sử dụng dịch vụ"
+    },
+    {
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Khách hàng đăng ký tài khoản và xác minh email.",
+        "Khách hàng chọn bài thi hoặc bộ đề, xem thông tin, giá và quyền lợi.",
+        "Khách hàng xác nhận mua và thanh toán qua cổng VNPAY.",
+        "Khi cổng thanh toán xác nhận giao dịch thành công, Thi360 cấp bài thi vào mục \"Bài thi của tôi\" của tài khoản.",
+        "Khách hàng bắt đầu lượt thi, làm bài và nộp bài trong thời gian quy định.",
+        "Khách hàng xem kết quả, xem lại bài làm theo quyền lợi của bài thi và nhận hỗ trợ kỹ thuật khi cần."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.4. Giá và thanh toán"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Giá bán công bố trên trang chi tiết và màn xác nhận mua, đã gồm thuế và phí. Thi360 không thu thêm khoản nào ngoài số tiền hiện ở màn xác nhận mua.",
+        "Thanh toán trực tuyến qua cổng VNPAY. Thi360 không nhận và không lưu thông tin thẻ, tài khoản ngân hàng của Khách hàng.",
+        "Mã giảm giá (voucher) áp dụng theo điều kiện của từng mã. Mỗi đơn hàng thanh toán một lần cho toàn bộ giá trị đơn.",
+        "Đơn hàng chưa thanh toán tự hết hạn sau thời gian giữ đơn hiện trên màn chi tiết đơn."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.5. Điều kiện sử dụng"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Khách hàng từ đủ 15 tuổi trở lên. Khách hàng dưới 15 tuổi cần có sự đồng ý của cha mẹ hoặc người giám hộ.",
+        "Mỗi tài khoản dùng cho một cá nhân. Một lượt thi chỉ mở để làm bài trên một thiết bị tại một thời điểm.",
+        "Dịch vụ có thể gián đoạn khi bảo trì, khi có sự cố kỹ thuật hoặc sự kiện bất khả kháng. Thi360 thông báo trước với các đợt bảo trì có kế hoạch."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "2. Chính sách cấp quyền truy cập"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Bài thi được cấp ngay sau khi cổng thanh toán xác nhận giao dịch thành công.",
+        "Trường hợp đã thanh toán mà bài thi chưa xuất hiện, đơn hàng ở trạng thái \"Đang kiểm tra\". Thi360 hoàn tất việc cấp bài trong vòng 48 giờ làm việc (08h00–17h30, thứ Hai đến thứ Sáu, không kể ngày lễ) kể từ khi nhận thanh toán hợp lệ. Khách hàng không cần thanh toán lại.",
+        "Khách hàng kiểm tra bài thi được cấp và báo sai sót (nếu có) qua email hỗ trợ, kèm mã đơn hàng.",
+        "Mỗi lượt thi có thời hạn sử dụng (nếu có) ghi ở thẻ bài thi trong \"Bài thi của tôi\". Lượt thi đã bắt đầu thì tính là đã dùng, kể cả khi Khách hàng không nộp bài."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "3. Chính sách bảo hành dịch vụ"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Thi360 tiếp nhận yêu cầu hỗ trợ kỹ thuật qua email và hotline, và phản hồi trong vòng 24 giờ làm việc (08h00–17h30, thứ Hai đến thứ Sáu).",
+        "Khi một lượt thi bị ảnh hưởng bởi lỗi hệ thống của Thi360 (không làm được bài, mất bài làm, không chấm được), Thi360 cấp bù một lượt thi của chính bài thi đó.",
+        "Khi nội dung một bài thi có sai sót, Thi360 sửa nội dung và chấm lại các lượt thi bị ảnh hưởng; điểm sau khi chấm lại thay điểm cũ.",
+        "Khi dịch vụ gián đoạn từ 48 giờ trở lên do lỗi của Thi360, thời hạn sử dụng của các lượt thi còn hiệu lực được cộng thêm thời gian tương ứng."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "4. Chính sách chuyển nhượng"
+    },
+    {
+      "type": "paragraph",
+      "text": "Tài khoản và bài thi đã mua thuộc về cá nhân Khách hàng, không được chuyển nhượng, cho thuê, cho mượn hay dùng chung. Thi360 có quyền khóa tài khoản và chấm dứt cung cấp dịch vụ, không hoàn tiền, khi phát hiện vi phạm."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "5. Chính sách đổi bài thi"
+    },
+    {
+      "type": "paragraph",
+      "text": "Bài thi và bộ đề đã mua không đổi sang bài thi khác. Trường hợp mua nhầm, Khách hàng gửi yêu cầu qua email hỗ trợ trong vòng 7 ngày kể từ ngày được cấp bài; Thi360 xem xét đổi sang bài thi cùng giá trị khi chưa có lượt thi nào của đơn hàng đó được bắt đầu."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "6. Chính sách hoàn tiền"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "a. Trường hợp được xem xét hoàn tiền"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Trường hợp",
+        "Điều kiện",
+        "Mức hoàn"
+      ],
+      "rows": [
+        [
+          "Đã thanh toán nhưng không được cấp bài do lỗi kỹ thuật",
+          "Lỗi được Thi360 xác nhận, kéo dài quá 72 giờ, chưa có lượt thi nào của đơn hàng được bắt đầu",
+          "100%"
+        ],
+        [
+          "Thi360 ngừng cung cấp bài thi đã bán hoặc thay đổi đáng kể nội dung mà không thông báo",
+          "Yêu cầu trong vòng 7 ngày kể từ ngày thay đổi, phần lượt thi chưa dùng",
+          "100% giá trị phần chưa dùng"
+        ],
+        [
+          "Giao dịch bị trừ tiền nhiều lần cho cùng một đơn hàng",
+          "Có xác nhận của cổng thanh toán",
+          "100% số tiền bị trừ thừa"
+        ],
+        [
+          "Thanh toán được ghi nhận sau khi Khách hàng đã tự xóa tài khoản",
+          "Bài thi không được cấp; Thi360 chủ động hoàn",
+          "100%"
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "b. Trường hợp không hoàn tiền"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Đã bắt đầu ít nhất một lượt thi của đơn hàng.",
+        "Lý do cá nhân: không còn nhu cầu, mua nhầm đã quá thời hạn ở mục 5, không sắp xếp được thời gian.",
+        "Không hài lòng về kết quả làm bài.",
+        "Đơn hàng dùng mã giảm giá, chương trình khuyến mãi hoặc mua theo bộ đề đã giảm giá, trừ các trường hợp ở mục a.",
+        "Tài khoản được tặng, chuyển nhượng hoặc vi phạm các điều kiện này.",
+        "Khách hàng tự xóa tài khoản: các lượt thi chưa dùng mất cùng tài khoản và không được hoàn tiền.",
+        "Lỗi do thiết bị, đường truyền hoặc thao tác của Khách hàng."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "c. Quy trình"
+    },
+    {
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Khách hàng gửi yêu cầu qua email hỗ trợ trong vòng 7 ngày kể từ khi phát sinh sự việc, kèm mã đơn hàng, tên đăng nhập và mô tả.",
+        "Thi360 phản hồi trong vòng 3 ngày làm việc.",
+        "Yêu cầu được chấp nhận thì tiền được hoàn trong vòng 7 ngày làm việc, về đúng phương thức thanh toán ban đầu. Phí dịch vụ của bên thanh toán (nếu có) không được hoàn."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "7. Quyền và nghĩa vụ"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "a. Của Thi360"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Cung cấp dịch vụ đúng nội dung và thời hạn đã công bố.",
+        "Hỗ trợ Khách hàng trong quá trình sử dụng và thông báo các thay đổi của dịch vụ.",
+        "Bảo vệ thông tin của Khách hàng theo Chính sách bảo mật thông tin."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "b. Của Khách hàng"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Cung cấp thông tin đăng ký chính xác và cập nhật khi có thay đổi.",
+        "Tự giữ bí mật mật khẩu và chịu trách nhiệm về các thao tác thực hiện bằng tài khoản của mình.",
+        "Không sao chép, chụp, ghi lại, phát tán đề thi, đáp án, lời giải dưới bất kỳ hình thức nào; không dùng công cụ tự động để truy cập dịch vụ; không can thiệp vào hệ thống.",
+        "Không dùng chung tài khoản; không có lời lẽ xúc phạm nhân viên hỗ trợ."
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Toàn bộ nội dung trên Thi360 (đề thi, đáp án, lời giải, giao diện) thuộc quyền sở hữu trí tuệ của Thi360 hoặc bên cấp phép cho Thi360. Khách hàng chỉ được dùng cho mục đích ôn luyện cá nhân."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "8. Điều khoản chung"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Thi360 có quyền tạm ngừng hoặc chấm dứt cung cấp dịch vụ, không hoàn tiền, đối với tài khoản vi phạm các điều kiện này.",
+        "Thi360 có thể sửa đổi các điều kiện này. Bản sửa đổi được công bố trên thi360.vn và trong ứng dụng kèm ngày có hiệu lực; việc tiếp tục sử dụng dịch vụ sau ngày đó là sự chấp nhận bản sửa đổi.",
+        "Tranh chấp được giải quyết trước hết bằng thương lượng. Không thương lượng được thì đưa ra cơ quan có thẩm quyền của Việt Nam theo quy định của pháp luật."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "9. Thông tin liên hệ"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Đơn vị vận hành: Công ty Cổ phần Đầu tư và Phát triển Giáo dục HSA",
+        "Mã số thuế: 0109600534, cấp ngày 16/04/2021 tại Sở Kế hoạch và Đầu tư Thành phố Hà Nội",
+        "Văn phòng Hà Nội: Số 11B, Ngách 3/29, Ngõ 3, Đường Phạm Tuấn Tài, Phường Nghĩa Đô, Thành phố Hà Nội",
+        "Văn phòng Thành phố Hồ Chí Minh: 2/26 Nguyễn Thế Truyện, Phường Tân Sơn Nhì, Quận Tân Phú, Thành phố Hồ Chí Minh",
+        "Hỗ trợ kỹ thuật: 0974187313",
+        "Email: hsaeducation.jsc@gmail.com",
+        "Website: thi360.vn"
+      ]
+    }
+  ]
+}

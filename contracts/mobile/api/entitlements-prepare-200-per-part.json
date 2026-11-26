@@ -1,0 +1,111 @@
+{
+  "entitlementId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examCode" : "DS-HSA-FULL-MINI",
+  "examName" : "HSA đầy đủ (thu nhỏ)",
+  "examKind" : {
+    "id" : "00000000-0000-7000-8200-000000000101",
+    "code" : "HSA",
+    "nameVi" : "Đánh giá năng lực ĐHQG Hà Nội (HSA)",
+    "nameEn" : "VNU Hanoi Competency Assessment (HSA)"
+  },
+  "scope" : "FULL",
+  "partCode" : null,
+  "subject" : null,
+  "buildMode" : "STANDARD",
+  "grantSource" : {
+    "source" : "PURCHASE",
+    "orderCode" : "DH261126000001",
+    "grantedAt" : "2026-11-20T10:00:00Z"
+  },
+  "instructions" : null,
+  "timing" : "PER_PART",
+  "durationMinutes" : 15,
+  "navigationMode" : "SEQUENTIAL",
+  "attemptsLeft" : 3,
+  "servingStatus" : "PUBLISHED",
+  "openAttempt" : null,
+  "omittedGroups" : [ ],
+  "parts" : [ {
+    "partCode" : "d889340f-7b95-5d9f-bb29-033d3148d96a",
+    "ord" : 0,
+    "name" : "Toán học và xử lí số liệu",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : 5,
+    "questionCount" : 5,
+    "maxPoints" : 5
+  }, {
+    "partCode" : "b0178cae-7968-5ffc-b1f5-4ee5cf13b9cf",
+    "ord" : 1,
+    "name" : "Ngôn ngữ – Văn học",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : 5,
+    "questionCount" : 9,
+    "maxPoints" : 9
+  }, {
+    "partCode" : "a765a87b-4a21-5e50-a3c8-39f0bc627955",
+    "ord" : 2,
+    "name" : "Khoa học hoặc Tiếng Anh",
+    "required" : false,
+    "choiceTiming" : "AFTER_START",
+    "durationMinutes" : 5,
+    "questionCount" : 23,
+    "maxPoints" : 23
+  } ],
+  "preChoice" : null,
+  "afterStartChoices" : [ {
+    "partCode" : "a765a87b-4a21-5e50-a3c8-39f0bc627955",
+    "ord" : 2,
+    "partName" : "Khoa học hoặc Tiếng Anh",
+    "kind" : "SUBJECT_CHOICE",
+    "options" : [ {
+      "code" : "SCIENCE",
+      "name" : "Khoa học",
+      "kind" : "SUBJECT_CHOICE",
+      "chooseSubjects" : 3,
+      "countsByPick" : [ 8, 8, 7 ],
+      "subjects" : [ {
+        "code" : "LY",
+        "nameVi" : "Vật lí",
+        "nameEn" : "Physics"
+      }, {
+        "code" : "HOA",
+        "nameVi" : "Hóa học",
+        "nameEn" : "Chemistry"
+      }, {
+        "code" : "SINH",
+        "nameVi" : "Sinh học",
+        "nameEn" : "Biology"
+      }, {
+        "code" : "SU",
+        "nameVi" : "Lịch sử",
+        "nameEn" : "History"
+      }, {
+        "code" : "DIA",
+        "nameVi" : "Địa lí",
+        "nameEn" : "Geography"
+      } ],
+      "questionCount" : 37,
+      "durationMinutes" : 15,
+      "maxPoints" : 37
+    }, {
+      "code" : "ANH",
+      "name" : "Tiếng Anh",
+      "kind" : "SUBJECT",
+      "chooseSubjects" : null,
+      "countsByPick" : [ ],
+      "subjects" : [ {
+        "code" : "ANH",
+        "nameVi" : "Tiếng Anh",
+        "nameEn" : "English"
+      } ],
+      "questionCount" : 37,
+      "durationMinutes" : 15,
+      "maxPoints" : 37
+    } ]
+  } ],
+  "answerFormats" : [ "SINGLE_CHOICE", "SHORT_ANSWER" ],
+  "listeningPolicy" : null
+}

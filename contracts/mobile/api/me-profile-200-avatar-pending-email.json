@@ -1,0 +1,10 @@
+{
+  "username" : "student.demo",
+  "fullName" : "Nguyễn Minh Anh",
+  "email" : "student.demo@thi360.vn",
+  "emailVerified" : false,
+  "phone" : "0912345678",
+  "avatarAssetId" : "00000000-0000-7000-8000-000000000001",
+  "avatarUrl" : "/api/v1/avatars/00000000-0000-7000-8000-000000000001",
+  "pendingEmail" : "student.new@thi360.vn"
+}

@@ -1,0 +1,6 @@
+{
+  "code" : "VOUCHER_NOT_APPLICABLE",
+  "message" : "Mã voucher không áp dụng cho sản phẩm này",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

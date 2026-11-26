@@ -215,7 +215,7 @@ describe("AppShell", () => {
     expect(screen.getAllByRole("navigation", { name: "Menu chính" })).toEqual([drawerNav]);
     expect(within(drawerNav).getAllByRole("list")).toHaveLength(4);
     expect(within(drawerNav).getByRole("link", { name: "Bảng điều khiển" })).toHaveAttribute("aria-current", "page");
-    expect(within(drawer).getByText("Thi 360 · Quản trị")).toBeInTheDocument();
+    expect(within(drawer).getByText("Thi360 · Quản trị")).toBeInTheDocument();
 
     // jsdom không có router của Next: chặn điều hướng tải lại trang (sau khi handler của React đã chạy).
     const stopDocumentNavigation = (event: MouseEvent) => event.preventDefault();

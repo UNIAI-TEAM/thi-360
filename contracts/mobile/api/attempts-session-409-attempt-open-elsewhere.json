@@ -1,0 +1,7 @@
+{
+  "code" : "ATTEMPT_OPEN_ELSEWHERE",
+  "message" : "Bài thi đang mở ở một phiên khác",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id",
+  "lastSeenAt" : "2026-11-20T10:00:00Z"
+}

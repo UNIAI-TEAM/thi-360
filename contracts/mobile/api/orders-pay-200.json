@@ -1,0 +1,141 @@
+{
+  "order" : {
+    "id" : "00000000-0000-7000-8000-000000000001",
+    "code" : "DH261126000001",
+    "userId" : "00000000-0000-7000-8000-000000000002",
+    "buyerUsername" : "student.demo",
+    "buyerFullName" : "Nguyễn Văn An",
+    "productType" : "EXAM",
+    "examId" : "00000000-0000-7000-8000-000000000003",
+    "examVersionNo" : 1,
+    "bundleId" : null,
+    "bundleVersionNo" : null,
+    "optionCodes" : [
+      "OPT-A",
+      "OPT-B"
+    ],
+    "productCode" : "EXAM-DEMO-04",
+    "productName" : "Exam DEMO",
+    "listPriceVnd" : 200000,
+    "promotionId" : null,
+    "promotionDiscountVnd" : 0,
+    "voucherId" : null,
+    "voucherCode" : null,
+    "voucherDiscountVnd" : 0,
+    "discountApplied" : "NONE",
+    "amountDueVnd" : 200000,
+    "attemptsGranted" : 3,
+    "benefits" : {
+      "note" : "Luyện tập nâng cao",
+      "practice" : true,
+      "aiExplanation" : true,
+      "strengthWeakness" : false
+    },
+    "resultView" : "FULL_SOLUTION",
+    "paymentMethod" : "VNPAY",
+    "state" : "PENDING_PAYMENT",
+    "replacedByOrderId" : null,
+    "replacedByOrderCode" : null,
+    "expiresAt" : "2026-11-20T10:00:00Z",
+    "paidAt" : null,
+    "fulfilledAt" : null,
+    "createdAt" : "2026-11-20T10:00:00Z",
+    "updatedAt" : "2026-11-20T10:00:00Z",
+    "items" : [
+      {
+        "id" : "00000000-0000-7000-8000-000000000005",
+        "examId" : "00000000-0000-7000-8000-000000000003",
+        "examVersionNo" : 1,
+        "examCode" : "EXAM-DEMO-04",
+        "examName" : "Exam DEMO",
+        "optionCodes" : [
+          "OPT-A",
+          "OPT-B"
+        ],
+        "attemptsGranted" : 3,
+        "benefits" : {
+          "note" : "Luyện tập nâng cao",
+          "practice" : true,
+          "aiExplanation" : true,
+          "strengthWeakness" : false
+        },
+        "resultView" : "FULL_SOLUTION",
+        "position" : 1
+      }
+    ],
+    "payments" : [
+      {
+        "id" : "00000000-0000-7000-8000-000000000006",
+        "attemptSeq" : 3,
+        "txnRef" : "DH26112600000101",
+        "amountVnd" : 200000,
+        "state" : "CREATED",
+        "duplicate" : false,
+        "vnpTransactionNo" : null,
+        "bankCode" : null,
+        "cardType" : null,
+        "payDate" : null,
+        "responseCode" : null,
+        "createdAt" : "2026-11-20T10:00:00Z"
+      },
+      {
+        "id" : "00000000-0000-7000-8000-000000000007",
+        "attemptSeq" : 2,
+        "txnRef" : "DH26112600000101",
+        "amountVnd" : 200000,
+        "state" : "CREATED",
+        "duplicate" : false,
+        "vnpTransactionNo" : null,
+        "bankCode" : null,
+        "cardType" : null,
+        "payDate" : null,
+        "responseCode" : null,
+        "createdAt" : "2026-11-20T10:00:00Z"
+      },
+      {
+        "id" : "00000000-0000-7000-8000-000000000008",
+        "attemptSeq" : 1,
+        "txnRef" : "DH26112600000101",
+        "amountVnd" : 200000,
+        "state" : "CREATED",
+        "duplicate" : false,
+        "vnpTransactionNo" : null,
+        "bankCode" : null,
+        "cardType" : null,
+        "payDate" : null,
+        "responseCode" : null,
+        "createdAt" : "2026-11-20T10:00:00Z"
+      }
+    ],
+    "history" : [
+      {
+        "id" : "00000000-0000-7000-8000-000000000009",
+        "fromState" : null,
+        "toState" : "PENDING_PAYMENT",
+        "actor" : "LEARNER",
+        "reason" : "ORDER_CREATED",
+        "at" : "2026-11-20T10:00:00Z"
+      },
+      {
+        "id" : "00000000-0000-7000-8000-000000000010",
+        "fromState" : "PENDING_PAYMENT",
+        "toState" : "PENDING_PAYMENT",
+        "actor" : "LEARNER",
+        "reason" : "REUSE_PENDING_PAYMENT:DH261127XJ7Q8002",
+        "at" : "2026-11-20T10:00:00Z"
+      },
+      {
+        "id" : "00000000-0000-7000-8000-000000000011",
+        "fromState" : "PENDING_PAYMENT",
+        "toState" : "PENDING_PAYMENT",
+        "actor" : "LEARNER",
+        "reason" : "PAYMENT_ATTEMPT_CREATED:DH261127XJ7Q8003",
+        "at" : "2026-11-20T10:00:00Z"
+      }
+    ]
+  },
+  "next" : "REDIRECT",
+  "paymentUrl" : "http://localhost:3000/mock-vnpay/pay?vnp_TxnRef=DH26112600000101&vnp_SecureHash=fixture-vnpay-hash",
+  "txnRef" : "DH26112600000101",
+  "expiresAt" : "2026-11-20T10:00:00Z"
+}

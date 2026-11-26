@@ -1,0 +1,7 @@
+{
+  "code" : "AUDIO_SEEK_REJECTED",
+  "message" : "Không được tua tệp audio vượt quá vị trí cho phép",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000",
+  "positionMs" : 10000
+}

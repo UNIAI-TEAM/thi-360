@@ -1,0 +1,164 @@
+[
+  {
+    "id" : "00000000-0000-7000-8000-000000000001",
+    "code" : "TOAN",
+    "value" : 1,
+    "nameVi" : "Toán học",
+    "nameEn" : "Mathematics",
+    "description" : null,
+    "displayOrder" : 0
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000002",
+    "code" : "VAN",
+    "value" : 2,
+    "nameVi" : "Ngữ văn",
+    "nameEn" : "Literature",
+    "description" : null,
+    "displayOrder" : 1
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000003",
+    "code" : "ANH",
+    "value" : 3,
+    "nameVi" : "Tiếng Anh",
+    "nameEn" : "English",
+    "description" : null,
+    "displayOrder" : 2
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000004",
+    "code" : "LY",
+    "value" : 4,
+    "nameVi" : "Vật lí",
+    "nameEn" : "Physics",
+    "description" : null,
+    "displayOrder" : 3
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000005",
+    "code" : "HOA",
+    "value" : 5,
+    "nameVi" : "Hóa học",
+    "nameEn" : "Chemistry",
+    "description" : null,
+    "displayOrder" : 4
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000006",
+    "code" : "SINH",
+    "value" : 6,
+    "nameVi" : "Sinh học",
+    "nameEn" : "Biology",
+    "description" : null,
+    "displayOrder" : 5
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000007",
+    "code" : "SU",
+    "value" : 7,
+    "nameVi" : "Lịch sử",
+    "nameEn" : "History",
+    "description" : null,
+    "displayOrder" : 6
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000008",
+    "code" : "DIA",
+    "value" : 8,
+    "nameVi" : "Địa lí",
+    "nameEn" : "Geography",
+    "description" : null,
+    "displayOrder" : 7
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000009",
+    "code" : "TIN",
+    "value" : 9,
+    "nameVi" : "Tin học",
+    "nameEn" : "Informatics",
+    "description" : null,
+    "displayOrder" : 8
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000010",
+    "code" : "GDKTPL",
+    "value" : 10,
+    "nameVi" : "Giáo dục kinh tế và pháp luật",
+    "nameEn" : "Economic and Legal Education",
+    "description" : null,
+    "displayOrder" : 9
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000011",
+    "code" : "CNCN",
+    "value" : 11,
+    "nameVi" : "Công nghệ (định hướng công nghiệp)",
+    "nameEn" : "Technology (industrial)",
+    "description" : null,
+    "displayOrder" : 10
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000012",
+    "code" : "CNNN",
+    "value" : 12,
+    "nameVi" : "Công nghệ (định hướng nông nghiệp)",
+    "nameEn" : "Technology (agricultural)",
+    "description" : null,
+    "displayOrder" : 11
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000013",
+    "code" : "VIETNAMESE",
+    "value" : 13,
+    "nameVi" : "Tiếng Việt",
+    "nameEn" : "Vietnamese",
+    "description" : null,
+    "displayOrder" : 12
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000014",
+    "code" : "ECON_LAW",
+    "value" : 14,
+    "nameVi" : "Giáo dục kinh tế và pháp luật",
+    "nameEn" : "Economic and Legal Education",
+    "description" : null,
+    "displayOrder" : 13
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000015",
+    "code" : "INFORMATICS",
+    "value" : 15,
+    "nameVi" : "Tin học",
+    "nameEn" : "Informatics",
+    "description" : null,
+    "displayOrder" : 14
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000016",
+    "code" : "TECH_INDUSTRY",
+    "value" : 16,
+    "nameVi" : "Công nghệ (định hướng công nghiệp)",
+    "nameEn" : "Technology (industrial)",
+    "description" : null,
+    "displayOrder" : 15
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000017",
+    "code" : "TECH_AGRICULTURE",
+    "value" : 17,
+    "nameVi" : "Công nghệ (định hướng nông nghiệp)",
+    "nameEn" : "Technology (agricultural)",
+    "description" : null,
+    "displayOrder" : 16
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000018",
+    "code" : "SCIENTIFIC_THINKING",
+    "value" : 18,
+    "nameVi" : "Tư duy khoa học",
+    "nameEn" : "Scientific thinking",
+    "description" : null,
+    "displayOrder" : 17
+  }
+]

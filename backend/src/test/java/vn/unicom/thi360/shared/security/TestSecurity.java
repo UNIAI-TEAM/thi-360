@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.springframework.beans.BeansException;
@@ -96,8 +97,21 @@ public class TestSecurity {
             String username,
             String roleCode,
             boolean platformAdmin,
-            List<String> permissions
+            List<String> permissions,
+            LoginChannel channel
     ) {
+        public SimulatedPrincipal {
+            Objects.requireNonNull(channel, "channel must not be null");
+        }
+
+        public SimulatedPrincipal(
+                UUID userId,
+                String username,
+                String roleCode,
+                boolean platformAdmin,
+                List<String> permissions) {
+            this(userId, username, roleCode, platformAdmin, permissions, LoginChannel.WEB);
+        }
     }
 
     public interface TestSecuritySupport {
@@ -148,7 +162,8 @@ public class TestSecurity {
                     realm,
                     access,
                     perms);
-            CurrentUserAuthenticationToken auth = new CurrentUserAuthenticationToken(currentUser, "test-sid");
+            CurrentUserAuthenticationToken auth = new CurrentUserAuthenticationToken(
+                    currentUser, "test-sid", principal.channel());
             RequestPostProcessor authProcessor = SecurityMockMvcRequestPostProcessors.authentication(auth);
             return request -> {
                 request.setAttribute(AdminOriginFilter.SIMULATED_PRINCIPAL_ATTR, principal);
