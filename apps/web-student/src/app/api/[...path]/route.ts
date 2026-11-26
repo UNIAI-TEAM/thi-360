@@ -5,6 +5,8 @@ import vi from "@/messages/vi.json";
 export const dynamic = "force-dynamic";
 
 export const { GET, POST, PUT, PATCH, DELETE } = createProxyHandlers({
+  // App học viên native gọi API qua tên miền này bằng `Authorization: Bearer` (UNI-2816).
+  forwardBearerAuthorization: true,
   messages: {
     notFound: vi.errors.notFound,
     proxyNotConfigured: vi.errors.proxyNotConfigured,
