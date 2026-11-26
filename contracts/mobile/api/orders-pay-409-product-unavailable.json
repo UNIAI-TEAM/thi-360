@@ -1,0 +1,6 @@
+{
+  "code" : "PRODUCT_UNAVAILABLE",
+  "message" : "Bộ đề tạm thời chưa bán được do có bài thi thành phần đã ngừng bán",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

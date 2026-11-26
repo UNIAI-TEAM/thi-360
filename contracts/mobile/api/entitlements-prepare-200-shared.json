@@ -1,0 +1,66 @@
+{
+  "entitlementId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examCode" : "DS-HSCA-TOAN",
+  "examName" : "H-SCA Toán (bộ dữ liệu)",
+  "examKind" : {
+    "id" : "00000000-0000-7000-8400-000000000108",
+    "code" : "HSCA",
+    "nameVi" : "Đánh giá năng lực H-SCA",
+    "nameEn" : "H-SCA assessment"
+  },
+  "scope" : "SUBJECT",
+  "partCode" : null,
+  "subject" : {
+    "id" : "00000000-0000-7000-8200-000000000201",
+    "code" : "TOAN",
+    "nameVi" : "Toán học",
+    "nameEn" : "Mathematics"
+  },
+  "buildMode" : "STANDARD",
+  "grantSource" : {
+    "source" : "PURCHASE",
+    "orderCode" : "DH261126000001",
+    "grantedAt" : "2026-11-20T10:00:00Z"
+  },
+  "instructions" : null,
+  "timing" : "SHARED",
+  "durationMinutes" : 90,
+  "navigationMode" : "SEQUENTIAL",
+  "attemptsLeft" : 2,
+  "servingStatus" : "PUBLISHED",
+  "openAttempt" : null,
+  "omittedGroups" : [ ],
+  "parts" : [ {
+    "partCode" : "48e21c0c-8b53-5e04-baf6-6ca3df5d5d3d",
+    "ord" : 0,
+    "name" : "Phần 1 · Trắc nghiệm",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : null,
+    "questionCount" : 25,
+    "maxPoints" : 6.25
+  }, {
+    "partCode" : "d7ca90c7-82cc-537f-937b-2dfc8efaaa60",
+    "ord" : 1,
+    "name" : "Phần 2 · Dữ liệu tổng hợp",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : null,
+    "questionCount" : 5,
+    "maxPoints" : 1.25
+  }, {
+    "partCode" : "c7273f82-354d-505c-8b45-bc5754d72b02",
+    "ord" : 2,
+    "name" : "Phần 3 · Điền đáp án",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : null,
+    "questionCount" : 10,
+    "maxPoints" : 2.5
+  } ],
+  "preChoice" : null,
+  "afterStartChoices" : [ ],
+  "answerFormats" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "QUESTION_SET", "SHORT_ANSWER" ],
+  "listeningPolicy" : null
+}

@@ -1,0 +1,6 @@
+{
+  "code" : "ATTEMPT_ACCESS_FORBIDDEN",
+  "message" : "Tài khoản không có quyền làm bài thi",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

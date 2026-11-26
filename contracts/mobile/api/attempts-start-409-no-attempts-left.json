@@ -1,0 +1,6 @@
+{
+  "code" : "NO_ATTEMPTS_LEFT",
+  "message" : "Quyền dùng này đã hết lượt thi",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

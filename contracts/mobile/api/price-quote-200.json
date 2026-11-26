@@ -1,0 +1,13 @@
+{
+  "productCode" : "EXAM-DEMO-01",
+  "productName" : "Exam DEMO",
+  "versionNo" : 1,
+  "attemptsGranted" : 3,
+  "listPrice" : 200000,
+  "promotion" : null,
+  "voucher" : null,
+  "discountApplied" : "NONE",
+  "voucherNotBetter" : false,
+  "finalPrice" : 200000,
+  "changed" : false
+}

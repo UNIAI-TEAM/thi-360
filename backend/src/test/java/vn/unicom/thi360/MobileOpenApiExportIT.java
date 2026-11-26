@@ -50,10 +50,14 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
 
         JsonNode exportedRoot = objectMapper.readTree(mobileOpenApiJson);
         JsonNode exportedPaths = exportedRoot.path("paths");
+        assertThat(MOBILE_OPERATIONS).hasSize(47);
         assertThat(exportedPaths.size()).isEqualTo(MOBILE_OPERATIONS.size());
         for (Map.Entry<String, List<String>> entry : MOBILE_OPERATIONS.entrySet()) {
             JsonNode pathItem = exportedPaths.path(entry.getKey());
             assertThat(pathItem.isObject()).as("path %s must exist", entry.getKey()).isTrue();
+            assertThat(pathItem.size())
+                    .as("path %s must expose only declared mobile methods", entry.getKey())
+                    .isEqualTo(entry.getValue().size());
             for (String method : entry.getValue()) {
                 JsonNode op = pathItem.path(method);
                 assertThat(op.isObject()).as("%s %s must exist", method, entry.getKey()).isTrue();
@@ -63,9 +67,43 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
         assertThat(exportedPaths.has("/api/v1/auth/login")).isFalse();
         assertThat(exportedPaths.has("/api/v1/auth/refresh")).isFalse();
         assertThat(exportedPaths.has("/api/v1/auth/logout")).isFalse();
-        assertThat(exportedPaths.path("/api/v1/me/profile").has("patch")).isFalse();
-        assertThat(exportedRoot.path("components").path("schemas").has("MobileTokenResponse")).isTrue();
-        assertThat(exportedRoot.path("components").path("schemas").has("ProfileResponse")).isTrue();
+        assertThat(exportedPaths.has("/api/v1/public/storefront/covers/{assetId}")).isFalse();
+        assertThat(exportedPaths.path("/api/v1/me/profile").has("patch")).isTrue();
+        assertThat(exportedPaths.path("/api/v1/me/avatar").has("put")).isTrue();
+        assertThat(exportedPaths.path("/api/v1/me/avatar").has("delete")).isTrue();
+        assertThat(exportedPaths.path("/api/v1/avatars/{assetId}").has("get")).isTrue();
+        assertThat(exportedPaths.path("/api/v1/me/email/verification").has("post")).isTrue();
+        assertThat(exportedPaths.path("/api/v1/me/email/verify").has("post")).isTrue();
+        assertThat(exportedPaths.path("/api/v1/me/email/change").has("post")).isTrue();
+        assertThat(exportedPaths.path("/api/v1/me/email/change/confirm").has("post")).isTrue();
+
+        JsonNode startAttemptOp = exportedPaths.path("/api/v1/me/attempts").path("post");
+        assertRequiredHeader(startAttemptOp, "Idempotency-Key");
+        assertThat(startAttemptOp.path("responses").has("202")).isTrue();
+
+        JsonNode schemas = exportedRoot.path("components").path("schemas");
+        for (String requiredSchema : List.of(
+                "MobileTokenResponse",
+                "ProfileResponse",
+                "ProfileUpdateRequest",
+                "EmailCodeChangeRequest",
+                "EmailCodeVerifyRequest",
+                "EmailCodeErrorResponse",
+                "AttemptSessionConflictResponse",
+                "AttemptAudioPlayView",
+                "AudioPolicyView",
+                "AttemptResultResponse",
+                "AttemptReviewResponse",
+                "MyExamsResponse",
+                "PageResponseAttemptHistoryItem",
+                "CatalogOptionResponse")) {
+            assertThat(schemas.has(requiredSchema))
+                    .as("mobile schema %s must exist", requiredSchema)
+                    .isTrue();
+        }
+        JsonNode fullNameSchema = schemas.path("ProfileUpdateRequest").path("properties").path("fullName");
+        assertThat(fullNameSchema.path("maxLength").asInt()).isEqualTo(200);
+        assertThat(fullNameSchema.path("description").asText()).contains("200");
 
         Path targetOut = Path.of("target", "openapi-mobile.json");
         Files.createDirectories(targetOut.getParent());
@@ -193,6 +231,21 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
         }
     }
 
+    private static void assertRequiredHeader(JsonNode operation, String headerName) {
+        JsonNode params = operation.path("parameters");
+        assertThat(params.isArray()).as("parameters must be an array").isTrue();
+        boolean found = false;
+        for (JsonNode param : params) {
+            if ("header".equals(param.path("in").asText()) && headerName.equals(param.path("name").asText())) {
+                assertThat(param.path("required").asBoolean())
+                        .as("header %s must be required", headerName)
+                        .isTrue();
+                found = true;
+            }
+        }
+        assertThat(found).as("required header %s must exist", headerName).isTrue();
+    }
+
     private static Map<String, List<String>> orderedMobileOperations() {
         Map<String, List<String>> ops = new LinkedHashMap<>();
         ops.put("/api/v1/auth/mobile/login", List.of("post"));
@@ -205,7 +258,43 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
         ops.put("/api/v1/auth/password/reset", List.of("post"));
         ops.put("/api/v1/auth/change-password", List.of("post"));
         ops.put("/api/v1/me", List.of("get"));
-        ops.put("/api/v1/me/profile", List.of("get"));
+        ops.put("/api/v1/me/profile", List.of("get", "patch"));
+        ops.put("/api/v1/me/avatar", List.of("put", "delete"));
+        ops.put("/api/v1/avatars/{assetId}", List.of("get"));
+        ops.put("/api/v1/me/email/verification", List.of("post"));
+        ops.put("/api/v1/me/email/verify", List.of("post"));
+        ops.put("/api/v1/me/email/change", List.of("post"));
+        ops.put("/api/v1/me/email/change/confirm", List.of("post"));
+        ops.put("/api/v1/public/storefront/filters", List.of("get"));
+        ops.put("/api/v1/public/storefront/products", List.of("get"));
+        ops.put("/api/v1/public/storefront/products/{code}", List.of("get"));
+        ops.put("/api/v1/me/exam-access/query", List.of("post"));
+        ops.put("/api/v1/me/price-quote", List.of("post"));
+        ops.put("/api/v1/me/orders", List.of("get", "post"));
+        ops.put("/api/v1/me/orders/{code}", List.of("get"));
+        ops.put("/api/v1/me/orders/{code}/pay", List.of("post"));
+        ops.put("/api/v1/me/orders/{code}/cancel", List.of("post"));
+        ops.put("/api/v1/public/payments/vnpay/return", List.of("get"));
+        ops.put("/api/v1/me/exams", List.of("get"));
+        ops.put("/api/v1/me/attempts", List.of("get", "post"));
+        ops.put("/api/v1/catalog/options", List.of("get"));
+        ops.put("/api/v1/me/entitlements/{entitlementId}/prepare", List.of("get"));
+        ops.put("/api/v1/me/attempts/{attemptId}", List.of("get"));
+        ops.put("/api/v1/me/attempts/{attemptId}/session", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/heartbeat", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/answers", List.of("put"));
+        ops.put("/api/v1/me/attempts/{attemptId}/parts/{partId}/finish", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/submit", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/parts/{partId}/choice", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/parts/{partId}/retry", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/assets/{assetId}", List.of("get"));
+        ops.put("/api/v1/me/attempts/{attemptId}/solution-assets/{assetId}", List.of("get"));
+        ops.put("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/end", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/progress", List.of("put"));
+        ops.put("/api/v1/me/attempts/{attemptId}/audio/{assetId}/plays/{playId}/resume", List.of("post"));
+        ops.put("/api/v1/me/attempts/{attemptId}/result", List.of("get"));
+        ops.put("/api/v1/me/attempts/{attemptId}/review", List.of("get"));
         return ops;
     }
 }

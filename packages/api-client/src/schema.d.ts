@@ -10258,7 +10258,7 @@ export interface components {
         };
         /** @description Yêu cầu sửa hồ sơ; trường không gửi thì giữ nguyên */
         ProfileUpdateRequest: {
-            /** @description Họ và tên, bắt buộc khi gửi, tối đa 100 ký tự */
+            /** @description Họ và tên, bắt buộc khi gửi, tối đa 200 ký tự */
             fullName?: string;
             /**
              * @description Số điện thoại Việt Nam 10 chữ số bắt đầu bằng 0; chuỗi rỗng để xóa số
@@ -39079,8 +39079,9 @@ export interface operations {
     start: {
         parameters: {
             query?: never;
-            header?: {
-                "Idempotency-Key"?: string;
+            header: {
+                /** @description Khóa chống gửi lặp bắt buộc cho thao tác bắt đầu lượt thi */
+                "Idempotency-Key": string;
             };
             path?: never;
             cookie?: never;
@@ -39091,8 +39092,17 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description Trạng thái hiện tại khi nối lại lượt đang mở hoặc gửi lại cùng khóa idempotency */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartAttemptResponse"];
+                };
+            };
+            /** @description Đã giữ lượt và đưa việc sinh đề vào hàng chờ */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

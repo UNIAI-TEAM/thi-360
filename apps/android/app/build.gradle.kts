@@ -133,6 +133,17 @@ val generateMobileOpenApiClient = tasks.register<GenerateTask>("generateMobileOp
             "omitGradleWrapper" to "true",
         ),
     )
+    typeMappings.set(
+        mapOf(
+            "object" to "JsonElement",
+            "AnyType" to "JsonElement",
+        ),
+    )
+    importMappings.set(
+        mapOf(
+            "JsonElement" to "kotlinx.serialization.json.JsonElement",
+        ),
+    )
 }
 
 tasks.named("preBuild").configure {

@@ -1,0 +1,6 @@
+{
+  "code" : "VOUCHER_NOT_ELIGIBLE",
+  "message" : "Tài khoản không đủ điều kiện sử dụng mã voucher này",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

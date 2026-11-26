@@ -1,0 +1,6 @@
+{
+  "code" : "CHOICE_LOCKED",
+  "message" : "Lựa chọn phần thi đã được xác nhận và không thể thay đổi",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

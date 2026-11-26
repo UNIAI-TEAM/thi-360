@@ -1,0 +1,6 @@
+{
+  "code" : "RATE_LIMITED",
+  "message" : "Gửi yêu cầu quá nhanh, vui lòng thử lại sau",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

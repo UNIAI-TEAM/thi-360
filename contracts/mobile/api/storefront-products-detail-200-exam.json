@@ -1,0 +1,97 @@
+{
+  "code" : "EXAM-DEMO-01",
+  "name" : "Đề thi HSA tổng hợp DEMO",
+  "summary" : "Tóm tắt EXAM-DEMO",
+  "coverUrl" : null,
+  "examKind" : {
+    "code" : "HSA",
+    "nameVi" : "Đánh giá năng lực ĐHQGHN",
+    "nameEn" : "HSA"
+  },
+  "format" : "FULL",
+  "scopeLabel" : null,
+  "buildMode" : "STANDARD",
+  "questionCount" : {
+    "min" : 50,
+    "max" : 50
+  },
+  "durationMinutes" : {
+    "min" : 75,
+    "max" : 75
+  },
+  "maxPoints" : {
+    "min" : 100,
+    "max" : 100
+  },
+  "attemptsGranted" : 3,
+  "listPrice" : 250000,
+  "price" : 200000,
+  "promotion" : {
+    "name" : "Ưu đãi khai giảng",
+    "endsAt" : "2026-11-20T10:00:00Z"
+  },
+  "versionNo" : 1,
+  "description" : "Mô tả chi tiết EXAM-DEMO",
+  "objectives" : "Ôn luyện chuẩn cấu trúc",
+  "audience" : "Học sinh lớp 12",
+  "parts" : [
+    {
+      "order" : 1,
+      "name" : "Tư duy định lượng",
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "maxPoints" : {
+        "min" : 100,
+        "max" : 100
+      },
+      "required" : true,
+      "answerTypes" : [
+        {
+          "questionType" : "SINGLE_CHOICE",
+          "questionCount" : 50,
+          "childAnswerType" : null
+        }
+      ]
+    }
+  ],
+  "choices" : [
+    {
+      "partName" : "Phần tự chọn",
+      "options" : [
+        {
+          "kind" : "BRANCH",
+          "code" : "ANH",
+          "name" : "Tiếng Anh",
+          "branch" : null,
+          "chooseSubjects" : null,
+          "countsByPick" : null,
+          "subjects" : [ ],
+          "answerTypes" : [ ],
+          "subjectAnswerTypes" : [ ]
+        }
+      ]
+    }
+  ],
+  "scoring" : {
+    "timing" : "PER_PART",
+    "maxScore" : 100,
+    "referenceMax" : null,
+    "practiceScoring" : "RAW"
+  },
+  "omittedEssayGroups" : [ ],
+  "benefits" : {
+    "aiExplanation" : true,
+    "strengthWeakness" : true,
+    "practice" : false,
+    "note" : "Kèm giải thích chi tiết"
+  },
+  "resultView" : "FULL_SOLUTION",
+  "productType" : "EXAM",
+  "items" : [ ]
+}

@@ -1,0 +1,6 @@
+{
+  "code" : "FORBIDDEN",
+  "message" : "Không có quyền thực hiện thao tác này",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

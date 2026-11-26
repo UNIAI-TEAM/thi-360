@@ -1,0 +1,43 @@
+{
+  "entitlementId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examCode" : "DS-HSA-PART-MATH-MINI",
+  "examName" : "HSA theo phần Toán (thu nhỏ)",
+  "examKind" : {
+    "id" : "00000000-0000-7000-8200-000000000101",
+    "code" : "HSA",
+    "nameVi" : "Đánh giá năng lực ĐHQG Hà Nội (HSA)",
+    "nameEn" : "VNU Hanoi Competency Assessment (HSA)"
+  },
+  "scope" : "PART",
+  "partCode" : "TOAN",
+  "subject" : null,
+  "buildMode" : "STANDARD",
+  "grantSource" : {
+    "source" : "CLASS",
+    "orderCode" : null,
+    "grantedAt" : "2026-11-20T10:00:00Z"
+  },
+  "instructions" : null,
+  "timing" : "PER_PART",
+  "durationMinutes" : 5,
+  "navigationMode" : "SEQUENTIAL",
+  "attemptsLeft" : 2,
+  "servingStatus" : "PUBLISHED",
+  "openAttempt" : null,
+  "omittedGroups" : [ ],
+  "parts" : [ {
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "ord" : 0,
+    "name" : "Toán học và xử lí số liệu",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : 5,
+    "questionCount" : 5,
+    "maxPoints" : 5
+  } ],
+  "preChoice" : null,
+  "afterStartChoices" : [ ],
+  "answerFormats" : [ "SINGLE_CHOICE", "SHORT_ANSWER" ],
+  "listeningPolicy" : null
+}

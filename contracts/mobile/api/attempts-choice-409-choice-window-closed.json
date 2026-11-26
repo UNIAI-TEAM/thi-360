@@ -1,0 +1,6 @@
+{
+  "code" : "CHOICE_WINDOW_CLOSED",
+  "message" : "Đã hết thời hạn chọn phần thi",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

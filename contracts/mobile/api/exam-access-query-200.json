@@ -1,0 +1,44 @@
+{
+  "items" : [
+    {
+      "code" : "EXAM-DEMO-01",
+      "state" : "CAN_START",
+      "attemptsLeft" : 3,
+      "entitlementId" : "00000000-0000-7000-8000-000000000002",
+      "activeAttemptId" : null,
+      "hasPendingFulfillment" : false,
+      "pendingOrderCode" : null,
+      "items" : null
+    },
+    {
+      "code" : "EXAM-DEMO-03",
+      "state" : "IN_PROGRESS",
+      "attemptsLeft" : 1,
+      "entitlementId" : "00000000-0000-7000-8000-000000000004",
+      "activeAttemptId" : "00000000-0000-7000-8000-000000000005",
+      "hasPendingFulfillment" : false,
+      "pendingOrderCode" : null,
+      "items" : null
+    },
+    {
+      "code" : "EXAM-DEMO-06",
+      "state" : "EXHAUSTED",
+      "attemptsLeft" : 0,
+      "entitlementId" : "00000000-0000-7000-8000-000000000007",
+      "activeAttemptId" : null,
+      "hasPendingFulfillment" : false,
+      "pendingOrderCode" : null,
+      "items" : null
+    },
+    {
+      "code" : "EXAM-DEMO-08",
+      "state" : "CHECKING",
+      "attemptsLeft" : 0,
+      "entitlementId" : null,
+      "activeAttemptId" : null,
+      "hasPendingFulfillment" : true,
+      "pendingOrderCode" : "DH261126000001",
+      "items" : null
+    }
+  ]
+}

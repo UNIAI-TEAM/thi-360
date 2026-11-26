@@ -1,0 +1,6 @@
+{
+  "code" : "ACCOUNT_CHANGED",
+  "message" : "Tài khoản đang đăng nhập đã thay đổi, vui lòng xác nhận lại",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

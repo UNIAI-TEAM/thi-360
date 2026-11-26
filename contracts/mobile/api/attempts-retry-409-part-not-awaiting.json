@@ -1,0 +1,6 @@
+{
+  "code" : "PART_NOT_AWAITING",
+  "message" : "Phần thi không ở trạng thái cho phép thực hiện thao tác này",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

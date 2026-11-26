@@ -1,0 +1,6 @@
+{
+  "code" : "NOT_FOUND",
+  "message" : "Không tìm thấy dữ liệu yêu cầu",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

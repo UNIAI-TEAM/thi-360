@@ -1,0 +1,12 @@
+{
+  "code" : "AVATAR_TOO_LARGE",
+  "message" : "Ảnh đại diện vượt quá 5 MB",
+  "fieldErrors" : [
+    {
+      "field" : "file",
+      "code" : "AVATAR_TOO_LARGE",
+      "message" : "Ảnh đại diện vượt quá 5 MB"
+    }
+  ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

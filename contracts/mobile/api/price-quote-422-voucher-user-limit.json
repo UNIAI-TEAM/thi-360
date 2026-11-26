@@ -1,0 +1,6 @@
+{
+  "code" : "VOUCHER_USER_LIMIT",
+  "message" : "Bạn đã dùng hết số lượt cho phép của mã voucher này",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

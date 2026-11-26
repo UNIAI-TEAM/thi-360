@@ -1,0 +1,205 @@
+{
+  "items" : [
+    {
+      "entitlementId" : null,
+      "code" : "EXAM-DEMO-01",
+      "name" : "Exam DEMO",
+      "examKind" : {
+        "code" : "HSA",
+        "nameVi" : "HSA",
+        "nameEn" : "HSA"
+      },
+      "format" : "FULL",
+      "scopeLabel" : null,
+      "buildMode" : "STANDARD",
+      "coverUrl" : null,
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "attemptsLeft" : 0,
+      "attemptsTotal" : 0,
+      "saleState" : "ON_SALE",
+      "state" : "CHECKING",
+      "activeAttemptId" : null,
+      "activeAttemptState" : null,
+      "resultAttemptId" : null,
+      "hasPendingFulfillment" : true,
+      "pendingOrderCode" : "DH261126000001",
+      "actions" : [
+        "CHECKING"
+      ],
+      "bundles" : [ ],
+      "entitlementSource" : null,
+      "classId" : null,
+      "className" : null
+    },
+    {
+      "entitlementId" : "00000000-0000-7000-8000-000000000002",
+      "code" : "EXAM-DEMO-03",
+      "name" : "Exam DEMO",
+      "examKind" : {
+        "code" : "HSA",
+        "nameVi" : "HSA",
+        "nameEn" : "HSA"
+      },
+      "format" : "FULL",
+      "scopeLabel" : null,
+      "buildMode" : "STANDARD",
+      "coverUrl" : null,
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "attemptsLeft" : 2,
+      "attemptsTotal" : 2,
+      "saleState" : "ON_SALE",
+      "state" : "CAN_START",
+      "activeAttemptId" : null,
+      "activeAttemptState" : null,
+      "resultAttemptId" : null,
+      "hasPendingFulfillment" : false,
+      "pendingOrderCode" : null,
+      "actions" : [
+        "START"
+      ],
+      "bundles" : [ ],
+      "entitlementSource" : "CLASS",
+      "classId" : "00000000-0000-7000-8000-000000000004",
+      "className" : "Class DEMO"
+    },
+    {
+      "entitlementId" : "00000000-0000-7000-8000-000000000005",
+      "code" : "EXAM-DEMO-06",
+      "name" : "Exam DEMO",
+      "examKind" : {
+        "code" : "HSA",
+        "nameVi" : "HSA",
+        "nameEn" : "HSA"
+      },
+      "format" : "FULL",
+      "scopeLabel" : null,
+      "buildMode" : "STANDARD",
+      "coverUrl" : null,
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "attemptsLeft" : 0,
+      "attemptsTotal" : 1,
+      "saleState" : "ON_SALE",
+      "state" : "EXHAUSTED",
+      "activeAttemptId" : null,
+      "activeAttemptState" : null,
+      "resultAttemptId" : "00000000-0000-7000-8000-000000000007",
+      "hasPendingFulfillment" : false,
+      "pendingOrderCode" : null,
+      "actions" : [
+        "VIEW_RESULT",
+        "HISTORY",
+        "REBUY"
+      ],
+      "bundles" : [ ],
+      "entitlementSource" : "PURCHASE",
+      "classId" : null,
+      "className" : null
+    },
+    {
+      "entitlementId" : "00000000-0000-7000-8000-000000000008",
+      "code" : "EXAM-DEMO-09",
+      "name" : "Exam DEMO",
+      "examKind" : {
+        "code" : "HSA",
+        "nameVi" : "HSA",
+        "nameEn" : "HSA"
+      },
+      "format" : "FULL",
+      "scopeLabel" : null,
+      "buildMode" : "STANDARD",
+      "coverUrl" : null,
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "attemptsLeft" : 1,
+      "attemptsTotal" : 2,
+      "saleState" : "ON_SALE",
+      "state" : "IN_PROGRESS",
+      "activeAttemptId" : "00000000-0000-7000-8000-000000000010",
+      "activeAttemptState" : "IN_PROGRESS",
+      "resultAttemptId" : null,
+      "hasPendingFulfillment" : false,
+      "pendingOrderCode" : null,
+      "actions" : [
+        "CONTINUE",
+        "HISTORY",
+        "BUY_MORE"
+      ],
+      "bundles" : [ ],
+      "entitlementSource" : "PURCHASE",
+      "classId" : null,
+      "className" : null
+    },
+    {
+      "entitlementId" : "00000000-0000-7000-8000-000000000011",
+      "code" : "EXAM-DEMO-12",
+      "name" : "Exam DEMO",
+      "examKind" : {
+        "code" : "HSA",
+        "nameVi" : "HSA",
+        "nameEn" : "HSA"
+      },
+      "format" : "FULL",
+      "scopeLabel" : null,
+      "buildMode" : "STANDARD",
+      "coverUrl" : null,
+      "questionCount" : {
+        "min" : 50,
+        "max" : 50
+      },
+      "durationMinutes" : {
+        "min" : 75,
+        "max" : 75
+      },
+      "attemptsLeft" : 3,
+      "attemptsTotal" : 3,
+      "saleState" : "ON_SALE",
+      "state" : "CAN_START",
+      "activeAttemptId" : null,
+      "activeAttemptState" : null,
+      "resultAttemptId" : null,
+      "hasPendingFulfillment" : false,
+      "pendingOrderCode" : null,
+      "actions" : [
+        "START",
+        "BUY_MORE"
+      ],
+      "bundles" : [
+        {
+          "bundleId" : "00000000-0000-7000-8000-000000000013",
+          "code" : "BUNDLE-DEMO-01",
+          "name" : "Bộ đề luyện thi HSA"
+        }
+      ],
+      "entitlementSource" : "PURCHASE",
+      "classId" : null,
+      "className" : null
+    }
+  ]
+}

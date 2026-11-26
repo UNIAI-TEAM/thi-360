@@ -1,0 +1,6 @@
+{
+  "code" : "CHOICE_NOT_ALLOWED",
+  "message" : "Lựa chọn không thuộc phạm vi quyền dùng hoặc bài thi",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

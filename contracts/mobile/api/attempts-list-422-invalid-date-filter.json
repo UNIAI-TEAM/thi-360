@@ -1,0 +1,6 @@
+{
+  "code" : "INVALID_DATE_FILTER",
+  "message" : "Invalid date parameter: not-a-date",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

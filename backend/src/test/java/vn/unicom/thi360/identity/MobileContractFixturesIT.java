@@ -1,26 +1,17 @@
 package vn.unicom.thi360.identity;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,12 +33,55 @@ import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.CreateUse
 import vn.unicom.thi360.identity.infrastructure.RoleRepository;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.identity.infrastructure.UserRoleRepository;
+import vn.unicom.thi360.mobilecontract.MobileFixtureCertifier;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
 import vn.unicom.thi360.shared.security.RateLimitFilter;
 import vn.unicom.thi360.shared.security.SessionStore;
 import vn.unicom.thi360.shared.security.TokenPepperProperties;
 
-class MobileContractFixturesIT extends AbstractKeycloakIntegrationTest {
+public class MobileContractFixturesIT extends AbstractKeycloakIntegrationTest {
+
+    public static final class Fixtures {
+        public static final Set<String> SET = Set.of(
+                "auth/login-200.json",
+                "auth/login-200-must-change-password.json",
+                "auth/login-400-validation-failed.json",
+                "auth/login-401-invalid-credentials.json",
+                "auth/login-403-account-inactive.json",
+                "auth/login-403-app-student-only.json",
+                "auth/login-429-login-throttled.json",
+                "auth/login-429-rate-limited.json",
+                "auth/refresh-200.json",
+                "auth/refresh-401-session-revoked.json",
+                "auth/refresh-403-app-student-only.json",
+                "auth/register-verify-201.json",
+                "auth/register-verify-422-email-code-expired.json",
+                "auth/register-verify-422-email-code-invalid.json",
+                "auth/register-verify-429-rate-limited.json",
+                "api/change-password-400-password-weak.json",
+                "api/change-password-400-wrong-old-password.json",
+                "api/me-200.json",
+                "api/me-401-session-revoked.json",
+                "api/me-401-unauthenticated.json",
+                "api/me-profile-200.json",
+                "api/me-profile-200-no-email.json",
+                "api/password-forgot-202.json",
+                "api/password-forgot-400-validation-failed.json",
+                "api/password-reset-400-password-weak.json",
+                "api/password-reset-422-reset-token-invalid.json",
+                "api/register-200.json",
+                "api/register-400-validation-failed.json",
+                "api/register-409-email-taken.json",
+                "api/register-409-username-taken.json",
+                "api/register-429-otp-rate-limited.json",
+                "api/register-resend-200.json",
+                "api/register-resend-422-email-code-expired.json",
+                "api/register-resend-429-rate-limited.json");
+
+        private Fixtures() {}
+    }
+
+    public static final Set<String> FIXTURES = Fixtures.SET;
 
     private static final String PASSWORD = "Valid@1234";
     private static final String IP_MAIN = "203.0.113.205";
@@ -87,7 +121,7 @@ class MobileContractFixturesIT extends AbstractKeycloakIntegrationTest {
 
     private SelfRegistrationSupport support;
     private PasswordResetTestSupport resetSupport;
-    private final Set<String> certified = new TreeSet<>();
+    private MobileFixtureCertifier certifier;
     private final List<UUID> createdUserIds = new ArrayList<>();
 
     @BeforeEach
@@ -95,7 +129,7 @@ class MobileContractFixturesIT extends AbstractKeycloakIntegrationTest {
         support = new SelfRegistrationSupport(mockMvc, jdbcTemplate, keycloakClient, redisTemplate, objectMapper);
         resetSupport = new PasswordResetTestSupport(
                 keycloakClient, userAccountRepository, jdbcTemplate, redisTemplate, tokenPepperProperties.pepper());
-        certified.clear();
+        certifier = new MobileFixtureCertifier(objectMapper);
         createdUserIds.clear();
         clearRateLimits();
     }
@@ -430,111 +464,13 @@ class MobileContractFixturesIT extends AbstractKeycloakIntegrationTest {
                 .andReturn();
         assertFixture("api/password-reset-422-reset-token-invalid.json", 422, reset422Invalid, Set.of("traceId"));
 
-        // Every JSON file on disk under contracts/mobile/auth and contracts/mobile/api must be certified.
-        Set<String> onDisk = listFixtureFiles(contractsMobileDir());
-        assertThat(onDisk).as("all fixture files on disk must be certified").containsExactlyInAnyOrderElementsOf(certified);
+        certifier.assertCertifiedExactly(FIXTURES);
     }
 
     private void assertFixture(
             String relativePath, int expectedStatus, MvcResult actualResult, Set<String> dynamicFields)
             throws Exception {
-        certified.add(relativePath);
-        Path fixtureFile = contractsMobileDir().resolve(relativePath);
-        assertThat(fixtureFile).as("fixture exists: %s", relativePath).isRegularFile();
-        assertThat(actualResult.getResponse().getStatus())
-                .as("%s status (body=%s)", relativePath, actualResult.getResponse().getContentAsString(StandardCharsets.UTF_8))
-                .isEqualTo(expectedStatus);
-
-        JsonNode expected = objectMapper.readTree(Files.readString(fixtureFile, StandardCharsets.UTF_8));
-        JsonNode actual = parseBody(actualResult);
-        assertNodesMatch(relativePath, "$", expected, actual, dynamicFields);
-    }
-
-    private static void assertNodesMatch(
-            String fixture, String path, JsonNode expected, JsonNode actual, Set<String> dynamicFields) {
-        assertThat(actual.getNodeType())
-                .as("%s at %s node type (expected=%s actual=%s)", fixture, path, expected, actual)
-                .isEqualTo(expected.getNodeType());
-
-        if (expected.isObject()) {
-            Set<String> expectedKeys = fieldNames(expected);
-            Set<String> actualKeys = fieldNames(actual);
-            assertThat(actualKeys)
-                    .as("%s at %s keys (expected=%s actual=%s)", fixture, path, expected, actual)
-                    .containsExactlyInAnyOrderElementsOf(expectedKeys);
-            for (String key : expectedKeys) {
-                JsonNode expChild = expected.get(key);
-                JsonNode actChild = actual.get(key);
-                if (dynamicFields.contains(key)) {
-                    assertThat(actChild.getNodeType())
-                            .as("%s.%s dynamic field type", fixture, key)
-                            .isEqualTo(expChild.getNodeType());
-                    if (actChild.isTextual()) {
-                        assertThat(actChild.asText()).as("%s.%s non-blank", fixture, key).isNotBlank();
-                    } else if (actChild.isNumber()) {
-                        assertThat(actChild.asLong()).as("%s.%s positive", fixture, key).isPositive();
-                    }
-                } else if ("fieldErrors".equals(key) && expChild.isArray() && actChild.isArray()) {
-                    assertThat(normalizeFieldErrors(actChild))
-                            .as("%s.fieldErrors", fixture)
-                            .containsExactlyElementsOf(normalizeFieldErrors(expChild));
-                } else {
-                    assertNodesMatch(fixture, path + "." + key, expChild, actChild, dynamicFields);
-                }
-            }
-        } else if (expected.isArray()) {
-            assertThat(actual.size()).as("%s at %s array size", fixture, path).isEqualTo(expected.size());
-            for (int i = 0; i < expected.size(); i++) {
-                assertNodesMatch(fixture, path + "[" + i + "]", expected.get(i), actual.get(i), dynamicFields);
-            }
-        } else {
-            assertThat(actual).as("%s at %s value", fixture, path).isEqualTo(expected);
-        }
-    }
-
-    private static List<String> normalizeFieldErrors(JsonNode arrayNode) {
-        List<String> tuples = new ArrayList<>();
-        for (JsonNode item : arrayNode) {
-            tuples.add(item.path("field").asText()
-                    + "|" + item.path("code").asText()
-                    + "|" + item.path("message").asText());
-        }
-        tuples.sort(Comparator.naturalOrder());
-        return tuples;
-    }
-
-    private static Set<String> fieldNames(JsonNode objectNode) {
-        Set<String> keys = new LinkedHashSet<>();
-        Iterator<String> it = objectNode.fieldNames();
-        while (it.hasNext()) {
-            keys.add(it.next());
-        }
-        return keys;
-    }
-
-    private static Path contractsMobileDir() {
-        Path fromBackend = Path.of("..", "contracts", "mobile").normalize();
-        if (Files.isDirectory(fromBackend)) {
-            return fromBackend;
-        }
-        Path fromRoot = Path.of("contracts", "mobile").normalize();
-        if (Files.isDirectory(fromRoot)) {
-            return fromRoot;
-        }
-        throw new IllegalStateException("Could not locate contracts/mobile directory");
-    }
-
-    private static Set<String> listFixtureFiles(Path baseDir) throws IOException {
-        Set<String> files = new TreeSet<>();
-        for (String sub : List.of("auth", "api")) {
-            Path dir = baseDir.resolve(sub);
-            try (Stream<Path> stream = Files.list(dir)) {
-                stream.filter(Files::isRegularFile)
-                        .filter(p -> p.getFileName().toString().endsWith(".json"))
-                        .forEach(p -> files.add(sub + "/" + p.getFileName().toString()));
-            }
-        }
-        return files;
+        certifier.certify(relativePath, expectedStatus, actualResult, dynamicFields);
     }
 
     private JsonNode parseBody(MvcResult result) throws Exception {

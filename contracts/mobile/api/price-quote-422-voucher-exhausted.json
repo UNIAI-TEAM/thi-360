@@ -1,0 +1,6 @@
+{
+  "code" : "VOUCHER_EXHAUSTED",
+  "message" : "Mã voucher đã hết lượt sử dụng",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

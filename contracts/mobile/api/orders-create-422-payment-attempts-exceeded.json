@@ -1,0 +1,6 @@
+{
+  "code" : "PAYMENT_ATTEMPTS_EXCEEDED",
+  "message" : "Đơn hàng đã vượt quá số lần tạo thanh toán tối đa, vui lòng tạo đơn mới",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

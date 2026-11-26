@@ -1,0 +1,7 @@
+{
+  "code" : "AUDIO_PLAY_IN_PROGRESS",
+  "message" : "Tệp audio này đang có một lần nghe chưa kết thúc",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000",
+  "playId" : "00000000-0000-7000-8000-000000000001"
+}

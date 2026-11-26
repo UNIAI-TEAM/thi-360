@@ -1,0 +1,93 @@
+{
+  "serverNow" : "2026-11-20T10:00:00Z",
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "IN_PROGRESS",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examVersionNo" : 1,
+  "examName" : "H-SCA Tiếng Anh (thu nhỏ)",
+  "examKindCode" : "HSCA",
+  "scope" : "SUBJECT",
+  "timing" : "SHARED",
+  "navigationMode" : "SEQUENTIAL",
+  "attemptNo" : 1,
+  "choices" : { },
+  "startedAt" : "2026-11-20T10:00:00Z",
+  "deadlineAt" : "2026-11-20T10:00:00Z",
+  "maxScore" : 20.0,
+  "audioPolicy" : {
+    "maxPlays" : 2,
+    "seekable" : false
+  },
+  "audioPlays" : [ {
+    "assetId" : "00000000-0000-7000-8000-000000000003",
+    "partId" : "00000000-0000-7000-8000-000000000004",
+    "durationMs" : 30000,
+    "playsUsed" : 1,
+    "playsLeft" : 1,
+    "state" : "PLAYING",
+    "playId" : "00000000-0000-7000-8000-000000000005",
+    "positionMs" : 0
+  } ],
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000006",
+    "partCode" : "71cd93c2-7d96-5c5d-8082-08ce917d04f8",
+    "partName" : "Nghe",
+    "ord" : 0,
+    "state" : "OPEN",
+    "durationMinutes" : null,
+    "questionCount" : 10,
+    "maxPoints" : 10.0,
+    "startedAt" : "2026-11-20T10:00:00Z",
+    "deadlineAt" : "2026-11-20T10:00:00Z",
+    "closedAt" : null,
+    "choice" : null,
+    "choiceDeadlineAt" : null,
+    "items" : [ {
+      "itemId" : "00000000-0000-7000-8000-000000000007",
+      "parentItemId" : null,
+      "displayNo" : 1,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 1.0,
+      "sectionId" : "c4cc74e8-4f29-5ace-bb00-f38560aea8b3",
+      "componentCode" : "ANH",
+      "blockId" : "68db94f7-0fbd-56b8-a327-1867aa8eac8a",
+      "optionOrder" : [ "o1", "o2" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>Nghe đoạn hội thoại và chọn đáp án đúng.</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "o1",
+          "content" : "<p>Đáp án A</p>"
+        }, {
+          "id" : "o2",
+          "content" : "<p>Đáp án B</p>"
+        } ]
+      },
+      "attachments" : [ {
+        "assetId" : "00000000-0000-7000-8000-000000000008",
+        "fileName" : "silence-30s-cbr.mp3",
+        "mime" : "audio/mpeg",
+        "url" : "/api/v1/me/attempts/00000000-0000-7000-8000-000000000001/assets/00000000-0000-7000-8000-000000000008"
+      } ]
+    } ]
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000009",
+    "partCode" : "3a4debc6-cf39-5dc9-ba1d-ab7d1aa4337c",
+    "partName" : "Đọc",
+    "ord" : 1,
+    "state" : "PENDING",
+    "durationMinutes" : null,
+    "questionCount" : 10,
+    "maxPoints" : 10.0,
+    "startedAt" : null,
+    "deadlineAt" : null,
+    "closedAt" : null,
+    "choice" : null,
+    "choiceDeadlineAt" : null,
+    "items" : [ ]
+  } ]
+}

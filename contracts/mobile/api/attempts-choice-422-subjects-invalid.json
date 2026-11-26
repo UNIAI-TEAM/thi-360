@@ -1,0 +1,6 @@
+{
+  "code" : "SUBJECTS_INVALID",
+  "message" : "Danh sách môn đã chọn không hợp lệ",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

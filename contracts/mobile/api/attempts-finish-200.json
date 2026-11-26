@@ -1,0 +1,32 @@
+{
+  "serverNow" : "2026-11-20T10:00:00Z",
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "attemptState" : "IN_PROGRESS",
+  "endReason" : null,
+  "finishedAt" : null,
+  "closedPart" : {
+    "partId" : "00000000-0000-7000-8000-000000000002",
+    "partCode" : "d889340f-7b95-5d9f-bb29-033d3148d96a",
+    "partName" : "Toán học và xử lí số liệu",
+    "ord" : 0,
+    "state" : "CLOSED",
+    "startedAt" : "2026-11-20T10:00:00Z",
+    "deadlineAt" : "2026-11-20T10:00:00Z",
+    "closedAt" : "2026-11-20T10:00:00Z",
+    "closeReason" : "FINISHED",
+    "choiceDeadlineAt" : null
+  },
+  "nextPart" : {
+    "partId" : "00000000-0000-7000-8000-000000000003",
+    "partCode" : "b0178cae-7968-5ffc-b1f5-4ee5cf13b9cf",
+    "partName" : "Ngôn ngữ – Văn học",
+    "ord" : 1,
+    "state" : "OPEN",
+    "startedAt" : "2026-11-20T10:00:00Z",
+    "deadlineAt" : "2026-11-20T10:00:00Z",
+    "closedAt" : null,
+    "closeReason" : null,
+    "choiceDeadlineAt" : null
+  },
+  "results" : [ ]
+}

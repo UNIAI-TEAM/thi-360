@@ -1,0 +1,6 @@
+{
+  "code" : "REVIEW_NOT_INCLUDED",
+  "message" : "Gói lượt thi này không bao gồm quyền xem lại bài làm",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

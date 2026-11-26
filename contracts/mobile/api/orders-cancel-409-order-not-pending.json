@@ -1,0 +1,6 @@
+{
+  "code" : "ORDER_NOT_PENDING",
+  "message" : "Đơn hàng không còn ở trạng thái chờ thanh toán",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}
