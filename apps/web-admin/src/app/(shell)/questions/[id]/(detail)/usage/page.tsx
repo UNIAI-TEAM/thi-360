@@ -5,7 +5,7 @@ import { QuestionUsageView } from "@/features/questions/components/question-usag
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("questions.detail");
-  return { title: `${t("tabs.usage")} · ${t("title")} · Thi 360` };
+  return { title: `${t("tabs.usage")} · ${t("title")} · Thi360` };
 }
 
 export default async function QuestionUsagePage({ params }: { params: Promise<{ id: string }> }) {

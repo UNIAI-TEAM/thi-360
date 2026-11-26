@@ -206,7 +206,8 @@ thi360:
       enabled: true
       stale-starting-interval-ms: 30000
   mail:
-    from: ${THI360_MAIL_FROM:Thi 360 <no-reply@thi360.local>}
+    from: ${THI360_MAIL_FROM:Thi360 <no-reply@thi360.local>}
+    product-name: ${THI360_MAIL_PRODUCT_NAME:Thi360}
     tls: ${THI360_SMTP_TLS:starttls}
   token:
     # Pepper của HMAC mã OTP và mã đặt lại mật khẩu (plan B6). Thiếu thì ứng dụng không khởi động.

@@ -1,4 +1,4 @@
-Your Thi 360 order is complete
+Your [(${productName})] order is complete
 Hello [(${fullName})],
 
 Order [(${orderCode})] was paid successfully and you now have access to:
@@ -7,4 +7,4 @@ Order [(${orderCode})] was paid successfully and you now have access to:
 [/]
 Open "My exams" to get started: [(${webUrl})]/home
 
-Thi 360
+[(${productName})]

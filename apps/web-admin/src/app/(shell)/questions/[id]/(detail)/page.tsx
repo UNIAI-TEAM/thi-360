@@ -5,7 +5,7 @@ import { QuestionDetailContent } from "@/features/questions/components/question-
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("questions.detail");
-  return { title: `${t("tabs.content")} · ${t("title")} · Thi 360` };
+  return { title: `${t("tabs.content")} · ${t("title")} · Thi360` };
 }
 
 export default async function QuestionDetailPage({ params }: { params: Promise<{ id: string }> }) {

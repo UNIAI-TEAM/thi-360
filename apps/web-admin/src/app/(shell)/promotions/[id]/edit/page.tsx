@@ -5,7 +5,7 @@ import { PromotionEditPage } from "@/features/promotions/components/promotion-fo
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("promotions.edit");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default async function EditPromotionPage({

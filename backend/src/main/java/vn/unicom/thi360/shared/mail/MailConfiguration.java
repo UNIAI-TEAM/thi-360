@@ -20,7 +20,7 @@ class MailConfiguration {
     @Bean
     MailTemplateRenderer mailTemplateRenderer(
             ApplicationContext applicationContext, MailProperties mail, @Value("${thi360.web-url}") String webUrl) {
-        return new MailTemplateRenderer(applicationContext, mail.templatesLocation(), webUrl);
+        return new MailTemplateRenderer(applicationContext, mail.templatesLocation(), webUrl, mail.productName());
     }
 
     @Bean

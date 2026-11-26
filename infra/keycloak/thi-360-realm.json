@@ -1,7 +1,7 @@
 {
   "realm": "thi-360",
   "enabled": true,
-  "displayName": "Thi 360",
+  "displayName": "Thi360",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
@@ -19,7 +19,7 @@
   "clients": [
     {
       "clientId": "thi360-api",
-      "name": "Thi 360 backend",
+      "name": "Thi360 backend",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -43,7 +43,7 @@
     },
     {
       "clientId": "thi360-mobile",
-      "name": "Thi 360 mobile app",
+      "name": "Thi360 mobile app",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,

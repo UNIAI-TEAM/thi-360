@@ -8,7 +8,7 @@ export interface PresetPalette {
 }
 
 export const PRESET_PALETTES = [
-  { id: "thi360-green", name: "Thi 360 Xanh lá", primary: "#059669", accent: "#F59223" },
+  { id: "thi360-green", name: "Thi360 Xanh lá", primary: "#059669", accent: "#F59223" },
   { id: "emerald-gold", name: "Ngọc lục bảo & Vàng", primary: "#00695C", accent: "#FFD740" },
   { id: "charcoal-teal", name: "Xanh rêu & Xanh cổ vịt", primary: "#094A43", accent: "#009688" },
   { id: "navy-teal", name: "Xanh hải quân & Ngọc lam", primary: "#0F3C6E", accent: "#00B4A6" },
