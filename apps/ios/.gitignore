@@ -1,4 +1,11 @@
-Thi360.xcodeproj/
+Thi360.xcodeproj/*
+!Thi360.xcodeproj/project.xcworkspace/
+Thi360.xcodeproj/project.xcworkspace/*
+!Thi360.xcodeproj/project.xcworkspace/xcshareddata/
+Thi360.xcodeproj/project.xcworkspace/xcshareddata/*
+!Thi360.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+Thi360.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!Thi360.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 DerivedData/
 .build/
 *.xcresult

@@ -5,10 +5,8 @@ import XCTest
 
 @MainActor
 final class ForgotPasswordViewTests: XCTestCase {
-    func testInvalidEmailShowsInlineErrorWithoutCallingNetwork() async {
-        let (sessionStore, _, transport, _) = SessionTestFactory.makeStack { _ in
-            MockClientTransport.emptyResponse(statusCode: 500)
-        }
+    func testInvalidEmailShowsInlineErrorWithoutCallingNetwork() async throws {
+        let (sessionStore, _, transport, _) = try SessionTestFactory.makeContractStack()
         let vm = ForgotPasswordViewModel(apiClient: sessionStore.apiClient, clock: ManualClock())
 
         await vm.submit()
@@ -26,12 +24,11 @@ final class ForgotPasswordViewTests: XCTestCase {
         let forgotFixture = try ContractFixtureLoader.loadApiFixture("password-forgot-202.json")
         let gate = TestAsyncGate()
 
-        let (sessionStore, _, transport, preferences) = SessionTestFactory.makeStack { request in
-            if request.path.hasSuffix("/api/v1/auth/password/forgot") {
+        let (sessionStore, _, transport, preferences) = try SessionTestFactory.makeContractStack { transport in
+            transport.register(method: .post, path: "/api/v1/auth/password/forgot") { _ in
                 await gate.enterAndWait()
-                return MockClientTransport.jsonResponse(statusCode: 202, data: forgotFixture)
+                return ContractFakeTransport.jsonResponse(statusCode: 202, data: forgotFixture)
             }
-            return MockClientTransport.emptyResponse(statusCode: 500)
         }
 
         let clock = ManualClock()
@@ -48,7 +45,7 @@ final class ForgotPasswordViewTests: XCTestCase {
             await existingVM.submit()
         }
         await duplicate.value
-        XCTAssertEqual(transport.recordedRequests.count, 1, "Duplicate submit while in flight must be ignored")
+        XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/password/forgot"), 1, "Duplicate submit while in flight must be ignored")
 
         await gate.release()
         await first.value
@@ -60,8 +57,8 @@ final class ForgotPasswordViewTests: XCTestCase {
         XCTAssertEqual(existingVM.resendSecondsRemaining, 60)
         XCTAssertFalse(existingVM.canResend)
 
-        let (session2, _, _, _) = SessionTestFactory.makeStack { _ in
-            MockClientTransport.jsonResponse(statusCode: 202, data: forgotFixture)
+        let (session2, _, _, _) = try SessionTestFactory.makeContractStack { transport in
+            transport.registerJSON(method: .post, path: "/api/v1/auth/password/forgot", statusCode: 202, data: forgotFixture)
         }
         let unknownVM = ForgotPasswordViewModel(apiClient: session2.apiClient, clock: clock)
         unknownVM.email = "does-not-exist@example.com"
@@ -82,7 +79,7 @@ final class ForgotPasswordViewTests: XCTestCase {
         XCTAssertEqual(existingVM.resendSecondsRemaining, 1)
         XCTAssertFalse(existingVM.canResend)
         await existingVM.resend()
-        XCTAssertEqual(transport.recordedRequests.count, 1)
+        XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/password/forgot"), 1)
 
         clock.advance(by: 1)
         existingVM.tick()
@@ -90,7 +87,7 @@ final class ForgotPasswordViewTests: XCTestCase {
         XCTAssertTrue(existingVM.canResend)
 
         await existingVM.resend()
-        XCTAssertEqual(transport.recordedRequests.count, 2)
+        XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/password/forgot"), 2)
         XCTAssertEqual(existingVM.resendSecondsRemaining, 60, "Resend must restart 60-second cooldown")
         guard case .sent = existingVM.state else {
             XCTFail("Resend must remain on the same sent screen")

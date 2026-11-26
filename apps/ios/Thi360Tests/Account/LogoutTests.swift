@@ -8,24 +8,19 @@ final class LogoutTests: XCTestCase {
         let userAProfile = try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
         let userBProfile = try ContractFixtureLoader.loadApiFixture("me-profile-200-no-email.json")
         let userBLogin = try ContractFixtureLoader.loadAuthFixture("login-200.json")
+        let meData = try ContractFixtureLoader.loadApiFixture("me-200.json")
 
-        let stack = AccountTestFactory.makeStack(
+        let stack = AccountTestFactory.makeContractStack(
             initialTokens: AccountTestFactory.sampleTokens(username: "userA", refreshToken: "refresh-user-a"),
             capability: .faceIDAvailable,
             initialEnrolled: true,
             locale: .en,
             themeMode: .dark
-        ) { request in
-            if request.path.hasSuffix("/api/v1/me/profile") {
-                return MockClientTransport.jsonResponse(statusCode: 200, data: userAProfile)
-            }
-            if request.path.hasSuffix("/api/v1/auth/mobile/logout") {
-                return MockClientTransport.emptyResponse(statusCode: 204)
-            }
-            if request.path.hasSuffix("/api/v1/auth/mobile/login") {
-                return MockClientTransport.jsonResponse(statusCode: 200, data: userBLogin)
-            }
-            return MockClientTransport.emptyResponse(statusCode: 404)
+        ) { transport in
+            transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: userAProfile)
+            transport.registerJSON(method: .get, path: "/api/v1/me", statusCode: 200, data: meData)
+            transport.registerEmpty(method: .post, path: "/api/v1/auth/mobile/logout", statusCode: 204)
+            transport.registerJSON(method: .post, path: "/api/v1/auth/mobile/login", statusCode: 200, data: userBLogin)
         }
         defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
 
@@ -38,7 +33,6 @@ final class LogoutTests: XCTestCase {
         XCTAssertEqual(stack.biometricManager.state, .on)
         XCTAssertTrue(stack.secretStore.hasProtectedSecret())
 
-        // Tapping Logout requests confirmation before signing out.
         accountVM.requestLogout()
         XCTAssertTrue(accountVM.isShowingLogoutConfirmation)
         XCTAssertTrue(stack.sessionStore.state.isAuthenticated)
@@ -50,7 +44,7 @@ final class LogoutTests: XCTestCase {
         accountVM.requestLogout()
         await accountVM.confirmLogout()
 
-        let logoutCalls = stack.transport.recordedRequests.filter { $0.path.hasSuffix("/api/v1/auth/mobile/logout") }
+        let logoutCalls = stack.transport.requests(method: .post, path: "/api/v1/auth/mobile/logout")
         XCTAssertEqual(logoutCalls.count, 1)
         let logoutBody = try XCTUnwrap(logoutCalls.first?.bodyData)
         let logoutJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: logoutBody) as? [String: Any])
@@ -62,20 +56,11 @@ final class LogoutTests: XCTestCase {
         XCTAssertEqual(stack.sessionStore.state, .signedOut(reason: .none))
         XCTAssertNil(accountVM.loadedProfile, "Logout must wipe previous user's profile from memory")
 
-        // User device preferences survive logout.
         XCTAssertEqual(stack.preferences.locale, .en)
         XCTAssertEqual(stack.preferences.themeMode, .dark)
 
-        // User B logging in after User A never sees User A's data.
-        stack.transport.setHandler { request in
-            if request.path.hasSuffix("/api/v1/auth/mobile/login") {
-                return MockClientTransport.jsonResponse(statusCode: 200, data: userBLogin)
-            }
-            if request.path.hasSuffix("/api/v1/me/profile") {
-                return MockClientTransport.jsonResponse(statusCode: 200, data: userBProfile)
-            }
-            return MockClientTransport.emptyResponse(statusCode: 404)
-        }
+        stack.transport.registerJSON(method: .post, path: "/api/v1/auth/mobile/login", statusCode: 200, data: userBLogin)
+        stack.transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: userBProfile)
         try await stack.sessionStore.login(identifier: "student.noemail", password: "Password123!")
         XCTAssertNil(accountVM.loadedProfile, "User B must not see stale profile from User A before fetching")
         await accountVM.loadProfile()
@@ -86,14 +71,14 @@ final class LogoutTests: XCTestCase {
     }
 
     func testOfflineLogoutStillDeletesTokensAndBiometricsAndReturnsToLogin() async throws {
-        let stack = AccountTestFactory.makeStack(
+        let stack = AccountTestFactory.makeContractStack(
             initialTokens: AccountTestFactory.sampleTokens(refreshToken: "offline-refresh"),
             capability: .faceIDAvailable,
             initialEnrolled: true,
             locale: .en,
             themeMode: .dark
-        ) { _ in
-            throw URLError(.notConnectedToInternet)
+        ) { transport in
+            transport.registerNetworkError(method: .post, path: "/api/v1/auth/mobile/logout", code: .notConnectedToInternet)
         }
         defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
 
@@ -113,16 +98,15 @@ final class LogoutTests: XCTestCase {
 
     func testDoubleTapLogoutOnlyInvokesMobileLogoutOnce() async throws {
         let gate = TestAsyncGate()
-        let stack = AccountTestFactory.makeStack(
+        let stack = AccountTestFactory.makeContractStack(
             initialTokens: AccountTestFactory.sampleTokens(refreshToken: "double-tap-refresh"),
             capability: .faceIDAvailable,
             initialEnrolled: true
-        ) { request in
-            if request.path.hasSuffix("/api/v1/auth/mobile/logout") {
+        ) { transport in
+            transport.register(method: .post, path: "/api/v1/auth/mobile/logout") { _ in
                 await gate.enterAndWait()
-                return MockClientTransport.emptyResponse(statusCode: 204)
+                return ContractFakeTransport.emptyResponse(statusCode: 204)
             }
-            return MockClientTransport.emptyResponse(statusCode: 404)
         }
         defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
 
@@ -138,7 +122,7 @@ final class LogoutTests: XCTestCase {
         await first.value
         await second.value
 
-        let logoutCalls = stack.transport.recordedRequests.filter { $0.path.hasSuffix("/api/v1/auth/mobile/logout") }
+        let logoutCalls = stack.transport.requests(method: .post, path: "/api/v1/auth/mobile/logout")
         XCTAssertEqual(logoutCalls.count, 1, "Rapid double tap on Logout must invoke mobile/logout strictly once")
         XCTAssertNil(try stack.tokenStore.read())
         XCTAssertFalse(stack.secretStore.hasProtectedSecret())

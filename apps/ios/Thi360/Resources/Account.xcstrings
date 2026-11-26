@@ -58,13 +58,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Authenticate with {biometric} to enable quick unlock for Thi 360."
+            "value" : "Authenticate with {biometric} to enable quick unlock for Thi360."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Xác thực {biometric} để bật mở khóa nhanh cho Thi 360."
+            "value" : "Xác thực {biometric} để bật mở khóa nhanh cho Thi360."
           }
         }
       }
@@ -75,13 +75,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unlock Thi 360 with {biometric}."
+            "value" : "Unlock Thi360 with {biometric}."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở khóa Thi 360 bằng {biometric}."
+            "value" : "Mở khóa Thi360 bằng {biometric}."
           }
         }
       }
@@ -262,13 +262,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sign out of Thi 360?"
+            "value" : "Sign out of Thi360?"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đăng xuất khỏi Thi 360?"
+            "value" : "Đăng xuất khỏi Thi360?"
           }
         }
       }
@@ -500,13 +500,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Next time you open Thi 360, just glance at your device instead of entering your password."
+            "value" : "Next time you open Thi360, just glance at your device instead of entering your password."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lần sau mở Thi 360, bạn chỉ cần nhìn vào thiết bị thay vì nhập mật khẩu."
+            "value" : "Lần sau mở Thi360, bạn chỉ cần nhìn vào thiết bị thay vì nhập mật khẩu."
           }
         }
       }
@@ -517,13 +517,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Next time you open Thi 360, just touch the sensor instead of entering your password."
+            "value" : "Next time you open Thi360, just touch the sensor instead of entering your password."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lần sau mở Thi 360, bạn chỉ cần chạm cảm biến thay vì nhập mật khẩu."
+            "value" : "Lần sau mở Thi360, bạn chỉ cần chạm cảm biến thay vì nhập mật khẩu."
           }
         }
       }
@@ -670,13 +670,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thi 360 is protected"
+            "value" : "Thi360 is protected"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thi 360 đã được bảo vệ"
+            "value" : "Thi360 đã được bảo vệ"
           }
         }
       }

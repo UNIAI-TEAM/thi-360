@@ -12,10 +12,49 @@ enum AppEnvironmentError: Error, Equatable {
     case insecureDemoURL(key: String, url: URL)
 }
 
+struct SupportContact: Equatable, Sendable {
+    let phone: String
+    let email: String
+    let hours: String
+
+    static let empty = SupportContact(phone: "", email: "", hours: "")
+
+    init(phone: String = "", email: String = "", hours: String = "") {
+        self.phone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.hours = hours.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var hasAnyChannel: Bool {
+        !phone.isEmpty || !email.isEmpty || !hours.isEmpty
+    }
+
+    var isEmpty: Bool {
+        !hasAnyChannel
+    }
+
+    func pendingMessage(locale: AppLocale, bundle: Bundle = .main) -> String {
+        AppStrings.common("landing.support.pending", locale: locale, bundle: bundle)
+    }
+}
+
 struct AppEnvironment: Equatable, Sendable {
     let kind: BuildEnvironment
     let apiBaseURL: URL
     let webBaseURL: URL
+    let supportContact: SupportContact
+
+    init(
+        kind: BuildEnvironment,
+        apiBaseURL: URL,
+        webBaseURL: URL,
+        supportContact: SupportContact = .empty
+    ) {
+        self.kind = kind
+        self.apiBaseURL = apiBaseURL
+        self.webBaseURL = webBaseURL
+        self.supportContact = supportContact
+    }
 
     var isDev: Bool { kind == .dev }
     var isDemo: Bool { kind == .demo }
@@ -43,7 +82,18 @@ struct AppEnvironment: Equatable, Sendable {
         let apiBaseURL = try parseURL(key: "THI360_API_BASE_URL", from: infoDictionary, environment: kind)
         let webBaseURL = try parseURL(key: "THI360_WEB_BASE_URL", from: infoDictionary, environment: kind)
 
-        return AppEnvironment(kind: kind, apiBaseURL: apiBaseURL, webBaseURL: webBaseURL)
+        let supportContact = SupportContact(
+            phone: infoDictionary["THI360_SUPPORT_PHONE"] as? String ?? "",
+            email: infoDictionary["THI360_SUPPORT_EMAIL"] as? String ?? "",
+            hours: infoDictionary["THI360_SUPPORT_HOURS"] as? String ?? ""
+        )
+
+        return AppEnvironment(
+            kind: kind,
+            apiBaseURL: apiBaseURL,
+            webBaseURL: webBaseURL,
+            supportContact: supportContact
+        )
     }
 
     private static func parseURL(

@@ -49,12 +49,13 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         self.serverURL = serverURL
 
         let acceptLanguage = AcceptLanguageMiddleware(localeProvider: localeProvider)
+        let retryAfter = RetryAfterMiddleware()
         let logging = NetworkLoggingMiddleware(logger: logger)
 
         let publicClient = Client(
             serverURL: serverURL,
             transport: transport,
-            middlewares: [acceptLanguage, logging]
+            middlewares: [acceptLanguage, retryAfter, logging]
         )
         self.publicClient = publicClient
 
@@ -70,7 +71,7 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         self.authenticatedClient = Client(
             serverURL: serverURL,
             transport: transport,
-            middlewares: [acceptLanguage, bearer, logging]
+            middlewares: [acceptLanguage, retryAfter, bearer, logging]
         )
     }
 

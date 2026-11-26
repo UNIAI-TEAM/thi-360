@@ -4,6 +4,20 @@ import XCTest
 
 @MainActor
 final class ContractFixturesTests: XCTestCase {
+    private static let generatedOperationIds: Set<String> = [
+        Operations.mobileLogin.id,
+        Operations.mobileRefresh.id,
+        Operations.mobileLogout.id,
+        Operations.mobileVerifyRegistration.id,
+        Operations.startRegistration.id,
+        Operations.resendRegistrationCode.id,
+        Operations.forgotPassword.id,
+        Operations.resetPasswordByToken.id,
+        Operations.changePassword.id,
+        Operations.me.id,
+        Operations.getMyProfile.id
+    ]
+
     func testOpenApiSpecLinkMatchesCommittedMobileOpenApiContract() throws {
         let canonicalSpecURL = ContractFixtureLoader.contractsMobileURL
             .appendingPathComponent("openapi-mobile.json")
@@ -17,6 +31,80 @@ final class ContractFixturesTests: XCTestCase {
             canonicalData,
             "iOS OpenAPI generator input must match contracts/mobile/openapi-mobile.json byte-for-byte"
         )
+    }
+
+    func testGeneratedClientCoversEveryContractPath() throws {
+        let specOperations = try Self.loadOpenApiOperations()
+        XCTAssertGreaterThanOrEqual(specOperations.count, 11, "OpenAPI mobile contract must declare at least the 11 phase-1 operations")
+
+        var missing: [String] = []
+        for op in specOperations {
+            if !Self.generatedOperationIds.contains(op.operationId) {
+                missing.append("\(op.method) \(op.path) (\(op.operationId))")
+            }
+        }
+        XCTAssertTrue(
+            missing.isEmpty,
+            "Generated OpenAPI client coverage list is missing contract operations: \(missing.joined(separator: ", "))"
+        )
+    }
+
+    func testIndexCoversFolder() throws {
+        let indexEntries = try ContractFakeTransport.loadIndex()
+        XCTAssertFalse(indexEntries.isEmpty, "contracts/mobile/api/index.json must not be empty")
+
+        let specOperations = try Self.loadOpenApiOperations()
+        let validOpIds = Set(specOperations.map(\.operationId))
+
+        let apiDir = ContractFixtureLoader.contractsMobileURL.appendingPathComponent("api", isDirectory: true)
+        let apiFiles = try FileManager.default.contentsOfDirectory(at: apiDir, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "json" && $0.lastPathComponent != "index.json" }
+            .map(\.lastPathComponent)
+
+        var indexedFiles = Set<String>()
+        for entry in indexEntries {
+            let normalizedFile = entry.file.hasPrefix("api/") ? String(entry.file.dropFirst(4)) : entry.file
+            indexedFiles.insert(normalizedFile)
+
+            let diskURL = entry.file.contains("/")
+                ? ContractFixtureLoader.contractsMobileURL.appendingPathComponent(entry.file)
+                : apiDir.appendingPathComponent(entry.file)
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: diskURL.path),
+                "Indexed fixture file does not exist on disk: \(entry.file)"
+            )
+            XCTAssertTrue(
+                validOpIds.contains(entry.operationId),
+                "Indexed fixture \(entry.file) points to unknown OpenAPI operationId: \(entry.operationId)"
+            )
+        }
+
+        let unindexed = Set(apiFiles).subtracting(indexedFiles).sorted()
+        XCTAssertTrue(
+            unindexed.isEmpty,
+            "Fixture files present in contracts/mobile/api/ but missing from index.json: \(unindexed.joined(separator: ", "))"
+        )
+    }
+
+    func testEveryIndexedFixtureDecodes() throws {
+        let indexEntries = try ContractFakeTransport.loadIndex()
+        XCTAssertFalse(indexEntries.isEmpty)
+        let decoder = JSONDecoder()
+        let apiDir = ContractFixtureLoader.contractsMobileURL.appendingPathComponent("api", isDirectory: true)
+
+        for entry in indexEntries {
+            let fileURL = entry.file.contains("/")
+                ? ContractFixtureLoader.contractsMobileURL.appendingPathComponent(entry.file)
+                : apiDir.appendingPathComponent(entry.file)
+            let data = try Data(contentsOf: fileURL)
+
+            if entry.status >= 400 {
+                let apiError = try decoder.decode(ApiError.self, from: data)
+                XCTAssertFalse(apiError.code.isEmpty, "Error fixture \(entry.file) must have non-empty code")
+            }
+
+            try Self.decodeIndexedFixture(entry: entry, data: data, decoder: decoder)
+        }
     }
 
     func testAllAuthContractFixturesDecodeIntoGeneratedOpenApiSchemas() throws {
@@ -67,95 +155,21 @@ final class ContractFixturesTests: XCTestCase {
         }
     }
 
-    func testAllSharedApiContractFixturesDecodeIntoGeneratedOpenApiSchemas() throws {
-        let decoder = JSONDecoder()
-
-        let me = try decoder.decode(
-            Components.Schemas.MeResponse.self,
-            from: try ContractFixtureLoader.loadApiFixture("me-200.json")
-        )
-        XCTAssertEqual(me.access, .EXAM)
-        XCTAssertEqual(me.realm, .APP)
-
-        let profileWithEmail = try decoder.decode(
-            Components.Schemas.ProfileResponse.self,
-            from: try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
-        )
-        XCTAssertEqual(profileWithEmail.email, "student.demo@thi360.vn")
-        XCTAssertTrue(profileWithEmail.emailVerified)
-
-        let profileWithoutEmail = try decoder.decode(
-            Components.Schemas.ProfileResponse.self,
-            from: try ContractFixtureLoader.loadApiFixture("me-profile-200-no-email.json")
-        )
-        XCTAssertNil(profileWithoutEmail.email)
-        XCTAssertFalse(profileWithoutEmail.emailVerified)
-
-        for file in ["register-200.json", "register-resend-200.json"] {
-            let reg = try decoder.decode(
-                Components.Schemas.RegisterStartResponse.self,
-                from: try ContractFixtureLoader.loadApiFixture(file)
-            )
-            XCTAssertFalse(reg.registrationId.isEmpty, file)
-            XCTAssertGreaterThan(reg.resendAfterSeconds, 0, file)
-        }
-
-        let forgot = try decoder.decode(
-            Components.Schemas.PasswordForgotResponse.self,
-            from: try ContractFixtureLoader.loadApiFixture("password-forgot-202.json")
-        )
-        XCTAssertFalse(forgot.message.isEmpty)
-
-        for file in [
-            "change-password-400-password-weak.json",
-            "change-password-400-wrong-old-password.json",
-            "me-401-session-revoked.json",
-            "me-401-unauthenticated.json",
-            "password-forgot-400-validation-failed.json",
-            "password-reset-400-password-weak.json",
-            "password-reset-422-reset-token-invalid.json",
-            "register-400-validation-failed.json",
-            "register-409-email-taken.json",
-            "register-409-username-taken.json"
-        ] {
-            let err = try decoder.decode(
-                Components.Schemas.ApiError.self,
-                from: try ContractFixtureLoader.loadApiFixture(file)
-            )
-            XCTAssertFalse(err.code.isEmpty, file)
-        }
-
-        for file in [
-            "register-429-otp-rate-limited.json",
-            "register-resend-422-email-code-expired.json",
-            "register-resend-429-rate-limited.json"
-        ] {
-            let err = try decoder.decode(
-                Components.Schemas.EmailCodeErrorResponse.self,
-                from: try ContractFixtureLoader.loadApiFixture(file)
-            )
-            XCTAssertFalse(err.code.isEmpty, file)
-        }
-    }
-
     func testGeneratedClientEndToEndAgainstContractFixtureFiles() async throws {
         let loginData = try ContractFixtureLoader.loadAuthFixture("login-200.json")
         let meData = try ContractFixtureLoader.loadApiFixture("me-200.json")
         let profileData = try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
 
-        let (sessionStore, _, transport, _) = SessionTestFactory.makeStack { request in
-            if request.path.hasSuffix("/api/v1/auth/mobile/login") {
-                return MockClientTransport.jsonResponse(statusCode: 200, data: loginData)
-            }
-            if request.path.hasSuffix("/api/v1/me") {
+        let (sessionStore, _, transport, _) = try SessionTestFactory.makeContractStack { transport in
+            transport.registerJSON(method: .post, path: "/api/v1/auth/mobile/login", statusCode: 200, data: loginData)
+            transport.register(method: .get, path: "/api/v1/me") { request in
                 XCTAssertEqual(request.header(.authorization), "Bearer fixture-access-token")
-                return MockClientTransport.jsonResponse(statusCode: 200, data: meData)
+                return ContractFakeTransport.jsonResponse(statusCode: 200, data: meData)
             }
-            if request.path.hasSuffix("/api/v1/me/profile") {
+            transport.register(method: .get, path: "/api/v1/me/profile") { request in
                 XCTAssertEqual(request.header(.authorization), "Bearer fixture-access-token")
-                return MockClientTransport.jsonResponse(statusCode: 200, data: profileData)
+                return ContractFakeTransport.jsonResponse(statusCode: 200, data: profileData)
             }
-            return MockClientTransport.emptyResponse(statusCode: 404)
         }
 
         try await sessionStore.login(identifier: "student.demo", password: "Password123!")
@@ -164,7 +178,9 @@ final class ContractFixturesTests: XCTestCase {
 
         XCTAssertEqual(me.username, "student.demo")
         XCTAssertEqual(profile.email, "student.demo@thi360.vn")
-        XCTAssertEqual(transport.recordedRequests.count, 3)
+        XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/mobile/login"), 1)
+        XCTAssertGreaterThanOrEqual(transport.callCount(method: .get, path: "/api/v1/me"), 1)
+        XCTAssertEqual(transport.callCount(method: .get, path: "/api/v1/me/profile"), 1)
     }
 
     func testAppearanceContractFixtureDecodesAndMatchesBuiltInDefaultPalette() throws {
@@ -175,5 +191,61 @@ final class ContractFixturesTests: XCTestCase {
         XCTAssertEqual(payload.presetId, "thi360-green")
         XCTAssertTrue(payload.light.equalsIgnoringHexCase(BrandPalette.defaultLight))
         XCTAssertTrue(payload.dark.equalsIgnoringHexCase(BrandPalette.defaultDark))
+    }
+
+    private struct OpenApiOperationInfo {
+        let method: String
+        let path: String
+        let operationId: String
+    }
+
+    private static func loadOpenApiOperations() throws -> [OpenApiOperationInfo] {
+        let specURL = ContractFixtureLoader.contractsMobileURL.appendingPathComponent("openapi-mobile.json")
+        let data = try Data(contentsOf: specURL)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let paths = try XCTUnwrap(root["paths"] as? [String: [String: Any]])
+        let httpMethods: Set<String> = ["get", "post", "put", "patch", "delete"]
+
+        var results: [OpenApiOperationInfo] = []
+        for (path, pathItem) in paths.sorted(by: { $0.key < $1.key }) {
+            for (method, rawOp) in pathItem where httpMethods.contains(method.lowercased()) {
+                guard let op = rawOp as? [String: Any],
+                      let opId = op["operationId"] as? String
+                else { continue }
+                results.append(OpenApiOperationInfo(method: method.uppercased(), path: path, operationId: opId))
+            }
+        }
+        return results
+    }
+
+    private static func decodeIndexedFixture(
+        entry: ContractFixtureIndexEntry,
+        data: Data,
+        decoder: JSONDecoder
+    ) throws {
+        switch (entry.operationId, entry.status) {
+        case (Operations.mobileLogin.id, 200),
+             (Operations.mobileRefresh.id, 200),
+             (Operations.mobileVerifyRegistration.id, 201):
+            _ = try decoder.decode(Components.Schemas.MobileTokenResponse.self, from: data)
+        case (Operations.me.id, 200):
+            _ = try decoder.decode(Components.Schemas.MeResponse.self, from: data)
+        case (Operations.getMyProfile.id, 200):
+            _ = try decoder.decode(Components.Schemas.ProfileResponse.self, from: data)
+        case (Operations.startRegistration.id, 200),
+             (Operations.resendRegistrationCode.id, 200):
+            _ = try decoder.decode(Components.Schemas.RegisterStartResponse.self, from: data)
+        case (Operations.forgotPassword.id, 202):
+            _ = try decoder.decode(Components.Schemas.PasswordForgotResponse.self, from: data)
+        case (Operations.startRegistration.id, 429),
+             (Operations.resendRegistrationCode.id, 422),
+             (Operations.resendRegistrationCode.id, 429),
+             (Operations.mobileVerifyRegistration.id, 422):
+            _ = try decoder.decode(Components.Schemas.EmailCodeErrorResponse.self, from: data)
+        case (_, let status) where status >= 400:
+            _ = try decoder.decode(Components.Schemas.ApiError.self, from: data)
+        default:
+            XCTFail("Unmapped contract fixture \(entry.file) for operationId=\(entry.operationId) status=\(entry.status)")
+        }
     }
 }

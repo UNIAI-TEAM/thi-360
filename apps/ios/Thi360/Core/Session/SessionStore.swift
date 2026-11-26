@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 import OpenAPIRuntime
-import OpenAPIURLSession
 
 @Observable
 @MainActor
@@ -13,18 +12,23 @@ final class SessionStore {
     let tokenStore: any TokenStore
     let apiClient: MobileAPIClient
     let biometricManager: BiometricManager?
+    let storeProvider: AccountScopedStoreProvider
+    let sessionCleanup: SessionCleanup
     var onSessionCleared: (@MainActor () -> Void)?
     var onSessionReplaced: (@MainActor () -> Void)?
 
     private let logger: RedactingAppLogger
     private let skipsLaunchValidation: Bool
     private var hasTriggeredLaunchValidation = false
+    @ObservationIgnored private var isSigningOut = false
 
     init(
         tokenStore: any TokenStore,
         apiClient: MobileAPIClient,
         firstRunCleaner: FirstRunKeychainCleaner? = nil,
         biometricManager: BiometricManager? = nil,
+        storeProvider: AccountScopedStoreProvider = AccountScopedStoreProvider(),
+        sessionCleanup: SessionCleanup? = nil,
         logger: RedactingAppLogger = RedactingAppLogger(),
         initialStateOverride: SessionState? = nil,
         skipsLaunchValidation: Bool = false
@@ -32,6 +36,8 @@ final class SessionStore {
         self.tokenStore = tokenStore
         self.apiClient = apiClient
         self.biometricManager = biometricManager
+        self.storeProvider = storeProvider
+        self.sessionCleanup = sessionCleanup ?? SessionCleanup(storeProvider: storeProvider, logger: logger)
         self.logger = logger
         self.skipsLaunchValidation = skipsLaunchValidation
 
@@ -96,6 +102,7 @@ final class SessionStore {
             let tokens = try await apiClient.login(identifier: trimmedIdentifier, password: password)
             await apiClient.refresher.invalidate()
             try tokenStore.write(tokens)
+            await fetchAndPersistAccountIdIfMissing()
             connectivityState = .online
             state = tokens.mustChangePassword ? .mustChangePassword : .active
             if !tokens.mustChangePassword {
@@ -125,12 +132,23 @@ final class SessionStore {
 
     func reauthenticateFromLock(identifier: String, password: String) async throws {
         let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
-        let previousRefreshToken = (try? tokenStore.read())?.refreshToken
+        let previousTokens = try? tokenStore.read()
+        let previousRefreshToken = previousTokens?.refreshToken
+        let previousAccountId = previousTokens?.accountId
 
         do {
             let newTokens = try await apiClient.login(identifier: trimmedIdentifier, password: password)
             await apiClient.refresher.invalidate()
             try tokenStore.write(newTokens)
+            await fetchAndPersistAccountIdIfMissing()
+            let newAccountId = currentAccountId
+            if let previousAccountId,
+               !previousAccountId.isEmpty,
+               let newAccountId,
+               previousAccountId != newAccountId
+            {
+                await sessionCleanup.runLogout(accountId: previousAccountId)
+            }
             biometricManager?.clearForSessionEnd()
             onSessionReplaced?()
             connectivityState = .online
@@ -175,13 +193,22 @@ final class SessionStore {
         (try? tokenStore.read())?.username
     }
 
+    var currentAccountId: String? {
+        (try? tokenStore.read())?.accountId
+    }
+
     var currentRefreshToken: String? {
         (try? tokenStore.read())?.refreshToken
+    }
+
+    func currentAccountStore() -> AccountScopedStore? {
+        storeProvider.store(for: currentAccountId)
     }
 
     func adoptSession(_ tokens: SessionTokens) async throws {
         await apiClient.refresher.invalidate()
         try tokenStore.write(tokens)
+        await fetchAndPersistAccountIdIfMissing()
         connectivityState = .online
         state = tokens.mustChangePassword ? .mustChangePassword : .active
         logger.log(.info, category: "session", message: "Mobile session established")
@@ -196,6 +223,7 @@ final class SessionStore {
                 refreshExpiresIn: stored.refreshExpiresIn,
                 mustChangePassword: false,
                 username: stored.username,
+                accountId: stored.accountId,
                 issuedAt: stored.issuedAt
             )
             try tokenStore.write(updated)
@@ -224,13 +252,21 @@ final class SessionStore {
     }
 
     func signOut(reason: SignedOutReason = .none) async {
-        let refreshToken = (try? tokenStore.read())?.refreshToken
+        guard !isSigningOut else { return }
+        let storedTokens = try? tokenStore.read()
+        let refreshToken = storedTokens?.refreshToken
+        let accountId = storedTokens?.accountId
         let hasRefreshToken = (refreshToken?.isEmpty == false)
         guard state.isAuthenticated || hasRefreshToken else {
             return
         }
 
-        // Clear persisted tokens and transition synchronously before awaiting so duplicate taps never emit a second logout.
+        isSigningOut = true
+        defer { isSigningOut = false }
+
+        // Run per-account cleanup before clearing tokens so an interrupted logout can resume cleanly on next launch.
+        await sessionCleanup.runLogout(accountId: accountId)
+
         try? tokenStore.clear()
         biometricManager?.clearForSessionEnd()
         onSessionCleared?()
@@ -238,7 +274,7 @@ final class SessionStore {
         state = .signedOut(reason: reason)
         await apiClient.refresher.invalidate()
 
-        if let refreshToken, !refreshToken.isEmpty {
+        if reason != .accountDeleted, let refreshToken, !refreshToken.isEmpty {
             _ = try? await apiClient.logout(refreshToken: refreshToken)
         }
     }
@@ -272,6 +308,7 @@ final class SessionStore {
             _ = try await apiClient.refresher.refreshIfNeeded(failedAccessToken: nil)
             if state.isAuthenticated {
                 connectivityState = .online
+                await fetchAndPersistAccountIdIfMissing()
             }
         } catch {
             guard state.isAuthenticated else { return }
@@ -284,9 +321,42 @@ final class SessionStore {
         }
     }
 
+    func fetchAndPersistAccountIdIfMissing() async {
+        guard let stored = try? tokenStore.read(),
+              stored.accountId?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+        else {
+            return
+        }
+        do {
+            let me = try await apiClient.me()
+            let trimmedId = me.id.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedId.isEmpty,
+                  let current = try? tokenStore.read(),
+                  current.refreshToken == stored.refreshToken
+            else {
+                return
+            }
+            let updated = SessionTokens(
+                accessToken: current.accessToken,
+                refreshToken: current.refreshToken,
+                accessExpiresIn: current.accessExpiresIn,
+                refreshExpiresIn: current.refreshExpiresIn,
+                mustChangePassword: current.mustChangePassword,
+                username: current.username ?? me.username,
+                accountId: trimmedId,
+                issuedAt: current.issuedAt
+            )
+            try? tokenStore.write(updated)
+        } catch {
+            logger.log(.info, category: "session", message: "Deferred accountId fetch; will retry when online")
+        }
+    }
+
     static func makeForCurrentProcess(
         preferences: AppPreferences,
         biometricManager: BiometricManager? = nil,
+        storeProvider: AccountScopedStoreProvider = AccountScopedStoreProvider(),
+        sessionCleanup: SessionCleanup? = nil,
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: AppEnvironment = .current
     ) -> SessionStore {
@@ -366,6 +436,8 @@ final class SessionStore {
             apiClient: client,
             firstRunCleaner: cleaner,
             biometricManager: biometricManager,
+            storeProvider: storeProvider,
+            sessionCleanup: sessionCleanup,
             logger: logger,
             initialStateOverride: initialStateOverride,
             skipsLaunchValidation: initialStateOverride != nil

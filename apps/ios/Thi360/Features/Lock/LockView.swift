@@ -28,21 +28,7 @@ struct LockView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     VStack(spacing: 12) {
-                        HStack(spacing: 10) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(palette.primaryFillColor)
-                                    .frame(width: 44, height: 44)
-                                Image(systemName: "checkmark.circle")
-                                    .font(.system(size: 22, weight: .semibold))
-                                    .foregroundStyle(palette.onPrimaryColor)
-                            }
-                            .accessibilityHidden(true)
-
-                            Text(ShellStrings.text("shell.app.name", locale: locale))
-                                .font(.title2.weight(.bold))
-                                .foregroundStyle(palette.textColor)
-                        }
+                        BrandMark(markSize: 44, locale: locale)
                     }
                     .padding(.top, 44)
                     .padding(.horizontal, 20)

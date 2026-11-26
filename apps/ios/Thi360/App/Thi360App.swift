@@ -9,16 +9,31 @@ struct Thi360App: App {
     @State private var biometricManager: BiometricManager
     @State private var appearanceRepository: AppearanceRepository
     @State private var sessionStore: SessionStore
+    @State private var connectivityMonitor: ConnectivityMonitor
+    private let sessionCleanup: SessionCleanup
+    private let imageLoader: ImageLoader
 
     init() {
         let preferences = AppPreferences.makeForCurrentProcess()
         let router = AppRouter.makeForCurrentProcess()
         let biometricManager = BiometricManager.makeForCurrentProcess()
         let appearanceRepository = AppearanceRepository.makeForCurrentProcess()
+        let storeProvider = AccountScopedStoreProvider()
+        let sessionCleanup = SessionCleanup(storeProvider: storeProvider)
         let sessionStore = SessionStore.makeForCurrentProcess(
             preferences: preferences,
-            biometricManager: biometricManager
+            biometricManager: biometricManager,
+            storeProvider: storeProvider,
+            sessionCleanup: sessionCleanup
         )
+        let imageLoader = ImageLoader(
+            apiBaseURL: sessionStore.apiClient.serverURL,
+            tokenStore: sessionStore.tokenStore,
+            refresher: sessionStore.apiClient.refresher
+        )
+        let connectivityMonitor = ConnectivityMonitor()
+        connectivityMonitor.start()
+
         sessionStore.onSessionCleared = {
             router.resetForSessionCleared()
         }
@@ -31,6 +46,9 @@ struct Thi360App: App {
         _biometricManager = State(initialValue: biometricManager)
         _appearanceRepository = State(initialValue: appearanceRepository)
         _sessionStore = State(initialValue: sessionStore)
+        _connectivityMonitor = State(initialValue: connectivityMonitor)
+        self.sessionCleanup = sessionCleanup
+        self.imageLoader = imageLoader
     }
 
     var body: some Scene {
@@ -40,8 +58,13 @@ struct Thi360App: App {
                 preferences: preferences,
                 sessionStore: sessionStore,
                 appearanceRepository: appearanceRepository,
-                biometricManager: biometricManager
+                biometricManager: biometricManager,
+                imageLoader: imageLoader
             )
+            .task {
+                await sessionCleanup.register(imageLoader)
+                await sessionCleanup.runAppStart()
+            }
             .onOpenURL { url in
                 _ = router.handleIncomingURL(url)
             }

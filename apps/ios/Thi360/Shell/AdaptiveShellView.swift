@@ -8,6 +8,8 @@ struct AdaptiveShellView: View {
     var sessionStore: SessionStore? = nil
     var accountViewModel: AccountViewModel? = nil
     var serverDefaultThemeMode: ThemeMode = .light
+    var legalRepository: LegalRepository = LegalRepository()
+    var webBaseURL: URL = AppEnvironment.current.webBaseURL
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.brandPalette) private var palette
@@ -24,15 +26,23 @@ struct AdaptiveShellView: View {
     }
 
     var body: some View {
-        Group {
-            switch layoutMode {
-            case .compactTabBar:
-                compactTabShell
-            case .iPadSidebar:
-                iPadSidebarShell
-            case .phoneTwoPaneBook:
-                phoneTwoPaneBookShell
+        GeometryReader { proxy in
+            let widthClass = ShellWidth.resolve(
+                horizontalSizeClass: effectiveSizeClass,
+                layoutMode: layoutMode,
+                availableWidth: proxy.size.width
+            )
+            Group {
+                switch layoutMode {
+                case .compactTabBar:
+                    compactTabShell
+                case .iPadSidebar:
+                    iPadSidebarShell
+                case .phoneTwoPaneBook:
+                    phoneTwoPaneBookShell
+                }
             }
+            .environment(\.shellWidth, widthClass)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(layoutMode.accessibilityIdentifier)
@@ -47,8 +57,19 @@ struct AdaptiveShellView: View {
     private var compactTabShell: some View {
         TabView(selection: $router.selectedDestination) {
             ForEach(Destination.allCases) { destination in
-                NavigationStack {
+                NavigationStack(path: router.pathBinding(for: destination)) {
                     destinationContent(for: destination, showsBrandHeader: destination == .home)
+                        .id(router.reloadCount(for: destination))
+                        .navigationDestination(for: AppRoute.self) { route in
+                            AppRouteView(
+                                route: route,
+                                destination: destination,
+                                router: router,
+                                preferences: preferences,
+                                legalRepository: legalRepository,
+                                webBaseURL: webBaseURL
+                            )
+                        }
                 }
                 .tabItem {
                     Label(
@@ -118,8 +139,19 @@ struct AdaptiveShellView: View {
             .accessibilityLabel(ShellStrings.text("shell.nav.label", locale: preferences.locale))
             .accessibilityIdentifier("shell.ipad.sidebar")
         } detail: {
-            NavigationStack {
+            NavigationStack(path: router.pathBinding(for: router.selectedDestination)) {
                 destinationContent(for: router.selectedDestination, showsBrandHeader: false)
+                    .id(router.reloadCount(for: router.selectedDestination))
+                    .navigationDestination(for: AppRoute.self) { route in
+                        AppRouteView(
+                            route: route,
+                            destination: router.selectedDestination,
+                            router: router,
+                            preferences: preferences,
+                            legalRepository: legalRepository,
+                            webBaseURL: webBaseURL
+                        )
+                    }
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -149,8 +181,19 @@ struct AdaptiveShellView: View {
                 .frame(width: 1)
                 .ignoresSafeArea()
 
-            NavigationStack {
+            NavigationStack(path: router.pathBinding(for: router.selectedDestination)) {
                 rightBookPaneContent
+                    .id(router.reloadCount(for: router.selectedDestination))
+                    .navigationDestination(for: AppRoute.self) { route in
+                        AppRouteView(
+                            route: route,
+                            destination: router.selectedDestination,
+                            router: router,
+                            preferences: preferences,
+                            legalRepository: legalRepository,
+                            webBaseURL: webBaseURL
+                        )
+                    }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(palette.bgPageColor)
@@ -249,12 +292,12 @@ struct AdaptiveShellView: View {
     @ViewBuilder
     private func destinationContent(for destination: Destination, showsBrandHeader: Bool) -> some View {
         switch destination {
-        case .home, .myExams, .history:
-            PlaceholderDestinationView(
-                destination: destination,
-                locale: preferences.locale,
-                showsBrandHeader: showsBrandHeader
-            )
+        case .home:
+            CatalogRoutes.homeRoot(preferences: preferences, showsBrandHeader: showsBrandHeader)
+        case .myExams:
+            MyExamsRoutes.myExamsRoot(preferences: preferences, showsBrandHeader: showsBrandHeader)
+        case .history:
+            MyExamsRoutes.historyRoot(resetFilters: false, preferences: preferences, showsBrandHeader: showsBrandHeader)
         case .account:
             if let accountViewModel {
                 AccountView(

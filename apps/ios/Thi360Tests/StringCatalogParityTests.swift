@@ -55,8 +55,17 @@ final class StringCatalogParityTests: XCTestCase {
             files.contains { $0.lastPathComponent == "InfoPlist.xcstrings" },
             "InfoPlist.xcstrings must exist"
         )
+        XCTAssertTrue(
+            files.contains { $0.lastPathComponent == "Common.xcstrings" },
+            "Common.xcstrings must exist"
+        )
+        XCTAssertTrue(
+            files.contains { $0.lastPathComponent == "Legal.xcstrings" },
+            "Legal.xcstrings must exist"
+        )
 
         let decoder = JSONDecoder()
+        var keyOwners: [String: String] = [:]
 
         for file in files {
             let data = try Data(contentsOf: file)
@@ -67,6 +76,12 @@ final class StringCatalogParityTests: XCTestCase {
             var enKeys = Set<String>()
 
             for (key, entry) in catalog.strings {
+                if let existingOwner = keyOwners[key] {
+                    XCTFail("Duplicate string key '\(key)' defined in both \(existingOwner) and \(file.lastPathComponent)")
+                } else {
+                    keyOwners[key] = file.lastPathComponent
+                }
+
                 let localizations = entry.localizations ?? [:]
 
                 if let vi = localizations["vi"]?.stringUnit,
@@ -96,43 +111,23 @@ final class StringCatalogParityTests: XCTestCase {
             XCTAssertTrue(missingBoth.isEmpty, "\(file.lastPathComponent) empty entries: \(missingBoth)")
             XCTAssertEqual(viKeys, enKeys)
 
-            if file.lastPathComponent == "Shell.xcstrings" {
+            let tableName = file.deletingPathExtension().lastPathComponent
+            if tableName != "InfoPlist" {
                 for key in allKeys.sorted() {
                     let expectedVi = catalog.strings[key]?.localizations?["vi"]?.stringUnit?.value
                     let expectedEn = catalog.strings[key]?.localizations?["en"]?.stringUnit?.value
-                    XCTAssertEqual(ShellStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
-                    XCTAssertEqual(ShellStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
+                    XCTAssertEqual(
+                        AppStrings.text(key, table: tableName, locale: .vi),
+                        expectedVi,
+                        "Runtime vi mismatch for \(tableName)::\(key)"
+                    )
+                    XCTAssertEqual(
+                        AppStrings.text(key, table: tableName, locale: .en),
+                        expectedEn,
+                        "Runtime en mismatch for \(tableName)::\(key)"
+                    )
                 }
-            }
-
-            if file.lastPathComponent == "Auth.xcstrings" {
-                for key in allKeys.sorted() {
-                    let expectedVi = catalog.strings[key]?.localizations?["vi"]?.stringUnit?.value
-                    let expectedEn = catalog.strings[key]?.localizations?["en"]?.stringUnit?.value
-                    XCTAssertEqual(AuthStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
-                    XCTAssertEqual(AuthStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
-                }
-            }
-
-            if file.lastPathComponent == "Recovery.xcstrings" {
-                for key in allKeys.sorted() {
-                    let expectedVi = catalog.strings[key]?.localizations?["vi"]?.stringUnit?.value
-                    let expectedEn = catalog.strings[key]?.localizations?["en"]?.stringUnit?.value
-                    XCTAssertEqual(RecoveryStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
-                    XCTAssertEqual(RecoveryStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
-                }
-            }
-
-            if file.lastPathComponent == "Account.xcstrings" {
-                for key in allKeys.sorted() {
-                    let expectedVi = catalog.strings[key]?.localizations?["vi"]?.stringUnit?.value
-                    let expectedEn = catalog.strings[key]?.localizations?["en"]?.stringUnit?.value
-                    XCTAssertEqual(AccountStrings.text(key, locale: .vi), expectedVi, "Runtime vi mismatch for \(key)")
-                    XCTAssertEqual(AccountStrings.text(key, locale: .en), expectedEn, "Runtime en mismatch for \(key)")
-                }
-            }
-
-            if file.lastPathComponent == "InfoPlist.xcstrings" {
+            } else {
                 XCTAssertTrue(allKeys.contains("NSFaceIDUsageDescription"), "InfoPlist.xcstrings must localize NSFaceIDUsageDescription")
                 let bundleValue = Bundle.main.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String
                 XCTAssertFalse((bundleValue ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "Bundle Info.plist must include NSFaceIDUsageDescription")
