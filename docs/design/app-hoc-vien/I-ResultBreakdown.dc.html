@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Kết quả chi tiết</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="nav" style="border-bottom: 1px solid var(--sep); background: var(--glass)">
+    <a class="circle" href="I-Result.dc.html" aria-label="Quay lại Lịch sử"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <h1 class="t-headline">Kết quả lượt thi</h1>
+    <span style="width: 44px"></span>
+  </div>
+  <div class="col grow pad g20" style="overflow: hidden; padding-top: 16px; padding-bottom: 34px">
+
+    <sc-if value="{{isHsa}}" hint-placeholder-val="{{ true }}">
+      <section class="col" aria-labelledby="i-rb-seg">
+        <h2 id="i-rb-seg" class="sec">Điểm theo phân đoạn</h2>
+        <div class="group" style="flex: none">
+          <sc-for list="{{segments}}" as="s" hint-placeholder-count="4">
+            <div class="cell col g4" style="align-items: stretch; padding: 10px 16px">
+              <div class="row between g12" style="align-items: flex-start">
+                <span class="col grow">
+                  <span class="t-headline">{{s.name}}</span>
+                  <span class="t-foot">{{s.range}}</span>
+                </span>
+                <span class="col" style="align-items: flex-end; flex: none">
+                  <span class="t-foot">Điểm phân đoạn</span>
+                  <span class="t-headline">{{s.score}}</span>
+                </span>
+              </div>
+              <div class="row g12" style="flex-wrap: wrap; font-size: 15px; line-height: 20px">
+                <sc-for list="{{s.counts}}" as="c" hint-placeholder-count="4">
+                  <span><span style="color: var(--label2)">{{c.label}}</span> <span class="strong">{{c.value}}</span></span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <p class="t-foot" style="padding: 6px 16px 0">Điểm từng phân đoạn hiển thị trong phạm vi bài làm.</p>
+      </section>
+
+      <section class="col" aria-labelledby="i-rb-sub">
+        <h2 id="i-rb-sub" class="sec">Điểm theo môn</h2>
+        <div class="group" style="flex: none">
+          <sc-for list="{{subjects}}" as="s" hint-placeholder-count="5">
+            <div class="cell col g4" style="align-items: stretch; padding: 10px 16px">
+              <div class="row between g12">
+                <span class="t-headline grow">{{s.name}}</span>
+                <span class="row g8" style="flex: none">
+                  <span class="t-foot">Điểm môn</span>
+                  <span class="t-headline">{{s.score}}</span>
+                </span>
+              </div>
+              <div class="row g12" style="flex-wrap: wrap; font-size: 15px; line-height: 20px">
+                <sc-for list="{{s.counts}}" as="c" hint-placeholder-count="4">
+                  <span><span style="color: var(--label2)">{{c.label}}</span> <span class="strong">{{c.value}}</span></span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <p class="t-foot" style="padding: 6px 16px 0">Điểm từng môn thực tế đã làm trong lượt thi.</p>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isVact}}" hint-placeholder-val="{{ false }}">
+      <section class="col" aria-labelledby="i-rb-vscore">
+        <div class="row between" style="padding: 0 16px 6px">
+          <h2 id="i-rb-vscore" class="sec" style="padding: 0">Tổng điểm</h2>
+          <span class="t-foot">Đề luyện V-ACT 2027 · Đề số 05</span>
+        </div>
+        <div class="group col g8" style="flex: none; padding: 16px">
+          <span class="badge">Điểm luyện tập</span>
+          <div class="row" style="align-items: baseline; gap: 6px">
+            <span style="font-size: 52px; line-height: 58px; font-weight: 700; letter-spacing: -.02em">845</span>
+            <span class="t-title2" style="color: var(--label2); font-weight: 600">/1200</span>
+          </div>
+          <span class="row g6" style="font-size: 15px; line-height: 20px; font-weight: 600; color: {{warnFg}}"><svg viewBox="0 0 24 24" style="width: 18px; height: 18px" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Không phải điểm V-ACT chính thức</span>
+          <p class="t-sub">Điểm luyện tập quy từ điểm các câu về thang 1200.</p>
+        </div>
+      </section>
+
+      <section class="col" aria-labelledby="i-rb-comp">
+        <h2 id="i-rb-comp" class="sec">Kết quả theo thành phần</h2>
+        <div class="group" style="flex: none">
+          <sc-for list="{{components}}" as="k" hint-placeholder-count="4">
+            <div class="cell col g8" style="align-items: stretch; padding: 12px 16px">
+              <div class="row between g12">
+                <span class="t-headline grow">{{k.name}}</span>
+                <span class="t-sub strong" style="flex: none">{{k.ratio}}</span>
+              </div>
+              <div style="height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden" aria-hidden="true"><div style="width: {{k.rate}}%; height: 6px; border-radius: 3px; background: var(--tint)"></div></div>
+              <sc-if value="{{k.hasSub}}" hint-placeholder-val="{{ false }}">
+                <button class="btn text" style="align-self: flex-start; margin-left: -8px; font-size: 15px" aria-expanded="{{k.expanded}}" onClick="{{k.toggle}}">
+                  {{k.label}}<svg viewBox="0 0 24 24" style="width: 16px; height: 16px; stroke-width: 2.4" aria-hidden="true"><path d="{{k.chev}}"/></svg>
+                </button>
+                <sc-if value="{{k.open}}" hint-placeholder-val="{{ true }}">
+                  <div class="col g8" style="background: var(--fill); border-radius: 14px; padding: 12px">
+                    <sc-for list="{{k.subs}}" as="u" hint-placeholder-count="2">
+                      <div class="col g4">
+                        <div class="row between g8">
+                          <span style="font-size: 15px; line-height: 20px; font-weight: 600">{{u.name}}</span>
+                          <span class="t-foot" style="flex: none">{{u.count}}</span>
+                        </div>
+                        <span class="t-foot">{{u.ratio}}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <p class="t-foot" style="padding: 6px 16px 0">Số câu đúng và tỷ lệ đúng theo từng thành phần (không hiện điểm thành phần).</p>
+      </section>
+    </sc-if>
+
+    <section class="col" aria-labelledby="i-rb-info">
+      <h2 id="i-rb-info" class="sec">Thông tin lượt thi</h2>
+      <div class="group" style="flex: none; font-size: 15px; line-height: 20px">
+        <div class="cell between g16" style="min-height: 44px; align-items: flex-start"><span class="val" style="flex: none">Kỳ thi</span><span style="text-align: right">{{kindName}}</span></div>
+        <div class="cell between g16" style="min-height: 44px"><span class="val">Phạm vi thi</span><span>Bài thi FULL</span></div>
+        <div class="cell between g16" style="min-height: 44px"><span class="val">Lần làm</span><span>{{attemptNo}}</span></div>
+        <div class="cell between g16" style="min-height: 44px; align-items: flex-start"><span class="val" style="flex: none">Lựa chọn đã chọn</span><span style="text-align: right">{{choices}}</span></div>
+        <div class="cell between g16" style="min-height: 44px"><span class="val">Bắt đầu</span><span>{{startedAt}}</span></div>
+        <div class="cell between g16" style="min-height: 44px"><span class="val">Kết thúc</span><span>{{finishedAt}}</span></div>
+        <div class="cell between g16" style="min-height: 44px"><span class="val">Thời gian làm bài thực tế</span><span>{{duration}}</span></div>
+        <div class="cell between g16" style="min-height: 44px"><span class="val">Cách kết thúc</span><span>{{endReason}}</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"kind":{"editor":"enum","options":["hsa","vact"],"default":"hsa"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const kind = this.props.kind ?? 'hsa';
+const isVact = kind === 'vact';
+const open = (this.state && this.state.subOpen === false) ? false : true;
+const sub = { open: open, expanded: open ? 'true' : 'false', label: open ? 'Ẩn chi tiết 2 tiểu mục' : 'Xem riêng 2 tiểu mục (12 và 18 câu)', chev: open ? 'm6 15 6-6 6 6' : 'm6 9 6 6 6-6', toggle: () => this.setState({ subOpen: !open }) };
+const counts = (c, pa, w, b) => {
+const list = [{ label: 'Đúng', value: c }];
+if (pa > 0) list.push({ label: 'Đúng một phần', value: pa });
+list.push({ label: 'Sai', value: w });
+list.push({ label: 'Bỏ trống', value: b });
+return list;
+};
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+isHsa: !isVact,
+isVact: isVact,
+segments: [
+{ name: 'Toán học', range: 'Câu 1–35', score: '25,5/35', counts: counts(22, 3, 8, 2) },
+{ name: 'Xử lý số liệu', range: 'Câu 36–50', score: '11/15', counts: counts(9, 1, 3, 2) },
+{ name: 'Văn học – Ngôn ngữ', range: 'Câu 51–100', score: '33/50', counts: counts(33, 0, 12, 5) },
+{ name: 'Khoa học', range: 'Câu 101–150', score: '28,75/50', counts: counts(28, 2, 15, 5) }
+],
+subjects: [
+{ name: 'Toán học', score: '36,5/50', counts: counts(31, 4, 11, 4) },
+{ name: 'Ngữ văn', score: '33/50', counts: counts(33, 0, 12, 5) },
+{ name: 'Vật lí', score: '10,5/17', counts: counts(10, 1, 5, 1) },
+{ name: 'Hóa học', score: '9,25/17', counts: counts(9, 1, 5, 2) },
+{ name: 'Sinh học', score: '9/16', counts: counts(9, 0, 5, 2) }
+],
+components: [
+{ name: 'Tiếng Việt', ratio: '24/30 câu đúng · 80%', rate: 80, hasSub: false, subs: [] },
+{ name: 'Tiếng Anh', ratio: '27/30 câu đúng · 90%', rate: 90, hasSub: false, subs: [] },
+{ name: 'Toán học', ratio: '21/30 câu đúng · 70%', rate: 70, hasSub: false, subs: [] },
+Object.assign({ name: 'Tư duy khoa học', ratio: '18/30 câu đúng · 60%', rate: 60, hasSub: true, subs: [
+{ name: 'Logic và phân tích số liệu', count: '12 câu', ratio: '9/12 câu đúng · 75%' },
+{ name: 'Suy luận khoa học', count: '18 câu', ratio: '9/18 câu đúng · 50%' }
+] }, sub)
+],
+kindName: isVact ? 'Đánh giá năng lực ĐHQG TP.HCM (V-ACT)' : 'Đánh giá năng lực ĐHQG Hà Nội (HSA)',
+attemptNo: isVact ? '1' : '2',
+choices: isVact ? 'Không có' : 'Khoa học: Vật lí, Hóa học, Sinh học',
+startedAt: isVact ? '14:00, 22/11/2026' : '08:05, 26/11/2026',
+finishedAt: isVact ? '16:30, 22/11/2026' : '11:12, 26/11/2026',
+duration: isVact ? '2 giờ 30 phút' : '3 giờ 7 phút',
+endReason: isVact ? 'Hết giờ' : 'Nộp bài'
+};
+}
+}
+</script>
+</body>
+</html>

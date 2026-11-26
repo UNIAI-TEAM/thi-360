@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Chọn phần thi thứ ba</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px; background: var(--surface-container)">
+  <header class="col" style="flex: none; background: var(--surface-container); padding-bottom: 10px">
+    <div class="row g4" style="height: 56px; padding: 0 4px">
+      <a class="icon-btn" href="#" aria-label="Về Bài thi của tôi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></a>
+      <div class="col grow" style="min-width: 0">
+        <span style="font-size: 12px; line-height: 16px; color: var(--on-surface-variant); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thi thử ĐGNL HSA 2027 · Đề số 04</span>
+        <span class="t-title-m" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Phần 3 · {{part3Name}}</span>
+      </div>
+      <div class="row g4" role="status" style="height: 32px; padding: 0 10px 0 8px; border-radius: 16px; font-size: 12px; line-height: 16px; font-weight: 500; white-space: nowrap; background: {{sBg}}; color: {{sFg}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M7 18a5 5 0 1 1 .9-9.9A6 6 0 0 1 19 10a4 4 0 0 1 0 8z"/><path d="m9.5 13 2 2 3.5-4"/></svg>Đã lưu
+      </div>
+      <button class="icon-btn" aria-label="Thu gọn thanh đầu trang" aria-expanded="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+    </div>
+    <nav aria-label="Các phần của bài thi" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 0 12px">
+      <div class="row g8" aria-label="Toán học và xử lý số liệu, đã hoàn thành" style="min-width: 0; padding: 6px 8px; border-radius: 12px; color: var(--on-surface-variant)">
+        <span style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: var(--primary-container); color: var(--on-primary-container); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 2.5"><path d="m5 12 5 5 9-10"/></svg></span>
+        <span style="min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; font-size: 13px; line-height: 16px; font-weight: 500">Toán học và xử lý số liệu</span>
+      </div>
+      <div class="row g8" aria-label="Văn học – Ngôn ngữ, đã hoàn thành" style="min-width: 0; padding: 6px 8px; border-radius: 12px; color: var(--on-surface-variant)">
+        <span style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: var(--primary-container); color: var(--on-primary-container); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 2.5"><path d="m5 12 5 5 9-10"/></svg></span>
+        <span style="min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word; font-size: 13px; line-height: 16px; font-weight: 500">Văn học – Ngôn ngữ</span>
+      </div>
+      <div class="row g8" aria-current="step" style="min-width: 0; padding: 6px 8px; border-radius: 12px; background: var(--secondary-container); color: var(--on-secondary-container)">
+        <span style="flex: none; width: 24px; height: 24px; border-radius: 12px; background: var(--primary); color: var(--on-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500">3</span>
+        <span class="col" style="min-width: 0"><span style="font-size: 13px; line-height: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{part3Name}}</span><span style="font-size: 11px; line-height: 14px">{{partState}}</span></span>
+      </div>
+    </nav>
+  </header>
+
+  <main class="col grow" style="overflow: hidden; background: var(--surface); border-radius: 24px 24px 0 0">
+    <sc-if value="{{ picking }}" hint-placeholder-val="{{ true }}">
+      <div class="col grow g12" style="overflow: hidden; padding: 20px 16px 12px">
+        <div class="col g4" style="padding: 0 8px">
+          <h1 class="t-title" style="font-weight: 500">Chọn phần thi thứ ba</h1>
+          <p class="t-small">Chọn phương án cho phần thi tiếp theo rồi xác nhận. Lựa chọn bị khóa ngay sau khi xác nhận.</p>
+        </div>
+        <sc-if value="{{ choosing }}" hint-placeholder-val="{{ true }}">
+          <div class="row between" role="timer" aria-label="Thời gian chọn còn: 12 phút 48 giây" style="flex: none; min-height: 56px; padding: 8px 16px; border-radius: 16px; background: var(--surface-container)">
+            <span class="row g8" style="font-size: 14px; font-weight: 500"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; color: var(--primary)"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>Thời gian chọn còn</span>
+            <span style="font-size: 24px; line-height: 32px; font-weight: 500; font-variant-numeric: tabular-nums">12:48</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ expired }}" hint-placeholder-val="{{ false }}">
+          <div class="row g12" role="alert" style="flex: none; min-height: 56px; padding: 8px 16px; border-radius: 16px; background: var(--error-container); color: var(--on-error-container); font-size: 14px; font-weight: 500">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>
+            <span>Đã hết thời gian chọn phần 3.</span>
+          </div>
+        </sc-if>
+        <div class="col g8" role="radiogroup" aria-label="Chọn phương án hoặc tổ hợp" style="opacity: {{listOpacity}}">
+          <span class="t-label" style="padding: 0 8px">Chọn phương án hoặc tổ hợp</span>
+          <div class="col g8" style="padding: 10px 14px 12px; border: 2px solid var(--primary); border-radius: 16px; background: var(--surface-lowest)">
+            <div class="row g12" role="radio" aria-checked="true" style="min-height: 44px">
+              <span style="flex: none; width: 20px; height: 20px; border-radius: 10px; border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--primary)"></span></span>
+              <span class="col grow"><span style="font-weight: 500">KH · Khoa học</span><span class="t-small" style="font-size: 13px; line-height: 18px">Số câu mỗi môn: 17/17/16</span></span>
+            </div>
+            <div class="row between" style="padding-top: 4px; border-top: 1px solid var(--outline-variant)">
+              <span style="font-size: 14px; font-weight: 500; padding-top: 8px">Chọn môn tự chọn</span>
+              <span class="chip" style="margin-top: 8px">Đã chọn 3/3</span>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px">
+              <div class="check" style="min-height: 44px; align-items: center"><span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>Vật lí</div>
+              <div class="check" style="min-height: 44px; align-items: center"><span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>Hóa học</div>
+              <div class="check" style="min-height: 44px; align-items: center"><span class="box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>Sinh học</div>
+              <div class="check" aria-disabled="true" style="min-height: 44px; align-items: center; color: var(--outline)"><span class="box" style="background: transparent; border: 2px solid var(--outline-variant)"></span>Lịch sử</div>
+              <div class="check" aria-disabled="true" style="min-height: 44px; align-items: center; color: var(--outline)"><span class="box" style="background: transparent; border: 2px solid var(--outline-variant)"></span>Địa lí</div>
+            </div>
+            <p class="t-small" style="font-size: 13px; line-height: 18px">Đã đủ 3 môn. Bỏ chọn một môn để chọn môn khác.</p>
+          </div>
+          <div class="row g12" role="radio" aria-checked="false" style="min-height: 56px; padding: 8px 14px; border: 1px solid var(--outline-variant); border-radius: 16px">
+            <span style="flex: none; width: 20px; height: 20px; border-radius: 10px; border: 2px solid var(--outline)"></span>
+            <span class="col grow"><span style="font-weight: 500">TA · Tiếng Anh</span><span class="t-small" style="font-size: 13px; line-height: 18px">Tiếng Anh</span></span>
+          </div>
+        </div>
+      </div>
+      <div style="flex: none; padding: 12px 24px 24px; border-top: 1px solid var(--outline-variant)">
+        <sc-if value="{{ choosing }}" hint-placeholder-val="{{ true }}">
+          <button class="btn filled block">Xác nhận chọn phần 3</button>
+        </sc-if>
+        <sc-if value="{{ expired }}" hint-placeholder-val="{{ false }}">
+          <button class="btn block" disabled style="background: var(--surface-high); color: var(--outline)">Xác nhận chọn phần 3</button>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ generating }}" hint-placeholder-val="{{ false }}">
+      <div class="col center grow g16 pad" style="justify-content: center; padding-bottom: 80px">
+        <div class="hero-ic" aria-hidden="true">
+          <svg viewBox="0 0 48 48" style="width: 56px; height: 56px; stroke-width: 4"><circle cx="24" cy="24" r="18" style="stroke: var(--outline-variant)"/><path d="M24 6a18 18 0 0 1 18 18"/></svg>
+        </div>
+        <h1 class="t-title" role="status" style="font-weight: 500">Đang chuẩn bị bộ câu hỏi cho phần thi</h1>
+        <p class="t-small">Lựa chọn đã được khóa. Đồng hồ của phần chỉ chạy khi bộ câu hỏi đã sẵn sàng.</p>
+        <span class="chip" style="height: 32px; padding: 0 12px; border-radius: 16px; background: var(--surface-container); color: var(--on-surface)">Phần 3 · Khoa học</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ failed }}" hint-placeholder-val="{{ false }}">
+      <div class="col center grow g16 pad" style="justify-content: center; padding-bottom: 32px">
+        <div class="hero-ic" aria-hidden="true" style="background: var(--error-container); color: var(--on-error-container)">
+          <svg viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>
+        </div>
+        <h1 class="t-title" role="alert" style="font-weight: 500">Chưa chuẩn bị được phần thi</h1>
+        <p class="t-small">Lựa chọn của bạn vẫn được giữ nguyên. Các phần trước không bị ảnh hưởng và đồng hồ phần này chưa chạy.</p>
+        <span class="chip" style="height: 32px; padding: 0 12px; border-radius: 16px; background: var(--surface-container); color: var(--on-surface)">Phần 3 · Khoa học</span>
+      </div>
+      <div style="flex: none; padding: 12px 24px 24px">
+        <button class="btn filled block"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>Thử lại</button>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["choosing","generating","failed","expired"],"default":"choosing"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const state = this.props.state ?? 'choosing';
+const partStates = { choosing: 'Đang chọn phần', expired: 'Đang chọn phần', generating: 'Đang chuẩn bị', failed: 'Chuẩn bị lỗi' };
+return {
+  theme: dark ? 'dark' : 'light',
+  sFg: dark ? '#34d399' : '#047857',
+  sBg: dark ? '#0f2a21' : '#ecfdf5',
+  choosing: state === 'choosing',
+  expired: state === 'expired',
+  picking: state === 'choosing' || state === 'expired',
+  generating: state === 'generating',
+  failed: state === 'failed',
+  listOpacity: state === 'expired' ? '0.5' : '1',
+  partState: partStates[state] || partStates.choosing,
+  part3Name: (state === 'generating' || state === 'failed') ? 'Khoa học' : 'Khoa học hoặc Tiếng Anh'
+};
+}
+}
+</script>
+</body>
+</html>

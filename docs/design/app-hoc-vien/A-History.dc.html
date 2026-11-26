@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Lịch sử luyện thi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px; {{statusVars}}">
+  <div class="bar" style="padding: 0 12px 0 24px">
+    <h1 class="t-title">Lịch sử luyện thi</h1>
+    <span class="chip" style="margin-left: 8px; background: var(--surface-high); color: var(--on-surface-variant)">{{countLabel}}</span>
+    <span class="grow"></span>
+    <a class="icon-btn" href="A-Account.dc.html" aria-label="Tài khoản của Trần Minh Anh"><span class="avatar" style="width: 32px; height: 32px; font-size: 13px">MA</span></a>
+  </div>
+  <form class="col g12" role="search" aria-label="Lọc lịch sử luyện thi" style="padding: 8px 16px 12px; flex: none">
+    <div class="tf">
+      <label for="ah-q">Tìm theo tên bài</label>
+      <svg viewBox="0 0 24 24" aria-hidden="true" style="position: absolute; left: 14px; top: 16px; color: var(--on-surface-variant)"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="ah-q" type="search" value="{{q}}" placeholder="Ví dụ: HSA tổng hợp" enterkeyhint="search" style="padding-left: 48px">
+    </div>
+    <div class="row" style="flex-wrap: wrap; gap: 8px 6px">
+      <a class="chip" href="A-HistoryFilter.dc.html" aria-label="Lọc lịch sử luyện thi" style="width: 40px; height: 32px; padding: 0; justify-content: center; background: transparent; border: 1px solid var(--outline); color: var(--on-surface)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; stroke-width: 2"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg></a>
+      <sc-if value="{{kindActive}}" hint-placeholder-val="{{ false }}">
+        <button class="chip" aria-label="Bỏ lọc Đánh giá năng lực ĐHQG Hà Nội (HSA)" style="height: 32px; padding: 0 6px 0 10px; font-size: 13px; border: 0; background: var(--secondary-container); color: var(--on-secondary-container)">Đánh giá năng lực ĐHQG Hà Nội (HSA)<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; stroke-width: 2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </sc-if>
+      <sc-if value="{{kindIdle}}" hint-placeholder-val="{{ true }}">
+        <a class="chip" href="A-HistoryFilter.dc.html" style="height: 32px; padding: 0 6px 0 10px; font-size: 13px; background: transparent; border: 1px solid var(--outline); color: var(--on-surface-variant)">Tất cả kỳ thi<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; stroke-width: 2"><path d="m6 9 6 6 6-6"/></svg></a>
+      </sc-if>
+      <a class="chip" href="A-HistoryFilter.dc.html" style="height: 32px; padding: 0 6px 0 10px; font-size: 13px; background: transparent; border: 1px solid var(--outline); color: var(--on-surface-variant)">Tất cả phạm vi<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; stroke-width: 2"><path d="m6 9 6 6 6-6"/></svg></a>
+      <sc-if value="{{dateActive}}" hint-placeholder-val="{{ true }}">
+        <button class="chip" aria-label="Bỏ lọc ngày 01/11/2026 đến 26/11/2026" style="height: 32px; padding: 0 6px 0 10px; font-size: 13px; border: 0; background: var(--secondary-container); color: var(--on-secondary-container)">01/11/2026 – 26/11/2026<svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; stroke-width: 2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </sc-if>
+      <sc-if value="{{hasFilter}}" hint-placeholder-val="{{ true }}">
+        <button class="btn text" style="height: 32px; padding: 0 8px">Xóa bộ lọc</button>
+      </sc-if>
+    </div>
+  </form>
+  <div class="divider" style="margin: 0"></div>
+  <div class="grow" style="overflow-y: auto; scrollbar-width: none">
+    <div class="col g12" style="padding: 12px 16px 24px; margin-top: -{{offset}}px">
+      <p class="t-small" style="padding: 0 8px">Các lượt thi của bạn, lượt mới nhất ở trên. Chọn Xem kết quả để mở đúng kết quả của từng lượt.</p>
+
+      <sc-if value="{{isDefault}}" hint-placeholder-val="{{ true }}">
+        <article class="card out col g12">
+          <div class="col g8">
+            <h2 class="t-title-m">V-ACT 2027 – Phần Tiếng Việt</h2>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--info-bg); color: var(--info)">Đang làm</span>
+              <span class="t-small">Bài thi theo phần · Phần P1</span>
+            </div>
+          </div>
+          <div class="row g16" style="align-items: flex-start">
+            <div class="col grow"><span class="t-label">Điểm</span><span class="t-small">Chưa có điểm</span></div>
+            <div class="col" style="flex: none"><span class="t-label">Lần làm · Bắt đầu</span><span class="t-small strong">Lần 2 · 09:05, 26/11/2026</span></div>
+          </div>
+          <div class="row between g12" style="align-items: flex-end">
+            <div class="col grow"><span class="t-label">Lựa chọn</span><span class="t-small">—</span></div>
+            <a class="btn filled" href="#">Tiếp tục</a>
+          </div>
+        </article>
+
+        <article class="card out col g12">
+          <div class="col g8">
+            <h2 class="t-title-m"><a href="#" style="color: var(--primary)">HSA 2027 – Đề thi thử tổng hợp số 3</a></h2>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--succ-bg); color: var(--succ)">Đã chấm</span>
+              <span class="t-small">Bài thi FULL</span>
+            </div>
+          </div>
+          <div class="row g16" style="align-items: flex-start">
+            <div class="col grow"><span class="t-label">Điểm</span><span class="t-title-m">92/150</span></div>
+            <div class="col" style="flex: none"><span class="t-label">Lần làm · Bắt đầu</span><span class="t-small strong">Lần 1 · 20:15, 24/11/2026</span></div>
+          </div>
+          <div class="row between g12" style="align-items: flex-end">
+            <div class="col grow"><span class="t-label">Lựa chọn</span><span class="t-small">Khoa học: Vật lí, Hóa học, Sinh học</span></div>
+            <a class="btn tonal" href="#">Xem kết quả</a>
+          </div>
+        </article>
+
+        <article id="r-vact" class="card out col g12">
+          <div class="col g8">
+            <h2 class="t-title-m"><a href="#" style="color: var(--primary)">V-ACT 2027 – Đề tổng hợp số 1</a></h2>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--succ-bg); color: var(--succ)">Đã chấm</span>
+              <span class="t-small">Bài thi FULL</span>
+            </div>
+          </div>
+          <div class="row g16" style="align-items: flex-start">
+            <div class="col grow"><span class="t-label">Điểm</span><span class="t-title-m">845/1200</span></div>
+            <div class="col" style="flex: none"><span class="t-label">Lần làm · Bắt đầu</span><span class="t-small strong">Lần 1 · 19:40, 22/11/2026</span></div>
+          </div>
+          <div class="row"><span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Điểm luyện tập</span></div>
+          <div class="row between g12" style="align-items: flex-end">
+            <div class="col grow"><span class="t-label">Lựa chọn</span><span class="t-small">—</span></div>
+            <a class="btn tonal" href="#">Xem kết quả</a>
+          </div>
+        </article>
+
+        <article class="card out col g12">
+          <div class="col g8">
+            <h2 class="t-title-m"><a href="#" style="color: var(--primary)">Toán THPT 2027 – Đề luyện số 5</a></h2>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--warn-bg); color: var(--warn)">Đang chấm lại</span>
+              <span class="t-small">Bài thi theo môn · Môn Toán học</span>
+            </div>
+          </div>
+          <div class="row g16" style="align-items: flex-start">
+            <div class="col grow"><span class="t-label">Điểm</span><span class="t-title-m">7,25/10</span></div>
+            <div class="col" style="flex: none"><span class="t-label">Lần làm · Bắt đầu</span><span class="t-small strong">Lần 1 · 15:30, 18/11/2026</span></div>
+          </div>
+          <div class="row"><span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Điểm trước khi chấm lại</span></div>
+          <div class="row between g12" style="align-items: flex-end">
+            <div class="col grow"><span class="t-label">Lựa chọn</span><span class="t-small">—</span></div>
+            <a class="btn tonal" href="#">Xem kết quả</a>
+          </div>
+        </article>
+
+        <article id="r-qda2" class="card out col g12">
+          <div class="col g8">
+            <h2 class="t-title-m"><a href="#" style="color: var(--primary)">QDA 2026 – Đề thi thử số 1</a></h2>
+            <p class="row g8" style="align-items: flex-start; font-size: 14px; line-height: 20px; color: var(--info)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; margin-top: 1px"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>Lượt bị ảnh hưởng bởi lỗi hệ thống, đã cấp bù 1 lượt</p>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đang xử lý kết quả</span>
+              <span class="t-small">Bài thi FULL</span>
+            </div>
+          </div>
+          <div class="row g16" style="align-items: flex-start">
+            <div class="col grow"><span class="t-label">Điểm</span><span class="t-small">Chưa có điểm</span></div>
+            <div class="col" style="flex: none"><span class="t-label">Lần làm · Bắt đầu</span><span class="t-small strong">Lần 2 · 21:10, 12/11/2026</span></div>
+          </div>
+          <div class="row between g12" style="align-items: flex-end">
+            <div class="col grow"><span class="t-label">Lựa chọn</span><span class="t-small">—</span></div>
+            <a class="btn tonal" href="#">Xem kết quả</a>
+          </div>
+        </article>
+
+        <article class="card out col g12">
+          <div class="col g8">
+            <h2 class="t-title-m"><a href="#" style="color: var(--primary)">QDA 2026 – Đề thi thử số 1</a></h2>
+            <p class="row g8" style="align-items: flex-start; font-size: 14px; line-height: 20px; color: var(--warn)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; margin-top: 1px"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/></svg>Lượt kết thúc do lỗi hệ thống</p>
+            <div class="row g8" style="flex-wrap: wrap">
+              <span class="chip" style="background: var(--succ-bg); color: var(--succ)">Đã chấm</span>
+              <span class="t-small">Bài thi FULL</span>
+            </div>
+          </div>
+          <div class="row g16" style="align-items: flex-start">
+            <div class="col grow"><span class="t-label">Điểm</span><span class="t-title-m">61,5/150</span></div>
+            <div class="col" style="flex: none"><span class="t-label">Lần làm · Bắt đầu</span><span class="t-small strong">Lần 1 · 20:00, 10/11/2026</span></div>
+          </div>
+          <div class="row between g12" style="align-items: flex-end">
+            <div class="col grow"><span class="t-label">Lựa chọn</span><span class="t-small">—</span></div>
+            <a class="btn tonal" href="#">Xem kết quả</a>
+          </div>
+        </article>
+
+        <div class="row center g12" role="status" style="justify-content: center; padding: 12px 0">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary); stroke-width: 2.5"><circle cx="12" cy="12" r="9" style="stroke: var(--surface-high)"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+          <span class="t-small">Đang tải</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+        <div class="empty" style="margin-top: 40px; padding: 48px 24px">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+          <span class="t-title-m" style="color: var(--on-surface)">Bạn chưa có lượt luyện thi nào</span>
+          <span class="t-small">Chọn bài thi ở Bài thi của tôi để bắt đầu làm bài. Kết quả các lượt đã làm sẽ hiện tại đây.</span>
+          <a class="btn filled" href="A-MyExams.dc.html" style="margin-top: 8px">Bài thi của tôi</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isNoMatch}}" hint-placeholder-val="{{ false }}">
+        <div class="empty" style="margin-top: 40px; padding: 48px 24px">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg>
+          <span class="t-title-m" style="color: var(--on-surface)">Chưa có lượt thi phù hợp</span>
+          <span class="t-small">Thử đổi từ khóa, khoảng ngày hoặc bỏ bớt điều kiện lọc.</span>
+          <button class="btn outlined" style="margin-top: 8px">Xóa bộ lọc</button>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <nav class="navbar" aria-label="Điều hướng chính">
+    <a class="nav-i" href="A-Home.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg></span>Trang chủ</a>
+    <a class="nav-i" href="A-MyExams.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span>Bài thi của tôi</a>
+    <a class="nav-i on" href="A-History.dc.html" aria-current="page"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>Lịch sử</a>
+    <a class="nav-i" href="A-Account.dc.html"><span class="pill"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Tài khoản</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["default","empty","noMatch"],"default":"default"},"scroll":{"editor":"enum","options":["top","middle","bottom"],"default":"top"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const state = this.props.state ?? 'default';
+const scroll = this.props.scroll ?? 'top';
+const offsets = { top: 0, middle: 515, bottom: 1029 };
+return {
+theme: dark ? 'dark' : 'light',
+statusVars: dark
+? '--succ: #34d399; --succ-bg: #0f2a21; --warn: #fbbf24; --warn-bg: #2b2210; --info: #22d3ee; --info-bg: #0f2a30'
+: '--succ: #047857; --succ-bg: #ecfdf5; --warn: #b45309; --warn-bg: #fffbeb; --info: #0e7490; --info-bg: #ecfeff',
+isDefault: state === 'default',
+isEmpty: state === 'empty',
+isNoMatch: state === 'noMatch',
+countLabel: state === 'default' ? '27 lượt' : '0 lượt',
+q: state === 'noMatch' ? 'Đề số 9' : '',
+kindActive: state === 'noMatch',
+kindIdle: state !== 'noMatch',
+dateActive: state === 'default',
+hasFilter: state !== 'empty',
+offset: state === 'default' ? (offsets[scroll] ?? 0) : 0
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,59 +1,1305 @@
 {
-  "v": 3,
-  "createdOnFiles": { "v": 1, "at": "2026-11-25T09:30:00Z" },
-  "title": "Thi 360 — App học viên: khung và xác thực",
-  "launch": { "view": "canvas", "page": "android" },
-  "pages": [
-    { "id": "android", "name": "Android · Material 3" },
-    { "id": "ios", "name": "iOS" }
-  ],
-  "boards": {
-    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Đăng nhập", "page": "android", "radius": 28 },
-    "A-Register.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 1", "page": "android", "radius": 28 },
-    "A-Otp.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 2 (OTP)", "page": "android", "radius": 28 },
-    "A-Forgot.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 844, "title": "Quên mật khẩu", "page": "android", "radius": 28 },
-    "A-NewPassword.dc.html": { "x": 1880, "y": 0, "w": 390, "h": 844, "title": "Đặt mật khẩu mới (deep link / bắt đổi)", "page": "android", "radius": 28 },
-    "A-BioEnable.dc.html": { "x": 0, "y": 1190, "w": 390, "h": 844, "title": "Hỏi bật sinh trắc học", "page": "android", "radius": 28 },
-    "A-BioUnlock.dc.html": { "x": 470, "y": 1190, "w": 390, "h": 844, "title": "Màn khóa", "page": "android", "radius": 28 },
-    "A-RoleNotice.dc.html": { "x": 940, "y": 1190, "w": 390, "h": 844, "title": "Vai trò khác học viên", "page": "android", "radius": 28 },
-    "A-Home.dc.html": { "x": 1410, "y": 1190, "w": 390, "h": 844, "title": "Khung · Trang chủ", "page": "android", "radius": 28 },
-    "A-Account.dc.html": { "x": 1880, "y": 1190, "w": 390, "h": 844, "title": "Tài khoản", "page": "android", "radius": 28 },
-    "A-Fold-Account.dc.html": { "x": 0, "y": 2380, "w": 840, "h": 720, "title": "Màn hình gập (mở) · Tài khoản hai cột", "page": "android", "radius": 24 },
-    "A-Tablet-Login.dc.html": { "x": 920, "y": 2380, "w": 1280, "h": 800, "title": "Tablet · Đăng nhập", "page": "android", "radius": 24 },
-    "A-Tablet-Home.dc.html": { "x": 2280, "y": 2380, "w": 1280, "h": 800, "title": "Tablet · Khung", "page": "android", "radius": 24 },
-    "I-Login.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "Đăng nhập", "page": "ios", "radius": 44 },
-    "I-Register.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 1", "page": "ios", "radius": 44 },
-    "I-Otp.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "Đăng ký · bước 2 (OTP)", "page": "ios", "radius": 44 },
-    "I-Forgot.dc.html": { "x": 1410, "y": 0, "w": 390, "h": 844, "title": "Quên mật khẩu", "page": "ios", "radius": 44 },
-    "I-NewPassword.dc.html": { "x": 1880, "y": 0, "w": 390, "h": 844, "title": "Đặt mật khẩu mới (deep link / bắt đổi)", "page": "ios", "radius": 44 },
-    "I-BioEnable.dc.html": { "x": 0, "y": 1190, "w": 390, "h": 844, "title": "Hỏi bật Face ID", "page": "ios", "radius": 44 },
-    "I-BioUnlock.dc.html": { "x": 470, "y": 1190, "w": 390, "h": 844, "title": "Màn khóa", "page": "ios", "radius": 44 },
-    "I-RoleNotice.dc.html": { "x": 940, "y": 1190, "w": 390, "h": 844, "title": "Vai trò khác học viên", "page": "ios", "radius": 44 },
-    "I-Home.dc.html": { "x": 1410, "y": 1190, "w": 390, "h": 844, "title": "Khung · Trang chủ", "page": "ios", "radius": 44 },
-    "I-Account.dc.html": { "x": 1880, "y": 1190, "w": 390, "h": 844, "title": "Tài khoản", "page": "ios", "radius": 44 },
-    "I-Pad-Login.dc.html": { "x": 0, "y": 2380, "w": 1180, "h": 820, "title": "iPad · Đăng nhập", "page": "ios", "radius": 24 },
-    "I-Pad-Account.dc.html": { "x": 1260, "y": 2380, "w": 1180, "h": 820, "title": "iPad · Tài khoản", "page": "ios", "radius": 24 },
-    "I-Duo-Cover-Login.dc.html": { "x": 0, "y": 3543, "w": 466, "h": 678, "title": "iPhone Duo gập (màn ngoài) · Đăng nhập", "page": "ios", "radius": 40 },
-    "I-Duo-Open-Login.dc.html": { "x": 546, "y": 3543, "w": 952, "h": 670, "title": "iPhone Duo mở (hai nửa màn) · Đăng nhập", "page": "ios", "radius": 36 },
-    "I-Duo-Open-Account.dc.html": { "x": 1578, "y": 3543, "w": 952, "h": 670, "title": "iPhone Duo mở (hai nửa màn) · Tài khoản", "page": "ios", "radius": 36 }
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-25T09:30:00Z"
+ },
+ "title": "Thi 360 — App học viên",
+ "launch": {
+  "view": "canvas",
+  "page": "android"
+ },
+ "pages": [
+  {
+   "id": "android",
+   "name": "Android · Material 3"
   },
-  "order": [
-    "Main.dc.html", "A-Register.dc.html", "A-Otp.dc.html", "A-Forgot.dc.html", "A-NewPassword.dc.html",
-    "A-BioEnable.dc.html", "A-BioUnlock.dc.html", "A-RoleNotice.dc.html", "A-Home.dc.html", "A-Account.dc.html",
-    "A-Fold-Account.dc.html", "A-Tablet-Login.dc.html", "A-Tablet-Home.dc.html",
-    "I-Login.dc.html", "I-Register.dc.html", "I-Otp.dc.html", "I-Forgot.dc.html", "I-NewPassword.dc.html",
-    "I-BioEnable.dc.html", "I-BioUnlock.dc.html", "I-RoleNotice.dc.html", "I-Home.dc.html", "I-Account.dc.html",
-    "I-Pad-Login.dc.html", "I-Pad-Account.dc.html",
-    "I-Duo-Cover-Login.dc.html", "I-Duo-Open-Login.dc.html", "I-Duo-Open-Account.dc.html"
-  ],
-  "notes": {
-    "a-auth": { "x": 0, "y": -223, "text": "Android · Xác thực", "kind": "title1", "maxW": 2270, "page": "android" },
-    "a-shell": { "x": 0, "y": 967, "text": "Android · Khóa sinh trắc học, khung, tài khoản", "kind": "title1", "maxW": 2270, "page": "android" },
-    "a-large": { "x": 0, "y": 2157, "text": "Android · Màn hình gập và tablet", "kind": "title1", "maxW": 3560, "page": "android" },
-    "i-auth": { "x": 0, "y": -223, "text": "iOS · Xác thực", "kind": "title1", "maxW": 2270, "page": "ios" },
-    "i-shell": { "x": 0, "y": 967, "text": "iOS · Face ID, khung, tài khoản", "kind": "title1", "maxW": 2270, "page": "ios" },
-    "i-large": { "x": 0, "y": 2157, "text": "iOS · iPad", "kind": "title1", "maxW": 2440, "page": "ios" },
-    "i-duo": { "x": 0, "y": 3320, "text": "iOS · iPhone Duo (gập và mở)", "kind": "title1", "maxW": 2530, "page": "ios" }
+  {
+   "id": "ios",
+   "name": "iOS"
   },
-  "designSystems": []
+  {
+   "id": "android-portal",
+   "name": "Android · Cổng thi"
+  },
+  {
+   "id": "ios-portal",
+   "name": "iOS · Cổng thi"
+  }
+ ],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đăng nhập",
+   "page": "android",
+   "radius": 28
+  },
+  "A-Register.dc.html": {
+   "x": 470,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đăng ký · bước 1",
+   "page": "android",
+   "radius": 28
+  },
+  "A-Otp.dc.html": {
+   "x": 940,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đăng ký · bước 2 (OTP)",
+   "page": "android",
+   "radius": 28
+  },
+  "A-Forgot.dc.html": {
+   "x": 1410,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Quên mật khẩu",
+   "page": "android",
+   "radius": 28
+  },
+  "A-NewPassword.dc.html": {
+   "x": 1880,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đặt mật khẩu mới (deep link / bắt đổi)",
+   "page": "android",
+   "radius": 28
+  },
+  "A-BioEnable.dc.html": {
+   "x": 0,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Hỏi bật sinh trắc học",
+   "page": "android",
+   "radius": 28
+  },
+  "A-BioUnlock.dc.html": {
+   "x": 470,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Màn khóa",
+   "page": "android",
+   "radius": 28
+  },
+  "A-RoleNotice.dc.html": {
+   "x": 940,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Vai trò khác học viên",
+   "page": "android",
+   "radius": 28
+  },
+  "A-Home.dc.html": {
+   "x": 1410,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Khung · Trang chủ",
+   "page": "android",
+   "radius": 28
+  },
+  "A-Account.dc.html": {
+   "x": 1880,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Tài khoản",
+   "page": "android",
+   "radius": 28
+  },
+  "A-Fold-Account.dc.html": {
+   "x": 0,
+   "y": 2380,
+   "w": 840,
+   "h": 720,
+   "title": "Màn hình gập (mở) · Tài khoản hai cột",
+   "page": "android",
+   "radius": 24
+  },
+  "A-Tablet-Login.dc.html": {
+   "x": 920,
+   "y": 2380,
+   "w": 1280,
+   "h": 800,
+   "title": "Tablet · Đăng nhập",
+   "page": "android",
+   "radius": 24
+  },
+  "A-Tablet-Home.dc.html": {
+   "x": 2280,
+   "y": 2380,
+   "w": 1280,
+   "h": 800,
+   "title": "Tablet · Khung",
+   "page": "android",
+   "radius": 24
+  },
+  "I-Login.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đăng nhập",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-Register.dc.html": {
+   "x": 470,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đăng ký · bước 1",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-Otp.dc.html": {
+   "x": 940,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đăng ký · bước 2 (OTP)",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-Forgot.dc.html": {
+   "x": 1410,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Quên mật khẩu",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-NewPassword.dc.html": {
+   "x": 1880,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Đặt mật khẩu mới (deep link / bắt đổi)",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-BioEnable.dc.html": {
+   "x": 0,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Hỏi bật Face ID",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-BioUnlock.dc.html": {
+   "x": 470,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Màn khóa",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-RoleNotice.dc.html": {
+   "x": 940,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Vai trò khác học viên",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-Home.dc.html": {
+   "x": 1410,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Khung · Trang chủ",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-Account.dc.html": {
+   "x": 1880,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Tài khoản",
+   "page": "ios",
+   "radius": 44
+  },
+  "I-Pad-Login.dc.html": {
+   "x": 0,
+   "y": 2380,
+   "w": 1180,
+   "h": 820,
+   "title": "iPad · Đăng nhập",
+   "page": "ios",
+   "radius": 24
+  },
+  "I-Pad-Account.dc.html": {
+   "x": 1260,
+   "y": 2380,
+   "w": 1180,
+   "h": 820,
+   "title": "iPad · Tài khoản",
+   "page": "ios",
+   "radius": 24
+  },
+  "I-Duo-Cover-Login.dc.html": {
+   "x": 0,
+   "y": 3543,
+   "w": 466,
+   "h": 678,
+   "title": "iPhone Duo gập (màn ngoài) · Đăng nhập",
+   "page": "ios",
+   "radius": 40
+  },
+  "I-Duo-Open-Login.dc.html": {
+   "x": 546,
+   "y": 3543,
+   "w": 952,
+   "h": 670,
+   "title": "iPhone Duo mở (hai nửa màn) · Đăng nhập",
+   "page": "ios",
+   "radius": 36
+  },
+  "I-Duo-Open-Account.dc.html": {
+   "x": 1578,
+   "y": 3543,
+   "w": 952,
+   "h": 670,
+   "title": "iPhone Duo mở (hai nửa màn) · Tài khoản",
+   "page": "ios",
+   "radius": 36
+  },
+  "A-Catalog.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Trang chủ · Danh mục",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-CatalogFilter.dc.html": {
+   "x": 470,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Danh mục · Bộ lọc",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-ExamDetail.dc.html": {
+   "x": 940,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Chi tiết bài thi",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-BundleDetail.dc.html": {
+   "x": 1410,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Chi tiết bộ đề",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Tablet-Catalog.dc.html": {
+   "x": 1880,
+   "y": 0,
+   "w": 1280,
+   "h": 800,
+   "title": "Tablet · Danh mục hai cột",
+   "page": "android-portal",
+   "radius": 24
+  },
+  "A-Checkout.dc.html": {
+   "x": 0,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Xác nhận mua",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-PayResult.dc.html": {
+   "x": 470,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Kết quả thanh toán",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Orders.dc.html": {
+   "x": 940,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Đơn của tôi",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-OrderDetail.dc.html": {
+   "x": 1410,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Chi tiết đơn",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-MyExams.dc.html": {
+   "x": 0,
+   "y": 2380,
+   "w": 390,
+   "h": 844,
+   "title": "Bài thi của tôi",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-History.dc.html": {
+   "x": 470,
+   "y": 2380,
+   "w": 390,
+   "h": 844,
+   "title": "Lịch sử",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-HistoryFilter.dc.html": {
+   "x": 940,
+   "y": 2380,
+   "w": 390,
+   "h": 844,
+   "title": "Lịch sử · Bộ lọc",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Fold-MyExams.dc.html": {
+   "x": 1410,
+   "y": 2380,
+   "w": 840,
+   "h": 720,
+   "title": "Màn hình gập (mở) · Bài thi của tôi",
+   "page": "android-portal",
+   "radius": 24
+  },
+  "A-Prepare.dc.html": {
+   "x": 0,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Chuẩn bị",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Starting.dc.html": {
+   "x": 470,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Đang chuẩn bị đề",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-PartChoice.dc.html": {
+   "x": 940,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Chọn phần thi",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Player.dc.html": {
+   "x": 1410,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Làm bài",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-PlayerNav.dc.html": {
+   "x": 1880,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Danh sách câu hỏi",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-PlayerDialogs.dc.html": {
+   "x": 2350,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Hộp thoại khi làm bài",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Fold-Player.dc.html": {
+   "x": 2820,
+   "y": 3570,
+   "w": 840,
+   "h": 720,
+   "title": "Màn hình gập (mở) · Làm bài hai cột",
+   "page": "android-portal",
+   "radius": 24
+  },
+  "A-Tablet-Player.dc.html": {
+   "x": 3740,
+   "y": 3570,
+   "w": 1280,
+   "h": 800,
+   "title": "Tablet · Làm bài",
+   "page": "android-portal",
+   "radius": 24
+  },
+  "A-Q-Choice.dc.html": {
+   "x": 0,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Một đáp án · Nhiều đáp án",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-TrueFalse.dc.html": {
+   "x": 470,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Đúng / Sai",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-ShortAnswer.dc.html": {
+   "x": 940,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Trả lời ngắn",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-Cloze.dc.html": {
+   "x": 1410,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Điền khuyết",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-Matching.dc.html": {
+   "x": 1880,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Ghép đôi",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-Essay.dc.html": {
+   "x": 2350,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Tự luận",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-Audio.dc.html": {
+   "x": 2820,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Phần nghe",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-Set.dc.html": {
+   "x": 3290,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Câu chùm",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-Rich.dc.html": {
+   "x": 3760,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Bảng, thơ, công thức, ảnh",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Q-Review.dc.html": {
+   "x": 4230,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Dạng chỉ đọc khi xem lại",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Result.dc.html": {
+   "x": 0,
+   "y": 5950,
+   "w": 390,
+   "h": 844,
+   "title": "Kết quả",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-ResultBreakdown.dc.html": {
+   "x": 470,
+   "y": 5950,
+   "w": 390,
+   "h": 844,
+   "title": "Kết quả · Phân tích",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Review.dc.html": {
+   "x": 940,
+   "y": 5950,
+   "w": 390,
+   "h": 844,
+   "title": "Xem lại bài",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Tablet-Review.dc.html": {
+   "x": 1410,
+   "y": 5950,
+   "w": 1280,
+   "h": 800,
+   "title": "Tablet · Xem lại bài",
+   "page": "android-portal",
+   "radius": 24
+  },
+  "A-AccountV2.dc.html": {
+   "x": 0,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Tài khoản (thêm Hồ sơ, Đơn của tôi)",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Profile.dc.html": {
+   "x": 470,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Hồ sơ",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-ProfileEmail.dc.html": {
+   "x": 940,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Đổi email",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-VerifyEmail.dc.html": {
+   "x": 1410,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Xác minh email",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-DeleteAccount.dc.html": {
+   "x": 1880,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Xóa tài khoản",
+   "page": "android-portal",
+   "radius": 28
+  },
+  "A-Fold-Profile.dc.html": {
+   "x": 2350,
+   "y": 7140,
+   "w": 840,
+   "h": 720,
+   "title": "Màn hình gập (mở) · Hồ sơ",
+   "page": "android-portal",
+   "radius": 24
+  },
+  "I-Catalog.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Trang chủ · Danh mục",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-CatalogFilter.dc.html": {
+   "x": 470,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Danh mục · Bộ lọc",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-ExamDetail.dc.html": {
+   "x": 940,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Chi tiết bài thi",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-BundleDetail.dc.html": {
+   "x": 1410,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Chi tiết bộ đề",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Pad-Catalog.dc.html": {
+   "x": 1880,
+   "y": 0,
+   "w": 1180,
+   "h": 820,
+   "title": "iPad · Danh mục hai cột",
+   "page": "ios-portal",
+   "radius": 24
+  },
+  "I-Checkout.dc.html": {
+   "x": 0,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Xác nhận mua",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-PayResult.dc.html": {
+   "x": 470,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Kết quả thanh toán",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Orders.dc.html": {
+   "x": 940,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Đơn của tôi",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-OrderDetail.dc.html": {
+   "x": 1410,
+   "y": 1190,
+   "w": 390,
+   "h": 844,
+   "title": "Chi tiết đơn",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-MyExams.dc.html": {
+   "x": 0,
+   "y": 2380,
+   "w": 390,
+   "h": 844,
+   "title": "Bài thi của tôi",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-History.dc.html": {
+   "x": 470,
+   "y": 2380,
+   "w": 390,
+   "h": 844,
+   "title": "Lịch sử",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-HistoryFilter.dc.html": {
+   "x": 940,
+   "y": 2380,
+   "w": 390,
+   "h": 844,
+   "title": "Lịch sử · Bộ lọc",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Duo-Open-MyExams.dc.html": {
+   "x": 1410,
+   "y": 2380,
+   "w": 952,
+   "h": 670,
+   "title": "iPhone Duo mở · Bài thi của tôi",
+   "page": "ios-portal",
+   "radius": 36
+  },
+  "I-Prepare.dc.html": {
+   "x": 0,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Chuẩn bị",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Starting.dc.html": {
+   "x": 470,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Đang chuẩn bị đề",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-PartChoice.dc.html": {
+   "x": 940,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Chọn phần thi",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Player.dc.html": {
+   "x": 1410,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Làm bài",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-PlayerNav.dc.html": {
+   "x": 1880,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Danh sách câu hỏi",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-PlayerDialogs.dc.html": {
+   "x": 2350,
+   "y": 3570,
+   "w": 390,
+   "h": 844,
+   "title": "Hộp thoại khi làm bài",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Pad-Player.dc.html": {
+   "x": 2820,
+   "y": 3570,
+   "w": 1180,
+   "h": 820,
+   "title": "iPad · Làm bài",
+   "page": "ios-portal",
+   "radius": 24
+  },
+  "I-Duo-Open-Player.dc.html": {
+   "x": 4080,
+   "y": 3570,
+   "w": 952,
+   "h": 670,
+   "title": "iPhone Duo mở · Làm bài hai cột",
+   "page": "ios-portal",
+   "radius": 36
+  },
+  "I-Q-Choice.dc.html": {
+   "x": 0,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Một đáp án · Nhiều đáp án",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-TrueFalse.dc.html": {
+   "x": 470,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Đúng / Sai",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-ShortAnswer.dc.html": {
+   "x": 940,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Trả lời ngắn",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-Cloze.dc.html": {
+   "x": 1410,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Điền khuyết",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-Matching.dc.html": {
+   "x": 1880,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Ghép đôi",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-Essay.dc.html": {
+   "x": 2350,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Tự luận",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-Audio.dc.html": {
+   "x": 2820,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Phần nghe",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-Set.dc.html": {
+   "x": 3290,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Câu chùm",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-Rich.dc.html": {
+   "x": 3760,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Bảng, thơ, công thức, ảnh",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Q-Review.dc.html": {
+   "x": 4230,
+   "y": 4760,
+   "w": 390,
+   "h": 844,
+   "title": "Dạng chỉ đọc khi xem lại",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Result.dc.html": {
+   "x": 0,
+   "y": 5950,
+   "w": 390,
+   "h": 844,
+   "title": "Kết quả",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-ResultBreakdown.dc.html": {
+   "x": 470,
+   "y": 5950,
+   "w": 390,
+   "h": 844,
+   "title": "Kết quả · Phân tích",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Review.dc.html": {
+   "x": 940,
+   "y": 5950,
+   "w": 390,
+   "h": 844,
+   "title": "Xem lại bài",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Pad-Review.dc.html": {
+   "x": 1410,
+   "y": 5950,
+   "w": 1180,
+   "h": 820,
+   "title": "iPad · Xem lại bài",
+   "page": "ios-portal",
+   "radius": 24
+  },
+  "I-AccountV2.dc.html": {
+   "x": 0,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Tài khoản (thêm Hồ sơ, Đơn của tôi)",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Profile.dc.html": {
+   "x": 470,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Hồ sơ",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-ProfileEmail.dc.html": {
+   "x": 940,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Đổi email",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-VerifyEmail.dc.html": {
+   "x": 1410,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Xác minh email",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-DeleteAccount.dc.html": {
+   "x": 1880,
+   "y": 7140,
+   "w": 390,
+   "h": 844,
+   "title": "Xóa tài khoản",
+   "page": "ios-portal",
+   "radius": 44
+  },
+  "I-Pad-Profile.dc.html": {
+   "x": 2350,
+   "y": 7140,
+   "w": 1180,
+   "h": 820,
+   "title": "iPad · Hồ sơ",
+   "page": "ios-portal",
+   "radius": 24
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "A-Register.dc.html",
+  "A-Otp.dc.html",
+  "A-Forgot.dc.html",
+  "A-NewPassword.dc.html",
+  "A-BioEnable.dc.html",
+  "A-BioUnlock.dc.html",
+  "A-RoleNotice.dc.html",
+  "A-Home.dc.html",
+  "A-Account.dc.html",
+  "A-Fold-Account.dc.html",
+  "A-Tablet-Login.dc.html",
+  "A-Tablet-Home.dc.html",
+  "I-Login.dc.html",
+  "I-Register.dc.html",
+  "I-Otp.dc.html",
+  "I-Forgot.dc.html",
+  "I-NewPassword.dc.html",
+  "I-BioEnable.dc.html",
+  "I-BioUnlock.dc.html",
+  "I-RoleNotice.dc.html",
+  "I-Home.dc.html",
+  "I-Account.dc.html",
+  "I-Pad-Login.dc.html",
+  "I-Pad-Account.dc.html",
+  "I-Duo-Cover-Login.dc.html",
+  "I-Duo-Open-Login.dc.html",
+  "I-Duo-Open-Account.dc.html",
+  "A-Catalog.dc.html",
+  "A-CatalogFilter.dc.html",
+  "A-ExamDetail.dc.html",
+  "A-BundleDetail.dc.html",
+  "A-Tablet-Catalog.dc.html",
+  "A-Checkout.dc.html",
+  "A-PayResult.dc.html",
+  "A-Orders.dc.html",
+  "A-OrderDetail.dc.html",
+  "A-MyExams.dc.html",
+  "A-History.dc.html",
+  "A-HistoryFilter.dc.html",
+  "A-Fold-MyExams.dc.html",
+  "A-Prepare.dc.html",
+  "A-Starting.dc.html",
+  "A-PartChoice.dc.html",
+  "A-Player.dc.html",
+  "A-PlayerNav.dc.html",
+  "A-PlayerDialogs.dc.html",
+  "A-Fold-Player.dc.html",
+  "A-Tablet-Player.dc.html",
+  "A-Q-Choice.dc.html",
+  "A-Q-TrueFalse.dc.html",
+  "A-Q-ShortAnswer.dc.html",
+  "A-Q-Cloze.dc.html",
+  "A-Q-Matching.dc.html",
+  "A-Q-Essay.dc.html",
+  "A-Q-Audio.dc.html",
+  "A-Q-Set.dc.html",
+  "A-Q-Rich.dc.html",
+  "A-Q-Review.dc.html",
+  "A-Result.dc.html",
+  "A-ResultBreakdown.dc.html",
+  "A-Review.dc.html",
+  "A-Tablet-Review.dc.html",
+  "A-AccountV2.dc.html",
+  "A-Profile.dc.html",
+  "A-ProfileEmail.dc.html",
+  "A-VerifyEmail.dc.html",
+  "A-DeleteAccount.dc.html",
+  "A-Fold-Profile.dc.html",
+  "I-Catalog.dc.html",
+  "I-CatalogFilter.dc.html",
+  "I-ExamDetail.dc.html",
+  "I-BundleDetail.dc.html",
+  "I-Pad-Catalog.dc.html",
+  "I-Checkout.dc.html",
+  "I-PayResult.dc.html",
+  "I-Orders.dc.html",
+  "I-OrderDetail.dc.html",
+  "I-MyExams.dc.html",
+  "I-History.dc.html",
+  "I-HistoryFilter.dc.html",
+  "I-Duo-Open-MyExams.dc.html",
+  "I-Prepare.dc.html",
+  "I-Starting.dc.html",
+  "I-PartChoice.dc.html",
+  "I-Player.dc.html",
+  "I-PlayerNav.dc.html",
+  "I-PlayerDialogs.dc.html",
+  "I-Pad-Player.dc.html",
+  "I-Duo-Open-Player.dc.html",
+  "I-Q-Choice.dc.html",
+  "I-Q-TrueFalse.dc.html",
+  "I-Q-ShortAnswer.dc.html",
+  "I-Q-Cloze.dc.html",
+  "I-Q-Matching.dc.html",
+  "I-Q-Essay.dc.html",
+  "I-Q-Audio.dc.html",
+  "I-Q-Set.dc.html",
+  "I-Q-Rich.dc.html",
+  "I-Q-Review.dc.html",
+  "I-Result.dc.html",
+  "I-ResultBreakdown.dc.html",
+  "I-Review.dc.html",
+  "I-Pad-Review.dc.html",
+  "I-AccountV2.dc.html",
+  "I-Profile.dc.html",
+  "I-ProfileEmail.dc.html",
+  "I-VerifyEmail.dc.html",
+  "I-DeleteAccount.dc.html",
+  "I-Pad-Profile.dc.html"
+ ],
+ "notes": {
+  "a-auth": {
+   "x": 0,
+   "y": -223,
+   "text": "Android · Xác thực",
+   "kind": "title1",
+   "maxW": 2270,
+   "page": "android"
+  },
+  "a-shell": {
+   "x": 0,
+   "y": 967,
+   "text": "Android · Khóa sinh trắc học, khung, tài khoản",
+   "kind": "title1",
+   "maxW": 2270,
+   "page": "android"
+  },
+  "a-large": {
+   "x": 0,
+   "y": 2157,
+   "text": "Android · Màn hình gập và tablet",
+   "kind": "title1",
+   "maxW": 3560,
+   "page": "android"
+  },
+  "i-auth": {
+   "x": 0,
+   "y": -223,
+   "text": "iOS · Xác thực",
+   "kind": "title1",
+   "maxW": 2270,
+   "page": "ios"
+  },
+  "i-shell": {
+   "x": 0,
+   "y": 967,
+   "text": "iOS · Face ID, khung, tài khoản",
+   "kind": "title1",
+   "maxW": 2270,
+   "page": "ios"
+  },
+  "i-large": {
+   "x": 0,
+   "y": 2157,
+   "text": "iOS · iPad",
+   "kind": "title1",
+   "maxW": 2440,
+   "page": "ios"
+  },
+  "i-duo": {
+   "x": 0,
+   "y": 3320,
+   "text": "iOS · iPhone Duo (gập và mở)",
+   "kind": "title1",
+   "maxW": 2530,
+   "page": "ios"
+  },
+  "android-portal-r1": {
+   "x": 0,
+   "y": -223,
+   "text": "Android · Trang chủ · Danh mục và chi tiết bài thi",
+   "kind": "title1",
+   "maxW": 3160,
+   "page": "android-portal"
+  },
+  "android-portal-r2": {
+   "x": 0,
+   "y": 967,
+   "text": "Android · Mua bài thi · Thanh toán · Đơn hàng",
+   "kind": "title1",
+   "maxW": 1800,
+   "page": "android-portal"
+  },
+  "android-portal-r3": {
+   "x": 0,
+   "y": 2157,
+   "text": "Android · Bài thi của tôi · Lịch sử",
+   "kind": "title1",
+   "maxW": 2250,
+   "page": "android-portal"
+  },
+  "android-portal-r4": {
+   "x": 0,
+   "y": 3347,
+   "text": "Android · Chuẩn bị và khung làm bài",
+   "kind": "title1",
+   "maxW": 5020,
+   "page": "android-portal"
+  },
+  "android-portal-r5": {
+   "x": 0,
+   "y": 4537,
+   "text": "Android · Dạng câu và nội dung câu hỏi",
+   "kind": "title1",
+   "maxW": 4620,
+   "page": "android-portal"
+  },
+  "android-portal-r6": {
+   "x": 0,
+   "y": 5727,
+   "text": "Android · Kết quả và xem lại bài",
+   "kind": "title1",
+   "maxW": 2690,
+   "page": "android-portal"
+  },
+  "android-portal-r7": {
+   "x": 0,
+   "y": 6917,
+   "text": "Android · Tài khoản · Hồ sơ",
+   "kind": "title1",
+   "maxW": 3190,
+   "page": "android-portal"
+  },
+  "ios-portal-r1": {
+   "x": 0,
+   "y": -223,
+   "text": "iOS · Trang chủ · Danh mục và chi tiết bài thi",
+   "kind": "title1",
+   "maxW": 3060,
+   "page": "ios-portal"
+  },
+  "ios-portal-r2": {
+   "x": 0,
+   "y": 967,
+   "text": "iOS · Mua bài thi · Thanh toán · Đơn hàng",
+   "kind": "title1",
+   "maxW": 1800,
+   "page": "ios-portal"
+  },
+  "ios-portal-r3": {
+   "x": 0,
+   "y": 2157,
+   "text": "iOS · Bài thi của tôi · Lịch sử",
+   "kind": "title1",
+   "maxW": 2362,
+   "page": "ios-portal"
+  },
+  "ios-portal-r4": {
+   "x": 0,
+   "y": 3347,
+   "text": "iOS · Chuẩn bị và khung làm bài",
+   "kind": "title1",
+   "maxW": 5032,
+   "page": "ios-portal"
+  },
+  "ios-portal-r5": {
+   "x": 0,
+   "y": 4537,
+   "text": "iOS · Dạng câu và nội dung câu hỏi",
+   "kind": "title1",
+   "maxW": 4620,
+   "page": "ios-portal"
+  },
+  "ios-portal-r6": {
+   "x": 0,
+   "y": 5727,
+   "text": "iOS · Kết quả và xem lại bài",
+   "kind": "title1",
+   "maxW": 2590,
+   "page": "ios-portal"
+  },
+  "ios-portal-r7": {
+   "x": 0,
+   "y": 6917,
+   "text": "iOS · Tài khoản · Hồ sơ",
+   "kind": "title1",
+   "maxW": 3530,
+   "page": "ios-portal"
+  }
+ },
+ "designSystems": []
 }

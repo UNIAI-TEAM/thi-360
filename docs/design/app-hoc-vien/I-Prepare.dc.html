@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Chuẩn bị làm bài</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="nav">
+    <a class="circle" href="I-MyExams.dc.html" aria-label="Về Bài thi của tôi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <span class="t-headline">Chuẩn bị làm bài</span>
+    <span style="width: 44px"></span>
+  </div>
+  <div class="col g20 grow pad" style="overflow-y: auto; padding-top: 8px; padding-bottom: 150px">
+    <div class="col g8">
+      <div class="row g6" style="flex-wrap: wrap">
+        <span style="font-size: 13px; line-height: 18px; font-weight: 600; padding: 3px 10px; border-radius: 12px; background: var(--tint-soft); color: var(--on-tint-soft)">HSA</span>
+        <span style="font-size: 13px; line-height: 18px; font-weight: 600; padding: 3px 10px; border-radius: 12px; background: var(--fill); color: var(--label)">Bài thi FULL</span>
+      </div>
+      <h1 class="t-title2">Thi thử ĐGNL HSA 2027 · Đề số 04</h1>
+      <p class="t-sub">3 phần · 150 câu · 195 phút · 150 điểm</p>
+    </div>
+
+    <sc-if value="{{isResume}}" hint-placeholder-val="{{false}}">
+      <div class="banner" role="status" style="background: {{infoBg}}; color: {{infoFg}}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg>
+        <span>Bạn đang có lượt làm bài chưa hoàn tất. Tiếp tục để làm tiếp, không tạo lượt mới.</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isRefused}}" hint-placeholder-val="{{false}}">
+      <div class="col g8" role="status" style="padding: 14px 16px; border-radius: 14px; background: {{warnBg}}; color: {{warnFg}}">
+        <span class="row g8 t-headline"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/></svg>Bạn đã dùng hết lượt của bài này.</span>
+        <span style="font-size: 15px; line-height: 20px">Bạn có thể mua thêm lượt để tiếp tục luyện tập bài thi này.</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showPre}}" hint-placeholder-val="{{false}}">
+      <div class="col g8">
+        <h2 class="sec" style="padding-bottom: 0">Lựa chọn trước khi bắt đầu</h2>
+        <div class="group" role="radiogroup" aria-label="Phương án trước khi bắt đầu">
+          <div class="cell" role="radio" aria-checked="true" style="align-items: flex-start; padding: 12px 16px">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 11px; background: var(--tint); color: var(--on-tint); display: flex; align-items: center; justify-content: center; margin-top: 1px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 3"><path d="m5 12 5 5 9-10"/></svg></span>
+            <span class="col grow g4">
+              <span class="t-headline">KH · Khoa học</span>
+              <span class="t-foot">Chọn đúng 3 trong 5 môn</span>
+              <span class="t-foot">50 câu · 60 phút · 50 điểm</span>
+            </span>
+          </div>
+          <div class="cell" role="radio" aria-checked="false" style="align-items: flex-start; padding: 12px 16px">
+            <span style="flex: none; width: 22px; height: 22px; border-radius: 11px; box-shadow: inset 0 0 0 1.5px var(--sep); margin-top: 1px"></span>
+            <span class="col grow g4">
+              <span class="t-headline" style="font-weight: 500">TA · Tiếng Anh</span>
+              <span class="t-foot">Tiếng Anh</span>
+              <span class="t-foot">50 câu · 60 phút · 50 điểm</span>
+            </span>
+          </div>
+        </div>
+        <div class="row between" style="padding: 8px 16px 0">
+          <span class="col">
+            <span class="t-foot strong">Chọn môn tự chọn</span>
+            <span class="t-foot">Chọn đúng 3 trong 5 môn</span>
+          </span>
+          <span class="badge" style="color: {{pickFg}}">Đã chọn {{picked}}/3</span>
+        </div>
+        <div class="group" role="group" aria-label="Chọn môn tự chọn">
+          <div class="cell" role="checkbox" aria-checked="true"><span class="grow">Vật lí</span><span style="width: 22px; height: 22px; border-radius: 6px; background: var(--tint); color: var(--on-tint); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 3"><path d="m5 12 5 5 9-10"/></svg></span></div>
+          <div class="cell" role="checkbox" aria-checked="true"><span class="grow">Hóa học</span><span style="width: 22px; height: 22px; border-radius: 6px; background: var(--tint); color: var(--on-tint); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 3"><path d="m5 12 5 5 9-10"/></svg></span></div>
+          <sc-if value="{{preFull}}" hint-placeholder-val="{{false}}">
+            <div class="cell" role="checkbox" aria-checked="true"><span class="grow">Sinh học</span><span style="width: 22px; height: 22px; border-radius: 6px; background: var(--tint); color: var(--on-tint); display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 3"><path d="m5 12 5 5 9-10"/></svg></span></div>
+            <div class="cell" role="checkbox" aria-checked="false" aria-disabled="true" style="opacity: .4"><span class="grow">Lịch sử</span><span style="width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--sep)"></span></div>
+            <div class="cell" role="checkbox" aria-checked="false" aria-disabled="true" style="opacity: .4"><span class="grow">Địa lí</span><span style="width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--sep)"></span></div>
+          </sc-if>
+          <sc-if value="{{prePartial}}" hint-placeholder-val="{{false}}">
+            <div class="cell" role="checkbox" aria-checked="false"><span class="grow">Sinh học</span><span style="width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--sep)"></span></div>
+            <div class="cell" role="checkbox" aria-checked="false"><span class="grow">Lịch sử</span><span style="width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--sep)"></span></div>
+            <div class="cell" role="checkbox" aria-checked="false"><span class="grow">Địa lí</span><span style="width: 22px; height: 22px; border-radius: 6px; box-shadow: inset 0 0 0 1.5px var(--sep)"></span></div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <div class="col g8">
+      <h2 class="sec" style="padding-bottom: 0">Sẵn sàng làm bài</h2>
+      <div class="group">
+        <div class="cell"><span class="grow">Số lượt còn lại</span><span class="val" style="{{attemptsStyle}}">{{attemptsLeft}}</span></div>
+        <sc-if value="{{hasGrant}}" hint-placeholder-val="{{true}}">
+          <div class="cell" style="align-items: flex-start"><span style="flex: none; white-space: nowrap">Lượt này dùng từ</span><span class="val" style="flex: 1; min-width: 0; text-align: right; font-size: 15px">Mua ngày 18/11/2026, đơn DH-20261118-0482</span></div>
+        </sc-if>
+        <div class="cell"><span class="grow">Số câu phải làm</span><span class="val">150 câu</span></div>
+        <div class="cell"><span class="grow">Tổng thời gian</span><span class="val">195 phút</span></div>
+        <div class="cell"><span class="grow">Điểm tối đa</span><span class="val">150 điểm</span></div>
+      </div>
+      <p class="t-foot" style="padding: 0 16px">Bấm Bắt đầu thì hệ thống chuẩn bị đề, mất khoảng vài giây. Đồng hồ chỉ chạy khi đề đã sẵn sàng. Nếu không chuẩn bị được đề, lượt được trả lại.</p>
+    </div>
+
+    <div class="col g8">
+      <h2 class="sec" style="padding-bottom: 0">Cấu trúc bài thi</h2>
+      <div class="group">
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></span>
+          <span class="col g4 grow">
+            <span class="t-headline">Tính giờ từng phần</span>
+            <span class="t-foot">Làm lần lượt từng phần. Hoàn thành phần hoặc hết giờ thì phần sau mở ngay, không có giờ nghỉ và không quay lại phần đã xong.</span>
+          </span>
+        </div>
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="t-headline" style="width: 22px; color: var(--label2)">1</span>
+          <span class="col g4 grow">
+            <span class="row between g8"><span class="t-headline" style="font-weight: 500">Toán học và xử lý số liệu</span><span class="t-foot" style="white-space: nowrap">Bắt buộc</span></span>
+            <span class="t-foot">50 câu · 75 phút · 50 điểm</span>
+          </span>
+        </div>
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="t-headline" style="width: 22px; color: var(--label2)">2</span>
+          <span class="col g4 grow">
+            <span class="row between g8"><span class="t-headline" style="font-weight: 500">Văn học – Ngôn ngữ</span><span class="t-foot" style="white-space: nowrap">Bắt buộc</span></span>
+            <span class="t-foot">50 câu · 60 phút · 50 điểm</span>
+          </span>
+        </div>
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="t-headline" style="width: 22px; color: var(--label2)">3</span>
+          <span class="col g4 grow">
+            <span class="row between g8"><span class="t-headline" style="font-weight: 500">Khoa học hoặc Tiếng Anh</span><span class="t-foot" style="white-space: nowrap; color: var(--tint); font-weight: 600">Tự chọn</span></span>
+            <span class="t-foot">50 câu · 60 phút · 50 điểm</span>
+          </span>
+        </div>
+        <div class="cell" style="align-items: flex-start; padding: 12px 16px">
+          <span class="col g4 grow">
+            <span class="t-foot strong">Dạng câu hỏi</span>
+            <span class="t-foot">Trắc nghiệm một đáp án · Trắc nghiệm nhiều đáp án · Đúng/Sai · Trả lời ngắn · Chùm câu hỏi</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{showAfter}}" hint-placeholder-val="{{true}}">
+      <div class="col g8">
+        <h2 class="sec" style="padding-bottom: 0">Lựa chọn sẽ gặp trong bài</h2>
+        <div class="group col g8" style="padding: 14px 16px">
+          <span class="t-headline">Phần 3 · Khoa học hoặc Tiếng Anh</span>
+          <span style="font-size: 15px; line-height: 20px"><span class="strong">KH · Khoa học</span> (chọn đúng 3 trong 5 môn): Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí</span>
+          <span style="font-size: 15px; line-height: 20px"><span class="strong">TA · Tiếng Anh</span>: Tiếng Anh</span>
+          <p class="t-foot">Thời gian chọn: tối đa 15 phút kể từ lúc phần trước đóng. Quá thời gian mà chưa xác nhận thì lượt thi kết thúc, phần tự chọn được 0 điểm.</p>
+          <p class="t-foot">Đồng hồ của phần tự chọn chỉ chạy khi bộ câu hỏi đã sẵn sàng.</p>
+        </div>
+      </div>
+    </sc-if>
+
+    <div class="col g8">
+      <h2 class="sec" style="padding-bottom: 0">Hướng dẫn làm bài</h2>
+      <div class="group col g12" style="padding: 14px 16px">
+        <p style="font-size: 15px; line-height: 20px">Bài thi gồm 3 phần, làm lần lượt theo thứ tự. Thí sinh dùng giấy nháp và máy tính cầm tay không có chức năng soạn thảo.</p>
+        <ul class="col g8" style="margin: 0; padding: 0 0 0 18px; font-size: 15px; line-height: 20px; color: var(--label2)">
+          <li>Câu trả lời được lưu tự động. Thanh trên cho biết Đang lưu, Đã lưu hoặc Chưa lưu.</li>
+          <li>Thời gian còn lại lấy theo giờ máy chủ; đổi giờ trên thiết bị không làm thay đổi thời gian.</li>
+          <li>Mất kết nối vẫn làm bài tiếp được. Câu trả lời được giữ trên thiết bị và gửi khi có mạng lại; đồng hồ vẫn chạy.</li>
+          <li>Mỗi lượt chỉ làm trên một thiết bị tại một thời điểm. Mở ở thiết bị khác thì phải xác nhận chuyển sang thiết bị đó.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col g8 safe-bottom" style="position: absolute; left: 0; right: 0; bottom: 0; padding-top: 12px; padding-left: 20px; padding-right: 20px; background: var(--glass); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); border-top: 1px solid var(--sep)">
+    <sc-if value="{{startOff}}" hint-placeholder-val="{{false}}">
+      <button class="btn prominent block" disabled aria-disabled="true" style="opacity: .4">Bắt đầu bài thi</button>
+      <p class="t-foot" style="text-align: center">Vui lòng chọn đủ 3 môn trước khi bắt đầu.</p>
+    </sc-if>
+    <sc-if value="{{startOn}}" hint-placeholder-val="{{true}}">
+      <a class="btn prominent block" href="I-Starting.dc.html">Bắt đầu bài thi</a>
+    </sc-if>
+    <sc-if value="{{isResume}}" hint-placeholder-val="{{false}}">
+      <a class="btn prominent block" href="I-Player.dc.html">Tiếp tục</a>
+    </sc-if>
+    <sc-if value="{{isRefused}}" hint-placeholder-val="{{false}}">
+      <div class="row g8">
+        <button class="btn prominent grow" disabled aria-disabled="true" style="opacity: .4; padding: 0 12px">Bắt đầu bài thi</button>
+        <a class="btn gray grow" href="I-Checkout.dc.html" style="padding: 0 12px">Mua thêm lượt</a>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["ready","resume","refused"],"default":"ready"},"preChoice":{"editor":"enum","options":["none","incomplete","complete"],"default":"none"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.state ?? 'ready';
+const pre = this.props.preChoice ?? 'none';
+const c = dark
+  ? { okFg: '#34d399', okBg: '#0f2a21', warnFg: '#fbbf24', warnBg: '#2b2210', infoFg: '#22d3ee', infoBg: '#0f2a30' }
+  : { okFg: '#047857', okBg: '#ecfdf5', warnFg: '#b45309', warnBg: '#fffbeb', infoFg: '#0e7490', infoBg: '#ecfeff' };
+const hasPre = pre !== 'none';
+const partial = pre === 'incomplete';
+return {
+  theme: dark ? 'dark' : 'light',
+  ...c,
+  isResume: s === 'resume',
+  isRefused: s === 'refused',
+  showPre: hasPre && s !== 'resume',
+  preFull: !partial,
+  prePartial: partial,
+  picked: partial ? 2 : 3,
+  pickFg: partial ? c.warnFg : c.okFg,
+  showAfter: !hasPre,
+  startOff: s === 'ready' && partial,
+  startOn: s === 'ready' && !partial,
+  hasGrant: s !== 'refused',
+  attemptsLeft: s === 'refused' ? '0 lượt' : s === 'resume' ? '1 lượt' : '2 lượt',
+  attemptsStyle: s === 'refused' ? 'color: ' + c.warnFg + '; font-weight: 600' : ''
+};
+}
+}
+</script>
+</body>
+</html>

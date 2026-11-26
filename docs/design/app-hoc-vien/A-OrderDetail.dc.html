@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Chi tiết đơn hàng</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="bar">
+    <a class="icon-btn" href="A-Orders.dc.html" aria-label="Quay lại Đơn của tôi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+    <h1 class="t-title">Đơn DH261126K7Q2MX</h1>
+  </div>
+  <div class="grow" style="overflow-y: auto">
+  <div class="col pad g16" style="padding-top: 0; padding-bottom: 24px">
+    <div class="row g8" style="flex-wrap: wrap">
+      <sc-if value="{{isPending}}" hint-placeholder-val="{{ true }}"><span class="chip" style="background: {{warnBg}}; color: {{warnFg}}">Chờ thanh toán</span></sc-if>
+      <sc-if value="{{isFulfilled}}" hint-placeholder-val="{{ false }}"><span class="chip" style="background: {{okBg}}; color: {{okFg}}">Đã cấp bài thi</span></sc-if>
+      <sc-if value="{{isCancelled}}" hint-placeholder-val="{{ false }}"><span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đã hủy</span></sc-if>
+      <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">VNPAY</span>
+    </div>
+
+    <section class="col g8" aria-labelledby="a-od-info">
+      <h2 id="a-od-info" class="t-title-m">Thông tin đơn hàng</h2>
+      <div class="card out col g8" style="font-size: 14px; line-height: 20px">
+        <div class="row between g16" style="align-items: flex-start"><span style="color: var(--on-surface-variant); flex: none">Tài khoản mua</span><span style="text-align: right">minhanh.tran · Trần Minh Anh</span></div>
+        <div class="row between g16" style="align-items: flex-start"><span style="color: var(--on-surface-variant); flex: none">Sản phẩm</span><span style="text-align: right">HSA 2027 · Đề thi thử Đánh giá năng lực ĐHQG Hà Nội số 03 · HSA27-DT03</span></div>
+        <div class="row between g16"><span style="color: var(--on-surface-variant)">Phiên bản lúc mua</span><span>v3</span></div>
+        <div class="divider" style="margin: 0"></div>
+        <div class="row between g16"><span style="color: var(--on-surface-variant)">Giá gốc</span><span>199.000 đ</span></div>
+        <div class="row between g16"><span style="color: var(--on-surface-variant)">Khuyến mãi tự động</span><span>-20.000 đ</span></div>
+        <div class="row between g16"><span style="color: var(--on-surface-variant)">Mã giảm giá</span><span>GIAM20 · -30.000 đ</span></div>
+        <div class="row between g16"><span class="strong">Số tiền phải trả</span><span class="strong">149.000 đ</span></div>
+        <div class="row between g16"><span style="color: var(--on-surface-variant)">Số lượt được cấp</span><span>2 lượt</span></div>
+        <div class="divider" style="margin: 0"></div>
+        <div class="row between g16"><span style="color: var(--on-surface-variant)">Tạo lúc</span><span>26/11/2026 14:22</span></div>
+        <div class="row between g16"><span style="color: var(--on-surface-variant)">Giữ giá tới</span><span>26/11/2026 14:37</span></div>
+        <sc-if value="{{isFulfilled}}" hint-placeholder-val="{{ false }}">
+          <div class="row between g16"><span style="color: var(--on-surface-variant)">Thanh toán lúc</span><span>26/11/2026 14:24</span></div>
+          <div class="row between g16"><span style="color: var(--on-surface-variant)">Cấp bài thi lúc</span><span>26/11/2026 14:24</span></div>
+        </sc-if>
+        <div class="divider" style="margin: 0"></div>
+        <div class="col g4">
+          <span style="color: var(--on-surface-variant)">Quyền lợi</span>
+          <span>Xem kết quả: Điểm, đáp án và lời giải</span>
+          <span>Giải thích bằng AI: Có · Đánh giá điểm mạnh, điểm yếu: Có</span>
+          <span>Ôn luyện bổ sung: Không</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="col g8" aria-labelledby="a-od-pay">
+      <h2 id="a-od-pay" class="t-title-m">Giao dịch thanh toán</h2>
+      <div class="card out col" style="padding: 0; font-size: 14px; line-height: 20px">
+        <div class="col g4" style="padding: 12px 16px">
+          <div class="row between g8">
+            <span class="row g8"><span class="strong">01</span><span style="color: var(--on-surface-variant)">DH261126K7Q2MX01</span></span>
+            <sc-if value="{{isFulfilled}}" hint-placeholder-val="{{ false }}"><span class="chip" style="background: {{okBg}}; color: {{okFg}}">Thành công</span></sc-if>
+            <sc-if value="{{notFulfilled}}" hint-placeholder-val="{{ true }}"><span class="chip" style="background: var(--error-container); color: var(--on-error-container)">Thất bại</span></sc-if>
+          </div>
+          <div class="row between g8" style="color: var(--on-surface-variant)"><span>NCB · ATM</span><span class="strong">149.000 đ</span></div>
+          <sc-if value="{{notFulfilled}}" hint-placeholder-val="{{ true }}"><span style="color: var(--on-surface-variant)">Bạn đã hủy giao dịch trên VNPAY.</span></sc-if>
+          <span class="t-label" style="font-weight: 400">{{pay1Time}}</span>
+        </div>
+        <sc-if value="{{hasPay2}}" hint-placeholder-val="{{ true }}">
+          <div class="col g4" style="padding: 12px 16px; border-top: 1px solid var(--outline-variant)">
+            <div class="row between g8">
+              <span class="row g8"><span class="strong">02</span><span style="color: var(--on-surface-variant)">DH261126K7Q2MX02</span></span>
+              <sc-if value="{{isPending}}" hint-placeholder-val="{{ true }}"><span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Khởi tạo</span></sc-if>
+              <sc-if value="{{isFulfilled}}" hint-placeholder-val="{{ false }}"><span class="row g4"><span class="chip" style="background: {{warnBg}}; color: {{warnFg}}">Thu trùng</span><span class="chip" style="background: {{okBg}}; color: {{okFg}}">Thành công</span></span></sc-if>
+            </div>
+            <div class="row between g8" style="color: var(--on-surface-variant)"><span>{{pay2Bank}}</span><span class="strong">149.000 đ</span></div>
+            <span class="t-label" style="font-weight: 400">{{pay2Time}}</span>
+          </div>
+        </sc-if>
+      </div>
+    </section>
+
+    <section class="col g8" aria-labelledby="a-od-his">
+      <h2 id="a-od-his" class="t-title-m">Lịch sử xử lý</h2>
+      <ol class="card out col" style="margin: 0; padding: 0; list-style: none; font-size: 14px; line-height: 20px">
+        <li class="col" style="padding: 12px 16px">
+          <span class="strong">Tạo đơn</span>
+          <span style="color: var(--on-surface-variant)">Học viên · Khởi tạo đơn hàng chờ thanh toán</span>
+          <span class="t-label" style="font-weight: 400">26/11/2026 14:22</span>
+        </li>
+        <sc-if value="{{isFulfilled}}" hint-placeholder-val="{{ false }}">
+          <li class="col" style="padding: 12px 16px; border-top: 1px solid var(--outline-variant)">
+            <span class="strong">Chờ thanh toán → Đang kiểm tra</span>
+            <span style="color: var(--on-surface-variant)">Cổng thanh toán VNPAY · Thanh toán thành công qua giao dịch DH261126K7Q2MX01</span>
+            <span class="t-label" style="font-weight: 400">26/11/2026 14:24</span>
+          </li>
+          <li class="col" style="padding: 12px 16px; border-top: 1px solid var(--outline-variant)">
+            <span class="strong">Đang kiểm tra → Đã cấp bài thi</span>
+            <span style="color: var(--on-surface-variant)">Hệ thống · Đã cấp quyền vào bài thi</span>
+            <span class="t-label" style="font-weight: 400">26/11/2026 14:24</span>
+          </li>
+          <li class="col" style="padding: 12px 16px; border-top: 1px solid var(--outline-variant)">
+            <span class="strong">Đã cấp bài thi → Đã cấp bài thi</span>
+            <span style="color: var(--on-surface-variant)">Cổng thanh toán VNPAY · Giao dịch DH261126K7Q2MX02 thu thừa sau khi đơn đã thanh toán</span>
+            <span class="t-label" style="font-weight: 400">26/11/2026 14:25</span>
+          </li>
+        </sc-if>
+        <sc-if value="{{isCancelled}}" hint-placeholder-val="{{ false }}">
+          <li class="col" style="padding: 12px 16px; border-top: 1px solid var(--outline-variant)">
+            <span class="strong">Chờ thanh toán → Đã hủy</span>
+            <span style="color: var(--on-surface-variant)">Học viên · Học viên đã hủy đơn hàng</span>
+            <span class="t-label" style="font-weight: 400">26/11/2026 14:27</span>
+          </li>
+        </sc-if>
+      </ol>
+    </section>
+  </div>
+  </div>
+
+  <sc-if value="{{isPending}}" hint-placeholder-val="{{ true }}">
+    <div class="row g8 pad safe-bottom" style="padding-top: 12px; background: var(--surface-container); flex: none">
+      <button class="btn filled grow">Tiếp tục thanh toán</button>
+      <button class="btn danger">Hủy đơn</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{isFulfilled}}" hint-placeholder-val="{{ false }}">
+    <div class="pad safe-bottom" style="padding-top: 12px; background: var(--surface-container); flex: none">
+      <a class="btn filled block" href="#">Vào Bài thi của tôi</a>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"status":{"editor":"enum","options":["pending","fulfilled","cancelled"],"default":"pending"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.status ?? 'pending';
+const fulfilled = s === 'fulfilled';
+return {
+theme: dark ? 'dark' : 'light',
+okBg: dark ? '#0f2a21' : '#ecfdf5',
+okFg: dark ? '#34d399' : '#047857',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+warnFg: dark ? '#fbbf24' : '#b45309',
+isPending: s === 'pending',
+isFulfilled: fulfilled,
+isCancelled: s === 'cancelled',
+notFulfilled: !fulfilled,
+hasPay2: s !== 'cancelled',
+pay1Time: fulfilled ? '26/11/2026 14:24' : '26/11/2026 14:23',
+pay2Bank: fulfilled ? 'VCB · ATM' : '—',
+pay2Time: fulfilled ? '26/11/2026 14:25' : '26/11/2026 14:26'
+};
+}
+}
+</script>
+</body>
+</html>

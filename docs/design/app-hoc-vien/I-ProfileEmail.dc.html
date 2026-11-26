@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Đổi email</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px; --warn-fg: {{warnFg}}; --info-fg: {{infoFg}}">
+  <div class="nav">
+    <a class="circle" href="I-Profile.dc.html" aria-label="Quay lại Hồ sơ"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></a>
+    <h1 class="t-headline">Đổi email</h1>
+    <span style="width: 44px"></span>
+  </div>
+  <div class="col pad grow g24" style="padding-top: 16px; overflow-y: auto">
+    <section class="col" aria-labelledby="ipe-mail-h">
+      <h2 class="sec" id="ipe-mail-h">Email</h2>
+      <div class="group">
+        <div class="cell">
+          <span class="tile"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
+          <span class="col grow" style="gap: 2px">
+            <span style="overflow-wrap: anywhere">minhanh@example.com</span>
+            <span class="badge" style="color: var(--warn-fg)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Chưa xác minh</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <sc-if value="{{ isRequest }}" hint-placeholder-val="{{ true }}">
+      <div class="col g24">
+        <div class="group on-cell col g16" style="padding: 16px">
+          <div class="field focus">
+            <label for="ipe-new">Email mới</label>
+            <input id="ipe-new" type="email" inputmode="email" value="minhanh.tran@gmail.com" autocomplete="email">
+          </div>
+          <div class="field trail">
+            <label for="ipe-pass">Mật khẩu hiện tại</label>
+            <input id="ipe-pass" type="password" value="matkhauhientai" autocomplete="current-password">
+            <button class="trail-btn" aria-label="Hiện mật khẩu hiện tại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+        <div class="col g8">
+          <button class="btn prominent block">Gửi mã xác minh</button>
+          <a class="btn text block" href="I-Profile.dc.html">Hủy</a>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+      <section class="group on-cell col g16" aria-labelledby="ipe-pend-h" style="padding: 16px">
+        <div class="row g12" style="align-items: flex-start">
+          <span class="tile" style="background: var(--fill); color: var(--info-fg)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+          <h2 class="t-headline grow" id="ipe-pend-h" style="overflow-wrap: anywhere">Đang chờ xác minh email mới: minhanh.tran@gmail.com</h2>
+        </div>
+        <p class="t-sub">Mã 6 số đã gửi tới địa chỉ mới, có hiệu lực trong 10 phút. Trong lúc chờ, email hiện tại vẫn dùng để khôi phục tài khoản. Mã hết hạn thì hồ sơ giữ email hiện tại.</p>
+        <div class="field focus">
+          <label for="ipe-code">Mã xác minh</label>
+          <input id="ipe-code" type="text" inputmode="numeric" maxlength="6" value="" placeholder="6 chữ số" autocomplete="one-time-code" style="letter-spacing: .3em">
+        </div>
+        <button class="btn prominent block">Xác nhận</button>
+        <div class="col center g4">
+          <button class="btn gray block" disabled aria-describedby="ipe-cool" style="opacity: .4; background: var(--bg)">Gửi lại mã</button>
+          <span class="t-foot" id="ipe-cool">Gửi lại mã sau 00:59</span>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"step":{"editor":"enum","options":["request","confirm"],"default":"request"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const step = this.props.step ?? 'request';
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+infoFg: dark ? '#22d3ee' : '#0e7490',
+isRequest: step === 'request',
+isConfirm: step === 'confirm'
+};
+}
+}
+</script>
+</body>
+</html>

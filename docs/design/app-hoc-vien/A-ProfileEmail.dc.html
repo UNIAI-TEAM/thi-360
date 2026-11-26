@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Đổi email</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top safe-bottom" style="width: 390px; height: 844px; --warn-fg: {{warnFg}}; --warn-bg: {{warnBg}}; --info-fg: {{infoFg}}">
+  <div class="bar">
+    <a class="icon-btn" href="A-Profile.dc.html" aria-label="Quay lại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></a>
+    <h1 class="t-title">Đổi email</h1>
+  </div>
+  <div class="col pad grow g24" style="padding-top: 8px; overflow-y: auto">
+    <section class="card out col g12" aria-labelledby="ape-mail-h">
+      <h2 class="t-title-m" id="ape-mail-h">Email</h2>
+      <div class="row g12">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--on-surface-variant)"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+        <span class="col g4 grow">
+          <span style="overflow-wrap: anywhere">minhanh@example.com</span>
+          <span><span class="chip" style="background: var(--warn-bg); color: var(--warn-fg)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Chưa xác minh</span></span>
+        </span>
+      </div>
+    </section>
+
+    <sc-if value="{{ isRequest }}" hint-placeholder-val="{{ true }}">
+      <div class="col g24">
+        <div class="tf focus">
+          <label for="ape-new">Email mới</label>
+          <input id="ape-new" type="email" inputmode="email" value="minhanh.tran@gmail.com" autocomplete="email">
+        </div>
+        <div class="tf trail">
+          <label for="ape-pass">Mật khẩu hiện tại</label>
+          <input id="ape-pass" type="password" value="matkhauhientai" autocomplete="current-password">
+          <button class="icon-btn trail-btn" aria-label="Hiện mật khẩu hiện tại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        <div class="row g8 end">
+          <a class="btn text" href="A-Profile.dc.html">Hủy</a>
+          <button class="btn filled">Gửi mã xác minh</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+      <section class="card col g16 on-card" aria-labelledby="ape-pend-h" style="background: var(--surface-lowest); border: 1px solid var(--info-fg)">
+        <div class="row g12" style="align-items: flex-start; color: var(--info-fg)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          <h2 class="t-title-m grow" id="ape-pend-h" style="overflow-wrap: anywhere; color: var(--on-surface)">Đang chờ xác minh email mới: minhanh.tran@gmail.com</h2>
+        </div>
+        <p class="t-small">Mã 6 số đã gửi tới địa chỉ mới, có hiệu lực trong 10 phút. Trong lúc chờ, email hiện tại vẫn dùng để khôi phục tài khoản. Mã hết hạn thì hồ sơ giữ email hiện tại.</p>
+        <div class="tf focus">
+          <label for="ape-code">Mã xác minh</label>
+          <input id="ape-code" type="text" inputmode="numeric" maxlength="6" value="" placeholder="6 chữ số" autocomplete="one-time-code" style="letter-spacing: .3em">
+        </div>
+        <div class="col g4">
+          <div class="row g8 end">
+            <button class="btn outlined" disabled aria-describedby="ape-cool" style="opacity: .38">Gửi lại mã</button>
+            <button class="btn filled">Xác nhận</button>
+          </div>
+          <span class="t-small" id="ape-cool" style="text-align: right">Gửi lại mã sau 00:59</span>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"step":{"editor":"enum","options":["request","confirm"],"default":"request"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const step = this.props.step ?? 'request';
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+infoFg: dark ? '#22d3ee' : '#0e7490',
+isRequest: step === 'request',
+isConfirm: step === 'confirm'
+};
+}
+}
+</script>
+</body>
+</html>

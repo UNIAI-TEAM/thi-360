@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Bài thi của tôi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px; {{statusVars}}">
+  <div class="nav">
+    <span style="width: 44px"></span>
+    <sc-if value="{{scrolled}}" hint-placeholder-val="{{ false }}">
+      <span class="t-headline">Bài thi của tôi</span>
+    </sc-if>
+    <a class="circle" href="I-Account.dc.html" aria-label="Tài khoản của Trần Minh Anh" style="background: transparent"><span class="avatar">MA</span></a>
+  </div>
+  <div class="grow" style="overflow-y: auto; scrollbar-width: none">
+    <div class="col g12" style="padding: 4px 16px 112px; margin-top: -{{offset}}px">
+      <div class="col g6" style="padding: 0 4px">
+        <h1 class="t-large">Bài thi của tôi</h1>
+        <p class="t-sub">Chào Trần Minh Anh. Đây là các bài thi bạn đã mua và số lượt còn lại.</p>
+      </div>
+
+      <sc-if value="{{isStale}}" hint-placeholder-val="{{ false }}">
+        <div class="banner" role="status" style="background: var(--warn-bg); color: var(--warn)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/></svg>
+          <div class="col g6 grow">
+            <div class="col">
+              <span style="font-weight: 600">Dữ liệu chưa được cập nhật.</span>
+              <span>Không tải lại được danh sách; đang hiện bản đã tải lúc 14:32.</span>
+            </div>
+            <button class="btn text" style="align-self: flex-start; color: var(--warn); font-weight: 600; padding: 0">Thử lại</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{showList}}" hint-placeholder-val="{{ true }}">
+        <div class="row between" style="padding: 8px 0 0 4px">
+          <div class="row g8">
+            <h2 class="t-title2">Bài đã mua</h2>
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">6 bài</span>
+          </div>
+          <a class="btn text" href="I-Home.dc.html">Khám phá bài thi</a>
+        </div>
+
+        <h2 id="g-checking" class="sec" style="padding: 4px 4px 0">Đang kiểm tra</h2>
+        <article class="group col g12" style="padding: 16px">
+          <div class="row g6" style="flex-wrap: wrap">
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">Đánh giá năng lực ĐHQG Hà Nội (HSA)</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--info-bg); color: var(--info)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 2.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Đang kiểm tra</span>
+          </div>
+          <h3 class="t-headline" style="margin: 0">HSA 2027 – Đề thi thử tổng hợp số 4</h3>
+          <p class="t-sub">Đã nhận thanh toán cho đơn DH261126-0187. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ kèm mã đơn. Thông tin liên hệ đang được cập nhật.</p>
+          <div class="row g8">
+            <a class="btn gray grow" href="#" style="height: 44px">Xem đơn</a>
+            <button class="btn gray grow" style="height: 44px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>Tải lại</button>
+          </div>
+        </article>
+
+        <section id="g-vact" class="col g12" aria-labelledby="g-vact-title" style="margin-top: 8px; background: var(--fill); border-radius: 26px; padding: 10px">
+          <div class="col" style="padding: 6px 6px 0 10px">
+            <div class="row g8">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--tint)"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>
+              <h3 id="g-vact-title" class="t-headline grow" style="margin: 0">Bộ đề V-ACT 2027 trọn bộ</h3>
+            </div>
+            <div class="row between">
+              <span class="t-foot">3 bài · BD-VACT-2027</span>
+              <a class="btn text" href="#">Xem bộ đề</a>
+            </div>
+          </div>
+
+          <article class="group col g12" style="padding: 16px">
+            <div class="row g6" style="flex-wrap: wrap">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">Đánh giá năng lực ĐHQG TP.HCM (V-ACT)</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--tint-soft); color: var(--on-tint-soft)">Đã mua</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--info-bg); color: var(--info)">Đang làm</span>
+            </div>
+            <h3 class="t-headline" style="margin: 0">V-ACT 2027 – Phần Tiếng Việt</h3>
+            <div class="row g6" style="flex-wrap: wrap">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Bài thi theo phần</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Tiếng Việt</span>
+            </div>
+            <div class="row between g8"><span class="t-sub">40 câu · 40 phút mỗi lượt</span><span class="t-sub" style="white-space: nowrap">Lượt còn lại <span class="strong">1</span></span></div>
+            <div class="col g8">
+              <a class="btn prominent block" href="#" style="height: 44px">Tiếp tục</a>
+              <div class="row g8">
+                <a class="btn gray grow" href="#" style="height: 44px">Xem kết quả</a>
+                <a class="btn gray grow" href="I-History.dc.html" style="height: 44px">Lịch sử</a>
+              </div>
+              <a class="btn gray block" href="#" style="height: 44px">Mua thêm lượt</a>
+            </div>
+          </article>
+
+          <article class="group col g12" style="padding: 16px">
+            <div class="row g6" style="flex-wrap: wrap">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">Đánh giá năng lực ĐHQG TP.HCM (V-ACT)</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--tint-soft); color: var(--on-tint-soft)">Đã mua</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; border: 1px solid var(--sep); color: var(--label2)">Hết lượt</span>
+            </div>
+            <h3 class="t-headline" style="margin: 0">V-ACT 2027 – Phần Toán học</h3>
+            <div class="row g6" style="flex-wrap: wrap">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Bài thi theo phần</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Toán học</span>
+            </div>
+            <div class="row between g8"><span class="t-sub">30 câu · 40 phút mỗi lượt</span><span class="t-sub" style="white-space: nowrap">Lượt còn lại <span class="strong">0</span></span></div>
+            <div class="col g8">
+              <a class="btn prominent block" href="#" style="height: 44px">Mua lại</a>
+              <div class="row g8">
+                <a class="btn gray grow" href="#" style="height: 44px">Xem kết quả</a>
+                <a class="btn gray grow" href="I-History.dc.html" style="height: 44px">Lịch sử</a>
+              </div>
+            </div>
+          </article>
+
+          <div class="row g12" style="padding: 12px 16px; border-radius: 16px; background: var(--cell)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; color: var(--label2)"><path d="M7 17 17 7M9 7h8v8"/></svg>
+            <p class="t-sub" style="color: var(--label)">Bài <span class="strong">V-ACT 2027 – Đề tổng hợp số 2</span> đang hiện ở nhóm <a href="#g-combo" style="font-weight: 600; white-space: nowrap">Combo nước rút V-ACT</a></p>
+          </div>
+          <p class="t-foot" style="padding: 0 10px 6px">Nộp bài một môn chỉ kết thúc lượt của bài đó; các bài khác trong bộ không đổi. Lượt còn lại gồm cả lượt mua lẻ của cùng bài.</p>
+        </section>
+
+        <section id="g-combo" class="col g12" aria-labelledby="g-combo-title" style="background: var(--fill); border-radius: 26px; padding: 10px">
+          <div class="col" style="padding: 6px 6px 0 10px">
+            <div class="row g8">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--tint)"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>
+              <h3 id="g-combo-title" class="t-headline grow" style="margin: 0">Combo nước rút V-ACT</h3>
+            </div>
+            <div class="row between">
+              <span class="t-foot">1 bài · BD-VACT-1126</span>
+              <a class="btn text" href="#">Xem bộ đề</a>
+            </div>
+          </div>
+          <article class="group col g12" style="padding: 16px">
+            <div class="row g6" style="flex-wrap: wrap">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">Đánh giá năng lực ĐHQG TP.HCM (V-ACT)</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--tint-soft); color: var(--on-tint-soft)">Đã mua</span>
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--succ-bg); color: var(--succ)">Có thể bắt đầu</span>
+            </div>
+            <h3 class="t-headline" style="margin: 0">V-ACT 2027 – Đề tổng hợp số 2</h3>
+            <div class="row g6" style="flex-wrap: wrap">
+              <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Bài thi FULL</span>
+            </div>
+            <div class="row between g8"><span class="t-sub">120 câu · 150 phút mỗi lượt</span><span class="t-sub" style="white-space: nowrap">Lượt còn lại <span class="strong">3</span></span></div>
+            <div class="col g8">
+              <a class="btn prominent block" href="#" style="height: 44px">Bắt đầu</a>
+              <a class="btn gray block" href="#" style="height: 44px">Mua thêm lượt</a>
+            </div>
+          </article>
+          <p class="t-foot" style="padding: 0 10px 6px">Nộp bài một môn chỉ kết thúc lượt của bài đó; các bài khác trong bộ không đổi. Lượt còn lại gồm cả lượt mua lẻ của cùng bài.</p>
+        </section>
+
+        <div id="g-single" class="row g8" style="padding: 12px 4px 0">
+          <h3 class="sec" style="margin: 0; padding: 0">Bài mua lẻ</h3>
+          <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">2 bài</span>
+        </div>
+
+        <article class="group col g12" style="padding: 16px">
+          <div class="row g6" style="flex-wrap: wrap">
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">Tốt nghiệp THPT (THPTQG)</span>
+            <span style="display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--tint-soft); color: var(--on-tint-soft)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; stroke-width: 2.4"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Bài theo lớp · 12A1</span>
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--succ-bg); color: var(--succ)">Có thể bắt đầu</span>
+          </div>
+          <h3 class="t-headline" style="margin: 0">Toán THPT 2027 – Đề luyện số 5</h3>
+          <div class="row g6" style="flex-wrap: wrap">
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Bài thi theo môn</span>
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Toán học</span>
+          </div>
+          <div class="row between g8"><span class="t-sub">50 câu · 90 phút mỗi lượt</span><span class="t-sub" style="white-space: nowrap">Lượt còn lại <span class="strong">2</span></span></div>
+          <div class="col g8">
+            <a class="btn prominent block" href="#" style="height: 44px">Bắt đầu</a>
+            <a class="btn gray block" href="I-History.dc.html" style="height: 44px">Lịch sử</a>
+          </div>
+        </article>
+
+        <article class="group col g12" style="padding: 16px">
+          <div class="row g6" style="flex-wrap: wrap">
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--fill); color: var(--label2)">Đánh giá năng lực Bộ Quốc phòng (QDA)</span>
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; background: var(--tint-soft); color: var(--on-tint-soft)">Đã mua</span>
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 600; border: 1px solid var(--sep); color: var(--label2)">Hết lượt</span>
+          </div>
+          <h3 class="t-headline" style="margin: 0">QDA 2026 – Đề thi thử số 1</h3>
+          <div class="row g6" style="flex-wrap: wrap">
+            <span style="display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 12px; font-size: 13px; line-height: 18px; font-weight: 500; border: 1px solid var(--sep); color: var(--label2)">Bài thi FULL</span>
+          </div>
+          <div class="row between g8"><span class="t-sub">150 câu · 195 phút mỗi lượt</span><span class="t-sub" style="white-space: nowrap">Lượt còn lại <span class="strong">0</span></span></div>
+          <div class="row g8" style="align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--bg)">
+            <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; color: var(--label2)"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>
+            <p class="t-foot" style="font-size: 15px; line-height: 20px">Bài thi đã ngừng bán, không mua thêm được. Kết quả và lịch sử vẫn xem được.</p>
+          </div>
+          <div class="row g8">
+            <a class="btn gray grow" href="#" style="height: 44px">Xem kết quả</a>
+            <a class="btn gray grow" href="I-History.dc.html" style="height: 44px">Lịch sử</a>
+          </div>
+        </article>
+      </sc-if>
+
+      <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+        <div class="group" style="margin-top: 56px">
+          <div class="empty" style="padding: 48px 24px">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+            <span class="t-headline" style="color: var(--label)">Bạn chưa có bài thi nào</span>
+            <span class="t-sub">Chọn bài thi phù hợp trong danh mục để bắt đầu luyện tập.</span>
+            <a class="btn prominent" href="I-Home.dc.html" style="margin-top: 12px">Khám phá bài thi</a>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+        <div class="group" role="alert" style="margin-top: 56px">
+          <div class="empty" style="padding: 48px 24px">
+            <span class="hero-ic warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.01"/></svg></span>
+            <span class="t-headline" style="color: var(--label); margin-top: 8px">Không tải được danh sách bài thi</span>
+            <span class="t-sub">Kiểm tra kết nối mạng rồi thử lại.</span>
+            <button class="btn prominent" style="margin-top: 12px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>Thử lại</button>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  <nav class="tabbar" aria-label="Điều hướng chính">
+    <a class="tab" href="I-Home.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>Trang chủ</a>
+    <a class="tab on" href="I-MyExams.dc.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>Bài thi của tôi</a>
+    <a class="tab" href="I-History.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Lịch sử</a>
+    <a class="tab" href="I-Account.dc.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Tài khoản</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["default","empty","stale","error"],"default":"default"},"scroll":{"editor":"enum","options":["top","bundle","combo","bottom"],"default":"top"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const state = this.props.state ?? 'default';
+const scroll = this.props.scroll ?? 'top';
+const offsets = { top: 0, bundle: 647, combo: 1294, bottom: 1941 };
+const offset = state === 'default' ? (offsets[scroll] ?? 0) : 0;
+return {
+theme: dark ? 'dark' : 'light',
+statusVars: dark
+? '--succ: #34d399; --succ-bg: #0f2a21; --warn: #fbbf24; --warn-bg: #2b2210; --info: #22d3ee; --info-bg: #0f2a30'
+: '--succ: #047857; --succ-bg: #ecfdf5; --warn: #b45309; --warn-bg: #fffbeb; --info: #0e7490; --info-bg: #ecfeff',
+isStale: state === 'stale',
+isEmpty: state === 'empty',
+isError: state === 'error',
+showList: state === 'default' || state === 'stale',
+offset: offset,
+scrolled: offset > 0
+};
+}
+}
+</script>
+</body>
+</html>

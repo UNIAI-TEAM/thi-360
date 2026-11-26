@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iOS · Danh sách câu hỏi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="col grow" aria-hidden="true" style="pointer-events: none">
+    <div class="col" style="background: var(--cell); border-bottom: 1px solid var(--sep); padding: 0 12px 10px">
+      <div class="row g8" style="height: 48px">
+        <span class="circle" style="background: transparent; color: var(--tint)"><svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></span>
+        <div class="col grow">
+          <span class="t-headline" style="font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thi thử ĐGNL HSA 2027 · Đề số 04</span>
+          <span class="t-foot">Phần 3 · Khoa học</span>
+        </div>
+        <span class="btn prominent" style="height: 36px; padding: 0 14px; font-size: 15px">Nộp bài</span>
+        <span class="circle"><svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg></span>
+      </div>
+      <div class="row g6" style="height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill); align-self: flex-start">
+        <span style="font-size: 13px">Phần 3 còn</span><span style="font-weight: 700">42:17</span>
+      </div>
+    </div>
+    <div class="col g12" style="padding: 12px 16px">
+      <div class="group" style="height: 420px"></div>
+    </div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(0,0,0,.4)"></div>
+  <section role="dialog" aria-modal="true" aria-labelledby="nav-title" class="col" style="position: absolute; left: 0; right: 0; top: 54px; bottom: 0; background: var(--bg); border-radius: 22px 22px 0 0; box-shadow: var(--shadow); overflow: hidden">
+    <div style="flex: none; width: 36px; height: 5px; border-radius: 3px; background: var(--sep); margin: 6px auto 0"></div>
+    <div class="row between" style="flex: none; padding: 6px 16px 0 20px">
+      <div class="col">
+        <h2 id="nav-title" class="t-title2">Danh sách câu hỏi</h2>
+        <span class="t-foot">27/50 câu đã trả lời</span>
+      </div>
+      <a class="circle" href="I-Player.dc.html" aria-label="Đóng danh sách câu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+    </div>
+    <div class="col g12 pad" style="flex: none; padding-top: 12px; padding-bottom: 12px">
+      <div role="list" aria-label="Các phần của bài thi" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+        <div role="listitem" class="col" aria-label="Phần 1, đã hoàn thành" style="justify-content: center; padding: 6px 8px; border-radius: 10px; background: var(--fill); min-width: 0">
+          <span class="row g4" style="font-size: 13px; line-height: 15px; font-weight: 600; color: var(--label)"><svg viewBox="0 0 24 24" aria-hidden="true" style="flex: none; width: 14px; height: 14px; stroke-width: 2.6; color: var(--tint)"><path d="m5 12 5 5 9-10"/></svg><span style="min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word">Phần 1</span></span>
+        </div>
+        <div role="listitem" class="col" aria-label="Phần 2, đã hoàn thành" style="justify-content: center; padding: 6px 8px; border-radius: 10px; background: var(--fill); min-width: 0">
+          <span class="row g4" style="font-size: 13px; line-height: 15px; font-weight: 600; color: var(--label)"><svg viewBox="0 0 24 24" aria-hidden="true" style="flex: none; width: 14px; height: 14px; stroke-width: 2.6; color: var(--tint)"><path d="m5 12 5 5 9-10"/></svg><span style="min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word">Phần 2</span></span>
+        </div>
+        <div role="listitem" aria-current="step" aria-label="Phần 3, đang làm, đã trả lời 27 trên 50 câu" class="col" style="padding: 6px 8px; border-radius: 10px; background: var(--tint-soft); box-shadow: inset 0 0 0 1.5px var(--tint); min-width: 0">
+          <span class="row g4" style="font-size: 13px; line-height: 16px; font-weight: 700; color: var(--on-tint-soft)"><span style="width: 8px; height: 8px; border-radius: 4px; background: var(--tint)"></span>Phần 3</span>
+          <span style="font-size: 11px; line-height: 13px; color: var(--on-tint-soft); font-variant-numeric: tabular-nums">27/50 câu</span><span aria-hidden="true" style="display: block; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--plain); overflow: hidden"><span style="display: block; width: 54%; height: 3px; background: var(--tint)"></span></span>
+        </div>
+      </div>
+      <div class="seg" role="group" aria-label="Lọc câu hỏi" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))">
+        <button class="on" aria-pressed="true">Tất cả</button>
+        <button aria-pressed="false">Chưa làm</button>
+        <button aria-pressed="false">Đánh dấu</button>
+      </div>
+    </div>
+    <div class="col g16 grow pad" style="overflow-y: auto; padding-bottom: 12px">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+        <div class="col g8">
+          <div class="row g8" style="padding: 0 2px">
+            <span class="t-headline" style="font-size: 15px">{{g.title}}</span>
+            <span class="t-foot">{{g.range}}</span>
+          </div>
+          <div role="grid" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+            <sc-for list="{{g.cells}}" as="c" hint-placeholder-count="17">
+              <button aria-label="{{c.aria}}" style="position: relative; height: 44px; border: 0; border-radius: 12px; padding: 0; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; {{c.style}}">{{c.n}}<sc-if value="{{c.flagged}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="position: absolute; bottom: 3px; right: 3px; width: 10px; height: 10px; stroke-width: 2.4; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></sc-if><sc-if value="{{c.unsaved}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 4px; background: {{infoFg}}"></span></sc-if></button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div class="safe-bottom" style="flex: none; padding: 12px 20px 34px; border-top: 1px solid var(--sep); background: var(--cell)">
+      <div aria-label="Chú giải" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; font-size: 13px; line-height: 18px; color: var(--label2)">
+        <span class="row g8"><span style="flex: none; width: 18px; height: 18px; border-radius: 5px; background: var(--cell); box-shadow: 0 0 0 2px var(--tint)"></span>Đang xem</span>
+        <span class="row g8"><span style="flex: none; width: 18px; height: 18px; border-radius: 5px; background: var(--tint-soft)"></span>Đã trả lời</span>
+        <span class="row g8"><span style="flex: none; width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg, var(--tint-soft) 50%, var(--cell) 50%); box-shadow: inset 0 0 0 1px var(--tint-soft)"></span>Trả lời một phần</span>
+        <span class="row g8"><span style="flex: none; width: 18px; height: 18px; border-radius: 5px; background: var(--cell); box-shadow: inset 0 0 0 1px var(--sep)"></span>Chưa trả lời</span>
+        <span class="row g8"><span style="flex: none; width: 18px; display: flex; justify-content: center"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{infoFg}}"></span></span>Chưa lưu</span>
+        <span class="row g8"><span style="flex: none; width: 18px; height: 18px; border-radius: 5px; border: 1px solid {{dgFg}}; background: {{dgBg}}; color: {{dgFg}}; display: flex; align-items: center; justify-content: center"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 10px; height: 10px; stroke-width: 3; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></span>Đánh dấu xem lại</span>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const c = dark
+  ? { okFg: '#34d399', okBg: '#0f2a21', warnFg: '#fbbf24', warnBg: '#2b2210', infoFg: '#22d3ee', infoBg: '#0f2a30', dgSolid: '#dc2626', dgOn: '#ffffff', dgFg: '#f87171', dgBg: '#2e1517' }
+  : { okFg: '#047857', okBg: '#ecfdf5', warnFg: '#b45309', warnBg: '#fffbeb', infoFg: '#0e7490', infoBg: '#ecfeff', dgSolid: '#dc2626', dgOn: '#ffffff', dgFg: '#b91c1c', dgBg: '#fef2f2' };
+const answered = new Set([101,102,103,104,106,107,108,110,111,113,114,116,118,119,120,122,123,125,126,128,131,135,136,138,139,140,143]);
+const partial = new Set([141]);
+const flagged = new Set([106,112,124,141,147]);
+const unsaved = new Set([104]);
+const current = 104;
+const cells = (from, to) => {
+  const out = [];
+  for (let n = from; n <= to; n++) {
+    const isAns = answered.has(n), isPart = partial.has(n), isCur = n === current;
+    let style = isAns
+      ? 'background: var(--tint-soft); color: var(--on-tint-soft); font-weight: 600'
+      : isPart
+        ? 'background: linear-gradient(135deg, var(--tint-soft) 50%, var(--cell) 50%); color: var(--label); box-shadow: inset 0 0 0 1px var(--tint-soft); font-weight: 600'
+        : 'background: var(--cell); color: var(--label); box-shadow: inset 0 0 0 1px var(--sep)';
+    if (flagged.has(n)) style = isAns
+      ? 'background: ' + c.dgSolid + '; color: ' + c.dgOn + '; font-weight: 600'
+      : isPart
+        ? 'border: 1px dashed ' + c.dgFg + '; background: ' + c.dgBg + '; color: ' + c.dgFg + '; font-weight: 600'
+        : 'border: 1px solid ' + c.dgFg + '; background: ' + c.dgBg + '; color: ' + c.dgFg;
+    if (isCur) style += '; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--tint); font-weight: 700';
+    const parts = [String(n)];
+    if (isCur) parts.push('đang xem');
+    parts.push(isAns ? 'đã trả lời' : isPart ? 'trả lời một phần' : 'chưa trả lời');
+    parts.push(unsaved.has(n) ? 'chưa lưu' : 'đã lưu');
+    if (flagged.has(n)) parts.push('đánh dấu xem lại');
+    out.push({ n, style, flagged: flagged.has(n), unsaved: unsaved.has(n), aria: parts.join(', ') });
+  }
+  return out;
+};
+return {
+  theme: dark ? 'dark' : 'light',
+  ...c,
+  groups: [
+    { title: 'Môn Vật lí', range: 'Câu 101–117 · 17 câu', cells: cells(101, 117) },
+    { title: 'Môn Hóa học', range: 'Câu 118–134 · 17 câu', cells: cells(118, 134) },
+    { title: 'Môn Sinh học', range: 'Câu 135–150 · 16 câu', cells: cells(135, 150) }
+  ]
+};
+}
+}
+</script>
+</body>
+</html>

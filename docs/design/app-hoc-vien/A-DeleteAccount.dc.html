@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Xóa tài khoản</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px; --warn-fg: {{warnFg}}; --warn-bg: {{warnBg}}">
+  <div class="bar">
+    <a class="icon-btn" href="A-AccountV2.dc.html" aria-label="Quay lại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></a>
+    <h1 class="t-title">Xóa tài khoản</h1>
+  </div>
+  <div class="col grow" style="overflow-y: auto">
+    <div class="col pad g16" style="padding-top: 8px; padding-bottom: 24px; flex: none">
+
+      <sc-if value="{{ isBlocked }}" hint-placeholder-val="{{ false }}">
+        <section class="card out col g16" role="status" style="border-color: var(--error)">
+          <div class="row g16" style="align-items: flex-start">
+            <span class="avatar" aria-hidden="true" style="background: var(--error-container); color: var(--on-error-container)"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+            <sc-if value="{{ isBlockedAttempt }}" hint-placeholder-val="{{ false }}">
+              <p class="t-body grow" style="padding-top: 8px">Bạn đang có lượt thi chưa nộp. Hãy nộp bài rồi quay lại.</p>
+            </sc-if>
+            <sc-if value="{{ isBlockedOrder }}" hint-placeholder-val="{{ false }}">
+              <p class="t-body grow" style="padding-top: 8px">Bạn có đơn hàng đang được kiểm tra. Hãy chờ bài thi được cấp hoặc liên hệ hỗ trợ rồi quay lại.</p>
+            </sc-if>
+          </div>
+          <sc-if value="{{ isBlockedAttempt }}" hint-placeholder-val="{{ false }}">
+            <a class="btn filled" href="A-MyExams.dc.html" style="align-self: flex-end"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Bài thi của tôi</a>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <section class="card out col g16">
+        <div class="row g16" style="align-items: flex-start">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--error)"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg>
+          <p class="grow" style="font-size: 14px; line-height: 20px">Khi xóa tài khoản, bạn sẽ bị đăng xuất khỏi mọi thiết bị và không đăng nhập lại được.</p>
+        </div>
+        <div class="row g16" style="align-items: flex-start">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--error)"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 8l4 4M21 8l-4 4"/></svg>
+          <p class="grow" style="font-size: 14px; line-height: 20px">Họ tên, email, số điện thoại và ảnh đại diện của bạn bị xóa khỏi hồ sơ.</p>
+        </div>
+        <div class="row g16" style="align-items: flex-start">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary)"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+          <p class="grow" style="font-size: 14px; line-height: 20px">Bài làm của bạn được giữ ở dạng không còn gắn với bạn.</p>
+        </div>
+        <div class="row g16" style="align-items: flex-start">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--primary)"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+          <p class="grow" style="font-size: 14px; line-height: 20px">Đơn hàng, thanh toán, nhật ký hệ thống và thư đã gửi được lưu theo quy định của pháp luật và thời hạn lưu trữ.</p>
+        </div>
+      </section>
+
+      <div class="banner" role="status" style="background: var(--warn-bg); color: var(--warn-fg)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <span class="grow">Bạn còn 3 lượt thi chưa dùng. Các lượt này sẽ mất và không được hoàn tiền.</span>
+      </div>
+
+      <sc-if value="{{ showForm }}" hint-placeholder-val="{{ true }}">
+        <div class="col g16" style="padding-top: 8px">
+          <sc-if value="{{ isReady }}" hint-placeholder-val="{{ true }}">
+            <div class="tf trail">
+              <label for="ad-pass">Mật khẩu hiện tại</label>
+              <input id="ad-pass" type="password" value="" autocomplete="current-password">
+              <button class="icon-btn trail-btn" aria-label="Hiện mật khẩu hiện tại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isTyped }}" hint-placeholder-val="{{ false }}">
+            <div class="tf trail">
+              <label for="ad-pass-t">Mật khẩu hiện tại</label>
+              <input id="ad-pass-t" type="password" value="matkhauhientai" autocomplete="current-password">
+              <button class="icon-btn trail-btn" aria-label="Hiện mật khẩu hiện tại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isWrong }}" hint-placeholder-val="{{ false }}">
+            <div class="tf trail bad">
+              <label for="ad-pass-w">Mật khẩu hiện tại</label>
+              <input id="ad-pass-w" type="password" value="" autocomplete="current-password" aria-invalid="true" aria-describedby="ad-pass-err">
+              <button class="icon-btn trail-btn" aria-label="Hiện mật khẩu hiện tại" style="color: var(--error)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              <span class="sup" id="ad-pass-err" role="alert">Mật khẩu hiện tại chưa đúng.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isReady }}" hint-placeholder-val="{{ true }}">
+            <div class="check" role="checkbox" aria-checked="false" tabindex="0" style="min-height: 48px; font-size: 16px; line-height: 24px; align-items: center">
+              <span class="box" aria-hidden="true" style="background: transparent; border: 2px solid var(--on-surface-variant)"></span>
+              <span class="grow">Tôi hiểu tài khoản bị xóa sẽ không khôi phục được.</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isTicked }}" hint-placeholder-val="{{ false }}">
+            <div class="check" role="checkbox" aria-checked="true" tabindex="0" style="min-height: 48px; font-size: 16px; line-height: 24px; align-items: center">
+              <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></span>
+              <span class="grow">Tôi hiểu tài khoản bị xóa sẽ không khôi phục được.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ canDelete }}" hint-placeholder-val="{{ false }}">
+            <button class="btn block" aria-haspopup="dialog" style="background: var(--error); color: var(--surface-lowest)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Xóa tài khoản</button>
+          </sc-if>
+          <sc-if value="{{ cannotDelete }}" hint-placeholder-val="{{ true }}">
+            <button class="btn block" disabled style="background: var(--error); color: var(--surface-lowest); opacity: .38"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Xóa tài khoản</button>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; z-index: 2; background: rgba(0, 0, 0, 0.32)" aria-hidden="true"></div>
+    <div style="position: absolute; inset: 40px 0 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 24px">
+      <section class="col g16" role="alertdialog" aria-modal="true" aria-labelledby="ad-dlg-h" style="width: 100%; max-width: 312px; padding: 24px; border-radius: 28px; background: var(--surface-high); color: var(--on-surface)">
+        <div class="col center g16">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--error)"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+          <h2 class="t-headline" id="ad-dlg-h" style="font-size: 24px; line-height: 32px">Xóa tài khoản vĩnh viễn?</h2>
+        </div>
+        <div class="row g8 end" style="padding-top: 8px">
+          <button class="btn text">Hủy</button>
+          <button class="btn text" style="color: var(--error)">Xóa tài khoản</button>
+        </div>
+      </section>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["ready","filled","blockedAttempt","blockedOrder","confirm","wrongPassword"],"default":"ready"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.state ?? 'ready';
+const blocked = s === 'blockedAttempt' || s === 'blockedOrder';
+return {
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+isBlocked: blocked,
+isBlockedAttempt: s === 'blockedAttempt',
+isBlockedOrder: s === 'blockedOrder',
+showForm: !blocked,
+isReady: s === 'ready',
+isTyped: s === 'filled' || s === 'confirm',
+isWrong: s === 'wrongPassword',
+isTicked: s === 'filled' || s === 'confirm' || s === 'wrongPassword',
+canDelete: s === 'filled' || s === 'confirm',
+cannotDelete: s === 'ready' || s === 'wrongPassword',
+isConfirm: s === 'confirm'
+};
+}
+}
+</script>
+</body>
+</html>

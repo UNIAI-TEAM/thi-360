@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>iPhone Duo mở · Màn làm bài kèm danh sách câu</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./ios.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="ios {{theme}}" style="width: 952px; height: 670px; flex-direction: row">
+  <div class="row" style="width: 476px; flex: none; align-items: stretch; padding-top: 28px; background: var(--plain); border-right: 1px solid var(--sep)">
+    <aside class="col" aria-label="Danh sách câu hỏi" style="width: 224px; flex: none; background: var(--cell); border-right: 1px solid var(--sep)">
+      <div class="col g8" style="flex: none; padding: 10px 12px 10px">
+        <h2 class="t-headline">Danh sách câu hỏi</h2>
+        <span class="t-foot">{{answered}}/50 câu đã trả lời</span>
+        <div class="seg" role="group" aria-label="Lọc câu hỏi" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))">
+          <button class="on" aria-pressed="true" style="padding: 0 2px; font-size: 13px; white-space: nowrap">Tất cả</button>
+          <button aria-pressed="false" style="padding: 0 2px; font-size: 13px; white-space: nowrap">Chưa làm</button>
+          <button aria-pressed="false" style="padding: 0 2px; font-size: 13px; white-space: nowrap">Đánh dấu</button>
+        </div>
+      </div>
+      <div class="col g12 grow" style="overflow-y: auto; padding: 4px 12px 12px">
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+          <div class="col g6">
+            <div class="col">
+              <span style="font-size: 13px; line-height: 18px; font-weight: 600">{{g.title}}</span>
+              <span class="t-foot" style="font-size: 12px; line-height: 16px">{{g.range}}</span>
+            </div>
+            <div role="grid" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+              <sc-for list="{{g.cells}}" as="c" hint-placeholder-count="20">
+                <button aria-label="{{c.aria}}" style="position: relative; height: 44px; border: 0; border-radius: 10px; padding: 0; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; {{c.style}}">{{c.n}}<sc-if value="{{c.flagged}}" hint-placeholder-val="{{false}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="position: absolute; bottom: 3px; right: 3px; width: 10px; height: 10px; stroke-width: 2.4; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg></sc-if><sc-if value="{{c.unsaved}}" hint-placeholder-val="{{false}}"><span style="position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 4px; background: {{infoFg}}"></span></sc-if></button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div aria-label="Chú giải" style="flex: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 8px; padding: 10px 12px 14px; border-top: 1px solid var(--sep); font-size: 12px; line-height: 16px; color: var(--label2)">
+        <span class="row g6"><span style="flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--cell); box-shadow: 0 0 0 2px var(--tint)"></span>Đang xem</span>
+        <span class="row g6"><span style="flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--tint-soft)"></span>Đã trả lời</span>
+        <span class="row g6" style="align-items: flex-start"><span style="flex: none; width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, var(--tint-soft) 50%, var(--cell) 50%); box-shadow: inset 0 0 0 1px var(--tint-soft)"></span>Trả lời một phần</span>
+        <span class="row g6"><span style="flex: none; width: 14px; height: 14px; border-radius: 4px; background: var(--cell); box-shadow: inset 0 0 0 1px var(--sep)"></span>Chưa trả lời</span>
+        <span class="row g6"><span style="flex: none; width: 14px; display: flex; justify-content: center"><span style="width: 7px; height: 7px; border-radius: 4px; background: {{infoFg}}"></span></span>Chưa lưu</span>
+        <span class="row g6" style="align-items: flex-start"><svg viewBox="0 0 24 24" aria-hidden="true" style="flex: none; width: 14px; height: 14px; color: {{warnFg}}; fill: currentColor"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>Đánh dấu xem lại</span>
+      </div>
+    </aside>
+    <section class="col grow" aria-label="Ngữ liệu chung cho câu 51–55" style="min-width: 0">
+      <div class="col" style="flex: none; padding: 12px 16px; border-bottom: 1px solid var(--sep)">
+        <span class="t-headline" style="font-size: 15px">Đọc hiểu văn bản</span>
+        <span class="t-foot">Câu 51–70 · 20 câu</span>
+      </div>
+      <div class="col g12 grow" style="overflow-y: auto; padding: 14px 16px 20px">
+        <p class="t-foot strong" style="color: var(--label)">Ngữ liệu chung cho câu 51–55</p>
+        <p class="t-foot">Đọc văn bản sau và trả lời các câu từ 51 đến 55.</p>
+        <h2 class="t-title2">Ruộng bậc thang Mù Cang Chải</h2>
+        <p class="t-body" style="line-height: 25px">Ruộng bậc thang ở Mù Cang Chải được người Mông khai phá qua nhiều thế hệ. Trên những sườn núi dốc, họ đắp bờ, dẫn nước từ khe suối về từng thửa ruộng bằng hệ thống mương nhỏ chạy men theo đường đồng mức. Nhờ vậy, nước chảy lần lượt từ thửa trên xuống thửa dưới, vừa giữ đất không bị xói mòn, vừa đủ nước cho lúa sinh trưởng.</p>
+        <p class="t-body" style="line-height: 25px">Mỗi năm, người dân chỉ cấy một vụ lúa chính. Tháng Năm là mùa đổ nước, mặt ruộng loang loáng như những tấm gương xếp tầng; đến tháng Chín, lúa chín vàng phủ kín các triền đồi.</p>
+      </div>
+    </section>
+  </div>
+  <div class="col grow" style="min-width: 0; padding-top: 28px; background: var(--bg)">
+    <header class="col g8" style="flex: none; background: var(--cell); border-bottom: 1px solid var(--sep); padding: 4px 12px 10px">
+      <div class="row g8" style="height: 44px">
+        <button class="circle" aria-label="Rời màn làm bài" style="background: transparent; color: var(--tint)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+        <div class="col grow" style="min-width: 0">
+          <span class="t-headline" style="font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Thi thử ĐGNL HSA 2027 · Đề số 04</span>
+          <span class="t-foot" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Phần 2 · Văn học – Ngôn ngữ</span>
+        </div>
+        <button class="circle" aria-label="Thu gọn thanh đầu trang"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+        <a class="btn prominent" href="I-PlayerDialogs.dc.html" style="flex: none; height: 44px; padding: 0 16px; border-radius: 22px; font-size: 15px">Hoàn thành phần</a>
+      </div>
+      <div class="row g8">
+        <div class="row g6" role="timer" aria-label="Phần 2 còn: 38 phút 5 giây" style="height: 34px; padding: 0 12px; border-radius: 17px; background: var(--fill)">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>
+          <span style="font-size: 13px">Phần 2 còn</span>
+          <span style="font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums">38:05</span>
+        </div>
+        <div class="grow"></div>
+        <span class="row g4" role="status" style="height: 30px; padding: 0 10px; border-radius: 15px; font-size: 13px; font-weight: 600; color: var(--label2); background: var(--fill)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px; stroke-width: 2.4"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>Đang lưu...</span>
+      </div>
+      <nav aria-label="Các phần của bài thi" style="display: grid; grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr); gap: 6px">
+        <div class="col" aria-label="Toán học và xử lý số liệu, đã hoàn thành" style="justify-content: center; padding: 6px 8px; border-radius: 10px; background: var(--fill); min-width: 0">
+          <span class="row g4" style="font-size: 13px; line-height: 15px; font-weight: 600; color: var(--label)"><svg viewBox="0 0 24 24" aria-hidden="true" style="flex: none; width: 14px; height: 14px; stroke-width: 2.6; color: var(--tint)"><path d="m5 12 5 5 9-10"/></svg><span style="min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: break-word">1 · Toán học và xử lý số liệu</span></span>
+        </div>
+        <div class="col" aria-current="step" aria-label="Văn học – Ngôn ngữ, đang làm, đã trả lời {{answered}} trên 50 câu" style="padding: 6px 8px; border-radius: 10px; background: var(--tint-soft); box-shadow: inset 0 0 0 1.5px var(--tint); min-width: 0">
+          <span class="row g4" style="font-size: 13px; line-height: 16px; font-weight: 700; color: var(--on-tint-soft)"><span style="flex: none; width: 8px; height: 8px; border-radius: 4px; background: var(--tint)"></span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 · Văn học – Ngôn ngữ</span></span>
+          <span style="font-size: 11px; line-height: 13px; color: var(--on-tint-soft); font-variant-numeric: tabular-nums">{{answered}}/50 câu</span><span aria-hidden="true" style="display: block; height: 3px; margin-top: 2px; border-radius: 2px; background: var(--plain); overflow: hidden"><span style="display: block; width: {{pct}}%; height: 3px; background: var(--tint)"></span></span>
+        </div>
+        <div class="col" style="padding: 6px 8px; border-radius: 10px; background: var(--fill); min-width: 0">
+          <span class="row g4" style="font-size: 13px; line-height: 16px; font-weight: 600; color: var(--label)"><svg viewBox="0 0 24 24" aria-hidden="true" style="flex: none; width: 14px; height: 14px; color: var(--label2)"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">3 · Khoa học hoặc Tiếng Anh</span></span>
+          <span style="font-size: 11px; line-height: 14px; color: var(--label2)">Đã khóa</span>
+        </div>
+      </nav>
+    </header>
+    <section class="col g12 grow" aria-label="Câu hỏi" style="overflow-y: auto; padding: 12px 16px 20px">
+        <section class="col g12" aria-labelledby="dq51" style="background: var(--cell); border-radius: 22px; padding: 16px">
+          <div class="row g8">
+            <h2 id="dq51" class="t-headline">Câu 51</h2>
+            <span class="row g4" style="font-size: 12px; font-weight: 600; color: {{infoFg}}"><span style="width: 7px; height: 7px; border-radius: 4px; background: {{infoFg}}"></span>Chưa lưu</span>
+            <span class="grow"></span>
+            <button aria-pressed="false" style="flex: none; height: 44px; border: 0; border-radius: 22px; padding: 0 14px; background: var(--fill); color: var(--label); font: inherit; font-size: 15px; display: inline-flex; align-items: center; gap: 6px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Đánh dấu xem lại</button>
+          </div>
+          <span style="align-self: flex-start; font-size: 13px; line-height: 18px; font-weight: 600; padding: 3px 10px; border-radius: 8px; background: var(--fill); color: var(--label2)">Chọn một đáp án</span>
+          <p>Theo văn bản, hệ thống mương nhỏ chạy men theo đường đồng mức có tác dụng gì?</p>
+          <div class="col g8" role="radiogroup" aria-labelledby="dq51">
+            <button role="radio" aria-checked="true" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 7px 14px; border-radius: 14px; border: 2px solid var(--tint); background: var(--tint-soft); color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--tint); display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--tint)"></span></span><span style="font-weight: 600">A.</span><span>Đưa nước lần lượt qua các thửa và giữ đất không bị xói mòn.</span></button>
+            <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">B.</span><span>Tạo cảnh quan để thu hút du khách.</span></button>
+            <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">C.</span><span>Giúp cấy được hai vụ lúa mỗi năm.</span></button>
+            <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">D.</span><span>Ngăn nước chảy xuống các thửa phía dưới.</span></button>
+          </div>
+        </section>
+        <section class="col g12" aria-labelledby="dq52" aria-current="true" style="background: var(--cell); border-radius: 22px; padding: 16px; box-shadow: inset 0 0 0 2px var(--tint)">
+          <div class="row g8">
+            <h2 id="dq52" class="t-headline">Câu 52</h2>
+            <span class="grow"></span>
+            <button aria-pressed="true" style="flex: none; height: 44px; border: 0; border-radius: 22px; padding: 0 14px; background: var(--tint-soft); color: var(--on-tint-soft); font: inherit; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; fill: currentColor"><path d="M5 21V4h11l-1.5 4L16 12H5"/></svg>Bỏ đánh dấu</button>
+          </div>
+          <span style="align-self: flex-start; font-size: 13px; line-height: 18px; font-weight: 600; padding: 3px 10px; border-radius: 8px; background: var(--fill); color: var(--label2)">Chọn một đáp án</span>
+          <p>Từ “loang loáng” trong văn bản gợi tả điều gì?</p>
+          <div class="col g8" role="radiogroup" aria-labelledby="dq52">
+            <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">A.</span><span>Mặt nước phản chiếu ánh sáng, lấp lánh.</span></button>
+            <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">B.</span><span>Lúa chín vàng rực khắp triền đồi.</span></button>
+            <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">C.</span><span>Bờ ruộng bị sạt lở sau mưa.</span></button>
+            <button role="radio" aria-checked="false" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 15px; border-radius: 14px; border: 1px solid var(--sep); background: transparent; color: var(--label); font: inherit; text-align: left"><span style="flex: none; width: 22px; height: 22px; border-radius: 11px; border: 2px solid var(--label2)"></span><span style="font-weight: 600">D.</span><span>Sương mù phủ kín thung lũng.</span></button>
+          </div>
+        </section>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":952,"height":670}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const c = dark
+  ? { okFg: '#34d399', okBg: '#0f2a21', warnFg: '#fbbf24', warnBg: '#2b2210', infoFg: '#22d3ee', infoBg: '#0f2a30', dgSolid: '#dc2626', dgOn: '#ffffff', dgFg: '#f87171', dgBg: '#2e1517' }
+  : { okFg: '#047857', okBg: '#ecfdf5', warnFg: '#b45309', warnBg: '#fffbeb', infoFg: '#0e7490', infoBg: '#ecfeff', dgSolid: '#dc2626', dgOn: '#ffffff', dgFg: '#b91c1c', dgBg: '#fef2f2' };
+const blank = [52, 58, 66, 76, 78, 81, 84, 88, 93, 95, 97];
+const partial = [90];
+const flagged = [52, 55, 64, 89];
+const unsaved = [51];
+const current = 52;
+const cells = (from, to) => {
+  const out = [];
+  for (let n = from; n <= to; n++) {
+    const isPart = partial.includes(n), isAns = !isPart && !blank.includes(n), isCur = n === current;
+    let style = isAns
+      ? 'background: var(--tint-soft); color: var(--on-tint-soft); font-weight: 600'
+      : isPart
+        ? 'background: linear-gradient(135deg, var(--tint-soft) 50%, var(--cell) 50%); color: var(--label); box-shadow: inset 0 0 0 1px var(--tint-soft); font-weight: 600'
+        : 'background: var(--cell); color: var(--label); box-shadow: inset 0 0 0 1px var(--sep)';
+    if (flagged.includes(n)) style = isAns
+      ? 'background: ' + c.dgSolid + '; color: ' + c.dgOn + '; font-weight: 600'
+      : isPart
+        ? 'border: 1px dashed ' + c.dgFg + '; background: ' + c.dgBg + '; color: ' + c.dgFg + '; font-weight: 600'
+        : 'border: 1px solid ' + c.dgFg + '; background: ' + c.dgBg + '; color: ' + c.dgFg;
+    if (isCur) style += '; box-shadow: 0 0 0 2px var(--cell), 0 0 0 4px var(--tint); font-weight: 700';
+    const parts = [String(n)];
+    if (isCur) parts.push('đang xem');
+    parts.push(isAns ? 'đã trả lời' : isPart ? 'trả lời một phần' : 'chưa trả lời');
+    parts.push(unsaved.includes(n) ? 'chưa lưu' : 'đã lưu');
+    if (flagged.includes(n)) parts.push('đánh dấu xem lại');
+    out.push({ n, style, flagged: flagged.includes(n), unsaved: unsaved.includes(n), aria: parts.join(', ') });
+  }
+  return out;
+};
+return {
+  theme: dark ? 'dark' : 'light',
+  ...c,
+  answered: 50 - blank.length - partial.length,
+  pct: Math.round((50 - blank.length - partial.length) / 50 * 100),
+  groups: [
+    { title: 'Đọc hiểu văn bản', range: 'Câu 51–70 · 20 câu', cells: cells(51, 70) },
+    { title: 'Ngôn ngữ', range: 'Câu 71–90 · 20 câu', cells: cells(71, 90) },
+    { title: 'Câu hỏi khác', range: 'Câu 91–100 · 10 câu', cells: cells(91, 100) }
+  ]
+};
+}
+}
+</script>
+</body>
+</html>

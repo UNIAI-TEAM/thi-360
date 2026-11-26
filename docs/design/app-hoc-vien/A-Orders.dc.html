@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Đơn của tôi</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px">
+  <div class="bar">
+    <a class="icon-btn" href="A-AccountV2.dc.html" aria-label="Quay lại Tài khoản"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></a>
+    <h1 class="t-title">Đơn của tôi</h1>
+  </div>
+
+  <sc-if value="{{isDefault}}" hint-placeholder-val="{{ true }}">
+    <div class="grow" style="overflow-y: auto">
+    <div class="col pad g12" style="padding-top: 0; padding-bottom: 24px">
+      <p class="t-small">Các đơn mua bài thi của tài khoản minhanh.tran, mới nhất trước. Khi cần hỗ trợ, hãy gửi kèm mã đơn.</p>
+
+      <div class="card out col g12">
+        <a class="col g4" href="A-OrderDetail.dc.html" style="color: var(--on-surface); font-weight: 400">
+          <span class="row between g8">
+            <span class="t-label">DH261126K7Q2MX</span>
+            <span class="chip" style="background: {{warnBg}}; color: {{warnFg}}">Chờ thanh toán</span>
+          </span>
+          <span class="t-title-m" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">HSA 2027 · Đề thi thử Đánh giá năng lực ĐHQG Hà Nội số 03</span>
+          <span class="row between g8 t-small"><span>26/11/2026 14:22</span><span class="strong">149.000 đ</span></span>
+          <span class="row g4 t-small" style="color: {{warnFg}}"><svg style="width: 16px; height: 16px" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Giữ giá tới 14:37</span>
+        </a>
+        <div class="row g8">
+          <button class="btn filled grow" style="padding: 0 12px">Tiếp tục thanh toán</button>
+          <button class="btn danger" style="padding: 0 16px">Hủy đơn</button>
+        </div>
+      </div>
+
+      <div class="card out col g8">
+        <a class="col g4" href="A-OrderDetail.dc.html" style="color: var(--on-surface); font-weight: 400">
+          <span class="row between g8">
+            <span class="row g8"><span class="t-label">DH261125B3X9PQ</span><span class="chip" style="background: var(--secondary-container); color: var(--on-secondary-container)">Bộ đề</span></span>
+            <span class="chip" style="background: {{warnBg}}; color: {{warnFg}}">Đang kiểm tra</span>
+          </span>
+          <span class="t-title-m" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">Bộ đề V-ACT 2027 · 5 đề luyện thi ĐGNL ĐHQG TP.HCM</span>
+          <span class="row between g8 t-small"><span>25/11/2026 20:05</span><span class="strong">399.000 đ</span></span>
+        </a>
+        <div class="col g4" style="border-top: 1px solid var(--outline-variant); padding-top: 8px">
+          <span class="t-small strong">Đã nhận tiền, đang cấp bài thi</span>
+          <span class="t-label" style="font-weight: 400">Nếu chờ quá lâu, liên hệ hỗ trợ qua hotro@thi360.vn và gửi kèm mã đơn DH261125B3X9PQ.</span>
+        </div>
+      </div>
+
+      <div class="card out col g8">
+        <a class="col g4" href="A-OrderDetail.dc.html" style="color: var(--on-surface); font-weight: 400">
+          <span class="row between g8">
+            <span class="t-label">DH261120M8T4LC</span>
+            <span class="chip" style="background: {{okBg}}; color: {{okFg}}">Đã cấp bài thi</span>
+          </span>
+          <span class="t-title-m" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">THPT 2027 · Đề thi thử Toán số 07</span>
+          <span class="row between g8 t-small"><span>20/11/2026 09:41</span><span class="strong">0 đ (đã áp dụng voucher)</span></span>
+        </a>
+        <a class="btn tonal" href="#" style="align-self: flex-start">Vào Bài thi của tôi</a>
+      </div>
+
+      <a class="card out col g4" href="A-OrderDetail.dc.html" style="color: var(--on-surface); font-weight: 400">
+        <span class="row between g8">
+          <span class="t-label">DH261118Q2W7RZ</span>
+          <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Đã thay thế</span>
+        </span>
+        <span class="t-title-m" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">HSA 2027 · Đề thi thử Đánh giá năng lực ĐHQG Hà Nội số 02</span>
+        <span class="row between g8 t-small"><span>18/11/2026 16:10</span><span class="strong">129.000 đ</span></span>
+        <span class="t-label" style="font-weight: 400">Thay bằng đơn DH261118V5N1KD</span>
+      </a>
+
+      <a class="card out col g4" href="A-OrderDetail.dc.html" style="color: var(--on-surface); font-weight: 400">
+        <span class="row between g8">
+          <span class="t-label">DH261112H6P3EA</span>
+          <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Hết hạn</span>
+        </span>
+        <span class="t-title-m" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">THPT 2027 · Đề thi thử Hóa học số 04</span>
+        <span class="row between g8 t-small"><span>12/11/2026 21:30</span><span class="strong">89.000 đ</span></span>
+      </a>
+    </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+    <div class="col grow pad g16" style="padding-top: 0; padding-bottom: 48px">
+      <p class="t-small">Các đơn mua bài thi của tài khoản minhanh.tran, mới nhất trước. Khi cần hỗ trợ, hãy gửi kèm mã đơn.</p>
+      <div class="empty grow">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+        <span class="t-title-m" style="color: var(--on-surface)">Bạn chưa có đơn nào</span>
+        <span class="t-small">Khi bạn mua bài thi, các đơn hàng sẽ hiện ở đây.</span>
+        <a class="btn filled" href="A-Catalog.dc.html" style="margin-top: 8px">Khám phá bài thi</a>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+    <div class="col grow pad center g16" style="justify-content: center; padding-bottom: 96px" role="alert">
+      <span class="hero-ic warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h.01"/><path d="M3 3l18 18"/></svg></span>
+      <h2 class="t-title">Không tải được danh sách đơn</h2>
+      <p class="t-small">Kiểm tra kết nối mạng rồi thử lại.</p>
+      <button class="btn filled"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>Thử lại</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["default","empty","error"],"default":"default"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.state ?? 'default';
+return {
+theme: dark ? 'dark' : 'light',
+okBg: dark ? '#0f2a21' : '#ecfdf5',
+okFg: dark ? '#34d399' : '#047857',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+warnFg: dark ? '#fbbf24' : '#b45309',
+isDefault: s === 'default',
+isEmpty: s === 'empty',
+isError: s === 'error'
+};
+}
+}
+</script>
+</body>
+</html>

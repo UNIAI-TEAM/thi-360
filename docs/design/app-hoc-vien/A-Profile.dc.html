@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Hồ sơ</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px; --warn-fg: {{warnFg}}; --warn-bg: {{warnBg}}">
+  <div class="bar">
+    <a class="icon-btn" href="A-AccountV2.dc.html" aria-label="Quay lại"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></a>
+    <h1 class="t-title">Hồ sơ</h1>
+  </div>
+  <div class="col grow" style="overflow-y: auto" ref="{{ scroller }}">
+    <div class="col pad g16" style="padding-top: 8px; padding-bottom: 24px; flex: none">
+      <p class="t-small">Đổi họ tên, email hay mật khẩu không ảnh hưởng tới bài đã mua, số lượt còn lại và kết quả của bạn.</p>
+      <div class="banner" role="status" style="background: var(--warn-bg); color: var(--warn-fg)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>
+        <div class="col g4 grow">
+          <span><span style="font-weight: 700">Email chưa xác minh.</span> Xác minh để dùng email này khôi phục tài khoản và nhận thư về đơn hàng.</span>
+          <a class="btn text" href="A-VerifyEmail.dc.html" style="align-self: flex-start; padding: 0; color: var(--warn-fg)">Xác minh email</a>
+        </div>
+      </div>
+
+      <section class="card out col g16" aria-labelledby="ap-av-h">
+        <h2 class="t-title-m" id="ap-av-h">Ảnh đại diện</h2>
+        <div class="row g16">
+          <span class="avatar lg" role="img" aria-label="Ảnh đại diện hiện tại" style="flex-direction: column; background: var(--surface-high); color: var(--on-surface-variant); font-size: 11px; line-height: 14px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px"><circle cx="12" cy="9" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Ảnh</span>
+          <div class="col grow">
+            <span class="t-title-m">Trần Minh Anh</span>
+            <span class="t-small">minhanh.tran</span>
+          </div>
+        </div>
+        <div class="row g8" style="flex-wrap: wrap">
+          <button class="btn tonal" aria-haspopup="dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>Tải ảnh lên</button>
+          <button class="btn text" style="color: var(--error)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Xóa ảnh</button>
+        </div>
+        <p class="t-label" style="font-weight: 400">JPG, PNG hoặc WEBP; tối đa 5 MB và 4.096 × 4.096 px. Ảnh được cắt vuông.</p>
+      </section>
+
+      <section class="card out on-card col g20" aria-labelledby="ap-info-h">
+        <h2 class="t-title-m" id="ap-info-h">Thông tin cá nhân</h2>
+        <div class="tf">
+          <label for="ap-user">Tên đăng nhập</label>
+          <input id="ap-user" type="text" value="minhanh.tran" readonly style="border-color: var(--outline-variant); color: var(--on-surface-variant)">
+          <span class="sup">Tên đăng nhập không đổi được.</span>
+        </div>
+        <sc-if value="{{ isView }}" hint-placeholder-val="{{ true }}">
+          <div class="tf">
+            <label for="ap-name">Họ và tên</label>
+            <input id="ap-name" type="text" value="Trần Minh Anh" maxlength="200" autocomplete="name">
+          </div>
+        </sc-if>
+        <sc-if value="{{ isEditing }}" hint-placeholder-val="{{ false }}">
+          <div class="tf focus">
+            <label for="ap-name-e">Họ và tên</label>
+            <input id="ap-name-e" type="text" value="Trần Thị Minh Anh" maxlength="200" autocomplete="name">
+          </div>
+        </sc-if>
+        <sc-if value="{{ isBusyOrError }}" hint-placeholder-val="{{ false }}">
+          <div class="tf">
+            <label for="ap-name-s">Họ và tên</label>
+            <input id="ap-name-s" type="text" value="Trần Thị Minh Anh" maxlength="200" autocomplete="name">
+          </div>
+        </sc-if>
+        <div class="tf">
+          <label for="ap-phone">Số điện thoại (không bắt buộc)</label>
+          <input id="ap-phone" type="tel" inputmode="tel" value="" placeholder="Ví dụ 0912345678" autocomplete="tel">
+          <span class="sup">Bạn chưa nhập số điện thoại.</span>
+        </div>
+        <sc-if value="{{ isError }}" hint-placeholder-val="{{ false }}">
+          <div class="banner err" role="alert">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+            <span>Không lưu được thay đổi. Vui lòng thử lại.</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isView }}" hint-placeholder-val="{{ true }}">
+          <div class="row g8 end">
+            <button class="btn outlined" disabled style="opacity: .38">Hủy thay đổi</button>
+            <button class="btn filled" disabled style="opacity: .38">Lưu thay đổi</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ canSave }}" hint-placeholder-val="{{ false }}">
+          <div class="row g8 end">
+            <button class="btn outlined">Hủy thay đổi</button>
+            <button class="btn filled">Lưu thay đổi</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isSaving }}" hint-placeholder-val="{{ false }}">
+          <div class="row g8 end">
+            <button class="btn outlined" disabled style="opacity: .38">Hủy thay đổi</button>
+            <button class="btn filled" aria-busy="true" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true" style="stroke-width: 2.5"><path d="M12 3a9 9 0 1 0 9 9"/></svg>Lưu thay đổi</button>
+          </div>
+        </sc-if>
+      </section>
+
+      <section class="card out col g12" aria-labelledby="ap-mail-h">
+        <h2 class="t-title-m" id="ap-mail-h">Email</h2>
+        <div class="row g12">
+          <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--on-surface-variant)"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+          <span class="col g4 grow">
+            <span style="overflow-wrap: anywhere">minhanh@example.com</span>
+            <span><span class="chip" style="background: var(--warn-bg); color: var(--warn-fg)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>Chưa xác minh</span></span>
+          </span>
+        </div>
+        <a class="btn outlined" href="A-ProfileEmail.dc.html" style="align-self: flex-start">Đổi email</a>
+      </section>
+    </div>
+  </div>
+
+  <sc-if value="{{ sheet }}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,.32)" aria-hidden="true"></div>
+    <div role="dialog" aria-modal="true" aria-labelledby="ap-sheet-h" class="col" style="position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface-container); border-radius: 28px 28px 0 0; padding: 0 0 32px">
+      <div class="row" style="justify-content: center; height: 36px"><span style="width: 32px; height: 4px; border-radius: 2px; background: var(--on-surface-variant); opacity: .4"></span></div>
+      <h2 class="t-title-m" id="ap-sheet-h" style="padding: 0 24px 8px">Ảnh đại diện</h2>
+      <button class="li">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+        <span class="grow">Chụp ảnh</span>
+      </button>
+      <button class="li">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+        <span class="grow">Chọn từ thư viện</span>
+      </button>
+      <button class="li" style="color: var(--error)">
+        <svg viewBox="0 0 24 24" aria-hidden="true" style="color: var(--error)"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>
+        <span class="grow">Xóa ảnh</span>
+      </button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"state":{"editor":"enum","options":["view","editing","saving","error"],"default":"view"},"avatarSheet":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+applyScroll() {
+const s = this.props.state ?? 'view';
+if (this.scEl) { this.scEl.scrollTop = (s === 'view' || (this.props.avatarSheet ?? false)) ? 0 : this.scEl.scrollHeight; }
+}
+componentDidMount() { this.applyScroll(); }
+componentDidUpdate() { this.applyScroll(); }
+renderVals() {
+const dark = this.props.dark ?? false;
+const s = this.props.state ?? 'view';
+if (!this.setScroller) { this.setScroller = (el) => { this.scEl = el; this.applyScroll(); }; }
+return {
+scroller: this.setScroller,
+theme: dark ? 'dark' : 'light',
+warnFg: dark ? '#fbbf24' : '#b45309',
+warnBg: dark ? '#2b2210' : '#fffbeb',
+isView: s === 'view',
+isEditing: s === 'editing',
+isSaving: s === 'saving',
+isError: s === 'error',
+isBusyOrError: s === 'saving' || s === 'error',
+canSave: s === 'editing' || s === 'error',
+sheet: this.props.avatarSheet ?? false
+};
+}
+}
+</script>
+</body>
+</html>

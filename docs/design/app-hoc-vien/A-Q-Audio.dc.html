@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Android · Câu nghe có audio</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./m3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="m3 {{theme}} safe-top" style="width: 390px; height: 844px">
+  <header class="col" style="flex: none; padding: 0 4px 8px 16px; border-bottom: 1px solid var(--outline-variant)">
+    <div class="row g8" style="min-height: 56px">
+      <div class="col grow">
+        <span class="t-title-m" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Đánh giá năng lực tiếng Anh · Đề luyện số 2</span>
+        <span class="t-label" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Phần 1 · Nghe hiểu</span>
+      </div>
+      <button class="icon-btn" aria-label="Mở rộng thanh đầu trang" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="row g8" style="padding-right: 12px">
+      <span class="row g4" role="timer" aria-label="Phần 1 còn: 24 phút 51 giây" style="height: 32px; padding: 0 10px; border-radius: 16px; background: var(--surface-container); font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>24:51</span>
+      <span class="row g4" role="status" style="height: 32px; padding: 0 10px; border-radius: 16px; font-size: 12px; line-height: 16px; font-weight: 500; color: {{st.okFg}}; background: {{st.okBg}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px; stroke-width: 2.25"><path d="m5 12 5 5 9-10"/></svg>Đã lưu</span>
+      <span class="grow"></span>
+      <button class="btn filled" style="padding: 0 20px">Nộp bài</button>
+    </div>
+  </header>
+  <main class="grow" style="overflow-y: auto">
+    <div class="col g16" style="padding: 16px">
+    <section class="card out col g12" aria-label="Câu 3" style="padding: 12px 16px 16px">
+      <div class="col g8" style="padding: 12px; border-radius: 16px; background: var(--surface-container)">
+        <span class="t-label">Tệp đính kèm</span>
+        <div role="region" aria-label="Trình phát audio" class="col g12" style="padding: 12px 16px 16px; border-radius: 12px; background: var(--surface-lowest); border: 1px solid var(--outline-variant)">
+          <div class="row g8" style="color: var(--on-surface-variant)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span class="t-small strong" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">nghe-hieu-phan-1-hoi-thoai.mp3</span></div>
+          <div class="row g12">
+            <sc-if value="{{btnPlay}}" hint-placeholder-val="{{ true }}"><button class="btn filled" style="padding: 0 20px 0 16px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>Nghe</button></sc-if>
+            <sc-if value="{{btnPlayDisabled}}" hint-placeholder-val="{{ false }}"><button class="btn filled" disabled style="padding: 0 20px 0 16px; opacity: .38"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z" fill="currentColor"/></svg>Nghe</button></sc-if>
+            <sc-if value="{{btnPlaying}}" hint-placeholder-val="{{ false }}"><button class="btn tonal" disabled aria-disabled="true" style="padding: 0 20px 0 16px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 6v12M12 9v6M16 4v16M20 10v4"/></svg>Đang phát…</button></sc-if>
+            <sc-if value="{{btnResume}}" hint-placeholder-val="{{ false }}"><button class="btn filled" style="padding: 0 20px 0 16px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M10 9v6l5-3z" fill="currentColor"/></svg>Phát lại</button></sc-if>
+            <div class="col grow g4" style="align-items: flex-end">
+              <span class="chip" style="color: {{badgeFg}}; background: {{badgeBg}}">{{plays}}</span>
+              <span class="t-small" style="font-variant-numeric: tabular-nums">{{time}}</span>
+            </div>
+          </div>
+          <div role="progressbar" aria-label="Tiến độ phát audio" aria-valuemin="0" aria-valuemax="155" aria-valuenow="{{posSec}}" style="height: 4px; border-radius: 2px; background: var(--surface-high); overflow: hidden">
+            <div style="height: 4px; width: {{pct}}; background: var(--primary)"></div>
+          </div>
+          <sc-if value="{{msgPaused}}" hint-placeholder-val="{{ false }}"><p class="row g8" style="align-items: flex-start; font-size: 14px; line-height: 20px; color: {{st.infoFg}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="grow">Âm thanh đã tạm dừng. Bấm Phát lại để nghe tiếp mà không mất lượt nghe.</span></p></sc-if>
+          <sc-if value="{{msgExhausted}}" hint-placeholder-val="{{ false }}"><p class="row g8" style="align-items: flex-start; font-size: 14px; line-height: 20px; color: var(--on-surface-variant)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="grow">Bạn đã dùng hết số lần nghe cho tệp audio này.</span></p></sc-if>
+          <sc-if value="{{msgError}}" hint-placeholder-val="{{ false }}"><p class="row g8" style="align-items: flex-start; font-size: 14px; line-height: 20px; color: var(--error)"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg><span class="grow">Không thể phát audio lúc này. Bấm lại để thử tiếp.</span></p></sc-if>
+        </div>
+      </div>
+      <div class="row g8" style="min-height: 48px; flex-wrap: wrap">
+        <h2 class="t-title-m">Câu 3</h2>
+        <span class="chip" style="background: var(--surface-high); color: var(--on-surface-variant)">Chọn một đáp án</span>
+        
+        <span class="grow"></span>
+        <button class="icon-btn" aria-label="Đánh dấu xem lại" aria-pressed="false" style="margin-right: -8px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></svg></button>
+      </div>
+      <p>Nghe đoạn hội thoại và chọn đáp án đúng.</p>
+      <p><em>Where are the two speakers planning to go this weekend?</em></p>
+      <div class="col g8" role="radiogroup" aria-label="Phương án">
+        <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px">
+          <span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span>
+          <span style="font-weight: 500">A.</span>
+          <span class="grow">To a science museum</span>
+        </div>
+        <div role="radio" aria-checked="true" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 2px solid var(--primary); background: var(--primary-container); color: var(--on-primary-container); padding: 13px 15px">
+          <span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--primary); display: flex; align-items: center; justify-content: center"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--primary)"></span></span>
+          <span style="font-weight: 500">B.</span>
+          <span class="grow">To their grandparents’ farm</span>
+        </div>
+        <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px">
+          <span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span>
+          <span style="font-weight: 500">C.</span>
+          <span class="grow">To a football match</span>
+        </div>
+        <div role="radio" aria-checked="false" class="row g12" style="align-items: flex-start; min-height: 56px; border-radius: 12px; border: 1px solid var(--outline-variant); background: var(--surface-lowest); padding: 14px 16px">
+          <span aria-hidden="true" style="flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 10px; border: 2px solid var(--on-surface-variant)"></span>
+          <span style="font-weight: 500">D.</span>
+          <span class="grow">To the city library</span>
+        </div>
+      </div>
+    </section>
+    </div>
+  </main>
+  <nav class="row g12" aria-label="Điều hướng câu hỏi" style="flex: none; height: 80px; padding: 0 16px; background: var(--surface-container); border-top: 1px solid var(--outline-variant)">
+    <button class="btn tonal" aria-label="Danh sách câu 3/40" style="padding: 0 16px 0 14px; font-variant-numeric: tabular-nums"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>3/40</button>
+    <div class="col grow g4" style="min-width: 0">
+      <span style="font-size: 12px; line-height: 16px; color: var(--on-surface-variant)">2/40 câu đã trả lời</span>
+      <span style="height: 4px; border-radius: 2px; background: var(--surface-high); overflow: hidden" aria-hidden="true"><span style="display: block; width: 5%; height: 4px; background: var(--primary)"></span></span>
+    </div>
+  </nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"audio":{"editor":"enum","options":["ready","playing","paused","exhausted","error"],"default":"ready"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+const d = this.props.dark ?? false;
+const st = d
+  ? { okFg: '#34d399', okBg: '#0f2a21', warnFg: '#fbbf24', warnBg: '#2b2210', infoFg: '#22d3ee', infoBg: '#0f2a30' }
+  : { okFg: '#047857', okBg: '#ecfdf5', warnFg: '#b45309', warnBg: '#fffbeb', infoFg: '#0e7490', infoBg: '#ecfeff' };
+const a = this.props.audio ?? 'ready';
+const S = {
+  ready: { plays: 'Còn 2/2 lần nghe', time: '00:00 / 02:35', pos: 0 },
+  playing: { plays: 'Còn 1/2 lần nghe', time: '01:10 / 02:35', pos: 70 },
+  paused: { plays: 'Còn 1/2 lần nghe', time: '01:10 / 02:35', pos: 70 },
+  exhausted: { plays: 'Đã hết lượt nghe (0/2)', time: '02:35 / 02:35', pos: 155 },
+  error: { plays: 'Còn 1/2 lần nghe', time: '00:40 / 02:35', pos: 40 },
+}[a] || { plays: 'Còn 2/2 lần nghe', time: '00:00 / 02:35', pos: 0 };
+return { theme: d ? 'dark' : 'light', st, plays: S.plays, time: S.time, posSec: S.pos, pct: Math.round(S.pos / 155 * 100) + '%',
+  badgeFg: a === 'exhausted' ? 'var(--on-surface-variant)' : st.infoFg, badgeBg: a === 'exhausted' ? 'var(--surface-high)' : st.infoBg,
+  btnPlay: a === 'ready', btnPlayDisabled: a === 'exhausted', btnPlaying: a === 'playing', btnResume: a === 'paused' || a === 'error',
+  msgPaused: a === 'paused', msgExhausted: a === 'exhausted', msgError: a === 'error' };
+}
+}
+</script>
+</body>
+</html>
