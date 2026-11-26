@@ -4,6 +4,7 @@ import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, cn, focusRing
 import { Flag, LayoutGrid } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { ItemCompletionStatus } from "./mappers";
 import { type AttemptDisplaySegmentView, groupNavItemsBySegment } from "./segments/segment-units";
 
@@ -41,6 +42,11 @@ export interface QuestionNavProps {
   canNext?: boolean;
   children?: ReactNode;
   footer?: ReactNode;
+  /**
+   * Chỗ trong đầu trang dính của màn làm bài (UNI-2826). Khi có, thanh "đã trả lời · danh sách câu" (dưới `lg`) được gắn
+   * vào đó bằng portal để luôn thấy khi cuộn; khi chưa có, thanh nằm đầu cột nội dung như cũ.
+   */
+  controlsBarContainer?: HTMLElement | null;
 }
 
 interface QuestionNavGridProps {
@@ -304,6 +310,7 @@ export function QuestionNav({
   onSelectItem,
   children,
   footer,
+  controlsBarContainer,
 }: QuestionNavProps) {
   const t = useTranslations("attempt.nav");
   const dialogT = useTranslations("attempt.dialogs");
@@ -315,11 +322,17 @@ export function QuestionNav({
     [items],
   );
 
-  const controlsBar = (
+  const inHeader = Boolean(controlsBarContainer);
+  const controlsBarElement = (
     <div
       role="region"
       aria-label={t("controlsLabel")}
-      className="flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 lg:hidden"
+      className={cn(
+        "flex items-center justify-between gap-2 lg:hidden",
+        inHeader
+          ? "mx-auto w-full px-4 py-1.5"
+          : "rounded-xl border border-border bg-surface px-3 py-2",
+      )}
     >
       <span className="text-caption font-semibold text-text-secondary tabular-nums">
         {t("answeredCount", { answered: answeredCount, total: items.length })}
@@ -347,6 +360,7 @@ export function QuestionNav({
       </Button>
     </div>
   );
+  const controlsBar = controlsBarContainer ? createPortal(controlsBarElement, controlsBarContainer) : controlsBarElement;
 
   const sidebar = !isDrawerOpen ? (
     <aside

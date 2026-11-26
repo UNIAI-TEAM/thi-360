@@ -1722,13 +1722,18 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
 
     // Check header mobile layout classes & QuestionNav placement in tab 1
     const heading = screen.getByRole("heading", { name: "Đề luyện tập HSA FULL số 01" });
-    expect(heading.parentElement).toHaveClass("w-full", "min-w-0", "md:w-auto", "md:flex-1");
+    expect(heading.parentElement).toHaveClass("w-full", "min-w-0", "sm:w-auto", "sm:flex-1");
+    // UNI-2826: thanh "đã trả lời · danh sách câu" (dưới lg) nằm trong đầu trang dính, luôn thấy khi cuộn.
     const controls = screen.getByRole("region", { name: "Điều hướng câu hỏi" });
+    const slot = controls.parentElement as HTMLElement;
+    expect(slot).toHaveAttribute("data-attempt-question-bar-slot");
+    expect(slot).toHaveClass("lg:hidden");
+    expect(slot.closest("header")).not.toBeNull();
     const aside = screen.getByRole("complementary", { name: "Danh sách câu hỏi" });
     const twoCol = aside.parentElement as HTMLElement;
     expect(twoCol).toHaveClass("lg:flex-row");
     expect(twoCol.children).toHaveLength(2);
-    expect(twoCol.children[0]).toContainElement(controls);
+    expect(twoCol.children[0]).not.toContainElement(controls);
     expect(twoCol.children[1]).toBe(aside);
 
     // Tab 2 starts as secondary_readonly -> fieldset has both disabled and aria-disabled="true"
@@ -2039,6 +2044,15 @@ describe("AttemptPlayer (AC-7, AC-20, AC-28, AC-29)", () => {
     expect(screen.getByRole("timer")).toBeInTheDocument();
     expect(screen.getByText("Đã lưu")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nộp bài" })).toBeInTheDocument();
+
+    // UNI-2826: thu gọn chỉ còn một hàng. Dưới sm chip phần ẩn, trạng thái lưu chỉ còn biểu tượng; đồng hồ, nút và nút
+    // thu gọn cùng một hàng không xuống dòng.
+    expect(screen.getByTestId("attempt-active-part-chip").parentElement).toHaveClass("hidden", "sm:flex");
+    expect(screen.getByText("Đã lưu")).toHaveClass("max-sm:sr-only");
+    const controlsRow = collapseBtn.closest(".justify-between") as HTMLElement;
+    expect(controlsRow).not.toHaveClass("flex-wrap");
+    expect(controlsRow).toContainElement(screen.getByRole("timer"));
+    expect(controlsRow).toContainElement(screen.getByRole("button", { name: "Nộp bài" }));
 
     await user.click(collapseBtn);
     expect(collapseBtn).toHaveAttribute("aria-expanded", "true");
