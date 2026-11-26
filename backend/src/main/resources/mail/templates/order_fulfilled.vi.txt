@@ -1,4 +1,4 @@
-Đơn hàng Thi 360 đã hoàn tất
+Đơn hàng [(${productName})] đã hoàn tất
 Xin chào [(${fullName})],
 
 Đơn [(${orderCode})] đã thanh toán thành công và quyền làm bài đã được cấp cho:
@@ -7,4 +7,4 @@ Xin chào [(${fullName})],
 [/]
 Vào mục "Bài thi của tôi" để bắt đầu: [(${webUrl})]/home
 
-Thi 360
+[(${productName})]

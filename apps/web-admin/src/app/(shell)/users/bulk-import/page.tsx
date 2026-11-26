@@ -4,7 +4,7 @@ import { BulkImportUploadView } from "@/features/bulk-import/components/bulk-imp
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("bulkImport");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default function BulkImportPage() {

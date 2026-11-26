@@ -40,11 +40,11 @@
       "navy-teal": "Xanh hải quân & Ngọc lam",
       "sky-orange": "Xanh da trời & Cam",
       "slate-crimson": "Xám đá & Đỏ thẫm",
-      "thi360-green": "Thi 360 Xanh lá"
+      "thi360-green": "Thi360 Xanh lá"
     },
     "previewAccentButton": "Vào thi ngay",
     "previewActiveChip": "Hoạt động",
-    "previewBrand": "Thi 360",
+    "previewBrand": "Thi360",
     "previewDangerChip": "Lỗi",
     "previewFootnote": "Nhãn trạng thái (Hoạt động, Lỗi) giữ nguyên màu ở mọi bộ phối màu. Mỗi lần lưu được ghi vào nhật ký kèm giá trị trước và sau.",
     "previewHeading": "Luyện đề như thi thật",
@@ -64,7 +64,7 @@
     "primaryPickerAria": "Chọn màu chính",
     "reloadLatest": "Tải lại cấu hình mới nhất",
     "resetAction": "Khôi phục mặc định",
-    "resetConfirmDescription": "Giao diện toàn hệ thống (trang quản trị, trang học viên và trang đăng nhập) sẽ trở về bộ Thi 360 Xanh lá và chế độ Sáng.",
+    "resetConfirmDescription": "Giao diện toàn hệ thống (trang quản trị, trang học viên và trang đăng nhập) sẽ trở về bộ Thi360 Xanh lá và chế độ Sáng.",
     "resetConfirmTitle": "Khôi phục giao diện mặc định?",
     "resetFailed": "Không khôi phục được giao diện mặc định. Hãy thử lại.",
     "resetSuccess": "Đã khôi phục giao diện mặc định.",
@@ -1538,7 +1538,7 @@
     "errorDescription": "Đã có lỗi khi tải thông tin tài khoản. Hãy thử lại.",
     "errorTitle": "Không tải được trang",
     "greeting": "Xin chào, {name}",
-    "intro": "Đây là trang quản trị Thi 360. Chọn một mục ở menu bên trái để bắt đầu.",
+    "intro": "Đây là trang quản trị Thi360. Chọn một mục ở menu bên trái để bắt đầu.",
     "shortcuts": "Lối tắt",
     "title": "Bảng điều khiển"
   },
@@ -1564,7 +1564,7 @@
       "filterSelected": "Hoạt động",
       "tag": "Môn Toán"
     },
-    "description": "Bộ thành phần giao diện dùng chung của Thi 360. Chuyển Sáng / Tối để kiểm tra token.",
+    "description": "Bộ thành phần giao diện dùng chung của Thi360. Chuyển Sáng / Tối để kiểm tra token.",
     "fields": {
       "checkboxLabel": "Bắt đổi mật khẩu ở lần đăng nhập đầu",
       "errorLabel": "Tên đăng nhập",
@@ -1703,9 +1703,9 @@
     "title": "Bạn không có quyền vào trang này"
   },
   "metadata": {
-    "description": "Trang quản trị cổng luyện thi Thi 360",
-    "title": "Thi 360 — Quản trị",
-    "titleTemplate": "{title} · Thi 360"
+    "description": "Trang quản trị cổng luyện thi Thi360",
+    "title": "Thi360 — Quản trị",
+    "titleTemplate": "{title} · Thi360"
   },
   "nav": {
     "groups": {
@@ -2214,9 +2214,9 @@
       "totalItems": "{total, plural, other {Tổng # đơn hàng}}"
     },
     "meta": {
-      "buyersTitle": "Người mua theo bài thi · Thi 360",
-      "detailTitle": "Đơn hàng {code} · Thi 360",
-      "listTitle": "Đơn hàng · Thi 360"
+      "buyersTitle": "Người mua theo bài thi · Thi360",
+      "detailTitle": "Đơn hàng {code} · Thi360",
+      "listTitle": "Đơn hàng · Thi360"
     },
     "nav": {
       "backToOrders": "Quay lại danh sách đơn hàng",
@@ -2738,7 +2738,7 @@
     }
   },
   "shell": {
-    "brand": "Thi 360 · Quản trị",
+    "brand": "Thi360 · Quản trị",
     "breadcrumbLabel": "Vị trí hiện tại",
     "logoMark": "360",
     "menuLabel": "Menu chính",

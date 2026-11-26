@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Cấu hình log của Thi 360. Quy ước đầy đủ: docs/plans/2026-11-13-base-port-pbi-01-02.md mục B15.
+  Cấu hình log của Thi360. Quy ước đầy đủ: docs/plans/2026-11-13-base-port-pbi-01-02.md mục B15.
 
   Bố cục file (đọc từ trên xuống):
     1. Biến lấy từ cấu hình

@@ -27,7 +27,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("metadata");
   return {
-    // Một mẫu tiêu đề cho mọi trang con: "<tên trang> · Thi 360" (tên trang đứng trước). Trang không đặt tiêu đề
+    // Một mẫu tiêu đề cho mọi trang con: "<tên trang> · Thi360" (tên trang đứng trước). Trang không đặt tiêu đề
     // riêng (trang landing) dùng `default`.
     title: { default: t("title"), template: t("titleTemplate", { title: "%s" }) },
     description: t("description"),

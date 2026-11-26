@@ -6,7 +6,7 @@ import { QuestionBankSkeleton, QuestionBankView } from "@/features/questions/com
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("questions.list");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 /** Ngân hàng câu hỏi (canvas `NganHangCauHoi`). Bộ lọc đọc từ URL nên cần Suspense cho `useSearchParams`. */

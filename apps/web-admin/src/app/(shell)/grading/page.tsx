@@ -6,7 +6,7 @@ import { GradingListSkeleton, GradingListView } from "@/features/grading/compone
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("grading.list");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 /** Hàng chờ chấm tự luận (UNI-2604). Bộ lọc đọc từ URL nên cần Suspense cho `useSearchParams`. */

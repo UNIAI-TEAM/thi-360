@@ -180,7 +180,7 @@
       "termsBody": "[TERMS OF USE TEXT, DRAFT PENDING CONFIRMATION BY THE OPERATOR]",
       "termsClose": "Close",
       "termsDraft": "Draft text, pending confirmation by the operator.",
-      "termsLabel": "I have read and agree to the Terms of Use of Thi 360.",
+      "termsLabel": "I have read and agree to the Terms of Use of Thi360.",
       "termsRequired": "You must agree to the Terms of Use to register.",
       "termsTitle": "Terms of Use",
       "termsView": "View the Terms of Use",
@@ -734,7 +734,7 @@
     }
   },
   "common": {
-    "appName": "Thi 360",
+    "appName": "Thi360",
     "backHome": "Back to home",
     "closeToast": "Close toast",
     "loading": "Loading",
@@ -1278,8 +1278,8 @@
   },
   "metadata": {
     "description": "Online practice that follows the real exam structure: HSA, QDA, BCA, V-ACT, SPT, SP2E, high school graduation",
-    "title": "Thi 360 — Online exam practice",
-    "titleTemplate": "{title} · Thi 360"
+    "title": "Thi360 — Online exam practice",
+    "titleTemplate": "{title} · Thi360"
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",
