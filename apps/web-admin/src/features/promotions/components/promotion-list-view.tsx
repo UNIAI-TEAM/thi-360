@@ -14,10 +14,7 @@ import {
   Pagination,
   Table,
   type TableCards,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  StatusChip,
   cn,
   focusRing,
 } from "@thi360/ui";
@@ -33,13 +30,18 @@ import { formatPromotionDateTime } from "../datetime";
 import { resolvePromotionErrorMessage } from "../errors";
 import { formatDiscountSummary } from "../format";
 import { usePromotionsListQuery } from "../queries";
-import type { PromotionKind, PromotionStateFilter, PromotionSummary } from "../types";
+import type { PromotionKind, PromotionKindFilter, PromotionStateFilter, PromotionSummary } from "../types";
 import { PromotionCapWarningInline } from "./promotion-cap-warning-inline";
 import { PromotionRowActions } from "./promotion-row-actions";
 import { PromotionStatusChip } from "./promotion-status-chip";
 import { handleRadioGroupKeyDown } from "./radio-group-key";
 
 const PAGE_SIZE = 20;
+const FILTER_PILL_CLASS =
+  "relative inline-flex h-8 items-center rounded-full border px-3 text-caption font-medium transition-colors duration-150 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 motion-reduce:transition-none";
+const FILTER_PILL_SELECTED = "border-primary-fill bg-primary-fill text-on-primary";
+const FILTER_PILL_IDLE = "border-border bg-surface text-text-secondary hover:bg-subtle";
+const KIND_FILTER_OPTIONS: readonly PromotionKindFilter[] = ["ALL", "AUTO", "VOUCHER"];
 const STATE_FILTER_OPTIONS: readonly PromotionStateFilter[] = [
   "ALL",
   "RUNNING",
@@ -58,8 +60,13 @@ const DROP_LOW_PRIORITY_COLUMNS = [
   "@max-[52rem]:[&_:is(th,td):has([data-col=period])]:hidden",
 ].join(" ");
 
-function parseInitialKind(raw: string | null): PromotionKind {
-  return raw === "VOUCHER" ? "VOUCHER" : "AUTO";
+function parseInitialKind(raw: string | null): PromotionKindFilter {
+  return raw === "AUTO" || raw === "VOUCHER" ? raw : "ALL";
+}
+
+function PromotionKindChip({ kind }: { kind: PromotionKind }) {
+  const t = useTranslations("promotions.kinds");
+  return <StatusChip tone={kind === "AUTO" ? "info" : "neutral"}>{t(kind)}</StatusChip>;
 }
 
 function parseInitialStateFilter(raw: string | null): PromotionStateFilter {
@@ -88,7 +95,7 @@ export function PromotionListView() {
   const searchParamsKey = searchParams.toString();
   const [prevSearchKey, setPrevSearchKey] = useState(searchParamsKey);
 
-  const [kind, setKind] = useState<PromotionKind>(() => parseInitialKind(searchParams.get("kind")));
+  const [kind, setKind] = useState<PromotionKindFilter>(() => parseInitialKind(searchParams.get("kind")));
   const [stateFilter, setStateFilter] = useState<PromotionStateFilter>(() =>
     parseInitialStateFilter(searchParams.get("state")),
   );
@@ -122,9 +129,9 @@ export function PromotionListView() {
   }, []);
 
   const syncUrl = useCallback(
-    (nextKind: PromotionKind, nextState: PromotionStateFilter, nextQ: string, nextPage: number) => {
+    (nextKind: PromotionKindFilter, nextState: PromotionStateFilter, nextQ: string, nextPage: number) => {
       const next = new URLSearchParams();
-      if (nextKind !== "AUTO") next.set("kind", nextKind);
+      if (nextKind !== "ALL") next.set("kind", nextKind);
       if (nextState !== "ALL") next.set("state", nextState);
       if (nextQ.trim()) next.set("q", nextQ.trim());
       if (nextPage > 1) next.set("page", String(nextPage));
@@ -191,10 +198,9 @@ export function PromotionListView() {
     prevPageRef.current = page;
   }, [debouncedQ, kind, maxPage, page, stateFilter, syncUrl]);
 
-  const handleTabChange = (value: string) => {
+  const handleKindFilterChange = (nextKind: PromotionKindFilter) => {
     cancelPendingSearch();
     setLiveMessage("");
-    const nextKind: PromotionKind = value === "VOUCHER" ? "VOUCHER" : "AUTO";
     setKind(nextKind);
     setDebouncedQ(searchInput);
     setPage(1);
@@ -213,11 +219,12 @@ export function PromotionListView() {
   const handleClearFilters = () => {
     cancelPendingSearch();
     setLiveMessage("");
+    setKind("ALL");
     setStateFilter("ALL");
     setSearchInput("");
     setDebouncedQ("");
     setPage(1);
-    syncUrl(kind, "ALL", "", 1);
+    syncUrl("ALL", "ALL", "", 1);
   };
 
   const handlePageChange = (nextPage: number) => {
@@ -289,6 +296,12 @@ export function PromotionListView() {
             </div>
           );
         },
+      },
+      {
+        id: "kind",
+        header: t("list.columns.kind"),
+        enableSorting: false,
+        cell: ({ row }) => <PromotionKindChip kind={row.original.kind} />,
       },
       {
         id: "discount",
@@ -411,6 +424,7 @@ export function PromotionListView() {
           status={<PromotionStatusChip status={item.status} state={item.state} />}
           tags={
             <>
+              <ListCardTag>{t(`kinds.${item.kind}`)}</ListCardTag>
               <ListCardTag>
                 {formatDiscountSummary(
                   item.discountType,
@@ -465,7 +479,7 @@ export function PromotionListView() {
 
   const items = isOffline ? [] : (listQuery.data?.items ?? []);
   const totalItems = isOffline ? 0 : (listQuery.data?.totalItems ?? 0);
-  const isFiltered = stateFilter !== "ALL" || debouncedQ.trim() !== "";
+  const isFiltered = kind !== "ALL" || stateFilter !== "ALL" || debouncedQ.trim() !== "";
 
   const statusAnnouncement = liveMessage
     ? liveMessage
@@ -497,6 +511,7 @@ export function PromotionListView() {
   ) : undefined;
 
   const createCtaLabel = kind === "VOUCHER" ? t("actions.createVoucher") : t("actions.create");
+  const createHref = kind === "ALL" ? "/promotions/new" : `/promotions/new?kind=${kind}`;
 
   const emptyNode = isFiltered ? (
     <EmptyState
@@ -517,7 +532,7 @@ export function PromotionListView() {
       action={
         canModify ? (
           <Button asChild>
-            <Link href={`/promotions/new?kind=${kind}`}>
+            <Link href={createHref}>
               <Plus />
               <span>{createCtaLabel}</span>
             </Link>
@@ -559,6 +574,33 @@ export function PromotionListView() {
             )}
           </div>
 
+          <div className="flex flex-col gap-2 lg:items-end">
+            <div
+              role="radiogroup"
+              aria-label={t("list.kindGroupAria")}
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              {KIND_FILTER_OPTIONS.map((option, index) => {
+                const selected = kind === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => handleKindFilterChange(option)}
+                    onKeyDown={(event) =>
+                      handleRadioGroupKeyDown(event, KIND_FILTER_OPTIONS, index, handleKindFilterChange)
+                    }
+                    className={cn(FILTER_PILL_CLASS, selected ? FILTER_PILL_SELECTED : FILTER_PILL_IDLE, focusRing)}
+                  >
+                    {t(`list.kindFilters.${option}`)}
+                  </button>
+                );
+              })}
+            </div>
+
           <div
             role="radiogroup"
             aria-label={t("list.stateGroupAria")}
@@ -577,18 +619,13 @@ export function PromotionListView() {
                   onKeyDown={(event) =>
                     handleRadioGroupKeyDown(event, STATE_FILTER_OPTIONS, index, handleStateFilterChange)
                   }
-                  className={cn(
-                    "relative inline-flex h-8 items-center rounded-full border px-3 text-caption font-medium transition-colors duration-150 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 motion-reduce:transition-none",
-                    selected
-                      ? "border-primary-fill bg-primary-fill text-on-primary"
-                      : "border-border bg-surface text-text-secondary hover:bg-subtle",
-                    focusRing,
-                  )}
+                  className={cn(FILTER_PILL_CLASS, selected ? FILTER_PILL_SELECTED : FILTER_PILL_IDLE, focusRing)}
                 >
                   {t(`list.stateFilters.${option}`)}
                 </button>
               );
             })}
+          </div>
           </div>
         </div>
 
@@ -636,7 +673,7 @@ export function PromotionListView() {
         actions={
           canModify ? (
             <Button asChild>
-              <Link href={`/promotions/new?kind=${kind}`}>
+              <Link href={createHref}>
                 <Plus />
                 <span>{createCtaLabel}</span>
               </Link>
@@ -647,18 +684,7 @@ export function PromotionListView() {
 
       <LiveStatus message={statusAnnouncement} />
 
-      <Tabs value={kind} onValueChange={handleTabChange} variant="content">
-        <TabsList>
-          <TabsTrigger value="AUTO">{t("list.tabs.AUTO")}</TabsTrigger>
-          <TabsTrigger value="VOUCHER">{t("list.tabs.VOUCHER")}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="AUTO" className="mt-4">
-          {kind === "AUTO" ? tablePanel : null}
-        </TabsContent>
-        <TabsContent value="VOUCHER" className="mt-4">
-          {kind === "VOUCHER" ? tablePanel : null}
-        </TabsContent>
-      </Tabs>
+      {tablePanel}
     </div>
   );
 }

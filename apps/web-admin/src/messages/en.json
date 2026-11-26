@@ -1513,6 +1513,12 @@
       "ascending": "ascending",
       "descending": "descending",
       "sortBy": "Sort by"
+    },
+    "unsaved": {
+      "title": "Leave without saving?",
+      "description": "Unsaved changes on this page will be lost.",
+      "leave": "Leave page",
+      "stay": "Stay"
     }
   },
   "dashboard": {
@@ -4945,12 +4951,6 @@
         "scale": "Scale",
         "sharedMinutes": "{count, number} min, shared",
         "pointsOfScale": "{points} / {scale} points"
-      },
-      "unsaved": {
-        "title": "Leave without saving?",
-        "description": "Unsaved changes on this page will be lost.",
-        "leave": "Leave page",
-        "stay": "Stay"
       },
       "check": {
         "all": "Check the whole exam",
@@ -9217,7 +9217,8 @@
         "period": "Schedule",
         "scopeAndAudience": "Scope & audience",
         "status": "Status",
-        "used": "Used"
+        "used": "Used",
+        "kind": "Type"
       },
       "description": "Manage automatic promotions and voucher codes for exam purchases.",
       "emptyDescription": "No promotions in this category yet. Create one to get started.",
@@ -9245,11 +9246,13 @@
       },
       "stateGroupAria": "Filter by status",
       "summaryCount": "{total, plural, one {# promotion} other {# promotions}}",
-      "tabs": {
+      "title": "Promotions",
+      "kindGroupAria": "Filter by promotion type",
+      "kindFilters": {
+        "ALL": "All types",
         "AUTO": "Automatic",
-        "VOUCHER": "Vouchers"
-      },
-      "title": "Promotions"
+        "VOUCHER": "Voucher"
+      }
     },
     "pricePreview": {
       "appliedStatus": "Applied: {label}",

@@ -30,7 +30,7 @@ export async function listPromotions(
     page?: number;
     size?: number;
   } = {
-    kind: params.kind,
+    kind: params.kind === "ALL" ? undefined : params.kind,
     page: params.page,
     size: params.size,
   };

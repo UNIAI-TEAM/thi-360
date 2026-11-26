@@ -64,7 +64,7 @@ export function useUnsavedChangesGuard(hasUnsavedChanges: boolean) {
 }
 
 export function UnsavedChangesDialog({ guard }: { guard: ReturnType<typeof useUnsavedChangesGuard> }) {
-  const t = useTranslations("exams.structure.unsaved");
+  const t = useTranslations("common.unsaved");
   return (
     <ConfirmDialog
       open={guard.pendingHref !== null}

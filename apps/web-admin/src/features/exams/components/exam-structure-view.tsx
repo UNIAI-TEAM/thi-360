@@ -68,7 +68,7 @@ import { StructureVersionPicker } from "./structure-version-picker";
 import { SubjectChoiceNav } from "./subject-choice-nav";
 import { PracticeReviewSubjectPanel } from "./practice-review-subject-panel";
 import { ScoringExamples, StrandReference } from "./scoring-examples";
-import { useUnsavedChangesGuard } from "./exam-structure-unsaved-guard";
+import { useUnsavedChangesGuard } from "@/features/shell/unsaved-changes-guard";
 import { formBlockingIssues, type BlockingIssue } from "../subject-forms/blocking";
 import { SubjectFormScreen } from "../subject-forms/form-renderers";
 import { FullFormNotice } from "../subject-forms/full-form-notice";
