@@ -110,7 +110,7 @@ async function buildAllowLanguage(page: Page, options: { allowProductTitle?: boo
   const allowStrings = optionTexts.filter((text) => known.has(text)).filter(Boolean);
   const titlePatterns =
     options.allowProductTitle && productHeading
-      ? [new RegExp(`^${escapeRegExp(productHeading)}(?:\\s*[·|\\-–—]\\s*Thi 360)?$`)]
+      ? [new RegExp(`^${escapeRegExp(productHeading)}(?:\\s*[·|\\-–—]\\s*Thi360)?$`)]
       : [];
 
   return [

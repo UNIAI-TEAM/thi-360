@@ -91,7 +91,7 @@ public abstract class AbstractIntegrationTest {
         if (!hasPlatformRole) {
             RoleRepresentation role = new RoleRepresentation();
             role.setName("PLATFORM_ADMIN");
-            role.setDescription("Thi 360 platform administrator");
+            role.setDescription("Thi360 platform administrator");
             master.roles().create(role);
         }
 
@@ -99,7 +99,7 @@ public abstract class AbstractIntegrationTest {
         if (clients.isEmpty()) {
             ClientRepresentation client = new ClientRepresentation();
             client.setClientId("thi360-platform");
-            client.setName("Thi 360 platform auth");
+            client.setName("Thi360 platform auth");
             client.setEnabled(true);
             client.setProtocol("openid-connect");
             client.setPublicClient(false);

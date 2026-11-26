@@ -5,7 +5,7 @@ import { QuestionPreviewView } from "@/features/questions/preview/question-previ
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("questions.detail");
-  return { title: `${t("tabs.preview")} · ${t("title")} · Thi 360` };
+  return { title: `${t("tabs.preview")} · ${t("title")} · Thi360` };
 }
 
 export default async function QuestionPreviewPage({ params }: { params: Promise<{ id: string }> }) {

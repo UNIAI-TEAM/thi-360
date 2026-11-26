@@ -5,7 +5,7 @@ import { ExamListingView } from "@/features/exams/listing/listing-tab";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("exams.editor");
-  return { title: `${t("tabs.listing")} · Thi 360` };
+  return { title: `${t("tabs.listing")} · Thi360` };
 }
 
 /** Thông tin bán của bài thi (bản vẽ BaiThiThongTinBan), giữa Cấu trúc và Kiểm tra. */
