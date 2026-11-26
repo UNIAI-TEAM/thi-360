@@ -23,6 +23,7 @@ import {
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
+test.use({ actionTimeout: 30_000, navigationTimeout: 45_000 });
 
 const SEGMENTS = [
   { code: "P1", heading: /^Phần I · câu 1–9 · 36 lệnh · 54 điểm$/, from: 1, to: 9, commands: 36, points: 54 },

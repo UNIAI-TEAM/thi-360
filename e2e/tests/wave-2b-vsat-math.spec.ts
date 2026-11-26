@@ -22,6 +22,7 @@ import {
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
+test.use({ actionTimeout: 30_000, navigationTimeout: 45_000 });
 
 /**
  * Nghiệm thu bổ sung H-SCA/V-SAT (QA addendum mục 4): V-SAT Toán cả môn, 25 câu · 67 lệnh · 150 điểm · 90 phút. Bốn phần:

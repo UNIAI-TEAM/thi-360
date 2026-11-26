@@ -19,6 +19,7 @@ import {
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
+test.use({ actionTimeout: 30_000, navigationTimeout: 45_000 });
 
 /**
  * Nghiệm thu bổ sung V-ACT/THPTQG (addendum mục 5.1), kịch bản 6: V-ACT toàn bài, mẫu VACT_FULL. Tạo, kiểm tra đạt, đề thử

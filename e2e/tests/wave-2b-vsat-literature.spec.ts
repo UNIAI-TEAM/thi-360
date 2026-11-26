@@ -24,6 +24,7 @@ import {
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
+test.use({ actionTimeout: 30_000, navigationTimeout: 45_000 });
 
 /**
  * Nghiệm thu bổ sung H-SCA/V-SAT (QA addendum mục 7, H49): V-SAT Ngữ văn. Mẫu có Phần I-III (20 câu, 62 lệnh, 120 điểm) và
