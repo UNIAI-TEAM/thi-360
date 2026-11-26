@@ -15,6 +15,8 @@ const handlers = createProxyHandlers({
   },
 });
 
+const defaultHandlers = handlers;
+
 function context(...path: string[]) {
   return { params: Promise.resolve({ path }) };
 }
@@ -183,9 +185,29 @@ describe("proxyApiRequest header forwarding", () => {
 
 describe("proxyApiRequest Authorization: Bearer của app học viên (UNI-2816)", () => {
   const JWT = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl";
+  const handlers = createProxyHandlers({
+    messages: {
+      notFound: "Không tìm thấy.",
+      proxyNotConfigured: "Chưa cấu hình API.",
+      upstreamTimeout: "Quá thời gian.",
+      upstreamUnavailable: "Không kết nối được.",
+    },
+    forwardBearerAuthorization: true,
+  });
 
   beforeEach(() => {
     resetSessionRefreshRegistry();
+  });
+
+  it("mặc định (không bật forwardBearerAuthorization) không chuyển tiếp Authorization", async () => {
+    await defaultHandlers.GET(
+      new NextRequest("http://localhost:3000/api/v1/me", {
+        headers: { authorization: `Bearer ${JWT}` },
+      }),
+      context("v1", "me"),
+    );
+
+    expect(lastHeaders().get("authorization")).toBeNull();
   });
 
   it("chuyển tiếp Authorization dạng Bearer tới upstream", async () => {

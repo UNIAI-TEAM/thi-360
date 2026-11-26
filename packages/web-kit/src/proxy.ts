@@ -56,6 +56,11 @@ export interface ProxyOptions {
   messages: ProxyErrorMessages;
   resolveClientIp?: (request: NextRequest) => string | null;
   messagesByLocale?: Record<AppLocale, ProxyErrorMessages>;
+  /**
+   * Chuyển tiếp `Authorization: Bearer` tới backend (mặc định tắt). Chỉ web học viên bật, vì app học viên native
+   * (UNI-2785) gọi API qua tên miền web học viên bằng Bearer; web admin giữ nguyên chỉ dùng cookie.
+   */
+  forwardBearerAuthorization?: boolean;
 }
 
 function normalizeIpLiteral(raw: string | null | undefined): string | null {
@@ -156,11 +161,12 @@ export async function proxyApiRequest(
   headers.set("accept-language", locale);
   headers.set("x-request-id", requestId);
 
-  // App học viên native (UNI-2785) xác thực bằng Bearer thay cho cookie. Chỉ chuyển tiếp đúng dạng Bearer;
-  // dạng khác (Basic, chuỗi lạ) bị bỏ như mọi header ngoài danh sách.
-  const authorization = requestHopOnly.has("authorization")
-    ? null
-    : (request.headers.get("authorization")?.trim() ?? null);
+  // App học viên native (UNI-2785) xác thực bằng Bearer thay cho cookie. Khi bật `forwardBearerAuthorization`,
+  // chỉ chuyển tiếp đúng dạng Bearer; dạng khác (Basic, chuỗi lạ) bị bỏ như mọi header ngoài danh sách.
+  const authorization =
+    !options.forwardBearerAuthorization || requestHopOnly.has("authorization")
+      ? null
+      : (request.headers.get("authorization")?.trim() ?? null);
   const bearer = authorization && BEARER_PATTERN.test(authorization) ? authorization : null;
   if (bearer) {
     headers.set("authorization", bearer);
