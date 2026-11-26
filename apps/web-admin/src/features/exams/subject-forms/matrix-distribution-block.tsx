@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Chip, cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input, Label } from "@thi360/ui";
+import { Button, cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Input, Label } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef, useState } from "react";
@@ -160,9 +160,8 @@ interface DimensionProps extends MatrixBlockProps {
   codeLabel: (code: string) => string;
 }
 
-function MatrixDimension({ dimension, badgeText, title, codes, codeLabel, section, entry, kindCode, total, axes, raw, onChange }: DimensionProps) {
+function MatrixDimension({ dimension, badgeText, title, codes, codeLabel, section, entry, total, axes, raw, onChange }: DimensionProps) {
   const t = useTranslations("exams.subjectForm.matrix.distribution");
-  const tHsa = useTranslations("exams.subjectForm.matrix.hsa");
   const tCommon = useTranslations("exams.subjectForm.common.countPercent");
   const matrix = section.matrix;
   const twoColumns = entry.percentEntry === "TWO_COLUMNS";
@@ -175,7 +174,6 @@ function MatrixDimension({ dimension, badgeText, title, codes, codeLabel, sectio
   const fieldBase = dimension === "grade" ? "GRADE" : "DIFFICULTY";
   const enforcement: QuotaEnforcement = dimensionEnforcement(matrix, dimension);
   const percentMismatch = unit === "PERCENT" && declared && !percentsAreComplete(declaredCodes.map((code) => matrixCell(matrix, dimension, code) ?? 0));
-  const gradeOptional = kindCode === "HSA" && (section.subjectCode === "SU" || section.subjectCode === "DIA") && dimension === "grade";
 
   const countMismatch = unit === "COUNT" && total !== null && sum !== total && entry.enforcement === "DECLARED_REQUIRED";
   const computedPct =
@@ -199,25 +197,15 @@ function MatrixDimension({ dimension, badgeText, title, codes, codeLabel, sectio
           </span>
           <h4 className="text-label font-semibold text-text">{title}</h4>
         </div>
-        {gradeOptional && !declared ? (
-          <Chip variant="tag" className="w-fit">
-            {tHsa("notApplied")}
-          </Chip>
-        ) : (
-          <EnforcementControl
-            mode={entry.enforcement}
-            name={title}
-            value={enforcement}
-            declared={declared}
-            lockReason={matrix?.basis !== undefined && matrix.basis !== "QUESTION" ? "promptBasis" : undefined}
-            onChange={(next) => onChange((current) => ({ ...current, matrix: setDimensionEnforcement(current.matrix, dimension, next) }))}
-          />
-        )}
+        <EnforcementControl
+          mode={entry.enforcement}
+          name={title}
+          value={enforcement}
+          declared={declared}
+          lockReason={matrix?.basis !== undefined && matrix.basis !== "QUESTION" ? "promptBasis" : undefined}
+          onChange={(next) => onChange((current) => ({ ...current, matrix: setDimensionEnforcement(current.matrix, dimension, next) }))}
+        />
       </div>
-
-      {gradeOptional && !declared && (
-        <p className="border-b border-border bg-subtle/20 px-4 py-2 text-caption text-text-muted">{tHsa("gradeOptionalHint")}</p>
-      )}
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-body">
@@ -308,11 +296,13 @@ export function MatrixDistributionBlock(props: MatrixBlockProps) {
     requestAnimationFrame(() => sectionRef.current?.querySelector<HTMLElement>('[data-form-field="GRADE"] input')?.focus());
   };
 
+  const sectionTitle = entry.hideGrade ? t("difficulty") : t("title");
+
   return (
-    <section ref={sectionRef} aria-label={t("title")} className="flex flex-col gap-3">
+    <section ref={sectionRef} aria-label={sectionTitle} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h3 className="text-title font-semibold text-text">{t("title")}</h3>
+          <h3 className="text-title font-semibold text-text">{sectionTitle}</h3>
           <p className="text-caption text-text-muted">{t("hint")}</p>
         </div>
         {!entry.hideGrade && entry.gradeOptional && !showGrade && (

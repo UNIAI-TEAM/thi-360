@@ -98,8 +98,8 @@ describe("Kiểm tra kỹ", () => {
         : { runId, state: "DONE", result: confirmed(initial), errorCode: null },
     );
 
-    expect(await screen.findByText(/giới hạn xử lý 30 giây/)).toBeInTheDocument();
-    expect(screen.getByText(/12 trường hợp: 1 hợp lệ, 8 không hợp lệ, 3 chưa xác nhận được\./)).toBeInTheDocument();
+    expect(await screen.findByText(/12 trường hợp: 1 hợp lệ, 8 không hợp lệ, 3 chưa xác nhận được\./)).toBeInTheDocument();
+    expect(screen.queryByText(/giới hạn xử lý 30 giây/)).not.toBeInTheDocument();
     expect(screen.getByText(/Có kết quả chưa xác nhận được trong giới hạn xử lý/)).toBeInTheDocument();
     await startFromTopCard(user);
 
@@ -119,7 +119,7 @@ describe("Kiểm tra kỹ", () => {
     expect(getCheckRun).toHaveBeenCalledTimes(3);
 
     await waitFor(() => expect(screen.queryByText("Đang kiểm tra kỹ")).not.toBeInTheDocument());
-    expect(screen.getByText(/giới hạn xử lý 120 giây/)).toBeInTheDocument();
+    expect(screen.queryByText(/giới hạn xử lý 120 giây/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Kiểm tra kỹ" })).not.toBeInTheDocument();
     expect(screen.getByText(/12 trường hợp: 4 hợp lệ, 8 không hợp lệ, 0 chưa xác nhận được\./)).toBeInTheDocument();
     expect(liveText()).toContain("Đã kiểm tra:");
@@ -152,7 +152,7 @@ describe("Kiểm tra kỹ", () => {
     expect(startDeepCheck).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(getCheckRun).toHaveBeenLastCalledWith(HSA, "run-2"));
     await waitFor(() => expect(screen.queryByText("Kiểm tra kỹ không hoàn tất")).not.toBeInTheDocument());
-    expect(screen.getByText(/giới hạn xử lý 120 giây/)).toBeInTheDocument();
+    expect(screen.getByText(/12 trường hợp: 4 hợp lệ, 8 không hợp lệ, 0 chưa xác nhận được\./)).toBeInTheDocument();
   });
 
   it("không bắt đầu được lần chạy nền thì báo lỗi, không hỏi kết quả", async () => {
@@ -249,7 +249,7 @@ describe("Kiểm tra kỹ", () => {
     expect(startDeepCheck).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(getCheckRun).toHaveBeenLastCalledWith(HSA, "run-2"));
     await waitFor(() => expect(screen.queryByText("Kiểm tra kỹ không hoàn tất")).not.toBeInTheDocument());
-    expect(screen.getByText(/giới hạn xử lý 120 giây/)).toBeInTheDocument();
+    expect(screen.getByText(/12 trường hợp: 4 hợp lệ, 8 không hợp lệ, 0 chưa xác nhận được\./)).toBeInTheDocument();
   });
 
   it("xong rồi thì đổi tab ra vào không hỏi lại lần chạy đã kết thúc", async () => {
@@ -263,7 +263,7 @@ describe("Kiểm tra kỹ", () => {
 
     await startFromTopCard(user);
     await waitFor(() => expect(getCheckRun).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByText(/giới hạn xử lý 120 giây/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/12 trường hợp: 4 hợp lệ, 8 không hợp lệ, 0 chưa xác nhận được\./)).toBeInTheDocument());
 
     view.rerender(element(false));
     view.rerender(element(true));

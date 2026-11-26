@@ -14,7 +14,7 @@ import {
   TabsTrigger,
   type TableCards,
 } from "@thi360/ui";
-import { ArrowRight, CircleCheck, CircleX } from "lucide-react";
+import { ArrowRight, CircleCheck, CircleX, Eye } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Fragment, useId, useMemo, useState } from "react";
@@ -35,19 +35,21 @@ import { findExamQuotaForIssue } from "../exam-overview";
 import { useExamStructure } from "../queries";
 import type { CheckIssue, ExamCheckResult } from "../review-types";
 import type { ExamDetail, ExamPart, ExamQuota, ExamSectionState, StructureCombination } from "../types";
-import { examTabHref } from "../editor-tabs";
+import { examTabHref, withFromReview } from "../editor-tabs";
 import { ExamQuotaDeviationHint, ExamQuotaScopePrefix } from "./exam-quota-deviation";
-import { listingErrorCount } from "./exam-review-listing";
+import { listingErrorCount, listingFieldHref, listingWarningCount } from "./exam-review-listing";
 import { ExamName, labelBeforeName, richNodes, useIssueNode, useLookup } from "./exam-review-shared";
 import { SECTION_STATE_TONES } from "./exam-structure-list";
 
 export interface ExamReviewFindingsProps {
   exam: ExamDetail;
   result: ExamCheckResult;
+  onPreview?: (pathId: string | null) => void;
 }
 
-export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
+export function ExamReviewFindings({ exam, result, onPreview }: ExamReviewFindingsProps) {
   const t = useTranslations("exams.review.findings");
+  const tReview = useTranslations("exams.review");
   const tListing = useTranslations("exams.review.listing");
   const [grouping, setGrouping] = useState<IssueGrouping>("subject");
   const structure = useExamStructure(exam.id);
@@ -56,9 +58,27 @@ export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
   const states = result.sectionStates ?? null;
   const checked = states?.filter((item) => item.state === "CHECKED").length ?? 0;
   const listingErrors = listingErrorCount(result.listingCheck);
+  const listingWarnings = listingWarningCount(result.listingCheck);
   // Máy chủ không trả nhóm Thông tin bán: chưa biết có lỗi chặn hay không, nên không báo "Công bố được".
   const listingUnchecked = result.listingCheck == null;
-  const blocked = errors.length > 0 || unconfirmed.length > 0 || listingErrors > 0 || listingUnchecked;
+  const stale = result.stale || exam.check.status === "NEEDS_RECHECK";
+  const totalErrors = errors.length + listingErrors;
+  const totalWarnings = warnings.length + listingWarnings;
+  const blocked = stale || totalErrors > 0 || unconfirmed.length > 0 || listingUnchecked;
+
+  const headline = stale
+    ? t("staleHeadline")
+    : errors.length > 0 && listingErrors > 0
+      ? t("bothBlocked", { structure: errors.length, listing: listingErrors })
+      : errors.length > 0
+        ? t("blocked", { count: errors.length })
+        : unconfirmed.length > 0
+          ? t("unconfirmedHeadline", { count: unconfirmed.length })
+          : listingErrors > 0
+            ? t("structureValidListingBlocked", { count: listingErrors })
+            : listingUnchecked
+              ? t("listingUnconfirmed")
+              : t("passed");
 
   return (
     <section aria-labelledby="review-findings-title" className="flex flex-col gap-4">
@@ -68,43 +88,41 @@ export function ExamReviewFindings({ exam, result }: ExamReviewFindingsProps) {
 
       <div
         role="status"
-        className={`flex items-start gap-3 rounded-lg border p-4 ${blocked ? "border-danger/30 bg-danger-bg" : "border-success/30 bg-success-bg"}`}
+        className={`flex flex-wrap items-start justify-between gap-3 rounded-lg border p-4 ${blocked ? "border-danger/30 bg-danger-bg" : "border-success/30 bg-success-bg"}`}
       >
-        {blocked ? (
-          <CircleX aria-hidden className="mt-0.5 size-5 shrink-0 text-danger" />
-        ) : (
-          <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-success" />
-        )}
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <p className="font-semibold text-text">
-            {errors.length > 0
-              ? t("blocked", { count: errors.length })
-              : unconfirmed.length > 0
-                ? t("unconfirmedHeadline", { count: unconfirmed.length })
-                : listingErrors > 0
-                  ? t("listingBlocked", { count: listingErrors })
-                  : listingUnchecked
-                    ? t("listingUnconfirmed")
-                    : t("passed")}
-          </p>
-          <p className="text-body text-text-secondary">
-            {warnings.length > 0 ? t("warningsNote", { count: warnings.length }) : t("noWarnings")}
-            {issues.length > 0 && ` ${t("openHint")}`}
-            {listingErrors > 0 && errors.length === 0 && (
-              <>
-                {" "}
-                <Link href={examTabHref(exam.id, "listing")} className="rounded-sm font-medium text-primary-text hover:underline">
-                  {tListing("edit")}
-                </Link>
-              </>
-            )}
-          </p>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          {blocked ? (
+            <CircleX aria-hidden className="mt-0.5 size-5 shrink-0 text-danger" />
+          ) : (
+            <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-success" />
+          )}
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <p className="font-semibold text-text">{headline}</p>
+            <p className="text-body text-text-secondary">
+              {totalWarnings > 0 ? t("warningsNote", { count: totalWarnings }) : t("noWarnings")}
+              {issues.length > 0 && ` ${t("openHint")}`}
+              {listingErrors > 0 && (
+                <>
+                  {" "}
+                  <Link href={listingFieldHref(exam.id)} className="rounded-sm font-medium text-primary-text hover:underline">
+                    {tListing("edit")}
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
         </div>
+        {onPreview && (
+          <Button type="button" variant="outline" size="sm" onClick={() => onPreview(null)}>
+            <Eye aria-hidden />
+            {tReview("previewButton")}
+          </Button>
+        )}
       </div>
 
       <dl aria-label={t("countersLabel")} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Counter label={t("counters.errors")} value={String(errors.length)} tone={errors.length > 0 ? "danger" : null} />
-        <Counter label={t("counters.warnings")} value={String(warnings.length)} tone={warnings.length > 0 ? "warning" : null} />
+        <Counter label={t("counters.errors")} value={String(totalErrors)} tone={totalErrors > 0 ? "danger" : null} />
+        <Counter label={t("counters.warnings")} value={String(totalWarnings)} tone={totalWarnings > 0 ? "warning" : null} />
         <Counter
           label={t("counters.unconfirmed")}
           value={String(unconfirmed.length)}
@@ -268,7 +286,9 @@ function IssueRow({
   const effectiveParts = parts && parts.length > 0 ? parts : exam.parts;
   const ruleHref = issueRuleHref(exam.id, issue);
   const quotaHref = issueQuotaHref(exam.id, issue, quotas);
-  const href = ruleHref ?? quotaHref ?? issueStructureHref(exam.id, issue);
+  const yearsHref = issue.code === "YEARS_UNCONFIRMED" ? `${examTabHref(exam.id, "general")}?field=yearsConfirmed` : null;
+  const rawHref = yearsHref ?? ruleHref ?? quotaHref ?? issueStructureHref(exam.id, issue);
+  const href = rawHref ? withFromReview(rawHref) : null;
   const where = findBlockContext(exam, issue.blockId);
   const partName = issue.partName ?? where?.part.name ?? exam.parts.find((part) => part.id === issue.partId)?.name ?? null;
   const blockName = issue.blockName ?? where?.block.name ?? null;

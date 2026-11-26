@@ -775,7 +775,10 @@ describe("sinh thử không được", () => {
     await user.click(await screen.findByRole("button", { name: "Sinh đề xem trước" }));
 
     expect(await screen.findByText(/Môn .+ chưa hoàn tất cấu hình\./)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Đến dòng ma trận/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/structure?section=sec-math`);
+    expect(screen.getByRole("link", { name: /Đến dòng ma trận/ })).toHaveAttribute(
+      "href",
+      `/exams/${EXAM_ID}/structure?section=sec-math&from=review`,
+    );
   });
 
   it("DISPLAY_SEGMENT_MISMATCH: hiện trong danh sách lỗi với điểm thập phân, không in mã phân đoạn, và mở đúng phần", async () => {
@@ -809,7 +812,10 @@ describe("sinh thử không được", () => {
 
     expect(await screen.findByText("Part 1: một phân đoạn có 10,25 điểm trong khi khai báo 12,5 điểm.")).toBeInTheDocument();
     expect(screen.queryByText(/SEG_RAW_CODE/)).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Đến dòng ma trận/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/structure?part=part-1`);
+    expect(screen.getByRole("link", { name: /Đến dòng ma trận/ })).toHaveAttribute(
+      "href",
+      `/exams/${EXAM_ID}/structure?part=part-1&from=review`,
+    );
   });
 });
 

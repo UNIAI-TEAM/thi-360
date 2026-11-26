@@ -441,19 +441,33 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
                 block("g1", "SINGLE_CHOICE", 4), block("g2", "SINGLE_CHOICE", 2))).andExpect(status().isOk());
     }
 
-    // ---- Q4: the rules are an API boundary of the HSA kind, not only a UI rollout boundary --------------------
+    // ---- Q4 + UNI-2839 / UNI-2840: MAPID rules are allowed for HSA, QDA, and BCA, rejected for other exam kinds ----
 
     @Test
-    void aKindOtherThanHsaCannotSaveAMapidMode() throws Exception {
+    void qdaAndBcaCanSaveMapidModeWhileOtherKindsCannot() throws Exception {
         arrange();
-        UUID bca = examRow("bca");
         String section = section(3, "MATRIX", "[" + rule("present", "PRESENT", null, a()) + "]",
                 block("g1", "SINGLE_CHOICE", 3));
-        putStructure(bca, section).andExpect(status().isUnprocessableEntity());
-        assertThat(structure(bca).path("parts")).isEmpty();
+        for (String supported : List.of("qda", "bca")) {
+            UUID exam = examRow(supported);
+            putStructure(exam, section).andExpect(status().isOk());
+            assertThat(structure(exam).path("parts").get(0).path("sections").get(0).path("mapidMode").asText())
+                    .isEqualTo("MATRIX");
+        }
+        // Non-matrix subjects (VAN, ANH — e.g. BCA:VAN essay) reject mapidMode even on supported kinds.
+        for (String disallowedSubject : List.of("VAN", "ANH")) {
+            UUID bca = examRow("bca");
+            String disallowed = "{\"id\":\"section\",\"subjectCode\":\"" + disallowedSubject
+                    + "\",\"questionCount\":3,\"mapidMode\":\"MATRIX\",\"mapidRules\":["
+                    + rule("present", "PRESENT", null, a()) + "],\"blocks\":[" + block("g1", "SINGLE_CHOICE", 3) + "]}";
+            putStructure(bca, disallowed).andExpect(status().isUnprocessableEntity());
+        }
+        UUID vact = examRow("vact");
+        putStructure(vact, section).andExpect(status().isUnprocessableEntity());
+        assertThat(structure(vact).path("parts")).isEmpty();
         String legacy = "{\"id\":\"section\",\"subjectCode\":\"" + subjectCode + "\",\"questionCount\":3,\"blocks\":["
                 + block("g1", "SINGLE_CHOICE", 3) + "]}";
-        putStructure(bca, legacy).andExpect(status().isOk());
+        putStructure(vact, legacy).andExpect(status().isOk());
     }
 
     // ---- rule node references are validated like legacy scopes (review R1-8) ----------------------------------

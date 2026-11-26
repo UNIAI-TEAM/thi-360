@@ -24,6 +24,7 @@ import {
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
+test.use({ actionTimeout: 30_000, navigationTimeout: 45_000 });
 
 /**
  * Nghiệm thu bổ sung H-SCA/V-SAT (QA addendum mục 7, H49): V-SAT Ngữ văn. Mẫu có Phần I-III (20 câu, 62 lệnh, 120 điểm) và
@@ -94,7 +95,7 @@ test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Vi
     expect(issue.partName).toMatch(/Viết/);
   }
   expect(collectIssues(scale).map((issue) => issue.code)).not.toContain("POINTS_TOTAL_MISMATCH");
-  await expect(page).toHaveURL(/\/exams\/[^/]+\/structure/);
+  await expect(page).toHaveURL(/\/exams\/[^/]+\/review/);
   await expect(page.getByText(/Chênh 30 điểm, đúng bằng điểm của phần đã lược/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
 
   // Phần Viết không bật lại được: công tắc "Tạm bỏ qua" bật sẵn, tắt và có lý do đi kèm (R3-09).

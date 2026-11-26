@@ -8,7 +8,6 @@ import { ExamStructureView } from "../components/exam-structure-view";
 import { defaultSelection } from "../components/exam-structure-draft";
 import { ExamEditorActionsSlot } from "../components/exam-editor-actions";
 import type { ExamPart, ExamSection } from "../types";
-import checkHsa from "./fixtures/check-hsa-f-001.json";
 import { examFixture, ExamsBackend } from "./fake-exams-backend";
 
 // Danh mục là dữ liệu của lane Nội dung; ở nhánh thật chưa có client, dùng danh mục mẫu.
@@ -173,6 +172,65 @@ describe("Khung bước 2: vùng danh sách", () => {
     expect(screen.queryByRole("button", { name: /QD0/ })).not.toBeInTheDocument();
   });
 
+  it("UNI-1728 / UNI-2837: BCA hiển thị mã tổ hợp CA1..CA4 đúng thứ tự kể cả khi examCode là mã kỳ thi BCA", () => {
+    const coded = part("p-bca", {
+      codeSource: { source: "GLOBAL_LIST", branch: null },
+      subjectPool: [section("s-ly", "LY"), section("s-hoa", "HOA"), section("s-sinh", "SINH"), section("s-dia", "DIA")],
+    });
+    renderWithProviders(
+      <ExamStructureList
+        parts={[coded]}
+        combinations={[
+          { code: "CA1", examCode: "BCA", partId: "p-bca", subjectCodes: ["LY"], missingSubjects: [], nameVi: "CA1", nameEn: "CA1" },
+          { code: "CA2", examCode: "BCA", partId: "p-bca", subjectCodes: ["HOA"], missingSubjects: [], nameVi: "CA2", nameEn: "CA2" },
+          { code: "CA3", examCode: "BCA", partId: "p-bca", subjectCodes: ["SINH"], missingSubjects: [], nameVi: "CA3", nameEn: "CA3" },
+          { code: "CA4", examCode: "BCA", partId: "p-bca", subjectCodes: ["DIA"], missingSubjects: [], nameVi: "CA4", nameEn: "CA4" },
+        ]}
+        sectionStates={null}
+        selection={null}
+        issues={[]}
+        names={names}
+        onSelect={() => {}}
+      />,
+    );
+    const codeItems = screen.getAllByRole("listitem").filter((item) => /^CA[1-4]/.test(item.textContent ?? ""));
+    expect(codeItems.map((item) => item.textContent)).toEqual(["CA1LY", "CA2HOA", "CA3SINH", "CA4DIA"]);
+    expect(screen.queryByText("BCA")).not.toBeInTheDocument();
+  });
+
+  it("UNI-1730 / UNI-2838: QDA hiển thị mã tổ hợp QD01..QD05 kể cả khi examCode là mã kỳ thi QDA", () => {
+    const coded = part("p-qda", {
+      codeSource: { source: "GLOBAL_LIST", branch: null },
+      subjectPool: [section("s-ly", "LY"), section("s-hoa", "HOA"), section("s-sinh", "SINH"), section("s-su", "SU"), section("s-dia", "DIA"), section("s-anh", "ANH")],
+    });
+    renderWithProviders(
+      <ExamStructureList
+        parts={[coded]}
+        combinations={[
+          { code: "QD01", examCode: "QDA", partId: "p-qda", subjectCodes: ["LY", "HOA"], missingSubjects: [], nameVi: "QD01", nameEn: "QD01" },
+          { code: "QD02", examCode: "QDA", partId: "p-qda", subjectCodes: ["HOA", "SINH"], missingSubjects: [], nameVi: "QD02", nameEn: "QD02" },
+          { code: "QD03", examCode: "QDA", partId: "p-qda", subjectCodes: ["LY", "SINH"], missingSubjects: [], nameVi: "QD03", nameEn: "QD03" },
+          { code: "QD04", examCode: "QDA", partId: "p-qda", subjectCodes: ["SU", "DIA"], missingSubjects: [], nameVi: "QD04", nameEn: "QD04" },
+          { code: "QD05", examCode: "QDA", partId: "p-qda", subjectCodes: ["ANH"], missingSubjects: [], nameVi: "QD05", nameEn: "QD05" },
+        ]}
+        sectionStates={null}
+        selection={null}
+        issues={[]}
+        names={names}
+        onSelect={() => {}}
+      />,
+    );
+    const codeItems = screen.getAllByRole("listitem").filter((item) => /^QD0[1-5]/.test(item.textContent ?? ""));
+    expect(codeItems.map((item) => item.textContent)).toEqual([
+      "QD01LY – HOA",
+      "QD02HOA – SINH",
+      "QD03LY – SINH",
+      "QD04SU – DIA",
+      "QD05ANH",
+    ]);
+    expect(screen.queryByText("QDA")).not.toBeInTheDocument();
+  });
+
   it("HSA Khoa học: 'Môn tiếp theo' sang môn kế, 'Về tổng quan' mở tổng quan có nút 'Thiết lập' cho 5 môn", async () => {
     const user = userEvent.setup();
     openStructure(HSA, "?section=sec-sci-1-chemistry");
@@ -302,64 +360,71 @@ describe("Khung bước 2: vùng tổng hợp (R-04)", () => {
     await user.type(choose, "9");
     const heading = await screen.findByRole("heading", { name: /Lỗi cần xử lý \([1-9]/ });
     const issues = heading.closest("section")!;
-    await user.click(within(issues).getAllByRole("button", { name: "Đến chỗ sửa" })[0]!);
+    await user.click(within(issues).getAllByRole("button", { name: "Đến vị trí cần sửa" })[0]!);
     // Lỗi của chính phần đang sửa: ở lại phần đó, không hỏi chuyển.
     expect(window.location.search).toBe("?part=part-49");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 
-describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu (R-05)", () => {
-  async function makeDirty() {
+describe("Khung bước 2: giữ nháp khi đổi mục và hộp thoại ba nút khi rời bước (UNI-1720)", () => {
+  async function makeDirtyAndLeave() {
     const user = userEvent.setup();
     openStructure(QDA, "?part=part-42");
     const points = await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ });
     await user.type(points, "50");
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
-    const nav = await list();
-    await user.click(within(nav).getByRole("button", { name: /Phần 2 · Ngữ văn/ }));
+    await user.click(await headerEditLink());
     const dialog = await screen.findByRole("dialog", { name: dialogName });
-    return { user, nav, dialog };
+    return { user, dialog };
   }
 
-  it("có ba nút: Ở lại, Bỏ thay đổi, Lưu và chuyển", async () => {
-    const { dialog } = await makeDirty();
+  it("đổi giữa các phần/môn trong bước 2 không hỏi và giữ nguyên thay đổi chưa lưu", async () => {
+    const user = userEvent.setup();
+    openStructure(QDA, "?part=part-42");
+    const points = await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ });
+    await user.type(points, "50");
+    const nav = await list();
+    await user.click(within(nav).getByRole("button", { name: /Phần 2 · Ngữ văn/ }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(window.location.search).toContain("part=part-38");
+    await user.click(within(nav).getByRole("button", { name: /Phần 1/ }));
+    expect(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("50");
+  });
+
+  it("có ba nút: Ở lại, Bỏ thay đổi và chuyển, Lưu và chuyển", async () => {
+    const { dialog } = await makeDirtyAndLeave();
     expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual(
-      expect.arrayContaining(["Ở lại", "Bỏ thay đổi", "Lưu và chuyển"]),
+      expect.arrayContaining(["Ở lại", "Bỏ thay đổi và chuyển", "Lưu và chuyển"]),
     );
   });
 
   it("tên mục đang mở ở tiêu đề, đích đến ở câu đầu, danh sách ghi thay đổi", async () => {
-    const { dialog } = await makeDirty();
-    expect(within(dialog).getByText("Bạn đang chuyển sang Phần 2 · Ngữ văn. Còn thay đổi chưa lưu:")).toBeInTheDocument();
+    const { dialog } = await makeDirtyAndLeave();
+    expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
     expect(within(dialog).getByTestId("structure-leave-changes")).toHaveTextContent("Phần 1 · Toán học: điểm tối đa chưa đặt → 50.");
   });
 
   it("Ở lại: đóng hộp thoại, vẫn ở mục cũ và giữ giá trị đã sửa", async () => {
-    const { user, dialog } = await makeDirty();
+    const { user, dialog } = await makeDirtyAndLeave();
     await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(window.location.search).toContain("part=part-42");
     expect(screen.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("50");
   });
 
-  it("Bỏ thay đổi: về giá trị đã lưu rồi chuyển sang mục mới, không gọi PUT", async () => {
-    const { user, nav, dialog } = await makeDirty();
-    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(window.location.search).toContain("part=part-38");
+  it("Bỏ thay đổi và chuyển: rời trang, không gọi PUT", async () => {
+    const { user, dialog } = await makeDirtyAndLeave();
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi và chuyển" }));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
-    // Về lại Phần 1 (không còn thay đổi chưa lưu nên không hỏi): ô điểm về giá trị đã lưu.
-    await user.click(within(nav).getByRole("button", { name: /Phần 1/ }));
-    expect(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("Lưu và chuyển: lưu bằng PUT rồi chuyển sang mục mới", async () => {
-    const { user, dialog } = await makeDirty();
+  it("Lưu và chuyển: lưu bằng PUT rồi chuyển sang trang đích", async () => {
+    const { user, dialog } = await makeDirtyAndLeave();
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
     await waitFor(() => expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50));
-    await waitFor(() => expect(window.location.search).toContain("part=part-38"));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -367,7 +432,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     backend = new ExamsBackend();
     backend.server.on("PUT", api(QDA, "structure"), { status: 422, body: { code: "EXAM_STRUCTURE_INVALID", message: "x" } });
     backend.install();
-    const { user, dialog } = await makeDirty();
+    const { user, dialog } = await makeDirtyAndLeave();
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
     expect(await within(dialog).findByRole("alert")).toBeInTheDocument();
     expect(window.location.search).toContain("part=part-42");
@@ -376,20 +441,7 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     expect(screen.getByRole("textbox", { name: /Điểm tối đa của phần/ })).toHaveValue("50");
   });
 
-  it("quay lại bước 1 ('Sửa thông tin tổng quan') cũng hỏi bằng hộp thoại ba nút; Bỏ thay đổi mới rời trang", async () => {
-    const user = userEvent.setup();
-    openStructure(QDA, "?part=part-42");
-    await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(await headerEditLink());
-    const dialog = await screen.findByRole("dialog", { name: dialogName });
-    expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
-    expect(routerMock.push).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
-    expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
-  });
-
-  it("rời Cấu trúc sang tab Thông tin bán: hộp thoại gọi đúng tên tab (không rỗng) và 'Bỏ thay đổi' mới chuyển tới /listing", async () => {
+  it("rời Cấu trúc sang tab 3. Thông tin bán: hộp thoại gọi đúng tên tab và 'Bỏ thay đổi và chuyển' chuyển tới /listing", async () => {
     const user = userEvent.setup();
     window.history.replaceState(null, "", `/exams/${QDA}/structure?part=part-42`);
     renderWithProviders(
@@ -401,13 +453,13 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
     await user.click(screen.getByRole("link", { name: "tab-listing" }));
     const dialog = await screen.findByRole("dialog", { name: dialogName });
-    expect(within(dialog).getByText(/Bạn đang chuyển sang tab Thông tin bán\./)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Bạn đang chuyển sang tab 3\. Thông tin bán\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi và chuyển" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${QDA}/listing`));
   });
 
-  it("rời Cấu trúc sang tab Thông tin chung: hộp thoại gọi destination.general và 'Bỏ thay đổi' mới chuyển tới /exams/[id]", async () => {
+  it("rời Cấu trúc sang tab Thông tin chung: hộp thoại gọi destination.general và 'Bỏ thay đổi và chuyển' chuyển tới /exams/[id]", async () => {
     const user = userEvent.setup();
     window.history.replaceState(null, "", `/exams/${QDA}/structure?part=part-42`);
     renderWithProviders(
@@ -421,26 +473,14 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
     const dialog = await screen.findByRole("dialog", { name: dialogName });
     expect(within(dialog).getByText(/Bạn đang quay lại Thông tin chung\./)).toBeInTheDocument();
     expect(routerMock.push).not.toHaveBeenCalled();
-    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }));
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi và chuyển" }));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
-  });
-
-  it("rời trang bằng 'Lưu và chuyển': lưu xong mới chuyển", async () => {
-    const user = userEvent.setup();
-    openStructure(QDA, "?part=part-42");
-    await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(await headerEditLink());
-    const dialog = await screen.findByRole("dialog", { name: dialogName });
-    await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "general")));
-    expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
   });
 
   it("đổi nhóm trong cùng môn không hỏi", async () => {
     const user = userEvent.setup();
     openStructure(QDA, "?section=sec-41");
     await screen.findByRole("navigation", { name: "Cấu trúc" });
-    // Làm bản nháp bẩn tại môn đang mở rồi mở nhóm khác của cùng môn: cùng phạm vi nên không hỏi (R-05).
     await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
     await user.click(await screen.findByRole("button", { name: "Mở nhóm Điền đáp án" }));
@@ -461,59 +501,36 @@ describe("Khung bước 2: hộp thoại ba nút khi còn thay đổi chưa lưu
   });
 });
 
-describe("Khung bước 2: nút kiểm tra", () => {
+describe("Khung bước 2: kiểm tra cấu trúc và lưu nháp (UNI-1720)", () => {
   const checkPath = (id: string) => api(id, "check");
-  const lastBody = (id: string) => backend.server.calls("POST", checkPath(id)).at(-1)?.body;
 
-  it("'Kiểm tra toàn bài' ở đầu trang gửi phạm vi EXAM và hiện kết quả ở vùng (d)", async () => {
+  it("'Kiểm tra cấu trúc' chạy tại chỗ không gọi PUT hay POST /check và báo Cấu trúc hợp lệ", async () => {
     const user = userEvent.setup();
     openStructure(QDA);
-    await user.click(await screen.findByRole("button", { name: "Kiểm tra toàn bài" }));
-    await waitFor(() => expect(lastBody(QDA)).toEqual({ scope: "EXAM" }));
-    expect(await screen.findByTestId("structure-check-result")).toHaveTextContent("Đạt");
+    await user.click(await screen.findByRole("button", { name: "Kiểm tra cấu trúc" }));
+    expect(await screen.findByTestId("structure-quick-check-result")).toHaveTextContent("Cấu trúc hợp lệ");
+    expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(0);
+    expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
   });
 
-  it("'Kiểm tra môn' ở vùng (c) gửi phạm vi SECTION của môn đang mở; phần thì gửi PART", async () => {
+  it("'Tiếp tục → Thông tin bán': bản sạch sang thẳng bước 3 không gọi PUT; bản bẩn lưu 1 lần rồi sang bước 3", async () => {
     const user = userEvent.setup();
-    openStructure(QDA, "?section=sec-41");
-    await user.click(await screen.findByRole("button", { name: "Kiểm tra môn" }));
-    await waitFor(() => expect(lastBody(QDA)).toEqual({ scope: "SECTION", sectionId: "sec-41" }));
-    const nav = await list();
-    await user.click(within(nav).getByRole("button", { name: /Phần 1/ }));
-    await user.click(await screen.findByRole("button", { name: "Kiểm tra phần" }));
-    await waitFor(() => expect(lastBody(QDA)).toEqual({ scope: "PART", partId: "part-42" }));
-  });
+    const first = openStructure(QDA);
+    await user.click(await screen.findByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "listing"));
+    expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
+    first.unmount();
 
-  it("'Tiếp tục': kiểm tra cả bài, không lỗi thì sang tab Kiểm tra", async () => {
-    const user = userEvent.setup();
-    openStructure(QDA);
-    await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
-    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "review")));
-    expect(lastBody(QDA)).toEqual({ scope: "EXAM" });
-  });
-
-  it("'Tiếp tục': có lỗi thì ở lại và dẫn tới lỗi đầu tiên, lỗi và cảnh báo hiện riêng", async () => {
-    const user = userEvent.setup();
-    backend.checkReplies.set(HSA, [{ status: 200, body: checkHsa }]);
-    openStructure(HSA);
-    await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
-    await waitFor(() => expect(window.location.search).toContain("section=sec-sci-1-chemistry"));
-    expect(routerMock.push).not.toHaveBeenCalled();
-    const result = await screen.findByTestId("structure-check-result");
-    expect(within(result).getByTestId("structure-check-errors")).toBeInTheDocument();
-  });
-
-  it("còn thay đổi chưa lưu: lưu trước rồi mới kiểm tra", async () => {
-    const user = userEvent.setup();
+    routerMock.push.mockReset();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
-    await waitFor(() => expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(1));
-    expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await waitFor(() => expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "listing")));
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
   });
 
-  it("nút thao tác nằm ở thanh công cụ đầu khung Master-Detail, 'Kiểm tra môn' nằm ở đầu vùng chi tiết", async () => {
+  it("nút thao tác nằm ở thanh công cụ đầu khung Master-Detail", async () => {
     const titleRow = document.createElement("div");
     document.body.append(titleRow);
     window.history.replaceState(null, "", `/exams/${QDA}/structure?section=sec-41`);
@@ -524,31 +541,28 @@ describe("Khung bước 2: nút kiểm tra", () => {
     );
     await screen.findByRole("navigation", { name: "Cấu trúc" });
     const toolbar = screen.getByTestId("structure-toolbar");
-    for (const name of ["Lưu", "Kiểm tra toàn bài", "Tiếp tục"]) {
+    for (const name of ["Quay lại", "Lưu nháp và thoát", "Kiểm tra cấu trúc", "Tiếp tục → Thông tin bán"]) {
       expect(within(toolbar).getByRole("button", { name })).toBeInTheDocument();
       expect(within(titleRow).queryByRole("button", { name })).not.toBeInTheDocument();
     }
     expect(within(titleRow).queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Tổng hợp cấu trúc")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Sửa thông tin tổng quan" })).not.toBeInTheDocument();
-    const detailTitle = await screen.findByRole("heading", { level: 2, name: /Toán/ });
-    expect(detailTitle.parentElement!.parentElement!).toContainElement(screen.getByRole("button", { name: "Kiểm tra môn" }));
     titleRow.remove();
   });
-  it("PUT lưu trước chưa xong thì các nút kiểm tra khóa: click đúp chỉ gửi một PUT", async () => {
+
+  it("PUT lưu chưa xong thì các nút lưu khóa: click đúp chỉ gửi một PUT", async () => {
     const user = userEvent.setup();
     backend.server.hold("PUT", api(QDA, "structure"));
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    const checkAll = await screen.findByRole("button", { name: "Kiểm tra toàn bài" });
-    await user.click(checkAll);
-    // PUT đầu đã ghi nhận nhưng phản hồi còn treo; click tiếp không được phát thêm PUT (cùng expectedRevision sẽ 412).
+    const nextBtn = await screen.findByRole("button", { name: "Tiếp tục → Thông tin bán" });
+    await user.click(nextBtn);
     await waitFor(() => expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1));
-    await user.click(checkAll);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await user.click(nextBtn);
+    await user.click(screen.getByRole("button", { name: "Lưu nháp và thoát" }));
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1);
     backend.server.release("PUT", api(QDA, "structure"));
-    await waitFor(() => expect(backend.server.calls("POST", checkPath(QDA))).toHaveLength(1));
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "listing")));
   });
 });
 

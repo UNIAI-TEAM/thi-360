@@ -178,12 +178,6 @@ async function previewExam(admin: AdminApi, id: string, seed: number): Promise<P
   return (await res.json()) as PreviewResultLite;
 }
 
-async function runExamCheck(admin: AdminApi, id: string): Promise<Record<string, unknown>> {
-  const res = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${id}/check`, { headers: admin.headers, data: {} });
-  expect(res.status(), await res.text()).toBe(200);
-  return (await res.json()) as Record<string, unknown>;
-}
-
 /** Đọc từ đề thử: số câu mang MAPID X (theo mã câu của kịch bản) và mã bộ của nhóm Chùm cuối. */
 function readPaper(result: PreviewResultLite, bank: Bank): { carriers: number; setCode: string } {
   expect(result.status, result.reason ?? "").toBe("GENERATED");
@@ -226,7 +220,14 @@ async function selectScope(page: Page, dialog: Locator, optionPattern: RegExp) {
 }
 
 async function saveStructure(page: Page) {
-  await page.getByRole("button", { name: "Lưu" }).click();
+  const returnUrl = page.url();
+  const [response] = await Promise.all([
+    page.waitForResponse((res) => /\/exams\/[^/]+\/structure$/.test(res.url()) && res.request().method() === "PUT", { timeout: 60_000 }),
+    page.getByRole("button", { name: /^(Tiếp tục → Thông tin bán|Lưu và quay lại kiểm tra)$/ }).click(),
+  ]);
+  expect(response.status(), await response.text()).toBe(200);
+  await page.waitForURL(/\/exams\/[^/]+\/(listing|review)/, { timeout: 60_000 });
+  await page.goto(returnUrl);
   await expect(page.getByText("Có thay đổi chưa lưu")).not.toBeVisible({ timeout: 60_000 });
 }
 
@@ -348,13 +349,20 @@ test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi 
   await page.reload();
   await expect(page.getByTestId("mapid-rules-table").getByRole("row")).toHaveCount(4);
 
-  // Kiểm tra môn chạy trên bản đã lưu (màn tự lưu trước khi kiểm tra).
-  await page.getByRole("button", { name: "Kiểm tra môn" }).click();
+  // Kiểm tra cấu hình ở Bước 4 chạy trên bản đã lưu và báo lỗi MAPID_RULE_CONFLICT kèm liên kết "Đi tới quy tắc".
+  await page.goto(`${ADMIN_URL}/exams/${id}/review`);
+  const runCheckBtn = page.getByRole("button", { name: /^Kiểm tra( cấu hình| lại)$/ }).first();
+  await expect(runCheckBtn).toBeVisible({ timeout: 60_000 });
+  const [checkResponse] = await Promise.all([
+    page.waitForResponse((res) => res.url().endsWith(`/exams/${id}/check`) && res.request().method() === "POST", { timeout: 180_000 }),
+    runCheckBtn.click(),
+  ]);
+  expect(checkResponse.status(), await checkResponse.text()).toBe(200);
   const conflictLine = page.getByText(/Quy tắc .*xung đột|xung đột/).first();
   await expect(conflictLine, "kết quả kiểm tra phải nêu xung đột MAPID").toBeVisible({ timeout: 180_000 });
-  await expect(page.getByText(/cùng phạm vi nhưng một quy tắc đòi đúng|đòi đúng/)).toBeVisible();
+  await expect(page.getByText(/cùng phạm vi nhưng một quy tắc đòi đúng|đòi đúng/).first()).toBeVisible();
 
-  const check = await runExamCheck(admin, id);
+  const check = (await checkResponse.json()) as Record<string, unknown>;
   const groups = (check.groups ?? []) as Array<{ issues?: Array<Record<string, unknown>> }>;
   const conflicts = groups
     .flatMap((group) => group.issues ?? [])
@@ -365,9 +373,10 @@ test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi 
 
   // "Đi tới quy tắc" chọn lại môn và cuộn/đưa tiêu điểm tới đúng dòng quy tắc (AC-9 hiển thị).
   const firstRuleId = String(conflicts[0]!.ruleId);
-  await page.getByRole("button", { name: /Đi tới quy tắc/ }).first().click();
+  await page.getByRole("link", { name: /Đi tới quy tắc/ }).first().click();
+  await page.waitForURL(/\/exams\/[^/]+\/structure/, { timeout: 60_000 });
   const row = page.getByTestId(`mapid-rule-row-${firstRuleId}`);
-  await expect(row).toBeVisible();
+  await expect(row).toBeVisible({ timeout: 60_000 });
   await expect(row).toBeFocused({ timeout: 15_000 });
 
   // Toàn bài: quy tắc tạm ngừng, ghi chú nêu số quy tắc.

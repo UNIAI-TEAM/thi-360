@@ -8,9 +8,15 @@ import { awaitsExpert } from "./reference-distribution";
 import type { BlockMatrix, ExamPart, ExamPartOption, ExamQuota, ExamSection, QuestionBlock, QuotaBasis, QuotaEnforcement, TopicQuota } from "./types";
 
 const HSA_EXAM_KIND = "HSA";
+const MAPID_RULE_EXAM_KINDS: ReadonlySet<string> = new Set(["HSA", "QDA", "BCA"]);
 
 export function isHsaExam(kind: string | null | undefined): boolean {
   return kind === HSA_EXAM_KIND;
+}
+
+/** Các kỳ thi dùng luồng quy tắc MAPID (HSA, QDA, BCA — UNI-1729 / UNI-1731). */
+export function supportsMapidRules(kind: string | null | undefined): boolean {
+  return kind != null && MAPID_RULE_EXAM_KINDS.has(kind);
 }
 
 /** Bài đang soạn có phải HSA không; `EnforcementControl` đọc để hiện mức cố định. Ngoài trình soạn cấu trúc: không. */

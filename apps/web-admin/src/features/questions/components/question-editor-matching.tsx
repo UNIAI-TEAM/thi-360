@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Checkbox, FormField, Input, Label, Select } from "@thi360/ui";
+import { questionHtmlText } from "@thi360/ui/rich-text";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useId, useRef } from "react";
@@ -51,10 +52,15 @@ export function MatchingEditor({ prefix }: { prefix: BodyPath }) {
   const used = new Set(leftValues.map((item) => item.rightId).filter(Boolean));
   const spare = rightValues.filter((item) => !used.has(item.id)).length;
 
-  const rightOptions = rightValues.map((item, index) => ({
-    value: item.id,
-    label: `${optionLetter(index)}. ${item.content.trim() || t("emptyOption")}`,
-  }));
+  const rightOptions = rightValues.map((item, index) => {
+    const plain = questionHtmlText(item.content.replace(/<\/(?:p|div|li|h[1-6]|blockquote)>|<br\s*\/?>/gi, " "))
+      .replace(/\s+/g, " ")
+      .trim();
+    return {
+      value: item.id,
+      label: `${optionLetter(index)}. ${plain || t("emptyOption")}`,
+    };
+  });
 
   /** Điểm của câu chia đều cho `count` cặp. */
   const reflowPoints = (count: number) => {

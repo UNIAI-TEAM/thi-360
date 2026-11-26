@@ -72,7 +72,7 @@ describe("Danh sách dòng: bảng dòng của HSA, QDA", () => {
     const toggle = await screen.findByRole("switch", { name: "Đảo thứ tự các chùm" });
     await user.click(toggle);
     expect(toggle).not.toBeChecked();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const block = sectionsOf(putCalls(server)[0]!.body)["sec-van"]!.blocks as Wire[];
     expect(block.find((item) => item.id === "van-5")).toMatchObject({ shuffleUnits: false, slots: expect.arrayContaining([expect.objectContaining({ index: 1 })]) });
@@ -254,7 +254,7 @@ describe("Danh sách dòng: ẩn khối lớp (R-11)", () => {
     ["VSAT", "DIA", true, {}],
     ["VSAT", "ANH", true, {}],
     ["THPTQG", "TOAN", false, {}],
-    ["QDA", "ANH", false, {}],
+    ["QDA", "ANH", true, {}],
     ["BCA", "VAN", false, {}],
   ];
 
@@ -281,7 +281,7 @@ describe("Danh sách dòng: ẩn khối lớp (R-11)", () => {
     const cell = within(reference).getAllByRole("textbox", { name: /Độ khó: .*số câu/ })[0]!;
     await user.clear(cell);
     await user.type(cell, "18");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = sectionsOf(putCalls(server)[0]!.body)["sec-x"]!.matrix as Wire;
     expect(saved.byGrade).toEqual([{ code: "GRADE_10", value: 5 }, { code: "GRADE_11", value: 15 }]);
@@ -344,7 +344,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     const name = screen.getByRole("textbox", { name: /Tên nhóm/ });
     await user.clear(name);
     await user.type(name, "Ten moi");
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(state.examQuotas[0]).toMatchObject({ basis: "PROMPT", enforcement: "REFERENCE" });
   });
@@ -358,7 +358,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     const difficulty = reference.querySelector<HTMLElement>('[data-reference-dimension="DIFFICULTY"]')!;
     await user.type(within(difficulty).getAllByRole("textbox", { name: /số câu/ })[0]!, "25");
     await user.click(within(difficulty).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ basis: "QUESTION", difficultyEnforcement: "REQUIRED" });
   });
@@ -374,7 +374,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     expect(within(difficulty).getByText("Chưa khai báo")).toBeInTheDocument();
     await user.type(within(difficulty).getAllByRole("textbox", { name: /số câu/ })[0]!, "10");
     await user.click(within(difficulty).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ difficultyEnforcement: "REQUIRED" });
     first.unmount();
@@ -391,7 +391,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     expect(within(combined).getByText("Chưa khai báo")).toBeInTheDocument();
     await user.type(within(combined).getAllByRole("textbox")[0]!, "10");
     await user.click(within(combined).getByRole("switch", { name: "Áp dụng khi sinh đề" }));
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
     expect(sectionsOf(putCalls(server2)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "COMBINED", gradeEnforcement: "REQUIRED", difficultyEnforcement: "REQUIRED" });
   });
@@ -415,7 +415,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     expect(within(difficulty).queryByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeNull();
     expect(within(difficulty).queryByRole("alert")).toBeNull();
     expect(within(ref).queryByText(/Tổng tỷ lệ 0%/)).toBeNull();
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({
       unit: "PERCENT",
@@ -442,7 +442,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     expect(within(combined).queryByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeNull();
     expect(within(combined).queryByRole("alert")).toBeNull();
     expect(within(vsatRef).queryByText(/Tổng tỷ lệ 0%/)).toBeNull();
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
     expect(sectionsOf(putCalls(server2)[0]!.body)["sec-toan"]!.matrix).toMatchObject({
       mode: "COMBINED",
@@ -462,11 +462,11 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     const cells = within(reference).getAllByRole("textbox", { name: /Độ khó: .*tỷ lệ/ });
     await user.type(cells[0]!, "90");
     expect(within(reference).getByText("Tổng tỷ lệ 90%, cần 100%")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     expect(putCalls(server)).toHaveLength(0);
     await user.clear(cells[0]!);
     await user.type(cells[0]!, "100");
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix as Wire;
     expect(saved.unit).toBe("PERCENT");
@@ -497,7 +497,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     await openCombined();
     await user.click(within(reference).getByRole("button", { name: "Xác nhận chuyển" }));
     expect(reference.querySelector("[data-reference-combined]")).not.toBeNull();
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "COMBINED" });
   });
@@ -527,7 +527,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     expect(within(reference).getByRole("heading", { name: "Xem trước: về riêng từng chiều" })).toBeInTheDocument();
     await user.click(within(reference).getByRole("button", { name: "Xác nhận chuyển" }));
     expect(reference.querySelector("[data-reference-combined]")).toBeNull();
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix).toMatchObject({ mode: "SEPARATE", byGrade: expect.arrayContaining([expect.objectContaining({ value: 15 })]) });
   });
@@ -542,7 +542,7 @@ describe("Danh sách dòng: phân bổ đối chiếu CR-3b", () => {
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });
     const reference = await openReference(user);
     await user.click(within(within(reference).getByRole("group", { name: "Đơn vị nhập" })).getByRole("radio", { name: "Tỷ lệ" }));
-    await user.click(screen.getByRole("button", { name: /^Lưu$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix).toMatchObject({ unit: "PERCENT", byGrade: [{ code: "GRADE_10", value: 100 }] });
   });

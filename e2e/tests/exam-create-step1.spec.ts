@@ -32,7 +32,7 @@ test("Tạo bài thi HSA Toàn bài ở bước 1 rồi vào bước 2", async (
   const code = `E2E-HSA-${RUN_ID}`.toUpperCase();
   await page.getByRole("textbox", { name: /Mã bài thi/ }).fill(code);
   await page.getByRole("textbox", { name: /Tên bài thi/ }).fill(`HSA Toàn bài ${RUN_ID}`);
-  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  await page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }).click();
 
   await page.waitForURL(/\/exams\/[^/]+\/structure$/);
   await expect(page.getByRole("main")).toBeVisible();

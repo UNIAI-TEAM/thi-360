@@ -43,12 +43,13 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(listed.toSorted()).toEqual(TABLE.map(([kind, subject]) => `${kind}:${subject}`).toSorted());
   });
 
-  it("cấu hình theo kỳ: nhập %, mức áp dụng, bảng kết hợp (R-1, R-8, R-9, R-10)", () => {
+  it("cấu hình theo kỳ: nhập %, mức áp dụng, bảng kết hợp (R-1, R-8, R-9, R-10, UNI-1729, UNI-1731)", () => {
     const at = (kind: string, subject: string) => subjectFormFor(kind, subject)!;
     expect(at("HSA", "TOAN")).toMatchObject({ percentEntry: "NONE", enforcement: "FIXED_REQUIRED", combinedMatrix: "NONE", mapidFlow: "HSA_RULES", setSource: false });
-    expect(at("QDA", "LY")).toMatchObject({ percentEntry: "NONE", enforcement: "DECLARED_REQUIRED", mapidFlow: "SCOPE_AND_QUOTA", setSource: true });
-    expect(at("BCA", "TOAN")).toMatchObject({ enforcement: "FIXED_REFERENCE", setSource: true });
-    expect(at("VACT", "TOAN")).toMatchObject({ percentEntry: "TWO_COLUMNS", enforcement: "REFERENCE_WITH_APPLY", gradeMixedColumn: true, flexibleSets: true });
+    expect(at("QDA", "LY")).toMatchObject({ percentEntry: "NONE", enforcement: "DECLARED_REQUIRED", mapidFlow: "HSA_RULES", setSource: false });
+    expect(at("BCA", "TOAN")).toMatchObject({ enforcement: "FIXED_REFERENCE", mapidFlow: "HSA_RULES", setSource: false });
+    expect(at("BCA", "SU")).toMatchObject({ enforcement: "FIXED_REFERENCE", mapidFlow: "HSA_RULES", setSource: true });
+    expect(at("VACT", "TOAN")).toMatchObject({ percentEntry: "TWO_COLUMNS", enforcement: "REFERENCE_WITH_APPLY", gradeMixedColumn: true, flexibleSets: true, mapidFlow: "SCOPE_AND_QUOTA", setSource: true });
     expect(at("VACT", "VIETNAMESE")).toMatchObject({ gradeOptional: true, flexibleSets: false, gradeMixedColumn: false });
     expect(at("VACT", "ANH")).toMatchObject({ form: "ROWS", percentEntry: "COUNT_OR_PERCENT" });
     expect(at("THPTQG", "LY").enforcement).toBe("DECLARED_REQUIRED");
@@ -65,15 +66,26 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(notices).toEqual(["THPTQG:VAN"]);
   });
 
-  it("ẩn khối lớp đúng bảng R-11, cả hai mã Kinh tế - Pháp luật", () => {
+  it("ẩn khối lớp đúng bảng R-11 + UNI-1722/1723/1724/1729/1731 (HSA/QDA Văn, Sử, Địa, Anh; BCA Sử, Địa, Anh trừ Văn), cả hai mã Kinh tế - Pháp luật", () => {
     const hidden = TABLE.filter(([kind, subject]) => subjectFormFor(kind, subject)!.hideGrade).map(([kind, subject]) => `${kind}:${subject}`);
     expect(hidden.toSorted()).toEqual(
       [
         "HSA:ANH",
+        "HSA:VAN",
+        "HSA:SU",
+        "HSA:DIA",
+        "QDA:ANH",
+        "QDA:VAN",
+        "QDA:SU",
+        "QDA:DIA",
+        "BCA:ANH",
+        "BCA:SU",
+        "BCA:DIA",
         ...["SP2E", "SPT", "THPTQG"].flatMap((kind) => ["SU", "DIA", "ECON_LAW", "ANH"].map((subject) => `${kind}:${subject}`)),
         "VSAT:DIA", "VSAT:ANH", "VSAT:VAN",
       ].toSorted(),
     );
+    expect(subjectFormFor("BCA", "VAN")!.hideGrade).toBe(false);
     expect(subjectFormFor("SPT", "GDKTPL")!.hideGrade).toBe(true);
     expect(subjectFormFor("SP2E", "GDKTPL")!.hideGrade).toBe(true);
   });

@@ -4859,7 +4859,8 @@
       },
       "loadErrorTitle": "Không tải được danh mục và mẫu cấu trúc",
       "loadErrorDescription": "Kiểm tra kết nối rồi thử lại.",
-      "retry": "Thử lại"
+      "retry": "Thử lại",
+      "saveAndReturnReview": "Lưu và quay lại kiểm tra"
     },
     "reload": {
       "listTitle": "Các phần sẽ được nạp lại ({count, number})",
@@ -4942,7 +4943,7 @@
         "over": "Vượt {count, number} câu",
         "under": "Thiếu {count, number} câu"
       },
-      "issueGo": "Đến chỗ sửa",
+      "issueGo": "Đến vị trí cần sửa",
       "newBlockName": "{subject} · Nhóm mới",
       "blockAdded": "Đã thêm nhóm {name}.",
       "blockRemoved": "Đã xóa nhóm {name}. Lưu để áp dụng.",
@@ -5018,7 +5019,7 @@
           "page": "Bạn đang rời trang soạn bài thi.",
           "tab": "Bạn đang chuyển sang tab {tab}."
         },
-        "discard": "Bỏ thay đổi",
+        "discard": "Bỏ thay đổi và chuyển",
         "saveAndGo": "Lưu và chuyển",
         "stay": "Ở lại",
         "title": "Lưu thay đổi của {name}?",
@@ -5547,7 +5548,11 @@
           "percentTotal": "tổng tỷ lệ {dimension} là {value}%, phải bằng 100%.",
           "allocationTotal": "{dimension} có {actual, number} câu, khối cần {expected, number} câu."
         },
-        "partPoints": "{part}: các khối có {actual} điểm, phần cần {expected} điểm."
+        "partPoints": "{part}: các khối có {actual} điểm, phần cần {expected} điểm.",
+        "blocksTotalOver": "{section} đang vượt {diff, number} câu",
+        "blocksTotalUnder": "{section} đang thiếu {diff, number} câu",
+        "sectionsTotalOver": "{part} đang vượt {diff, number} câu ({actual, number}/{expected, number} câu).",
+        "sectionsTotalUnder": "{part} đang thiếu {diff, number} câu ({actual, number}/{expected, number} câu)."
       },
       "yearsPending": "Năm cấu trúc ({structure}) khác năm ma trận ({matrix}) và chưa được xác nhận. Bài chưa công bố được cho tới khi xác nhận ở Thông tin chung.",
       "yearsLink": "Mở Thông tin chung",
@@ -5575,6 +5580,18 @@
           "ALL_OR_NOTHING": "Chọn đúng và đủ mọi đáp án đúng mới được điểm của câu.",
           "PARTIAL": "Được một phần điểm theo các đáp án chọn đúng, theo quy tắc lưu trên câu."
         }
+      },
+      "back": "Quay lại",
+      "saveDraftAndExit": "Lưu nháp và thoát",
+      "continueToListing": "Tiếp tục → Thông tin bán",
+      "saveAndReturnReview": "Lưu và quay lại kiểm tra",
+      "needsCompletionChip": "Cần hoàn thiện",
+      "savedNeedsCompletion": "Đã lưu bản nháp · Cấu trúc cần hoàn thiện.",
+      "quickCheck": {
+        "button": "Kiểm tra cấu trúc",
+        "valid": "Cấu trúc hợp lệ",
+        "invalidTitle": "Cấu trúc cần hoàn thiện ({count, number} vấn đề)",
+        "goToFix": "Đến vị trí cần sửa"
       }
     },
     "listing": {
@@ -5729,7 +5746,11 @@
         "errorPrefix": "Lỗi: ",
         "warningPrefix": "Cảnh báo: ",
         "toReview": "Xem ở tab Kiểm tra"
-      }
+      },
+      "back": "Quay lại",
+      "saveDraftAndExit": "Lưu nháp và thoát",
+      "continueToReview": "Tiếp tục → Kiểm tra và xem trước",
+      "saveAndReturnReview": "Lưu và quay lại kiểm tra"
     },
     "review": {
       "title": "Kiểm tra và xem trước",
@@ -5740,7 +5761,7 @@
       },
       "run": "Kiểm tra cấu hình",
       "rerun": "Kiểm tra lại",
-      "toPreview": "Sinh đề xem trước",
+      "toPreview": "Xem trước đề",
       "lastRun": "Kiểm tra lúc {time} trên nguồn câu hỏi hiện tại · mất {seconds, number} giây · giới hạn xử lý {limit, number} giây",
       "stale": "Nguồn câu hỏi hoặc cấu hình đã đổi sau lần kiểm tra này. Kiểm tra lại trước khi công bố.",
       "staleReason": {
@@ -5846,9 +5867,9 @@
       },
       "findings": {
         "affected": "Mã bị ảnh hưởng:",
-        "blocked": "Chưa công bố được: {count, number} lỗi chặn công bố.",
+        "blocked": "Cấu trúc có {count, number} lỗi · Chưa thể công bố",
         "codeGroup": "Mã {code}",
-        "listingBlocked": "Chưa công bố được: Thông tin bán có {count, number} lỗi.",
+        "listingBlocked": "Cấu trúc hợp lệ · Thông tin bán có {count, number} lỗi · Chưa thể công bố",
         "listingUnconfirmed": "Chưa kết luận được: chưa kiểm tra được Thông tin bán.",
         "counters": {
           "errors": "Lỗi",
@@ -5887,7 +5908,10 @@
         "unitsTitle": "Trạng thái từng môn",
         "warningsNote": "{count, number} cảnh báo không chặn công bố.",
         "warningsTitle": "Cảnh báo · không chặn công bố ({count, number})",
-        "wholeExam": "Cả bài"
+        "wholeExam": "Cả bài",
+        "staleHeadline": "Cần kiểm tra lại · Bản nháp hoặc nguồn câu đã thay đổi · Chưa thể công bố",
+        "structureValidListingBlocked": "Cấu trúc hợp lệ · Thông tin bán có {count, number} lỗi · Chưa thể công bố",
+        "bothBlocked": "Cấu trúc có {structure, number} lỗi · Thông tin bán có {listing, number} lỗi · Chưa thể công bố"
       },
       "listing": {
         "title": "Thông tin bán",
@@ -5932,7 +5956,9 @@
           "LISTING_DESCRIPTION_MISSING": "Chưa có mô tả.",
           "LISTING_COVER_MISSING": "Chưa có ảnh bìa; thẻ dùng ảnh mặc định. Không chặn công bố.",
           "UNKNOWN": "Thông tin bán chưa đủ điều kiện công bố."
-        }
+        },
+        "fixField": "Đến chỗ sửa",
+        "fixFieldAria": "Đến chỗ sửa {field}"
       },
       "manual": {
         "title": "Có câu chấm tay",
@@ -6082,10 +6108,16 @@
         "COMPETENCY_SHORTAGE": "Khối {block}: nguồn câu hỏi năng lực {competency} chưa đủ cho chỉ tiêu.",
         "ANSWER_TYPE_SHORTAGE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}: nguồn câu hỏi dạng {answerType} chưa đủ cho chỉ tiêu.",
         "SUBJECT_QUOTA_INFEASIBLE": "Môn {subject}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu cấp môn."
-      }
+      },
+      "publishFirst": "Công bố bài thi",
+      "publishUpdate": "Công bố bản cập nhật",
+      "previewButton": "Xem trước đề",
+      "backToListing": "Quay lại",
+      "needsRecheckChip": "Cần kiểm tra lại"
     },
     "versions": {
       "title": "Phiên bản và công bố",
+      "loading": "Đang tải danh sách phiên bản...",
       "errorTitle": "Không tải được phiên bản",
       "errorDescription": "Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại",
@@ -6240,11 +6272,11 @@
       "backToList": "Danh sách bài thi",
       "tabsLabel": "Các phần của bài thi",
       "tabs": {
-        "general": "Thông tin chung",
-        "structure": "Cấu trúc và ma trận",
-        "listing": "Thông tin bán",
-        "review": "Kiểm tra và xem trước",
-        "versions": "Phiên bản và công bố"
+        "general": "1. Thông tin chung",
+        "structure": "2. Cấu trúc và ma trận",
+        "listing": "3. Thông tin bán",
+        "review": "4. Kiểm tra, xem trước và công bố",
+        "versions": "Lịch sử phiên bản"
       },
       "structureSummaryLabel": "Tổng hợp cấu trúc",
       "printedQuestionsSuffix": "({printed} câu trên đề)",
@@ -6253,7 +6285,8 @@
       "errorDescription": "Kiểm tra kết nối rồi thử lại.",
       "retry": "Thử lại",
       "notFoundTitle": "Không tìm thấy bài thi",
-      "notFoundDescription": "Bài thi không tồn tại hoặc đã bị xóa."
+      "notFoundDescription": "Bài thi không tồn tại hoặc đã bị xóa.",
+      "versionsAction": "Lịch sử phiên bản"
     },
     "status": {
       "DRAFT": "Nháp",
@@ -6267,7 +6300,9 @@
       "VALID": "Hợp lệ",
       "INVALID": "Không hợp lệ",
       "NEEDS_RECHECK": "Cần kiểm tra lại",
-      "issues": "{count, number} vấn đề"
+      "issues": "{count, number} vấn đề",
+      "structureValid": "Cấu trúc hợp lệ",
+      "listingIssues": "Thông tin bán có {count, number} lỗi"
     },
     "kind": {
       "HSA": "HSA",
@@ -6841,7 +6876,9 @@
           "durationInvalid": "Thời lượng phải là số phút nguyên dương.",
           "pointsInvalid": "Điểm phải lớn hơn 0."
         }
-      }
+      },
+      "continueToStructure": "Tiếp tục → Cấu trúc và ma trận",
+      "saveDraftAndExit": "Lưu nháp và thoát"
     },
     "matrix": {
       "title": "Ma trận phân bổ",
@@ -6991,7 +7028,7 @@
         "pickHint": "Khớp ít nhất một MAPID đã chọn. Nếu cần bảo đảm từng chủ đề đều xuất hiện, hãy thêm một dòng riêng cho mỗi mã.",
         "pickHintSource": "Khớp ít nhất một MAPID đã chọn. Nếu có nhiều quy tắc chỉ lấy nguồn cùng áp dụng cho phạm vi này, câu hỏi phải thỏa mãn tất cả (nguồn hẹp lại).",
         "pickerDescription": "Quy tắc của {name}: chọn được Chương, Bài hoặc Kiến thức. Nút đã chọn khớp cả câu gắn nút con của nó.",
-        "save": "Lưu quy tắc",
+        "save": "Áp dụng",
         "scope": {
           "deletedNamed": "Nhóm «{name}» (đã xóa)",
           "deletedUnnamed": "Nhóm đã xóa — chọn lại phạm vi",
@@ -7910,6 +7947,16 @@
       "title": "Làm thử như học viên",
       "untimedNotice": "Không tính giờ · Không lưu lượt, không trừ quyền dùng",
       "versionBadge": "Bản công bố v{version}"
+    },
+    "draftLeave": {
+      "title": "Lưu thay đổi chưa lưu?",
+      "description": "Bạn muốn lưu thay đổi trước khi chuyển bước không?",
+      "destinationTab": "Bạn đang chuyển sang {tab}.",
+      "destinationPage": "Bạn đang rời trang soạn bài thi.",
+      "stay": "Ở lại",
+      "discard": "Bỏ thay đổi và chuyển",
+      "saveAndGo": "Lưu và chuyển",
+      "close": "Đóng"
     }
   },
   "grading": {
@@ -8860,9 +8907,12 @@
     "toolbar": {
       "bold": "Đậm",
       "bulletList": "Danh sách chấm",
+      "collapse": "Thu gọn ô nhập",
+      "expand": "Mở rộng ô nhập",
       "groupHistory": "Hoàn tác",
       "groupInsert": "Chèn",
       "groupText": "Văn bản",
+      "groupView": "Hiển thị",
       "italic": "Nghiêng",
       "label": "Định dạng nội dung",
       "orderedList": "Danh sách số",

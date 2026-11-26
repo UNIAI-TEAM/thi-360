@@ -39,7 +39,7 @@ describe("lưu cấu trúc, nhánh thật", () => {
     const duration = await screen.findByRole("textbox", { name: /Thời lượng \(phút\)/ });
     await user.clear(duration);
     await user.type(duration, "65");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     return { user };
   }
 
@@ -85,7 +85,7 @@ describe("lưu thông tin chung, nhánh thật", () => {
     const name = await screen.findByRole("textbox", { name: /Tên bài thi/ });
     await user.clear(name);
     await user.type(name, "HSA đề 1 (sửa)");
-    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
     return { name };
   }
 
@@ -140,7 +140,7 @@ describe("lưu thông tin chung, nhánh thật", () => {
     const code = await screen.findByRole("textbox", { name: /Mã bài thi/ });
     await user.clear(code);
     await user.type(code, "HSA-DUPLICATE");
-    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
     return { code };
   }
 

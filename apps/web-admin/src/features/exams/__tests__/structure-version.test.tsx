@@ -184,7 +184,7 @@ describe("Cấu trúc: phần thi", () => {
     const points = await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ });
     expect(points).toHaveValue("");
     await user.type(points, "50");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(backend.app("ex-qda-f-001")?.parts.find((part) => part.id === "part-42")?.maxPoints).toBe(50));
   });
 
@@ -195,7 +195,7 @@ describe("Cấu trúc: phần thi", () => {
     const points = await screen.findByRole("textbox", { name: "Điểm mỗi câu" });
     await user.clear(points);
     expect(screen.getByText(/Không bắt buộc\. Để trống thì câu nào cũng vào nguồn/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() =>
       expect(
         backend.app("ex-hsa-f-001")?.parts[0]?.sections[0]?.blocks.find((block) => block.id === blockId)?.requiredPointsPerQuestion,

@@ -128,7 +128,7 @@ describe("row-list-model: chiều ma trận của Phân bổ đối chiếu (R-8
     expect(enforcementModeOf(entryOf("HSA", "ANH"), reference, "GRADE")).toBe("FIXED_REFERENCE");
     expect(enforcementModeOf(entryOf("HSA", "ANH"), reference, "DIFFICULTY")).toBe("FIXED_REQUIRED");
     const hidden = (kind: string, subject: string) => !gradeVisible(entryOf(kind, subject));
-    expect([hidden("HSA", "ANH"), hidden("HSA", "VAN"), hidden("THPTQG", "ECON_LAW"), hidden("THPTQG", "TOAN"), hidden("VSAT", "DIA"), hidden("VSAT", "SU")]).toEqual([true, false, true, false, true, false]);
+    expect([hidden("HSA", "ANH"), hidden("HSA", "VAN"), hidden("QDA", "VAN"), hidden("THPTQG", "ECON_LAW"), hidden("THPTQG", "TOAN"), hidden("VSAT", "DIA"), hidden("VSAT", "SU")]).toEqual([true, true, true, true, false, true, false]);
   });
 
   it("setDimensionCell đặt lại difficultyEnforcement từ REQUIRED về REFERENCE khi xóa ô cuối trên REFERENCE_WITH_APPLY và giữ nguyên gradeEnforcement (R2-1)", () => {

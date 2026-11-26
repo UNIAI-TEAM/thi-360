@@ -2,6 +2,12 @@ export { cn } from "./lib/cn";
 export { focusRing, focusRingInset } from "./lib/styles";
 
 export { Badge } from "./components/badge";
+export {
+  BrandLogo,
+  BrandWordmark,
+  type BrandLogoProps,
+  type BrandWordmarkProps,
+} from "./components/brand-logo";
 export { Breadcrumb, type BreadcrumbItem, type BreadcrumbProps } from "./components/breadcrumb";
 export { Button, buttonVariants, type ButtonProps } from "./components/button";
 export { Card, type CardProps } from "./components/card";

@@ -160,15 +160,16 @@ test("R-2 lùi MD có thông báo, ghim hết phiên, tải lại về MT và gi
   await expect(notice).toBeVisible();
   await expect(page.locator('[data-form-kind="MATRIX"]')).toHaveCount(0);
 
+  const qdaReturnUrl = page.url();
   const [saveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${qdaId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Lưu", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
   ]);
   expect(saveRes.status(), await saveRes.text()).toBe(200);
-  await expect(notice).toBeVisible();
+  await page.waitForURL(/\/exams\/[^/]+\/listing/);
 
-  // Sau tải lại trang: giờ đã khớp MT nên mở MT và mất dòng thông báo MD.
-  await page.reload();
+  // Sau tải lại trang bước 2: giờ đã khớp MT nên mở MT và mất dòng thông báo MD.
+  await page.goto(qdaReturnUrl);
   await expect(page.locator('[data-form-kind="MATRIX"]')).toBeVisible();
   await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
   await expect(page.getByRole("textbox", { name: /^Số chùm của / })).toHaveValue("2");
@@ -195,10 +196,10 @@ test("R-2 lùi MD có thông báo, ghim hết phiên, tải lại về MT và gi
   await nameInput.fill(`${currentRowName} QA`);
   const [anhSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${hsaAnhId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Lưu", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
   ]);
   expect(anhSaveRes.status(), await anhSaveRes.text()).toBe(200);
-  await expect(page.getByRole("button", { name: "Lưu", exact: true })).toBeDisabled();
+  await page.waitForURL(/\/exams\/[^/]+\/listing/);
   const anhAfter = await getStructure(admin, hsaAnhId);
   expect(allSections(anhAfter)[0]!.blocks?.[0]?.name).toBe(`${currentRowName} QA`);
   expect(allSections(anhAfter)[0]!.matrix?.gradeEnforcement).toBe("REFERENCE");
@@ -414,10 +415,10 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   await expect(picker).toBeHidden();
   const [bcaSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${bcaVanId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Lưu", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
   ]);
   expect(bcaSaveRes.status(), await bcaSaveRes.text()).toBe(200);
-  await expect(page.getByRole("button", { name: "Lưu", exact: true })).toBeDisabled();
+  await page.waitForURL(/\/exams\/[^/]+\/listing/);
   const bcaAfter = await getStructure(admin, bcaVanId);
   expect(allSections(bcaAfter)[0]!.blocks?.[0]?.knowledgeScope?.nodeIds).toContain(vanTree.leafId);
 
@@ -459,12 +460,13 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   await difficultySwitch.click();
   await expect(difficultySwitch).toBeChecked();
 
+  const vsatReturnUrl = page.url();
   const [vsatSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${vsatId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Lưu", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
   ]);
   expect(vsatSaveRes.status(), await vsatSaveRes.text()).toBe(200);
-  await expect(page.getByRole("button", { name: "Lưu", exact: true })).toBeDisabled();
+  await page.waitForURL(/\/exams\/[^/]+\/listing/);
 
   const vsatSaved = await getStructure(admin, vsatId);
   expect(vsatSaved.parts[1]!.sections![0]!.matrix?.difficultyEnforcement).toBe("REQUIRED");
@@ -473,7 +475,7 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   expect(savedQuotas.length).toBeGreaterThan(0);
   expect(savedQuotas.every((quota) => quota.basis === "PROMPT" && quota.enforcement === "REFERENCE")).toBe(true);
 
-  await page.reload();
+  await page.goto(vsatReturnUrl);
   await expect(partTwoSectionButton).toHaveAttribute("aria-current", "true");
   await page.locator("[data-reference-block] summary").click();
   await expect(page.locator('[data-reference-dimension="DIFFICULTY"]').getByRole("switch", { name: "Áp dụng khi sinh đề" })).toBeChecked();
@@ -548,7 +550,7 @@ test("Sau FU #155: GET /exam-templates khớp BCA REFERENCE, REVIEW UUID + Bài 
   const [putReq, putRes] = await Promise.all([
     page.waitForRequest((req) => req.url().endsWith(`/exams/${sptId}/structure`) && req.method() === "PUT"),
     page.waitForResponse((res) => res.url().endsWith(`/exams/${sptId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Lưu", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
   ]);
   expect(putRes.status(), await putRes.text()).toBe(200);
   const putBody = putReq.postDataJSON() as { parts: StructurePart[] };

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, cn, focusRingInset, Skeleton, StatusChip } from "@thi360/ui";
-import { CheckCircle2, TriangleAlert } from "lucide-react";
+import { CheckCircle2, CircleCheck, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useId } from "react";
 import { DISPLAY_NUMBER_FORMAT, roundForDisplay } from "../display-number";
@@ -13,6 +13,7 @@ import { AllocationGap } from "./allocation-gap";
 import type { StructureSelection } from "./exam-structure-draft";
 import { issueTarget } from "./exam-structure-issues";
 import { ExamStructureCheckResult, type CheckResultNames } from "./exam-structure-check-result";
+import type { QuickCheckItem } from "./exam-structure-quick-check";
 import { requestBlockFieldFocus } from "./block-field-focus";
 import { ExamName, labelBeforeName } from "./exam-review-shared";
 
@@ -93,6 +94,7 @@ export function ExamStructureStatusStrip({
         </p>
       )}
       {hasUnsavedChanges && <StatusChip tone="warning">{unsavedLabel}</StatusChip>}
+      {issueCount > 0 && <StatusChip tone="warning">{structureT("needsCompletionChip")}</StatusChip>}
       <span className="text-caption text-text-muted">{statusNote}</span>
       {load === "unavailable" && <span className="text-caption text-text-muted">· {t("unavailable")}</span>}
       {canOpenOverview && (
@@ -113,6 +115,11 @@ export interface ExamStructureAlertsBannerProps {
   issues: readonly StructureIssue[];
   issueText: (issue: StructureIssue) => string;
   checkResult: ExamCheckResult | null;
+  quickCheck?: {
+    open: boolean;
+    items: readonly QuickCheckItem[];
+    onGoTo: (item: QuickCheckItem) => void;
+  };
   names: CheckResultNames;
   parts?: ExamPart[];
   quotas?: readonly ExamQuota[];
@@ -125,6 +132,7 @@ export function ExamStructureAlertsBanner({
   issues,
   issueText,
   checkResult,
+  quickCheck,
   names,
   parts,
   quotas,
@@ -132,7 +140,9 @@ export function ExamStructureAlertsBanner({
   onSelect,
 }: ExamStructureAlertsBannerProps) {
   const structureT = useTranslations("exams.structure");
-  if (issues.length === 0 && !checkResult) return null;
+  const showQuick = Boolean(quickCheck?.open);
+  const showDraftIssues = !showQuick && issues.length > 0;
+  if (!showQuick && !showDraftIssues && !checkResult) return null;
 
   const openIssue = (issue: StructureIssue) => {
     const field = issue.code === "BLOCK" ? structureIssueBlockField(issue.issue) : null;
@@ -142,7 +152,43 @@ export function ExamStructureAlertsBanner({
 
   return (
     <div className="flex flex-col gap-3 border-b border-border bg-subtle/35 px-4 py-3 sm:px-5">
-      {issues.length > 0 && (
+      {showQuick && quickCheck && (
+        <section
+          aria-labelledby="structure-quick-check-title"
+          data-testid="structure-quick-check-result"
+          className={cn(
+            "flex flex-col gap-2 rounded-md border px-3.5 py-2.5",
+            quickCheck.items.length === 0 ? "border-success/40 bg-success-bg" : "border-danger/30 bg-danger-bg",
+          )}
+        >
+          <h3 id="structure-quick-check-title" className="flex items-center gap-2 text-label font-semibold text-text">
+            {quickCheck.items.length === 0 ? (
+              <>
+                <CircleCheck aria-hidden className="size-4 shrink-0 text-success" />
+                {structureT("quickCheck.valid")}
+              </>
+            ) : (
+              <>
+                <TriangleAlert aria-hidden className="size-4 shrink-0 text-danger" />
+                {structureT("quickCheck.invalidTitle", { count: quickCheck.items.length })}
+              </>
+            )}
+          </h3>
+          {quickCheck.items.length > 0 && (
+            <ul className="flex flex-col gap-1.5">
+              {quickCheck.items.map((item) => (
+                <li key={item.key} className="flex flex-wrap items-start justify-between gap-2 text-body text-text">
+                  <span className="min-w-0 flex-1">{item.message}</span>
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0" onClick={() => quickCheck.onGoTo(item)}>
+                    {structureT("quickCheck.goToFix")}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+      {showDraftIssues && (
         <section
           aria-labelledby="structure-issues-title"
           className="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-bg px-3.5 py-2.5"

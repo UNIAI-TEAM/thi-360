@@ -26,7 +26,7 @@ import { checkRequiredReason, errorCodeOf, ExamsApiError } from "../review-api";
 import { useExamCheck, useIdempotencyKey, usePublishExam } from "../review-queries";
 import type { ExamCheckResult, ExamVersionList, PathCheck, PublishExamResponse } from "../review-types";
 import type { ExamDetail } from "../types";
-import { examTabHref } from "../editor-tabs";
+import { examTabHref, withFromReview } from "../editor-tabs";
 import { useListingIssueText } from "../listing/issue-text";
 import { ExamName, PathResultChip, reviewHref, richNodes, useIssueNode, usePathNode } from "./exam-review-shared";
 
@@ -329,7 +329,7 @@ function PublishForm({
             <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
             <span className="min-w-0 flex-1">{issueNode(yearsIssue)}</span>
             <Link
-              href={examTabHref(exam.id, "general")}
+              href={withFromReview(`${examTabHref(exam.id, "general")}?field=yearsConfirmed`)}
               className="rounded-sm font-medium text-primary-text hover:underline"
             >
               {t("yearsLink")}
@@ -443,7 +443,7 @@ function PublishForm({
               )}
             </div>
             {serverError.listingLink && (
-              <Link href={examTabHref(exam.id, "listing")} className="rounded-sm font-medium text-primary-text hover:underline">
+              <Link href={withFromReview(examTabHref(exam.id, "listing"))} className="rounded-sm font-medium text-primary-text hover:underline">
                 {t("errors.listingLink")}
               </Link>
             )}

@@ -1,19 +1,21 @@
 "use client";
 
 import { Button, Card, cn, DetailHeader, EmptyState, NavTab, NavTabs, Skeleton, StatusChip } from "@thi360/ui";
-import { ArrowLeft, Lock, TriangleAlert } from "lucide-react";
+import { ArrowLeft, History, Lock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { getErrorStatus } from "@/lib/api/query-client";
-import { EXAM_EDITOR_TABS, examTabFromPathname, examTabHref } from "../editor-tabs";
+import { EXAM_EDITOR_TABS, type ExamEditorRoute, examTabFromPathname, examTabHref, examVersionsHref } from "../editor-tabs";
 import { useExam, useExamStructure } from "../queries";
+import { useExamCheck } from "../review-queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
 import type { ExamDetail } from "../types";
 import { useKindLabel } from "./create-exam-fields";
 import { ExamEditorActionsSlot } from "./exam-editor-actions";
+import { listingErrorCount } from "./exam-review-listing";
 import { draftTotals } from "./exam-structure-draft";
 
 const DISPLAY_NUMBER_FORMAT = { maximumFractionDigits: 2 } as const;
@@ -141,7 +143,7 @@ function ExamEditorExistingLayout({ examId, children }: { examId: string; childr
   const exam = examQuery.data;
   return (
     <div className="flex flex-col gap-5">
-      <ExamEditorHeader exam={exam} actionsRef={setActionsSlot} />
+      <ExamEditorHeader exam={exam} activeRoute={activeTab} actionsRef={setActionsSlot} />
       <NavTabs aria-label={t("editor.tabsLabel")}>
         {EXAM_EDITOR_TABS.map((tab) => (
           <NavTab key={tab} asChild current={tab === activeTab}>
@@ -158,9 +160,11 @@ function ExamEditorExistingLayout({ examId, children }: { examId: string; childr
 
 function ExamEditorHeader({
   exam,
+  activeRoute,
   actionsRef,
 }: {
   exam: ExamDetail;
+  activeRoute: ExamEditorRoute;
   actionsRef: (node: HTMLDivElement | null) => void;
 }) {
   const t = useTranslations("exams");
@@ -170,6 +174,11 @@ function ExamEditorHeader({
   useSetBreadcrumbLeaf(exam.code);
   const structureQuery = useExamStructure(exam.id);
   const structure = structureQuery.data;
+  // Chỉ tự tải và dùng kết quả kiểm tra ở bước 4 để tránh đọc cache lỗi thông tin bán đã cũ ở các bước trước.
+  const checkQuery = useExamCheck(exam.id, activeRoute === "review");
+  const checkData = activeRoute === "review" ? checkQuery.data : undefined;
+  const listingErrors = checkData ? listingErrorCount(checkData.listingCheck) : 0;
+  const isVersions = activeRoute === "versions";
 
   const partsSource = structure?.parts ?? exam.parts;
   const hasParts = partsSource.length > 0;
@@ -197,7 +206,6 @@ function ExamEditorHeader({
 
   return (
     <DetailHeader
-      className={ACTIONS_SLOT_HIDE_EMPTY}
       back={{ href: "/exams", label: tCommon("backTo.exams") }}
       linkComponent={Link}
       title={exam.name}
@@ -210,11 +218,18 @@ function ExamEditorHeader({
               : t(`status.${exam.status}`)}
           </StatusChip>
           {exam.hasUnpublishedChanges && <StatusChip tone="warning">{t("status.unpublishedChanges")}</StatusChip>}
-          <StatusChip tone={EXAM_CHECK_TONE[exam.check.status]}>
-            {exam.check.status === "INVALID"
-              ? t("checkStatus.issues", { count: exam.check.issueCount })
-              : t(`checkStatus.${exam.check.status}`)}
-          </StatusChip>
+          {exam.check.status === "VALID" && listingErrors > 0 ? (
+            <>
+              <StatusChip tone="success">{t("checkStatus.structureValid")}</StatusChip>
+              <StatusChip tone="danger">{t("checkStatus.listingIssues", { count: listingErrors })}</StatusChip>
+            </>
+          ) : (
+            <StatusChip tone={EXAM_CHECK_TONE[exam.check.status]}>
+              {exam.check.status === "INVALID"
+                ? t("checkStatus.issues", { count: exam.check.issueCount })
+                : t(`checkStatus.${exam.check.status}`)}
+            </StatusChip>
+          )}
           {showScoreMismatch && exam.maxScore !== null && (
             <StatusChip tone="warning">
               {t("editor.scoreMismatchWarning", {
@@ -225,7 +240,17 @@ function ExamEditorHeader({
           )}
         </>
       }
-      actions={<ActionsSlot slotRef={actionsRef} />}
+      actions={
+        <>
+          <ActionsSlot slotRef={actionsRef} />
+          <Button asChild variant={isVersions ? "secondary" : "outline"} size="sm">
+            <Link href={examVersionsHref(exam.id)} aria-current={isVersions ? "page" : undefined}>
+              <History aria-hidden />
+              <span>{t("editor.versionsAction")}</span>
+            </Link>
+          </Button>
+        </>
+      }
     >
       <dl
         aria-label={t("editor.structureSummaryLabel")}

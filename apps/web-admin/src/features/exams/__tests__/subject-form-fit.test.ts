@@ -92,18 +92,33 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     expect(mt("QDA", "TOAN", {}, [setBlock("c", 2, 3, { slots: [{ index: 1, tagCodes: ["x"] }] })])).toBe("SET_CONDITION");
   });
 
-  it("MT: nhóm đơn hoặc điền có phạm vi hay nhãn riêng; nhóm chùm được có (Nguồn chùm)", () => {
+  it("MT: nhóm đơn hoặc điền có phạm vi hay nhãn riêng; dữ liệu cũ chưa ở chế độ MAPID và chùm còn tag khi tắt Nguồn chùm đều rơi về MD", () => {
     const scope = { nodeIds: ["m1"] };
+    expect(mt("VACT", "TOAN", {}, [block("a", { knowledgeScope: scope })])).toBe("BLOCK_SCOPE_OR_TAGS");
+    expect(mt("VACT", "TOAN", {}, [block("a"), setBlock("c", 1, 3, { knowledgeScope: scope, tagCodes: ["T"] })])).toBe("FITS");
+    // Chưa chuyển sang MAPID (mapidMode undefined): phạm vi cũ cấp nhóm (kể cả trên chùm) rơi về MD.
     expect(mt("QDA", "TOAN", {}, [block("a", { knowledgeScope: scope })])).toBe("BLOCK_SCOPE_OR_TAGS");
+    expect(mt("QDA", "LY", {}, [block("a"), setBlock("c", 1, 3, { knowledgeScope: scope })])).toBe("BLOCK_SCOPE_OR_TAGS");
+    expect(mt("QDA", "LY", {}, [block("a"), setBlock("c", 1, 3, { tagCodes: ["THI_NGHIEM"] })])).toBe("BLOCK_SCOPE_OR_TAGS");
     expect(mt("QDA", "TOAN", {}, [block("f", { questionType: "SHORT_ANSWER", tagCodes: ["x"] })])).toBe("BLOCK_SCOPE_OR_TAGS");
-    expect(mt("BCA", "SU", {}, [block("a"), setBlock("c", 1, 3, { knowledgeScope: scope, tagCodes: ["SU_TU_LIEU_LICH_SU"] })])).toBe("FITS");
+    // BCA Sử có sẵn tag SU_TU_LIEU_LICH_SU trên chùm trong mẫu chuẩn: setSource=true giữ khớp; nhưng chùm có scope cũ vẫn rơi về MD.
+    expect(mt("BCA", "SU", {}, [block("a"), setBlock("c", 1, 3, { tagCodes: ["SU_TU_LIEU_LICH_SU"] })])).toBe("FITS");
+    expect(mt("BCA", "SU", {}, [block("a"), setBlock("c", 1, 3, { knowledgeScope: scope, tagCodes: ["SU_TU_LIEU_LICH_SU"] })])).toBe("BLOCK_SCOPE_OR_TAGS");
+    expect(mt("HSA", "DIA", {}, [block("a"), setBlock("c", 1, 3, { tagCodes: ["BIEU_DO"] })])).toBe("BLOCK_SCOPE_OR_TAGS");
+    // Khi môn đã ở chế độ MAPID (mapidMode: "MATRIX"): phạm vi MAPID cũ bị bỏ qua bởi bộ biên dịch nên vẫn khớp.
+    expect(mt("QDA", "TOAN", { mapidMode: "MATRIX" }, [block("a", { knowledgeScope: scope })])).toBe("FITS");
   });
 
-  it("MT: chỉ tiêu chủ đề riêng của nhóm làm rơi trừ HSA (dữ liệu MAPID do HSA-D hiện)", () => {
+  it("MT: chỉ tiêu chủ đề riêng của nhóm làm rơi khi chưa ở chế độ MAPID; chỉ tiêu có lọc lớp ở môn ẩn lớp rơi về GRADE_REQUIRED_HIDDEN", () => {
     const topic = { id: "t", name: "t", nodeIds: ["n"], count: 2, enforcement: "REQUIRED" as const };
+    const refTopic = { id: "t", name: "t", nodeIds: ["n"], count: 2, enforcement: "REFERENCE" as const };
+    expect(mt("VACT", "TOAN", {}, [block("a", { topicQuotas: [topic] })])).toBe("BLOCK_TOPIC_QUOTAS");
     expect(mt("QDA", "TOAN", {}, [block("a", { topicQuotas: [topic] })])).toBe("BLOCK_TOPIC_QUOTAS");
-    expect(mt("HSA", "TOAN", { knowledgeScope: { nodeIds: ["n"] }, topicQuotas: [topic] }, [block("a", { topicQuotas: [topic], knowledgeScope: { nodeIds: ["m1"] } })])).toBe("FITS");
+    expect(mt("BCA", "TOAN", {}, [block("a", { topicQuotas: [refTopic] })])).toBe("BLOCK_TOPIC_QUOTAS");
+    expect(mt("HSA", "TOAN", { mapidMode: "MATRIX", knowledgeScope: { nodeIds: ["n"] }, topicQuotas: [topic] }, [block("a", { topicQuotas: [topic], knowledgeScope: { nodeIds: ["m1"] } })])).toBe("FITS");
+    expect(mt("QDA", "TOAN", { mapidMode: "MATRIX" }, [block("a", { topicQuotas: [topic] })])).toBe("FITS");
     expect(mt("HSA", "TOAN", {}, [block("a", { tagCodes: ["x"] })])).toBe("BLOCK_SCOPE_OR_TAGS");
+    expect(mt("HSA", "SU", { topicQuotas: [{ ...topic, gradeCodes: ["GRADE_12"] }] }, [block("a"), setBlock("c", 1, 3)])).toBe("GRADE_REQUIRED_HIDDEN");
   });
 
   it("MT: answerQuotas hợp lệ cho mọi loại câu v3 (mỗi loại tối đa 1 dòng); trùng loại rơi về ANSWER_QUOTAS_SHAPE", () => {

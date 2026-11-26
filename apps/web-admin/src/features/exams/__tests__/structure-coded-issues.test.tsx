@@ -63,9 +63,9 @@ describe("Phần theo mã không bị báo lỗi 'chưa có nhánh' (F-11)", () 
     expect(await screen.findByRole("heading", { name: "Lỗi cần xử lý (0)" })).toBeInTheDocument();
     expect(screen.queryByText(/chưa có nhánh nào/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Kiểm tra toàn bài/ }));
-    const result = await screen.findByTestId("structure-check-result");
-    expect(result).toHaveTextContent("Đạt");
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    const result = await screen.findByTestId("structure-quick-check-result");
+    expect(result).toHaveTextContent("Cấu trúc hợp lệ");
     expect(screen.getByRole("heading", { name: "Lỗi cần xử lý (0)" })).toBeInTheDocument();
     expect(screen.queryByText(/chưa có nhánh nào/)).not.toBeInTheDocument();
   });

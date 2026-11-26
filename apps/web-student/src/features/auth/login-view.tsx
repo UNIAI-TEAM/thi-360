@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, cn, FormField, Input, LocaleSwitcher, PasswordField, ThemeToggle } from "@thi360/ui";
+import { BrandWordmark, Button, cn, FormField, Input, LocaleSwitcher, PasswordField, ThemeToggle } from "@thi360/ui";
 import { AlertCircle, Check, CheckCircle2, Lock, User } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -95,14 +95,8 @@ export function LoginView({
     <AuthPageStage>
       <div className="flex w-full max-w-[920px] items-center gap-2">
         {/* Màn hẹp: khối giới thiệu nằm dưới biểu mẫu, nên logo hiện ở hàng trên cùng. */}
-        <div className="flex items-center gap-2.5 md:hidden">
-          <span
-            aria-hidden
-            className="flex size-10 items-center justify-center rounded-lg bg-primary-fill font-bold text-on-primary"
-          >
-            {common("logoMark")}
-          </span>
-          <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+        <div className="flex items-center md:hidden">
+          <BrandWordmark alt={common("appName")} className="h-9" />
         </div>
         <div className="ml-auto flex items-center gap-2">
           {headerActions ?? (
@@ -227,14 +221,8 @@ export function LoginView({
 
         <section className={AUTH_BRAND_PANEL_CLASS}>
           <AuthBrandDecor />
-          <div className="hidden items-center gap-3 md:flex">
-            <span
-              aria-hidden
-              className="flex size-11 items-center justify-center rounded-lg bg-primary-fill text-title font-bold text-on-primary"
-            >
-              {common("logoMark")}
-            </span>
-            <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+          <div className="hidden items-center md:flex">
+            <BrandWordmark alt={common("appName")} className="h-10" />
           </div>
 
           <h2 className="text-h2 font-bold text-primary-900">{t("headline")}</h2>

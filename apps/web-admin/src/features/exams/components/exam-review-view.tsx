@@ -1,13 +1,35 @@
 "use client";
 
-import { Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@thi360/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  notify,
+  Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@thi360/ui";
+import { ArrowUp, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useOptionalPermissions } from "@/features/session/session-provider";
+import { collectCheckIssues, splitBySeverity } from "../check";
+import { RECHECK_PARAM } from "../editor-tabs";
 import { useExam } from "../queries";
-import { useExamCheck } from "../review-queries";
+import { useExamCheck, useExamVersions } from "../review-queries";
+import { examNeedsPathChoice } from "../review-scope";
+import type { ExamDetail } from "../types";
 import { ExamPreviewPanel } from "./exam-preview-panel";
 import { ExamReviewCheck } from "./exam-review-check";
+import { listingErrorCount } from "./exam-review-listing";
+import { PublishExamDialog } from "./publish-exam-dialog";
 
 const REVIEW_TABS = ["check", "preview"] as const;
 type ReviewTab = (typeof REVIEW_TABS)[number];
@@ -30,6 +52,15 @@ function writeUrl(pathname: string, state: ReviewUrlState): void {
   window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
 }
 
+function clearRecheckFromUrl(pathname: string): void {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has(RECHECK_PARAM)) return;
+  params.delete(RECHECK_PARAM);
+  const query = params.toString();
+  window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+}
+
 function readVersion(value: string | null): number | null {
   const parsed = Number(value);
   return value && Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -37,10 +68,15 @@ function readVersion(value: string | null): number | null {
 
 export function ExamReviewView({ examId }: { examId: string }) {
   const t = useTranslations("exams.review");
+  const tVersions = useTranslations("exams.versions");
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const permissions = useOptionalPermissions();
   const examQuery = useExam(examId);
   const checkQuery = useExamCheck(examId);
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [autoRecheck, setAutoRecheck] = useState(() => searchParams.get(RECHECK_PARAM) === "1");
   const [state, setState] = useState<ReviewUrlState>(() => {
     const tab = searchParams.get("tab");
     return {
@@ -57,39 +93,152 @@ export function ExamReviewView({ examId }: { examId: string }) {
     writeUrl(pathname, next);
   }
 
+  const handleAutoRecheckStarted = useCallback(() => {
+    setAutoRecheck(false);
+    clearRecheckFromUrl(pathname);
+  }, [pathname]);
+
   // Khung soạn bài thi (`ExamEditorLayout`) đã lo trạng thái tải và lỗi của bài thi.
   if (!examQuery.data) return <Skeleton className="h-96" />;
   const exam = examQuery.data;
 
+  const canPublishPermission = !permissions.isLoading && permissions.can("EXAM.PUBLISH");
+  const checkData = checkQuery.data ?? null;
+  const checkIssues = checkData ? collectCheckIssues(checkData) : [];
+  const { errors, unconfirmed } = splitBySeverity(checkIssues);
+  const listingErrors = checkData ? listingErrorCount(checkData.listingCheck) : 0;
+  const listingUnchecked = !checkData || checkData.listingCheck == null;
+  const stale = !checkData || checkData.stale || exam.check.status === "NEEDS_RECHECK";
+  const allPathsValid = Boolean(checkData && checkData.paths.length > 0 && checkData.paths.every((path) => path.result === "VALID"));
+  const canPublishNow =
+    canPublishPermission &&
+    exam.status !== "DISCONTINUED" &&
+    !checkBusy &&
+    !stale &&
+    errors.length === 0 &&
+    unconfirmed.length === 0 &&
+    listingErrors === 0 &&
+    !listingUnchecked &&
+    allPathsValid;
+
+  const openPreview = (pathId: string | null) => {
+    update({ tab: "preview", path: pathId ?? state.path, version: null });
+    if (pathId || (!examNeedsPathChoice(exam.parts) && previewRequest === 0)) {
+      setPreviewRequest((value) => value + 1);
+    }
+  };
+
   return (
-    <Tabs value={state.tab} onValueChange={(value) => update({ ...state, tab: value as ReviewTab })}>
-      <TabsList aria-label={t("tabs.label")}>
-        <TabsTrigger value="check">{t("tabs.check")}</TabsTrigger>
-        <TabsTrigger value="preview">{t("tabs.preview")}</TabsTrigger>
-      </TabsList>
-      {/* Giữ cả hai tab trong DOM để đề vừa sinh không mất khi xem lại kết quả kiểm tra. */}
-      <TabsContent value="check" forceMount className="mt-5 data-[state=inactive]:hidden">
-        <ExamReviewCheck
+    <>
+      <Tabs value={state.tab} onValueChange={(value) => update({ ...state, tab: value as ReviewTab })}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList aria-label={t("tabs.label")}>
+            <TabsTrigger value="check">{t("tabs.check")}</TabsTrigger>
+            <TabsTrigger value="preview">{t("tabs.preview")}</TabsTrigger>
+          </TabsList>
+          {canPublishPermission && exam.status !== "DISCONTINUED" && (
+            <Button type="button" disabled={!canPublishNow} onClick={() => setPublishOpen(true)}>
+              <ArrowUp aria-hidden />
+              {exam.servingVersion !== null ? t("publishUpdate") : t("publishFirst")}
+            </Button>
+          )}
+        </div>
+        {/* Giữ cả hai tab trong DOM để đề vừa sinh không mất khi xem lại kết quả kiểm tra. */}
+        <TabsContent value="check" forceMount className="mt-5 data-[state=inactive]:hidden">
+          <ExamReviewCheck
+            exam={exam}
+            active={state.tab === "check"}
+            autoRecheck={autoRecheck}
+            onAutoRecheckStarted={handleAutoRecheckStarted}
+            onBusyChange={setCheckBusy}
+            onPreview={openPreview}
+          />
+        </TabsContent>
+        <TabsContent value="preview" forceMount className="mt-5 data-[state=inactive]:hidden">
+          <ExamPreviewPanel
+            key={`${state.version ?? "working"}-${previewRequest}`}
+            exam={exam}
+            check={checkQuery.data ?? null}
+            initialPathId={state.path}
+            autoGenerate={previewRequest > 0}
+            version={state.version}
+            onClearVersion={() => update({ ...state, version: null })}
+            onShowCheck={() => update({ ...state, tab: "check" })}
+          />
+        </TabsContent>
+      </Tabs>
+      {publishOpen && (
+        <Step4PublishDialog
           exam={exam}
-          active={state.tab === "check"}
-          onPreview={(pathId) => {
-            update({ tab: "preview", path: pathId ?? state.path, version: null });
-            if (pathId) setPreviewRequest((value) => value + 1);
-          }}
+          open={publishOpen}
+          onOpenChange={setPublishOpen}
+          onPublished={(response) =>
+            notify.success(tVersions("published", { version: response.version, count: response.publishedPathIds.length }))
+          }
         />
-      </TabsContent>
-      <TabsContent value="preview" forceMount className="mt-5 data-[state=inactive]:hidden">
-        <ExamPreviewPanel
-          key={`${state.version ?? "working"}-${previewRequest}`}
-          exam={exam}
-          check={checkQuery.data ?? null}
-          initialPathId={state.path}
-          autoGenerate={previewRequest > 0}
-          version={state.version}
-          onClearVersion={() => update({ ...state, version: null })}
-          onShowCheck={() => update({ ...state, tab: "check" })}
-        />
-      </TabsContent>
-    </Tabs>
+      )}
+    </>
+  );
+}
+
+function Step4PublishDialog({
+  exam,
+  open,
+  onOpenChange,
+  onPublished,
+}: {
+  exam: ExamDetail;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPublished: (response: { version: number; publishedPathIds: string[] }) => void;
+}) {
+  const t = useTranslations("exams.publish");
+  const tVersions = useTranslations("exams.versions");
+  const versionsQuery = useExamVersions(exam.id, open);
+
+  if (versionsQuery.data) {
+    return (
+      <PublishExamDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        exam={exam}
+        versions={versionsQuery.data}
+        onPublished={onPublished}
+      />
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="md" closeLabel={t("close")}>
+        <DialogHeader>
+          <DialogTitle>{exam.servingVersion !== null ? tVersions("working.publish") : t("title", { version: 1 })}</DialogTitle>
+          <DialogDescription>
+            {versionsQuery.isError ? tVersions("errorDescription") : tVersions("loading")}
+          </DialogDescription>
+        </DialogHeader>
+        {versionsQuery.isPending ? (
+          <div className="flex flex-col gap-3 py-2" aria-busy="true">
+            <Skeleton className="h-14" />
+            <Skeleton className="h-28" />
+          </div>
+        ) : (
+          <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-bg px-3.5 py-2.5 text-body text-danger">
+            <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <span>{tVersions("errorTitle")}</span>
+          </div>
+        )}
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+            {t("cancel")}
+          </Button>
+          {versionsQuery.isError && (
+            <Button type="button" onClick={() => void versionsQuery.refetch()}>
+              {tVersions("retry")}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

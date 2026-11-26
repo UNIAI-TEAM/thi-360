@@ -44,6 +44,11 @@ interface UseExamInfoSaveOptions {
   onStructureSaved?: (saved: ExamDetail) => void;
 }
 
+export interface SaveCallbacks {
+  onSuccess?: (detail: ExamDetail) => void;
+  onError?: (message: string) => void;
+}
+
 export function useExamInfoSave({
   exam,
   structure,
@@ -69,7 +74,7 @@ export function useExamInfoSave({
     onSaved(message, savedDetail);
   };
 
-  const save = ({ request }: PendingInfoSave, structureSaved = false) => {
+  const save = ({ request }: PendingInfoSave, structureSaved = false, callbacks?: SaveCallbacks) => {
     if (!exam) return;
     setSubmitError(null);
     update.mutate(request, {
@@ -90,24 +95,34 @@ export function useExamInfoSave({
         queryClient.setQueryData(EXAMS_QUERY_KEYS.detail(exam.id), finalDetail);
         onHold?.(false);
         done(structureSaved && checkStatus !== "UNCHECKED", finalDetail);
+        callbacks?.onSuccess?.(finalDetail);
       },
       onError: (error) => {
         onHold?.(false);
         onFailed();
         const status = getErrorStatus(error);
         const code = apiErrorCode(error);
+        let message: string | null = null;
         if (status === 409 && code === "EXAM_SCOPE_LOCKED") {
-          setSubmitError(t("scopeLocked"));
+          message = t("scopeLocked");
+          setSubmitError(message);
         } else if (status === 409 && code === "EXAM_CODE_TAKEN") {
-          setError("code", { message: tExams("create.errors.codeTaken") }, { shouldFocus: true });
+          message = tExams("create.errors.codeTaken");
+          setError("code", { message }, { shouldFocus: true });
         } else if (status === 412) {
-          setSubmitError(t("saveConflict"));
+          message = t("saveConflict");
+          setSubmitError(message);
         } else if (status === 400 || status === 422) {
           const fields = (error instanceof ExamsApiError ? error.fieldErrors : []).flatMap((item) => {
             const field = FORM_FIELD_OF[item.field ?? ""];
             return field ? [{ field, code: item.code }] : [];
           });
-          if (fields.length === 0) setSubmitError(t("saveInvalid"));
+          if (fields.length === 0) {
+            message = t("saveInvalid");
+            setSubmitError(message);
+          } else {
+            message = t("saveInvalid");
+          }
           fields.forEach(({ field, code: fieldCode }, index) =>
             setError(
               field,
@@ -121,14 +136,19 @@ export function useExamInfoSave({
             ),
           );
         } else {
-          setSubmitError(t("saveError"));
+          message = t("saveError");
+          setSubmitError(message);
         }
-        if (structureSaved) setSubmitError(t("overview.infoNotSaved"));
+        if (structureSaved) {
+          message = t("overview.infoNotSaved");
+          setSubmitError(message);
+        }
+        callbacks?.onError?.(message ?? t("saveError"));
       },
     });
   };
 
-  const saveOverviewThenInfo = async (pending: PendingInfoSave) => {
+  const saveOverviewThenInfo = async (pending: PendingInfoSave, callbacks?: SaveCallbacks) => {
     if (!exam || !structure) return;
     setSubmitError(null);
     onHold?.(true);
@@ -142,9 +162,10 @@ export function useExamInfoSave({
     } catch (error) {
       onHold?.(false);
       const status = getErrorStatus(error);
-      setSubmitError(
-        status === 412 ? t("saveConflict") : status === 422 ? tExams("structure.saveInvalid") : tExams("structure.saveError"),
-      );
+      const message =
+        status === 412 ? t("saveConflict") : status === 422 ? tExams("structure.saveInvalid") : tExams("structure.saveError");
+      setSubmitError(message);
+      callbacks?.onError?.(message);
       return;
     }
     queryClient.setQueryData(EXAMS_QUERY_KEYS.detail(exam.id), saved);
@@ -157,9 +178,10 @@ export function useExamInfoSave({
     if (!formDirty) {
       onHold?.(false);
       done(checkStatus !== "UNCHECKED", saved);
+      callbacks?.onSuccess?.(saved);
       return;
     }
-    save({ ...pending, request: { ...pending.request, expectedRevision: saved.revision } }, true);
+    save({ ...pending, request: { ...pending.request, expectedRevision: saved.revision } }, true, callbacks);
   };
 
   return { update, structureUpdate, submitError, setSubmitError, save, saveOverviewThenInfo };

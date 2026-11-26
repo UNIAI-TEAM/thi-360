@@ -55,13 +55,12 @@ describe("đề xem trước theo bảy kỳ thi", () => {
 });
 
 describe("kết quả kiểm tra theo bảy kỳ thi", () => {
-  it("THPTQG Tin học: số câu làm và in, thời lượng chung, điểm trên thang; cảnh báo không chặn", async () => {
+  it("THPTQG Tin học: kiểm tra hợp lệ, bỏ dải tóm tắt trùng (UNI-1721); cảnh báo không chặn", async () => {
     const user = userEvent.setup();
     renderWithProviders(<ExamReviewView examId={THPTQG} />);
     await user.click(await screen.findByRole("button", { name: "Kiểm tra cấu hình" }));
-    expect(await screen.findByText("28 câu làm (đề ghi 30 câu)")).toBeInTheDocument();
-    expect(screen.getByText("50 phút, chung cả bài")).toBeInTheDocument();
-    expect(screen.getByText("10 / 10 điểm")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Kết quả theo đường lựa chọn" })).toBeInTheDocument();
+    expect(screen.queryByText("28 câu làm (đề ghi 30 câu)")).not.toBeInTheDocument();
     expect(backend.app(THPTQG).check.status).toBe("VALID");
     expect(screen.getAllByText(/quy tắc chấm khác quy tắc mong đợi/).length).toBeGreaterThan(0);
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn, focusRing } from "@thi360/ui";
+import { BrandWordmark, cn, focusRing } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,14 +12,9 @@ import { usePermissions } from "@/features/session/session-provider";
 export function BrandMark({ className }: { className?: string }) {
   const t = useTranslations("shell");
   return (
-    <div className={cn("flex items-center gap-2.5 px-2", className)}>
-      <div
-        aria-hidden
-        className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary-fill text-field-label font-bold text-on-primary"
-      >
-        {t("logoMark")}
-      </div>
-      <div className="text-title font-bold text-primary-900">{t("brand")}</div>
+    <div className={cn("flex items-center gap-2 px-2", className)}>
+      <BrandWordmark alt="" className="h-9" />
+      <span className="sr-only">{t("brand")}</span>
     </div>
   );
 }

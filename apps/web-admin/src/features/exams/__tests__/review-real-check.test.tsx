@@ -66,7 +66,8 @@ describe("kiểm tra kỹ, nhánh thật", () => {
     await tick();
     expect(runPolls()).toBe(3);
     await waitFor(() => expect(screen.queryByText("Đang kiểm tra kỹ")).not.toBeInTheDocument());
-    expect(screen.getByText(/giới hạn xử lý 120 giây/)).toBeInTheDocument();
+    expect(screen.queryByText(/giới hạn xử lý/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kiểm tra kỹ" })).not.toBeInTheDocument();
 
     await tick(POLL_MS * 3);
     expect(runPolls()).toBe(3);

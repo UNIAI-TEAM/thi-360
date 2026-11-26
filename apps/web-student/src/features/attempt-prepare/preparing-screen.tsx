@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, focusRing } from "@thi360/ui";
+import { BrandLogo, Button, cn, focusRing } from "@thi360/ui";
 import { Clock, LoaderCircle, RotateCw, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -57,7 +57,6 @@ export function PreparingScreen({
 }: PreparingScreenProps) {
   const t = useTranslations("attempt.waiting");
   const abortT = useTranslations("attempt.abortReasons");
-  const common = useTranslations("common");
 
   const pollKey = `${attemptId}:${initialState}`;
   const [pollOutcome, setPollOutcome] = useState<{
@@ -173,12 +172,7 @@ export function PreparingScreen({
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <span
-              aria-hidden
-              className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary-fill font-bold text-on-primary"
-            >
-              {common("logoMark")}
-            </span>
+            <BrandLogo className="size-10" />
             <div className="min-w-0">
               {examName ? (
                 <div data-exam-content className="truncate text-title font-semibold text-text">

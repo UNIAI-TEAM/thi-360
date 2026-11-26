@@ -50,8 +50,9 @@ describe("ảnh bìa: kiểm ngay trên web", () => {
     ).toBeInTheDocument();
     expect(server.calls("POST", COVER_PATH)).toHaveLength(0);
     expect(currentCover()).toHaveAttribute("src", COVER_URL);
-    // Không có thay đổi nào để lưu.
-    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled();
+    // Không có thay đổi nào để lưu: bấm Tiếp tục không gọi PUT.
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" }));
+    expect(server.calls("PUT", LISTING_PATH)).toHaveLength(0);
   });
 
   it("quá 2 MB: từ chối ngay trên web, không gọi API", async () => {
@@ -114,7 +115,8 @@ describe("ảnh bìa: lỗi do máy chủ trả", () => {
     expect(screen.queryByText("server text")).not.toBeInTheDocument();
     expect(server.calls("POST", COVER_PATH)).toHaveLength(1);
     expect(currentCover()).toHaveAttribute("src", COVER_URL);
-    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" }));
+    expect(server.calls("PUT", LISTING_PATH)).toHaveLength(0);
   });
 
   it("413 từ tầng web (không có thân lỗi): báo quá lớn", async () => {
@@ -153,7 +155,7 @@ describe("ảnh bìa: đổi và bỏ", () => {
     expect(server.calls("PUT", LISTING_PATH)).toHaveLength(0);
     expect(document.querySelector('[data-testid="listing-card-preview"] img')).toHaveAttribute("src", `${COVER_PATH}/${NEW_COVER_ASSET}`);
 
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" }));
     await waitFor(() => expect(server.calls("PUT", LISTING_PATH)).toHaveLength(1));
     expect(server.calls("PUT", LISTING_PATH)[0]!.body).toMatchObject({ coverAssetId: NEW_COVER_ASSET, expectedRevision: 7 });
   });
@@ -171,7 +173,7 @@ describe("ảnh bìa: đổi và bỏ", () => {
     expect(screen.queryByRole("button", { name: "Bỏ ảnh" })).not.toBeInTheDocument();
     expect(screen.getByText("Chọn ảnh")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" }));
     await waitFor(() => expect(server.calls("PUT", LISTING_PATH)).toHaveLength(1));
     expect(server.calls("PUT", LISTING_PATH)[0]!.body).not.toHaveProperty("coverAssetId");
   });
@@ -186,7 +188,7 @@ describe("ảnh bìa: đổi và bỏ", () => {
     const user = userEvent.setup();
     renderListingTab();
     await user.click(await screen.findByRole("button", { name: "Bỏ ảnh" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" }));
     expect(await screen.findByText("Ảnh bìa đã chọn không còn dùng được. Chọn lại ảnh rồi lưu.")).toBeInTheDocument();
   });
 

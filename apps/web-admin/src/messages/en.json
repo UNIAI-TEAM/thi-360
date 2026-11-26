@@ -4859,7 +4859,8 @@
       },
       "loadErrorTitle": "Could not load the catalog and structure templates",
       "loadErrorDescription": "Check your connection and try again.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "saveAndReturnReview": "Save and return to check"
     },
     "reload": {
       "listTitle": "Parts that will be reloaded ({count, number})",
@@ -4942,7 +4943,7 @@
         "over": "Over by {count, number} questions",
         "under": "Short by {count, number} questions"
       },
-      "issueGo": "Go to it",
+      "issueGo": "Go to issue",
       "newBlockName": "{subject} · New group",
       "blockAdded": "Added group {name}.",
       "blockRemoved": "Removed group {name}. Save to apply.",
@@ -5018,7 +5019,7 @@
           "page": "You are leaving the exam editor.",
           "tab": "You are switching to the {tab} tab."
         },
-        "discard": "Discard changes",
+        "discard": "Discard changes and leave",
         "saveAndGo": "Save and continue",
         "stay": "Stay",
         "title": "Save changes to {name}?",
@@ -5547,7 +5548,11 @@
           "percentTotal": "the percentages {dimension} add up to {value}%, they must total 100%.",
           "allocationTotal": "{dimension} has {actual, number} questions; the block needs {expected, number}."
         },
-        "partPoints": "{part}: the blocks are worth {actual} points; the part needs {expected}."
+        "partPoints": "{part}: the blocks are worth {actual} points; the part needs {expected}.",
+        "blocksTotalOver": "{section} exceeds target by {diff, plural, one {# question} other {# questions}}",
+        "blocksTotalUnder": "{section} is short by {diff, plural, one {# question} other {# questions}}",
+        "sectionsTotalOver": "{part} exceeds target by {diff, plural, one {# question} other {# questions}} ({actual, number}/{expected, number}).",
+        "sectionsTotalUnder": "{part} is short by {diff, plural, one {# question} other {# questions}} ({actual, number}/{expected, number})."
       },
       "yearsPending": "The structure year ({structure}) differs from the matrix year ({matrix}) and is not confirmed. The exam cannot be published until this is confirmed in General.",
       "yearsLink": "Open General",
@@ -5575,6 +5580,18 @@
           "ALL_OR_NOTHING": "Points only when every correct answer is selected and nothing else.",
           "PARTIAL": "Partial points for the correct answers selected, following the rule stored on the question."
         }
+      },
+      "back": "Back",
+      "saveDraftAndExit": "Save draft and exit",
+      "continueToListing": "Continue → Listing",
+      "saveAndReturnReview": "Save and return to check",
+      "needsCompletionChip": "Needs completion",
+      "savedNeedsCompletion": "Draft saved · Structure needs completion.",
+      "quickCheck": {
+        "button": "Check structure",
+        "valid": "Structure is valid",
+        "invalidTitle": "Structure needs fixes ({count, plural, one {# issue} other {# issues}})",
+        "goToFix": "Go to issue"
       }
     },
     "listing": {
@@ -5729,7 +5746,11 @@
         "errorPrefix": "Error: ",
         "warningPrefix": "Warning: ",
         "toReview": "See it in the Check tab"
-      }
+      },
+      "back": "Back",
+      "saveDraftAndExit": "Save draft and exit",
+      "continueToReview": "Continue → Check and preview",
+      "saveAndReturnReview": "Save and return to check"
     },
     "review": {
       "title": "Check and preview",
@@ -5740,7 +5761,7 @@
       },
       "run": "Check configuration",
       "rerun": "Check again",
-      "toPreview": "Generate preview paper",
+      "toPreview": "Preview exam",
       "lastRun": "Checked at {time} against the current question source · took {seconds, number} s · processing limit {limit, number} s",
       "stale": "The question source or the configuration changed after this check. Check again before publishing.",
       "staleReason": {
@@ -5846,9 +5867,9 @@
       },
       "findings": {
         "affected": "Affected codes:",
-        "blocked": "Cannot publish yet: {count, plural, one {# error blocks} other {# errors block}} publishing.",
+        "blocked": "Structure has {count, plural, one {# error} other {# errors}} · Cannot publish yet",
         "codeGroup": "Code {code}",
-        "listingBlocked": "Cannot publish yet: the listing has {count, plural, one {# error} other {# errors}}.",
+        "listingBlocked": "Structure valid · Listing has {count, plural, one {# error} other {# errors}} · Cannot publish yet",
         "listingUnconfirmed": "Not conclusive: the listing could not be checked.",
         "counters": {
           "errors": "Errors",
@@ -5887,7 +5908,10 @@
         "unitsTitle": "Status of each subject",
         "warningsNote": "{count, plural, one {# warning does} other {# warnings do}} not block publishing.",
         "warningsTitle": "Warnings · do not block publishing ({count, number})",
-        "wholeExam": "Whole exam"
+        "wholeExam": "Whole exam",
+        "staleHeadline": "Needs recheck · Draft or question source changed · Cannot publish yet",
+        "structureValidListingBlocked": "Structure valid · Listing has {count, plural, one {# error} other {# errors}} · Cannot publish yet",
+        "bothBlocked": "Structure has {structure, plural, one {# error} other {# errors}} · Listing has {listing, plural, one {# error} other {# errors}} · Cannot publish yet"
       },
       "listing": {
         "title": "Listing",
@@ -5932,7 +5956,9 @@
           "LISTING_DESCRIPTION_MISSING": "There is no description.",
           "LISTING_COVER_MISSING": "There is no cover image; the card uses a default one. Does not block publishing.",
           "UNKNOWN": "The listing is not ready to publish."
-        }
+        },
+        "fixField": "Go to field",
+        "fixFieldAria": "Go to {field}"
       },
       "manual": {
         "title": "Manually graded questions",
@@ -6082,10 +6108,16 @@
         "COMPETENCY_SHORTAGE": "Block {block}: there are not enough {competency} source questions for the quota.",
         "ANSWER_TYPE_SHORTAGE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}: there are not enough {answerType} source questions for the quota.",
         "SUBJECT_QUOTA_INFEASIBLE": "Subject {subject}{count, plural, =0 {} other { (receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the subject quota."
-      }
+      },
+      "publishFirst": "Publish exam",
+      "publishUpdate": "Publish update",
+      "previewButton": "Preview exam",
+      "backToListing": "Back",
+      "needsRecheckChip": "Needs recheck"
     },
     "versions": {
       "title": "Versions and publishing",
+      "loading": "Loading versions...",
       "errorTitle": "Could not load versions",
       "errorDescription": "Check your connection and try again.",
       "retry": "Try again",
@@ -6240,11 +6272,11 @@
       "backToList": "Exam list",
       "tabsLabel": "Exam sections",
       "tabs": {
-        "general": "Details",
-        "structure": "Structure and matrix",
-        "listing": "Listing",
-        "review": "Check and preview",
-        "versions": "Versions and publishing"
+        "general": "1. General information",
+        "structure": "2. Structure and matrix",
+        "listing": "3. Listing",
+        "review": "4. Check, preview and publish",
+        "versions": "Version history"
       },
       "structureSummaryLabel": "Structure summary",
       "printedQuestionsSuffix": "({printed} on paper)",
@@ -6253,7 +6285,8 @@
       "errorDescription": "Check your connection and try again.",
       "retry": "Retry",
       "notFoundTitle": "Exam not found",
-      "notFoundDescription": "The exam does not exist or has been deleted."
+      "notFoundDescription": "The exam does not exist or has been deleted.",
+      "versionsAction": "Version history"
     },
     "status": {
       "DRAFT": "Draft",
@@ -6267,7 +6300,9 @@
       "VALID": "Valid",
       "INVALID": "Invalid",
       "NEEDS_RECHECK": "Needs recheck",
-      "issues": "{count, plural, one {# issue} other {# issues}}"
+      "issues": "{count, plural, one {# issue} other {# issues}}",
+      "structureValid": "Structure valid",
+      "listingIssues": "{count, plural, one {1 listing error} other {# listing errors}}"
     },
     "kind": {
       "HSA": "HSA",
@@ -6841,7 +6876,9 @@
           "durationInvalid": "The duration must be a positive whole number of minutes.",
           "pointsInvalid": "Points must be greater than 0."
         }
-      }
+      },
+      "continueToStructure": "Continue → Structure and matrix",
+      "saveDraftAndExit": "Save draft and exit"
     },
     "matrix": {
       "title": "Allocation matrix",
@@ -6991,7 +7028,7 @@
         "pickHint": "Matches at least one selected MAPID. To require every topic to appear, add a separate rule for each code.",
         "pickHintSource": "Matches at least one selected MAPID. When multiple source-only rules apply to this scope, a question must match all of them (narrows the source).",
         "pickerDescription": "Rule for {name}: pick a chapter, lesson or knowledge item. A picked node also matches questions on its child nodes.",
-        "save": "Save rule",
+        "save": "Apply",
         "scope": {
           "deletedNamed": "Group «{name}» (deleted)",
           "deletedUnnamed": "Deleted group — select scope",
@@ -7910,6 +7947,16 @@
       "title": "Try as student",
       "untimedNotice": "Untimed · Not recorded and does not consume attempts",
       "versionBadge": "Published v{version}"
+    },
+    "draftLeave": {
+      "title": "Save unsaved changes?",
+      "description": "Do you want to save your changes before leaving this step?",
+      "destinationTab": "You are switching to {tab}.",
+      "destinationPage": "You are leaving the exam editor.",
+      "stay": "Stay",
+      "discard": "Discard changes and leave",
+      "saveAndGo": "Save and continue",
+      "close": "Close"
     }
   },
   "grading": {
@@ -8860,9 +8907,12 @@
     "toolbar": {
       "bold": "Bold",
       "bulletList": "Bullet list",
+      "collapse": "Collapse editor",
+      "expand": "Expand editor",
       "groupHistory": "History",
       "groupInsert": "Insert",
       "groupText": "Text",
+      "groupView": "View",
       "italic": "Italic",
       "label": "Content formatting",
       "orderedList": "Numbered list",

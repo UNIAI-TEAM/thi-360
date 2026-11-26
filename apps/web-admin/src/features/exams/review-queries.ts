@@ -33,10 +33,11 @@ function useInvalidateExam(examId: string, { includeCheck = true }: { includeChe
     ]);
 }
 
-export function useExamCheck(examId: string) {
+export function useExamCheck(examId: string, enabled = true) {
   return useQuery({
     queryKey: EXAM_REVIEW_QUERY_KEYS.check(examId),
     queryFn: () => getExamCheck({ examId }),
+    enabled,
   });
 }
 
@@ -45,6 +46,9 @@ export function useRunExamCheck(examId: string) {
   const invalidate = useInvalidateExam(examId, { includeCheck: false });
   return useMutation({
     mutationFn: (request: Omit<RunExamCheckRequest, "examId">) => runExamCheck({ examId, ...request }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: EXAM_REVIEW_QUERY_KEYS.check(examId) });
+    },
     onSuccess: async (result) => {
       queryClient.setQueryData(EXAM_REVIEW_QUERY_KEYS.check(examId), result);
       await invalidate();
@@ -160,10 +164,11 @@ export function useGeneratePreview(examId: string) {
   });
 }
 
-export function useExamVersions(examId: string) {
+export function useExamVersions(examId: string, enabled = true) {
   return useQuery({
     queryKey: EXAM_REVIEW_QUERY_KEYS.versions(examId),
     queryFn: () => listExamVersions({ examId }),
+    enabled,
   });
 }
 

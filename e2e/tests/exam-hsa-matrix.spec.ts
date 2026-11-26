@@ -166,7 +166,14 @@ test.describe("HSA: mức Bắt buộc cố định (UNI-1701 AC-4)", () => {
     await list.locator("button[data-list-item]").nth(2).click();
     await expect(page.getByRole("radio", { name: "Tham khảo" })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Lưu" }).click();
+    const returnUrl = page.url();
+    const [putRes] = await Promise.all([
+      page.waitForResponse((res) => res.url().endsWith(`/exams/${id}/structure`) && res.request().method() === "PUT"),
+      page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    ]);
+    expect(putRes.status(), await putRes.text()).toBe(200);
+    await page.waitForURL(/\/exams\/[^/]+\/listing/);
+    await page.goto(returnUrl);
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
     await expect(page.getByText(/Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA/)).toBeHidden();
 

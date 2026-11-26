@@ -73,4 +73,47 @@ describe("Phần theo mã mở được khi quy tắc tham gia là CHOICE (R1-01
     expect(screen.queryByText(/^Mã QD06 thiếu môn/)).not.toBeInTheDocument();
     expect(within(screen.getByRole("table", { name: /Các môn của Part 3/ })).getAllByRole("row")).toHaveLength(before + 1);
   });
+
+  it("UNI-1728 / UNI-2837: bảng phần theo mã hiện CA1..CA4 đúng mã tổ hợp khi examCode từ máy chủ là BCA", async () => {
+    const exam = codedExam("BCA");
+    const bcaCombos = [
+      { code: "CA1", examCode: "BCA", partId: "bca-3", subjectCodes: ["PHYSICS"], missingSubjects: [], nameVi: "CA1", nameEn: "CA1" },
+      { code: "CA2", examCode: "BCA", partId: "bca-3", subjectCodes: ["CHEMISTRY"], missingSubjects: [], nameVi: "CA2", nameEn: "CA2" },
+      { code: "CA3", examCode: "BCA", partId: "bca-3", subjectCodes: ["BIOLOGY"], missingSubjects: [], nameVi: "CA3", nameEn: "CA3" },
+      { code: "CA4", examCode: "BCA", partId: "bca-3", subjectCodes: ["GEOGRAPHY"], missingSubjects: [], nameVi: "CA4", nameEn: "CA4" },
+    ];
+    backend.seedExam(exam).seedStructureExtras(exam.id, { combinations: bcaCombos });
+    openPart(exam.id, "bca-3");
+
+    const subjects = await screen.findByRole("table", { name: /Các môn của/ });
+    expect(within(subjects).getByRole("row", { name: /Vật lí/ })).toHaveTextContent("CA1");
+    expect(within(subjects).getByRole("row", { name: /Hóa học/ })).toHaveTextContent("CA2");
+    expect(within(subjects).getByRole("row", { name: /Sinh học/ })).toHaveTextContent("CA3");
+    expect(within(subjects).getByRole("row", { name: /Địa lí/ })).toHaveTextContent("CA4");
+    expect(within(subjects).queryByText("BCA")).not.toBeInTheDocument();
+    for (const code of ["CA1", "CA2", "CA3", "CA4"]) {
+      expect(screen.getAllByText(code).length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("UNI-1730 / UNI-2838: bảng phần theo mã QDA hiện QD01..QD05 đúng mã tổ hợp khi examCode từ máy chủ là QDA", async () => {
+    const exam = codedExam("QDA");
+    const qdaCombos = [
+      { code: "QD01", examCode: "QDA", partId: "qda-3", subjectCodes: ["PHYSICS", "CHEMISTRY"], missingSubjects: [], nameVi: "QD01", nameEn: "QD01" },
+      { code: "QD02", examCode: "QDA", partId: "qda-3", subjectCodes: ["CHEMISTRY", "BIOLOGY"], missingSubjects: [], nameVi: "QD02", nameEn: "QD02" },
+      { code: "QD03", examCode: "QDA", partId: "qda-3", subjectCodes: ["PHYSICS", "BIOLOGY"], missingSubjects: [], nameVi: "QD03", nameEn: "QD03" },
+      { code: "QD04", examCode: "QDA", partId: "qda-3", subjectCodes: ["HISTORY", "GEOGRAPHY"], missingSubjects: [], nameVi: "QD04", nameEn: "QD04" },
+      { code: "QD05", examCode: "QDA", partId: "qda-3", subjectCodes: ["ENGLISH"], missingSubjects: [], nameVi: "QD05", nameEn: "QD05" },
+    ];
+    backend.seedExam(exam).seedStructureExtras(exam.id, { combinations: qdaCombos });
+    openPart(exam.id, "qda-3");
+
+    const subjects = await screen.findByRole("table", { name: /Các môn của/ });
+    expect(within(subjects).getByRole("row", { name: /Vật lí/ })).toHaveTextContent("QD01, QD03");
+    expect(within(subjects).getByRole("row", { name: /Tiếng Anh/ })).toHaveTextContent("QD05");
+    expect(within(subjects).queryByText("QDA")).not.toBeInTheDocument();
+    for (const code of ["QD01", "QD02", "QD03", "QD04", "QD05"]) {
+      expect(screen.getAllByText(code).length).toBeGreaterThanOrEqual(2);
+    }
+  });
 });

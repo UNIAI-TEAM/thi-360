@@ -33,7 +33,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
 const EXAMS_PATH = "/api/v1/admin/exams";
 const TEMPLATES_PATH = "/api/v1/admin/exam-templates";
-const SUBMIT = "Lưu và tiếp tục";
+const SUBMIT = "Tiếp tục → Cấu trúc và ma trận";
 
 /** Kỳ thi chọn bằng ô chọn (không còn thẻ radio): mở danh sách rồi chọn mục có mã trong ngoặc. */
 async function pickKind(user: UserEvent, code: string) {
@@ -347,11 +347,11 @@ describe("trang Tạo bài thi, bước 1: bốn trạng thái", () => {
 });
 
 describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi2B", () => {
-  it("thanh 5 tab ở đầu trang: Thông tin chung đang chọn, 4 tab sau khóa tĩnh (AC-01)", async () => {
+  it("thanh 4 tab ở đầu trang: 1. Thông tin chung đang chọn, 3 tab sau khóa tĩnh (UNI-1720)", async () => {
     await renderPage();
     const nav = screen.getByRole("navigation", { name: "Các phần của bài thi" });
-    expect(within(nav).getByRole("link", { name: "Thông tin chung" })).toHaveAttribute("aria-current", "page");
-    for (const label of ["Cấu trúc và ma trận", "Thông tin bán", "Kiểm tra và xem trước", "Phiên bản và công bố"]) {
+    expect(within(nav).getByRole("link", { name: "1. Thông tin chung" })).toHaveAttribute("aria-current", "page");
+    for (const label of ["2. Cấu trúc và ma trận", "3. Thông tin bán", "4. Kiểm tra, xem trước và công bố"]) {
       const disabledTab = within(nav).getByText(label);
       expect(disabledTab).toHaveAttribute("aria-disabled", "true");
       expect(disabledTab.closest("a")).toBeNull();
@@ -618,7 +618,7 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
     await user.click(screen.getByRole("radio", { name: /^By part/ }));
     await screen.findAllByRole("textbox", { name: /^Questions of/ });
     await user.type(screen.getByRole("textbox", { name: /^Exam name/ }), "V-ACT language");
-    await user.click(screen.getAllByRole("button", { name: "Save and continue" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: "Continue → Structure and matrix" })[0]!);
     const message = "Duration missing. Custom V-ACT exams have no default duration.";
     await screen.findByText(message, { selector: "p" });
     expect(within(screen.getByRole("region", { name: "Summary" })).getAllByText(message)).toHaveLength(1);

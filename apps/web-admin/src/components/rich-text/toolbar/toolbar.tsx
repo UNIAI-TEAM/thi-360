@@ -8,6 +8,8 @@ import {
   Italic,
   List,
   ListOrdered,
+  Maximize2,
+  Minimize2,
   Redo2,
   Strikethrough,
   Subscript as SubscriptIcon,
@@ -27,6 +29,9 @@ export interface RichTextToolbarProps {
   /** Id mục khớp node/mark đang chọn — nút đó hiện "đang bật" và bấm vào mở lại hộp thay vì chèn mới. */
   selectedEntryId: string | null;
   onOpenEntry: (entry: InsertEntry) => void;
+  /** Mở rộng / thu gọn ô soạn để dễ nhập nội dung dài (UNI-1725 / UNI-2836). */
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 type ToolbarButton = {
@@ -50,7 +55,15 @@ function Separator() {
  * "Văn bản" (định dạng + danh sách) rồi nhóm "Chèn" từ registry. Cả thanh là một điểm dừng Tab:
  * mũi tên trái/phải đi giữa các nút (roving tabindex), Home/End về đầu/cuối, Tab rời thanh.
  */
-export function RichTextToolbar({ editor, disabled = false, insertEntries, selectedEntryId, onOpenEntry }: RichTextToolbarProps) {
+export function RichTextToolbar({
+  editor,
+  disabled = false,
+  insertEntries,
+  selectedEntryId,
+  onOpenEntry,
+  expanded = false,
+  onToggleExpand,
+}: RichTextToolbarProps) {
   const t = useTranslations("richText");
   const toolbarRef = useRef<HTMLDivElement>(null);
   // Nút nhận Tab duy nhất của thanh; mũi tên không đổi nó — lần Tab sau vào lại nút này.
@@ -173,11 +186,24 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
     };
   });
 
+  const viewButtons: ToolbarButton[] = onToggleExpand
+    ? [
+        {
+          key: "expand",
+          icon: expanded ? <Minimize2 /> : <Maximize2 />,
+          label: expanded ? t("toolbar.collapse") : t("toolbar.expand"),
+          pressed: expanded,
+          onClick: onToggleExpand,
+        },
+      ]
+    : [];
+
   const items: ToolbarItem[] = [
     ...historyButtons,
     "separator",
     ...textButtons,
     ...(insertButtons.length > 0 ? ["separator" as const, ...insertButtons] : []),
+    ...(viewButtons.length > 0 ? ["separator" as const, ...viewButtons] : []),
   ];
   const buttonCount = items.filter((item) => item !== "separator").length;
   const effectiveTabStop = Math.min(tabStop, Math.max(buttonCount - 1, 0));
@@ -208,12 +234,17 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
   }
 
   let buttonIndex = -1;
-  const groups: { label?: string; start: number; end: number }[] = [
+  const groups: { label?: string; ariaLabel?: string; start: number; end: number; alignEnd?: boolean }[] = [
     { start: 0, end: historyButtons.length },
     { label: t("toolbar.groupText"), start: historyButtons.length + 1, end: historyButtons.length + 1 + textButtons.length },
   ];
+  let cursor = historyButtons.length + 1 + textButtons.length;
   if (insertButtons.length > 0) {
-    groups.push({ label: t("toolbar.groupInsert"), start: historyButtons.length + 1 + textButtons.length + 1, end: items.length });
+    groups.push({ label: t("toolbar.groupInsert"), start: cursor + 1, end: cursor + 1 + insertButtons.length });
+    cursor += 1 + insertButtons.length;
+  }
+  if (viewButtons.length > 0) {
+    groups.push({ ariaLabel: t("toolbar.groupView"), start: cursor + 1, end: cursor + 1 + viewButtons.length, alignEnd: true });
   }
 
   return (
@@ -224,30 +255,42 @@ export function RichTextToolbar({ editor, disabled = false, insertEntries, selec
       aria-label={t("toolbar.label")}
       onKeyDown={onKeyDown}
     >
-      {groups.map((group, groupIndex) => (
-        <div key={groupIndex} role="group" aria-label={group.label ?? t("toolbar.groupHistory")} className="flex min-w-0 max-w-full flex-wrap items-center gap-0.5">
-          {group.label && <span className="mx-1 text-caption font-medium text-text-muted">{group.label}</span>}
-          {items.slice(group.start, group.end).map((item) => {
-            if (item === "separator") return <Separator key={`sep-${groupIndex}`} />;
-            buttonIndex += 1;
-            const index = buttonIndex;
-            return (
-              <IconButton
-                key={item.key}
-                size="md"
-                icon={item.icon}
-                aria-label={item.label}
-                aria-pressed={item.pressed}
-                aria-disabled={item.disabled}
-                tabIndex={index === effectiveTabStop ? 0 : -1}
-                onFocus={() => setTabStop(index)}
-                onClick={item.onClick}
-              />
-            );
-          })}
-          {groupIndex < groups.length - 1 && <Separator />}
-        </div>
-      ))}
+      {groups.map((group, groupIndex) => {
+        const nextGroup = groups[groupIndex + 1];
+        return (
+          <div
+            key={groupIndex}
+            role="group"
+            aria-label={group.ariaLabel ?? group.label ?? t("toolbar.groupHistory")}
+            className={
+              group.alignEnd
+                ? "ms-auto flex min-w-0 max-w-full flex-wrap items-center gap-0.5"
+                : "flex min-w-0 max-w-full flex-wrap items-center gap-0.5"
+            }
+          >
+            {group.label && <span className="mx-1 text-caption font-medium text-text-muted">{group.label}</span>}
+            {items.slice(group.start, group.end).map((item) => {
+              if (item === "separator") return <Separator key={`sep-${groupIndex}`} />;
+              buttonIndex += 1;
+              const index = buttonIndex;
+              return (
+                <IconButton
+                  key={item.key}
+                  size="md"
+                  icon={item.icon}
+                  aria-label={item.label}
+                  aria-pressed={item.pressed}
+                  aria-disabled={item.disabled}
+                  tabIndex={index === effectiveTabStop ? 0 : -1}
+                  onFocus={() => setTabStop(index)}
+                  onClick={item.onClick}
+                />
+              );
+            })}
+            {nextGroup && !nextGroup.alignEnd && <Separator />}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -35,19 +35,22 @@ test("QDA FULL: phần 3 liệt kê đủ 6 môn từ mẫu, thêm chỉ tiêu c
   await expect(subjects.getByRole("row")).toHaveCount(7);
   await expect(page.getByRole("button", { name: "Gắn tổ hợp" })).toHaveCount(0);
 
-  // Mở môn đầu tiên, thêm một chỉ tiêu chủ đề (chờ mapping) và lưu.
+  // Mở môn đầu tiên (Lý — dùng quy tắc MAPID giống HSA theo UNI-1731), bật chế độ Theo ma trận MAPID rồi lưu.
   await subjects.getByRole("button", { name: /^Thiết lập môn/ }).first().click();
-  // MT (FTM R-6): "Thêm chỉ tiêu chủ đề" của khối phạm vi chỉ mở bảng; thêm dòng là nút của chính bảng (chờ mapping).
-  await page.getByRole("button", { name: "Thêm chỉ tiêu chủ đề" }).click();
-  await page.locator("[data-topic-add]").click();
-  await expect(page.getByText("Chờ mapping")).toBeVisible();
-  // Môn Khoa học của QDA mở MT (FTM B7), không có dòng chữ "thiết lập đầy đủ" của MD.
   await expect(page.getByTestId("full-form-notice")).toHaveCount(0);
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
-  await expect(page.getByText("Có thay đổi chưa lưu")).toHaveCount(0);
+  await page.getByRole("radio", { name: /Theo ma trận MAPID/ }).check();
+  await expect(page.getByTestId("mapid-rules-table")).toBeVisible();
+  const returnUrl = page.url();
+  const [putRes] = await Promise.all([
+    page.waitForResponse((res) => res.url().endsWith(`/exams/${id}/structure`) && res.request().method() === "PUT"),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+  ]);
+  expect(putRes.status(), await putRes.text()).toBe(200);
+  await page.waitForURL(/\/exams\/[^/]+\/listing/);
 
-  await page.reload();
-  await expect(page.getByText("Chờ mapping")).toBeVisible();
+  await page.goto(returnUrl);
+  await expect(page.getByRole("radio", { name: /Theo ma trận MAPID/ })).toBeChecked();
+  await expect(page.getByTestId("mapid-rules-table")).toBeVisible();
 });
 
 test("bài ôn HSA 10 câu: màn rút gọn ba trường", async ({ context, page }) => {

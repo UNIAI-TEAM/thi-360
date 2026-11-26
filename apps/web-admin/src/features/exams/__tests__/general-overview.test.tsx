@@ -35,7 +35,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 const EXAM_ID = "ex-general-overview";
 const EXAM_PATH = `/api/v1/admin/exams/${EXAM_ID}`;
 const STRUCTURE_PATH = `${EXAM_PATH}/structure`;
-const SAVE = "Lưu thông tin";
+const SAVE = "Tiếp tục → Cấu trúc và ma trận";
 
 const block = (id: string, count: number): QuestionBlock => ({
   id,
@@ -351,7 +351,7 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
 
     window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure`);
     renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
-    expect((await screen.findAllByText("Ngữ văn: các khối có 50 câu, môn cần 30 câu.")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Ngữ văn đang vượt 20 câu")).length).toBeGreaterThan(0);
     // Khối lấy câu không bị tự giảm: máy chủ vẫn giữ 50 câu ở nhóm, lệch này do người dùng tự chia lại ở bước Cấu trúc.
     expect(backend.app(EXAM_ID).parts[1]!.sections[0]!.blocks[0]!.questionCount).toBe(50);
   }, 30_000);
@@ -604,7 +604,7 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
       await user.type(countOf(MATH), "40");
       await user.click(link);
       const dialog = await screen.findByRole("dialog");
-      expect(within(dialog).getByText("Rời trang khi chưa lưu?")).toBeInTheDocument();
+      expect(within(dialog).getByText("Lưu thay đổi chưa lưu?")).toBeInTheDocument();
       expect(routerMock.push).not.toHaveBeenCalled();
       await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

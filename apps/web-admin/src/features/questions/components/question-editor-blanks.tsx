@@ -3,13 +3,14 @@
 import { Button, IconButton, Input } from "@thi360/ui";
 import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useId, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useFieldArray, useFormContext, useWatch } from "react-hook-form";
 import {
   BLANK_MARKER,
   countBlankMarkers,
   draftRowId,
   emptyBlank,
+  findInsertedBlankIndex,
   removeBlankMarker,
   type QuestionEditorValues,
 } from "../editor-form";
@@ -30,12 +31,29 @@ export function BlanksEditor({ prefix, contentPath }: { prefix: BodyPath; conten
   const { control, getValues, setValue, formState, trigger } = useFormContext<QuestionEditorValues>();
   const { fields, insert, remove } = useFieldArray({ control, name: `${prefix}.blanks`, keyName: "rowKey" });
   const content = useWatch({ control, name: contentPath }) ?? "";
+  const prevContentRef = useRef(content);
   const markers = countBlankMarkers(content);
   const groupError = useEditorError(`${prefix}.blanks`);
 
   const revalidate = () => {
     if (formState.isSubmitted) void trigger([contentPath, `${prefix}.blanks`]);
   };
+
+  // Khi người dùng gõ trực tiếp `___` (hoặc dán nhiều `___`) vào Đề bài, tự chèn đủ ô đáp án đúng vị trí mới thêm mà không làm lệch các đáp án phía sau và không cướp tiêu điểm khỏi ô Đề bài.
+  useEffect(() => {
+    const previous = prevContentRef.current;
+    prevContentRef.current = content;
+    const current = getValues(`${prefix}.blanks`) ?? [];
+    const missing = markers - current.length;
+    if (missing <= 0) return;
+    const insertAt = Math.min(current.length, findInsertedBlankIndex(previous, content));
+    insert(
+      insertAt,
+      Array.from({ length: missing }, () => emptyBlank()),
+      { shouldFocus: false },
+    );
+    if (formState.isSubmitted) void trigger([contentPath, `${prefix}.blanks`]);
+  }, [content, contentPath, formState.isSubmitted, getValues, insert, markers, prefix, trigger]);
 
   const addBlank = () => {
     const editor = registry?.get(contentPath);

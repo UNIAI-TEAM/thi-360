@@ -94,10 +94,10 @@ test("THPTQG Toán theo phần: ba phần, thời lượng trống và bắt bu�
   const duration = page.getByRole("textbox", { name: "Thời lượng chung" });
   await expect(duration).toHaveValue("");
 
-  // Để trống thì "Lưu và tiếp tục" không gửi: ở lại bước 1, ô thời lượng báo sai kèm lời nhắc.
+  // Để trống thì "Tiếp tục → Cấu trúc và ma trận" không gửi: ở lại bước 1, ô thời lượng báo sai kèm lời nhắc.
   await page.getByRole("textbox", { name: /Mã bài thi/ }).fill(spec.code);
   await page.getByRole("textbox", { name: /Tên bài thi/ }).fill(spec.name);
-  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
+  await page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }).click();
   await expect(duration).toHaveAttribute("aria-invalid", "true");
   await expect(page.getByText("Chưa nhập thời lượng. Bài theo phần phải có thời lượng riêng.").first()).toBeVisible();
   await expect(page).toHaveURL(/\/exams\/new$/);

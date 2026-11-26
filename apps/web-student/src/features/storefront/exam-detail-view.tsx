@@ -1,4 +1,4 @@
-import { cn, focusRing } from "@thi360/ui";
+import { BrandLogo, cn, focusRing } from "@thi360/ui";
 import { pickName } from "@thi360/web-kit/i18n";
 import { Check, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -133,7 +133,6 @@ export function SupportLine() {
 /** Trang chi tiết một bài thi đang bán (TM 11.3, UniNote 5.1.6). Khung Giá bán là phần chạy phía trình duyệt. */
 export function ExamDetailView({ product }: { product: ProductDetail }) {
   const t = useTranslations("storefront.detail");
-  const common = useTranslations("common");
   const storefront = useTranslations("storefront");
   const questions = rangeText(product.questionCount);
   const minutes = rangeText(product.durationMinutes);
@@ -183,8 +182,8 @@ export function ExamDetailView({ product }: { product: ProductDetail }) {
               <img src={product.coverUrl} alt="" className="aspect-[16/6] w-full object-cover" />
             ) : (
               <div className="flex aspect-[16/6] items-center justify-center gap-3 bg-subtle">
-                <span className="flex size-14 items-center justify-center rounded-xl border border-border bg-surface text-h3 font-bold text-primary-text">
-                  {common("logoMark")}
+                <span className="flex size-14 items-center justify-center rounded-xl border border-border bg-surface p-1.5">
+                  <BrandLogo className="size-11" />
                 </span>
                 <span className="text-h2 font-bold text-text-secondary">{product.examKind.code}</span>
               </div>

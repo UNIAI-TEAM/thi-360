@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, focusRing, LocaleSwitcher, ThemeToggle } from "@thi360/ui";
+import { BrandWordmark, Button, cn, focusRing, LocaleSwitcher, ThemeToggle } from "@thi360/ui";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -57,14 +57,8 @@ export function StudentHeader({
           isLanding ? "w-full sm:w-[90%] sm:max-w-[90%] sm:px-0" : "max-w-[1170px] sm:px-6",
         )}
       >
-        <Link href="/" className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className="flex size-10 items-center justify-center rounded-lg bg-primary-fill font-bold text-on-primary"
-          >
-            {common("logoMark")}
-          </span>
-          <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+        <Link href="/" className="flex items-center">
+          <BrandWordmark alt={common("appName")} className="h-9" />
         </Link>
 
         {/* Điều hướng là các trang của học viên: tài khoản quản trị chỉ có menu tài khoản, không có mục dẫn tới trang bị chặn. */}

@@ -94,7 +94,7 @@ describe("tab Kiểm tra: nhóm Thông tin bán", () => {
     const group = await listingSection();
     expect(group.getAllByText("Đạt")).toHaveLength(5);
     expect(group.getByText("Đã có ảnh bìa.")).toBeInTheDocument();
-    expect(group.getByRole("link", { name: /Sửa thông tin bán/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/listing`);
+    expect(group.getByRole("link", { name: /Sửa thông tin bán/ })).toHaveAttribute("href", `/exams/${EXAM_ID}/listing?from=review`);
   });
 
   it("R-10.2: Các nhóm kiểm tra giữ đúng 8 nhóm cấu hình, không nhân bản Thông tin bán vốn đã có mục riêng", async () => {
@@ -141,7 +141,7 @@ describe("tab Kiểm tra: cảnh báo Có câu chấm tay", () => {
     expect(within(row).getByText("CA1, CA2, CA3, CA4")).toBeInTheDocument();
     expect(within(row).getByRole("link", { name: "Mở khối Ngữ văn · Tự luận ở Cấu trúc và ma trận" })).toHaveAttribute(
       "href",
-      `/exams/${EXAM_ID}/structure?block=blk-1`,
+      `/exams/${EXAM_ID}/structure?block=blk-1&from=review`,
     );
   });
 

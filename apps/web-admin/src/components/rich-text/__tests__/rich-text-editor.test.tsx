@@ -260,6 +260,46 @@ describe("RichTextEditor", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Math delimiters are unbalanced");
   });
+
+  it("expands and collapses the editor via toolbar toggle and Escape while preserving content (UNI-1725 / UNI-2836)", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [html, setHtml] = useState("<p>Nội dung ban đầu</p>");
+      return <RichTextEditor value={html} onChange={setHtml} aria-label="Question stem" />;
+    }
+    renderWithProviders(<Harness />, { locale: "en", messages: en });
+    await waitFor(() => expect(editable()).toBeTruthy());
+
+    const expandBtn = screen.getByRole("button", { name: "Expand editor" });
+    expect(expandBtn).toHaveAttribute("aria-pressed", "false");
+    await user.click(expandBtn);
+
+    const dialog = screen.getByRole("dialog", { name: "Question stem" });
+    expect(dialog).toHaveAttribute("data-expanded", "true");
+    expect(screen.getByRole("button", { name: "Collapse editor" })).toHaveAttribute("aria-pressed", "true");
+    expect(editable()?.textContent).toContain("Nội dung ban đầu");
+
+    // Mở hộp Công thức ngay trong chế độ mở rộng: bấm Esc chỉ đóng hộp Công thức, giữ nguyên chế độ mở rộng.
+    await user.click(screen.getByRole("button", { name: "Math formula" }));
+    expect(await screen.findByLabelText("LaTeX code")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByLabelText("LaTeX code")).not.toBeInTheDocument());
+    expect(screen.getByRole("dialog", { name: "Question stem" })).toHaveAttribute("data-expanded", "true");
+
+    // Nếu có menu/listbox đang mở bên trong trình soạn mở rộng, Esc không được thu gọn khung mở rộng.
+    const menu = document.createElement("div");
+    menu.setAttribute("role", "listbox");
+    document.body.appendChild(menu);
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "Question stem" })).toHaveAttribute("data-expanded", "true");
+    menu.remove();
+
+    // Bấm Esc khi không mở hộp con thì thu gọn ô nhập về chỗ cũ.
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Question stem" })).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Expand editor" })).toHaveAttribute("aria-pressed", "false");
+    expect(editable()?.textContent).toContain("Nội dung ban đầu");
+  });
 });
 
 describe("RichTextView", () => {
