@@ -2121,7 +2121,9 @@
       "refundStatusAll": "Tất cả trạng thái hoàn",
       "searchLabel": "Tìm đơn hàng",
       "searchPlaceholder": "Tìm mã đơn, tài khoản, họ tên hoặc mã giao dịch...",
-      "to": "Đến ngày"
+      "to": "Đến ngày",
+      "more": "Bộ lọc",
+      "moreCount": "{count, number} bộ lọc đang áp dụng"
     },
     "grantStatuses": {
       "ACTIVE": "Còn hiệu lực",

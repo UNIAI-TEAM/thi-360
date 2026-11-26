@@ -132,6 +132,40 @@ describe("OrderListView (AC-1, AC-2, AC-18, AC-19)", () => {
     );
   });
 
+  it("UNI-1717: bộ lọc ngoài ô tìm kiếm mặc định thu gọn, bấm Bộ lọc để mở", async () => {
+    fakeApi.get("/api/v1/admin/orders", () => ok(makeOrderListResponse([makeOrderSummary()])));
+    const user = userEvent.setup();
+    renderOrdersUi(<OrderListView />);
+
+    await screen.findByText("DH-261121-0001");
+    expect(screen.getByRole("searchbox", { name: "Tìm đơn hàng" })).toBeVisible();
+    const toggle = screen.getByRole("button", { name: /^Bộ lọc/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("combobox", { name: "Thanh toán" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Từ ngày")).not.toBeVisible();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("combobox", { name: "Thanh toán" })).toBeVisible();
+    expect(screen.getByLabelText("Từ ngày")).toBeVisible();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("UNI-1717: URL đã có bộ lọc thì mở sẵn và hiện số bộ lọc đang áp dụng", async () => {
+    resetMockNavigation("/orders", "?paymentStatus=SUCCEEDED&from=2026-11-20");
+    fakeApi.get("/api/v1/admin/orders", () => ok(makeOrderListResponse([makeOrderSummary()])));
+    renderOrdersUi(<OrderListView />);
+
+    await screen.findByText("DH-261121-0001");
+    const toggle = screen.getByRole("button", { name: /^Bộ lọc/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(toggle).toHaveTextContent("2");
+    expect(screen.getByText("2 bộ lọc đang áp dụng")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Thanh toán" })).toBeVisible();
+  });
+
   it("hỗ trợ tìm kiếm debounce, lọc ngày VN sang UTC, và fallback danh sách bài thi khi thiếu EXAM.VIEW (AC-2 tìm và lọc)", async () => {
     const user = userEvent.setup();
     const seenQueries: Array<Record<string, unknown>> = [];
@@ -175,6 +209,7 @@ describe("OrderListView (AC-1, AC-2, AC-18, AC-19)", () => {
       { timeout: 1500 },
     );
 
+    await user.click(screen.getByRole("button", { name: /^Bộ lọc/ }));
     const fromInput = screen.getByLabelText("Từ ngày");
     await user.type(fromInput, "2026-11-21");
 
@@ -241,6 +276,7 @@ describe("OrderListView (AC-1, AC-2, AC-18, AC-19)", () => {
 
     renderOrdersUi(<OrderListView />);
     await screen.findByText("DH-261121-0001");
+    await user.click(screen.getByRole("button", { name: /^Bộ lọc/ }));
 
     const searchInput = screen.getByRole("searchbox", { name: "Tìm đơn hàng" });
     await user.type(searchInput, "DH26");
@@ -383,6 +419,7 @@ describe("OrderListView (AC-1, AC-2, AC-18, AC-19)", () => {
       act(() => {
         onlineManager.setOnline(false);
       });
+      await user.click(screen.getByRole("button", { name: /^Bộ lọc/ }));
       await user.click(screen.getByRole("combobox", { name: "Thanh toán" }));
       await user.click(await screen.findByRole("option", { name: "Thành công" }));
       expect(await screen.findByText("Đang ngoại tuyến")).toBeInTheDocument();
