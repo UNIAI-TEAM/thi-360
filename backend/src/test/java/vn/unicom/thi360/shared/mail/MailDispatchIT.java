@@ -22,6 +22,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.MDC;
 import vn.unicom.thi360.shared.web.TraceIdFilter;
@@ -62,6 +63,9 @@ class MailDispatchIT extends AbstractMailIT {
 
         Received[] received = receivedAtLeast(sent.size());
         assertThat(received).hasSize(sent.size());
+        for (MimeMessage mime : GREEN_MAIL.getReceivedMessages()) {
+            assertThat(mime.getFrom()).containsExactly(new InternetAddress(MailProperties.DEFAULT_FROM));
+        }
         Map<String, String> viSubjects = new java.util.HashMap<>();
         for (Sent expected : sent) {
             Received mail = java.util.Arrays.stream(received)
@@ -413,7 +417,8 @@ class MailDispatchIT extends AbstractMailIT {
                 .lines()
                 .findFirst()
                 .orElseThrow()
-                .strip();
+                .strip()
+                .replace("[(${productName})]", MailProperties.DEFAULT_PRODUCT_NAME);
     }
 
     /** Giá trị như nó hiện trong HTML: chỉ cần thoát các ký tự đặc biệt dùng trong mẫu. */

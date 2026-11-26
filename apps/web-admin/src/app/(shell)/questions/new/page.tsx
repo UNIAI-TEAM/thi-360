@@ -12,7 +12,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const t = await getTranslations("questions.editor");
   const { type } = await searchParams;
-  return { title: `${isQuestionType(typeof type === "string" ? type : null) ? t("createTitle") : t("typePicker.title")} · Thi 360` };
+  return { title: `${isQuestionType(typeof type === "string" ? type : null) ? t("createTitle") : t("typePicker.title")} · Thi360` };
 }
 
 /** `/questions/new`: chọn dạng câu; `/questions/new?type=SINGLE_CHOICE`: biểu mẫu của dạng đó. */

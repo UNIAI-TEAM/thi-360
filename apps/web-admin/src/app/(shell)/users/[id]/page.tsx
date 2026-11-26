@@ -5,7 +5,7 @@ import { UserDetailSkeleton, UserDetailView } from "@/features/users/components/
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("users.detail");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default async function UserDetailPage({

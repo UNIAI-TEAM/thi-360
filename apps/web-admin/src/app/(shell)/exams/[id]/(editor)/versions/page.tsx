@@ -5,7 +5,7 @@ import { ExamVersionsView } from "@/features/exams/components/exam-versions-view
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("exams.versions");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 /** Phiên bản và công bố (bản vẽ BaiThiPhienBan, hộp thoại CongBoBaiThi). */

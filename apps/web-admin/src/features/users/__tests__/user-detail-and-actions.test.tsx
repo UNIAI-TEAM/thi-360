@@ -724,7 +724,7 @@ describe("Trang chi tiết: tiêu đề riêng, tab trong URL, dòng chưa đăn
   it("tiêu đề trang mang tên đăng nhập của tài khoản", async () => {
     renderDetail(makeDeps());
     await screen.findByRole("heading", { name: BASE_USER.fullName });
-    await waitFor(() => expect(document.title).toBe("student01 · Tài khoản · Thi 360"));
+    await waitFor(() => expect(document.title).toBe("student01 · Tài khoản · Thi360"));
   });
 
   it("đổi tab ghi ?tab= vào URL (giữ tham số khác); về tab mặc định thì bỏ tham số", async () => {

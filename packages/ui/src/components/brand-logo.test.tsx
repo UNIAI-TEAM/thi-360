@@ -21,16 +21,16 @@ describe("BrandLogo", () => {
   });
 
   it("exposes role=img and aria-label when label is provided", () => {
-    render(<BrandLogo label="Thi 360" />);
-    const logo = screen.getByRole("img", { name: "Thi 360" });
+    render(<BrandLogo label="Thi360" />);
+    const logo = screen.getByRole("img", { name: "Thi360" });
     expect(logo).not.toHaveAttribute("aria-hidden");
   });
 });
 
 describe("BrandWordmark", () => {
   it("renders the horizontal lockup asset with accessible alt text", () => {
-    render(<BrandWordmark alt="Thi 360" />);
-    const img = screen.getByRole("img", { name: "Thi 360" });
+    render(<BrandWordmark alt="Thi360" />);
+    const img = screen.getByRole("img", { name: "Thi360" });
     expect(img).toHaveAttribute("src", "/logo-full.png");
     expect(img).not.toHaveAttribute("aria-hidden");
   });

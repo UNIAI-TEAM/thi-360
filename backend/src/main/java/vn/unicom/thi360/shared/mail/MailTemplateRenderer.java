@@ -21,8 +21,8 @@ import org.thymeleaf.templatemode.TemplateMode;
  *   <li>Mẫu HTML nhúng layout chung {@code layout.<locale>.html} (màu thương hiệu theo DESIGN.md).
  * </ul>
  *
- * Biến có sẵn cho mẫu ngoài model: {@code webUrl}, {@code mailSubject} (chỉ ở mẫu HTML). Hai tên này
- * luôn thắng khóa cùng tên trong model.
+ * Biến có sẵn cho mẫu ngoài model: {@code webUrl}, {@code productName}, {@code mailSubject} (chỉ ở mẫu HTML).
+ * Ba tên này luôn thắng khóa cùng tên trong model.
  */
 public class MailTemplateRenderer {
 
@@ -30,9 +30,12 @@ public class MailTemplateRenderer {
 
     private final SpringTemplateEngine engine = new SpringTemplateEngine();
     private final String webUrl;
+    private final String productName;
 
-    public MailTemplateRenderer(ApplicationContext applicationContext, String templatesLocation, String webUrl) {
+    public MailTemplateRenderer(
+            ApplicationContext applicationContext, String templatesLocation, String webUrl, String productName) {
         this.webUrl = webUrl;
+        this.productName = MailProperties.normalizeProductName(productName);
         engine.addTemplateResolver(resolver(applicationContext, templatesLocation, "*.html", TemplateMode.HTML, 1));
         engine.addTemplateResolver(resolver(applicationContext, templatesLocation, "*.txt", TemplateMode.TEXT, 2));
     }
@@ -78,6 +81,7 @@ public class MailTemplateRenderer {
 
         Map<String, Object> variables = new HashMap<>(model);
         variables.put("webUrl", webUrl);
+        variables.put("productName", productName);
         Context context = new Context(Locale.forLanguageTag(normalized), variables);
 
         String rawText = engine.process(templateFile(kind.templateName(), normalized, "txt"), context);

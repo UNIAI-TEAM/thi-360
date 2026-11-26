@@ -4,7 +4,7 @@ import { ClassDetailView } from "@/features/classes/components/class-detail-view
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("classes.detail");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default async function ClassDetailPage({

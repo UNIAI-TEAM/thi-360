@@ -5,7 +5,7 @@ import { AttemptListSkeleton, AttemptListView } from "@/features/attempts/compon
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("attempts.list");
-  return { title: `${t("title")} · Thi 360` };
+  return { title: `${t("title")} · Thi360` };
 }
 
 export default function AttemptsPage() {
