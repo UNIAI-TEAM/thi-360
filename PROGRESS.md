@@ -2,6 +2,16 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### Khuyến mãi tự động giảm hết giá thì sản phẩm miễn phí, không cảnh báo giá sàn (2026-11-26, `UNI-2817`)
+
+- **Vấn đề:** khuyến mãi tự động "trừ 100%" bị kẹp lên 10.000 đồng (E26) và màn quản trị hiện 44 cảnh báo chạm giá sàn.
+- **Quyết định của M.Trường (2026-11-26):** khuyến mãi tự động giảm hết giá thì sản phẩm thành miễn phí (0 đồng, cấp quyền ngay, không qua VNPAY, không cảnh báo). Giá còn lại từ 1 tới 9.999 đồng vẫn bị nâng lên 10.000 đồng và vẫn cảnh báo. Đã ghi vào đặc tả `docs/specs/2026-11-16-thuong-mai-pbi-05-09.md` (E7, E26, bước 5 của cách tính giá).
+- **Sửa:** `PricingEngine.evaluateAuto` không kẹp khi mức giảm bằng hoặc vượt giá niêm yết. `PromotionCapWarningService` và luồng đơn 0 đồng (`paymentMethod = FREE`) dùng lại kết quả này nên không phải sửa thêm.
+- **Kiểm chứng:**
+  - Unit test `PriceCalculatorTest.autoPromotionDiscountingWholePriceMakesItFree` chạy đỏ trước khi sửa (nhận 10.000, chờ 0), xanh sau khi sửa. Nhóm test pricing, promotion, order đều qua.
+  - Thêm IT `PromotionAdminDataIT.autoPromotionRemovingWholePriceHasNoCapWarning` và `FreeOrderIT.autoPromotionRemovingWholePriceCreatesFreeOrderWithoutPayment`. Hai IT này cần Docker nên chạy trên CI.
+- **Tiếp theo:** PR vào `develop`, chờ CI, merge, deploy demo, kiểm khuyến mãi "trừ 100%" trên demo không còn cảnh báo.
+
 ### Hoàn tất đợt chạy App học viên native Android/iOS — Sóng 1–5 nghiệm thu xong (2026-11-26, `UNI-2785` / `UNI-2809`)
 
 - **Tiến độ tổng đợt (`62/62` điểm trên `integration/app-hoc-vien` + `feature/UNI-2809-qa-app-hoc-vien`):**

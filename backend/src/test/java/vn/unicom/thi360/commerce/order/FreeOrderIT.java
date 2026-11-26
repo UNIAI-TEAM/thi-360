@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,8 +27,11 @@ import vn.unicom.thi360.commerce.fulfillment.application.FulfillmentService;
 import vn.unicom.thi360.commerce.promotion.domain.DiscountType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionAudienceType;
 import vn.unicom.thi360.commerce.promotion.domain.PromotionScope;
+import vn.unicom.thi360.commerce.promotion.domain.PromotionScopeItem;
+import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionScopeItemRepository;
 import vn.unicom.thi360.commerce.promotion.infrastructure.PromotionRepository;
 import vn.unicom.thi360.commerce.support.CommerceTestFixtures;
+import vn.unicom.thi360.shared.ids.Ids;
 
 /**
  * AC-16 & AC-34: đơn 0 đồng ({@code FREE}) không tạo {@code payment}, cấp quyền ở transaction riêng;
@@ -39,6 +44,7 @@ class FreeOrderIT extends AbstractIntegrationTest {
     @Autowired private CatalogLookup catalogLookup;
     @Autowired private PromotionRepository promotionRepository;
     @Autowired private FulfillmentService fulfillmentService;
+    @Autowired private PromotionScopeItemRepository scopeItemRepository;
 
     @MockitoSpyBean
     private EntitlementGrantService entitlementGrantService;
@@ -155,5 +161,51 @@ class FreeOrderIT extends AbstractIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.next").value("FULFILLED"))
                 .andExpect(jsonPath("$.order.state").value("FULFILLED"));
+    }
+
+    @Test
+    void autoPromotionRemovingWholePriceCreatesFreeOrderWithoutPayment() throws Exception {
+        // UNI-2817: KM tự động giảm hết giá -> đơn 0 đồng, cấp quyền ngay, không qua VNPAY (không kẹp lên mức tối thiểu).
+        var buyer = fixtures.createLearner();
+        var product = fixtures.insertOnSaleProduct("HSA", 49_000L, 3);
+        Instant now = Instant.now();
+        var auto = fixtures.createAutoPromotion(
+                "AUTO100 " + UUID.randomUUID(), DiscountType.PERCENT, 100L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null, PromotionScope.EXAM);
+        scopeItemRepository.saveAndFlush(PromotionScopeItem.forExam(Ids.newId(), auto.getId(), product.examId()));
+
+        mockMvc.perform(post("/api/v1/me/price-quote")
+                        .with(fixtures.asLearner(buyer))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of("code", product.code()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.finalPrice").value(0))
+                .andExpect(jsonPath("$.discountApplied").value("PROMOTION_ONLY"));
+
+        String raw = mockMvc.perform(post("/api/v1/me/orders")
+                        .with(fixtures.asLearner(buyer))
+                        .header("Idempotency-Key", "auto-free-" + UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(Map.of(
+                                "code", product.code(),
+                                "expectedAccountId", buyer.id(),
+                                "expectedVersionNo", 1,
+                                "expectedAmountDue", 0L))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.next").value("FULFILLED"))
+                .andExpect(jsonPath("$.paymentUrl").doesNotExist())
+                .andExpect(jsonPath("$.order.paymentMethod").value("FREE"))
+                .andExpect(jsonPath("$.order.state").value("FULFILLED"))
+                .andReturn().getResponse().getContentAsString();
+
+        UUID orderId = UUID.fromString(mapper.readTree(raw).path("order").path("id").asText());
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM commerce.payment WHERE order_id = ?", Integer.class, orderId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT promotion_id FROM commerce.purchase_order WHERE id = ?", UUID.class, orderId))
+                .isEqualTo(auto.getId());
+        assertThat(jdbc.queryForObject(
+                "SELECT attempts_total FROM commerce.entitlement WHERE user_id = ? AND exam_id = ?",
+                Integer.class, buyer.id(), product.examId())).isEqualTo(3);
     }
 }
