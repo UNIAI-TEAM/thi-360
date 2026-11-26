@@ -2,6 +2,16 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### Màn Đơn hàng quản trị: bộ lọc mặc định thu gọn, bỏ dòng ghi chú báo cáo đối soát (2026-11-26, `UNI-2821`)
+
+- **Nguồn:** bug BA báo trên uniworkos UNI-1717 (sub-task PBI-08 bên uniworkos), có ảnh chụp màn `/orders`.
+- **Đã sửa (web quản trị):**
+  - Ô "Tìm đơn hàng" luôn hiện; Từ ngày, Đến ngày, Bài thi, Thanh toán, Hoàn tiền, Hình thức thu thu gọn sau nút "Bộ lọc" (`aria-expanded`, đếm số bộ lọc đang áp dụng), mở sẵn khi URL đã có bộ lọc. Cùng mẫu với "Bộ lọc khác" của Ngân hàng câu hỏi.
+  - Bỏ dòng "Báo cáo được tạo tự động bởi tác vụ đối soát cuối ngày." khi đã có báo cáo; giữ ở trạng thái chưa có báo cáo vì đó là lời giải thích vì sao thẻ trống.
+  - Đặc tả mục 9.1 ghi theo.
+- **Kiểm chứng:** `vitest run src/features/orders` 59/59 (thêm test thu gọn mặc định, mở sẵn theo URL, không còn dòng ghi chú; test cũ mở bộ lọc trước khi chọn).
+- **Tiếp theo:** PR vào `develop`, CI, merge, deploy demo, chuyển task uniworkos sang In review.
+
 ### Khuyến mãi tự động giảm hết giá thì sản phẩm miễn phí, không cảnh báo giá sàn (2026-11-26, `UNI-2817`)
 
 - **Vấn đề:** khuyến mãi tự động "trừ 100%" bị kẹp lên 10.000 đồng (E26) và màn quản trị hiện 44 cảnh báo chạm giá sàn.
