@@ -94,7 +94,7 @@ test("V-SAT Ngữ văn: thang 150 báo đúng 30 điểm của phần Viết; Vi
     expect(issue.partName).toMatch(/Viết/);
   }
   expect(collectIssues(scale).map((issue) => issue.code)).not.toContain("POINTS_TOTAL_MISMATCH");
-  await expect(page).toHaveURL(/\/exams\/[^/]+\/structure/);
+  await expect(page).toHaveURL(/\/exams\/[^/]+\/review/);
   await expect(page.getByText(/Chênh 30 điểm, đúng bằng điểm của phần đã lược/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
 
   // Phần Viết không bật lại được: công tắc "Tạm bỏ qua" bật sẵn, tắt và có lý do đi kèm (R3-09).

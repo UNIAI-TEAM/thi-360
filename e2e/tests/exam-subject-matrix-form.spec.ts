@@ -272,8 +272,6 @@ test.describe("MT của V-ACT: hai cột Số câu / Tỷ lệ (FTM AC 9, AC 11,
   });
 });
 
-const QUESTION_TAG_GROUP_ID = "00000000-0000-7000-8100-000000000008";
-
 test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H AC-2, AC-3, AC-11, AD-98, AD-99)", () => {
   test("hsaMathSaveAndCheck: sửa Điền đáp án Toán MT cập nhật HSA-B answerQuotas và Kiểm tra không báo trùng hay lệch", async ({ context, page }) => {
     await loginAdmin(context, "vi");
@@ -465,7 +463,7 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
     expect(allowedSetCodes.has(setItem?.code ?? "")).toBe(true);
   });
 
-  test("hsaHistoryGeographyAd98Ad99: Sử/Địa đặt Mạch kiến thức trước Cấu trúc câu gọn, đếm phân bổ, khối lớp tùy chọn và Địa lí chọn nhãn tư liệu động", async ({ context, page }) => {
+  test("hsaHistoryGeographyAd98Ad99: Sử/Địa đặt Cấu trúc câu gọn trước Mạch kiến thức, ẩn Khối lớp và Địa lí bỏ Điều kiện tư liệu (UNI-1723, UNI-1724)", async ({ context, page }) => {
     await loginAdmin(context, "vi");
     const admin = await adminApi();
 
@@ -478,15 +476,9 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
     await expect(suStruct).toHaveAttribute("data-structure-variant", "compact");
     const suStrandBox = await suStrand.boundingBox();
     const suStructBox = await suStruct.boundingBox();
-    expect(suStrandBox && suStructBox && suStrandBox.y < suStructBox.y).toBe(true);
-
-    const tagCode = `DIA_E2E_${RUN_ID}`.toUpperCase();
-    const tagName = `Tư liệu Địa ${RUN_ID}`;
-    const tagRes = await admin.api.post(`${ADMIN_URL}/api/v1/admin/catalog/groups/${QUESTION_TAG_GROUP_ID}/items`, {
-      headers: admin.headers,
-      data: { code: tagCode, nameVi: tagName, nameEn: `Geography Material ${RUN_ID}` },
-    });
-    expect(tagRes.status(), await tagRes.text()).toBe(201);
+    expect(suStrandBox && suStructBox && suStructBox.y < suStrandBox.y).toBe(true);
+    await expect(page.getByRole("heading", { level: 4, name: "Khối lớp" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 4, name: "Độ khó" })).toBeVisible();
 
     const exam = await createExam(admin, { kind: "HSA", scope: "SUBJECT", subjectCode: "DIA" }, "HSA-DIA");
     const dia = sectionOf(await getStructure(admin, exam.id), "DIA");
@@ -498,28 +490,20 @@ test.describe("MT của HSA: Toán, Sử, Địa lí và Quy tắc MAPID (CR-2H 
     await expect(structure).toHaveAttribute("data-structure-variant", "compact");
     const strandBox = await strand.boundingBox();
     const structBox = await structure.boundingBox();
-    expect(strandBox && structBox && strandBox.y < structBox.y).toBe(true);
+    expect(strandBox && structBox && structBox.y < strandBox.y).toBe(true);
+    await expect(page.getByRole("heading", { level: 4, name: "Khối lớp" })).toHaveCount(0);
+    await expect(page.getByTestId("hsa-dia-material-section")).toHaveCount(0);
+    await expect(page.getByTestId("hsa-dia-material-add")).toHaveCount(0);
 
     await page.getByTestId("mapid-mode-matrix").check();
     await expect(page.getByTestId("hsa-mapid-allocation")).toContainText(/0 \/ 17.*còn tự do: 17/);
 
-    const gradeField = page.getByRole("heading", { level: 4, name: "Khối lớp" }).locator("xpath=ancestor::*[@data-form-field][1]");
-    for (const label of ["Lớp 10", "Lớp 11", "Lớp 12"]) {
-      await gradeField.getByLabel(label, { exact: true }).fill("");
-    }
-    await expect(gradeField.getByText("Chưa áp dụng")).toBeVisible();
-
-    await page.getByTestId("hsa-dia-material-add").click();
-    const picker = page.getByTestId("hsa-dia-material-picker");
-    await picker.getByRole("checkbox", { name: tagName }).check();
     await saveInUi(page, exam.id);
-
     const saved = sectionOf(await getStructure(admin, exam.id), "DIA");
-    expect(saved.matrix?.byGrade ?? []).toEqual([]);
-    expect(roleBlock(saved, "QUESTION_SET")?.tagCodes).toContain(tagCode);
+    expect(saved.mapidMode).toBe("MATRIX");
     const checkCodes = await checkSection(admin, exam.id, dia.id);
-    expect(checkCodes.some((code) => code.includes("GRADE"))).toBe(false);
+    expect(checkCodes.some((code) => code.includes("MAPID"))).toBe(false);
     await page.reload();
-    await expect(page.getByTestId("hsa-dia-material-picker").getByRole("checkbox", { name: tagName })).toBeChecked();
+    await expect(page.getByTestId("mapid-mode-matrix")).toBeChecked();
   });
 });

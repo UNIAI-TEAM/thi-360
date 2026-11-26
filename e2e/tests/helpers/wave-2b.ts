@@ -610,8 +610,8 @@ export async function saveStructureInUi(page: Page, examId: string): Promise<voi
     next.click(),
   ]);
   expect(response.status(), await response.text()).toBe(200);
-  await page.waitForURL(/\/exams\/[^/]+\/listing/);
-  await page.goto(returnUrl);
+  await page.waitForURL(/\/exams\/[^/]+\/listing/, { timeout: 30_000 });
+  await page.goto(returnUrl, { timeout: 45_000 });
 }
 
 const MATRIX_SUBJECTS_BY_KIND: Readonly<Record<string, ReadonlySet<string>>> = {
@@ -750,12 +750,12 @@ export async function continueToReviewInUi(page: Page, examId: string): Promise<
 export async function openEditorTab(page: Page, label: string, url: RegExp): Promise<void> {
   if (label === "Phiên bản và công bố" || label === "Lịch sử phiên bản") {
     await page.getByRole("link", { name: "Lịch sử phiên bản" }).click();
-    await page.waitForURL(url);
+    await page.waitForURL(url, { timeout: 30_000 });
     return;
   }
   const normalized = label === "Kiểm tra và xem trước" ? "4. Kiểm tra, xem trước và công bố" : label;
   await page.getByRole("navigation", { name: "Các phần của bài thi" }).getByRole("link", { name: normalized }).click();
-  await page.waitForURL(url);
+  await page.waitForURL(url, { timeout: 30_000 });
 }
 
 /** Tab Kiểm tra cấu hình: bảng Kết quả theo đường lựa chọn có đủ `total` đường và đúng `valid` đường Hợp lệ. */
@@ -863,16 +863,18 @@ export async function ensureListingFilledInUi(page: Page, examId: string): Promi
         (item) =>
           new URL(item.url()).pathname === `/api/v1/admin/exams/${examId}/listing` &&
           item.request().method() === "PUT",
+        { timeout: 30_000 },
       ),
       page.waitForResponse(
         (item) =>
           new URL(item.url()).pathname === `/api/v1/admin/exams/${examId}` && item.request().method() === "GET",
+        { timeout: 30_000 },
       ),
       saveListing.click(),
     ]);
     expect(savedListing.status(), await savedListing.text()).toBe(200);
     expect(refreshedExam.status(), await refreshedExam.text()).toBe(200);
-    await page.waitForURL(/\/exams\/[^/]+\/review/);
+    await page.waitForURL(/\/exams\/[^/]+\/review/, { timeout: 30_000 });
   }
 }
 

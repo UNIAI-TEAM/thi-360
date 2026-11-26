@@ -360,7 +360,7 @@ test("HSA Toán MAPID: quy tắc 2 + 5 ràng buộc đề sinh thử (đỏ khi 
   expect(checkResponse.status(), await checkResponse.text()).toBe(200);
   const conflictLine = page.getByText(/Quy tắc .*xung đột|xung đột/).first();
   await expect(conflictLine, "kết quả kiểm tra phải nêu xung đột MAPID").toBeVisible({ timeout: 180_000 });
-  await expect(page.getByText(/cùng phạm vi nhưng một quy tắc đòi đúng|đòi đúng/)).toBeVisible();
+  await expect(page.getByText(/cùng phạm vi nhưng một quy tắc đòi đúng|đòi đúng/).first()).toBeVisible();
 
   const check = (await checkResponse.json()) as Record<string, unknown>;
   const groups = (check.groups ?? []) as Array<{ issues?: Array<Record<string, unknown>> }>;

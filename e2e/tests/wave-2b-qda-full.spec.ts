@@ -25,6 +25,7 @@ import {
 } from "./helpers/wave-2b";
 
 test.setTimeout(SCENARIO_TIMEOUT_MS);
+test.use({ actionTimeout: 30_000, navigationTimeout: 45_000 });
 
 /**
  * Một dòng của bảng "Các nhóm lấy câu" theo mẫu QDA_FULL: tên nhóm (ô tiêu đề dòng), số câu của nhóm và, với nhóm chùm,

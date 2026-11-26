@@ -80,8 +80,8 @@ test("H-SCA Ngữ văn: công bố bài Đọc hiểu; phần Viết không bậ
   // Lưu bước 2 qua giao diện bằng một giá trị sửa được (tên nhóm Đọc hiểu đầu tiên).
   await renameFirstBlockAndSaveInUi(page, admin, id);
 
-  // Lưới an toàn của máy chủ: PUT ép bật lại nhóm Viết được nhận (200) nhưng kiểm tra báo OMITTED_BLOCK_LOCKED, ở lại
-  // bước 2, và công bố bị từ chối.
+  // Lưới an toàn của máy chủ: PUT ép bật lại nhóm Viết được nhận (200) nhưng kiểm tra báo OMITTED_BLOCK_LOCKED ở bước 4,
+  // và công bố bị từ chối.
   await forceBlockOmitted(admin, id, writing[0]!.id!, false);
   await page.goto(`${ADMIN_URL}/exams/${id}/structure`);
   await expectStructureQuestions(page, /^\d+(\D|$)/);
@@ -90,7 +90,7 @@ test("H-SCA Ngữ văn: công bố bài Đọc hiểu; phần Viết không bậ
   const locked = collectIssues(reenabled).filter((issue) => issue.code === "OMITTED_BLOCK_LOCKED");
   expect(locked.length, `không có OMITTED_BLOCK_LOCKED: ${JSON.stringify(blockingCodes(reenabled))}`).toBeGreaterThan(0);
   expect(locked.every((issue) => issue.severity === "ERROR")).toBe(true);
-  await expect(page).toHaveURL(/\/exams\/[^/]+\/structure/);
+  await expect(page).toHaveURL(/\/exams\/[^/]+\/review/);
   await expect(page.getByText(/nhóm đã lược của mẫu chưa có trong V1 nên không bật lại được/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
   await expectPublishRefused(page, admin, id, reenabled);
 
