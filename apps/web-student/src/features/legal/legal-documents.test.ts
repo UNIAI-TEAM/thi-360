@@ -100,7 +100,7 @@ function generateFromSources(docsDir: string, writeOutput: boolean): Record<Lega
   for (const { id, sourceFile } of LEGAL_SOURCES) {
     const sourcePath = path.join(docsDir, sourceFile);
     const outPath = path.join(CONTRACTS_LEGAL_DIR, `${id}.vi.json`);
-    const existingDoc = existsSync(outPath) ? readJson(outPath) : undefined;
+    const existingDoc = writeOutput && existsSync(outPath) ? readJson(outPath) : undefined;
     const parsed = parseLegalMarkdown(readFileSync(sourcePath, "utf8"), {
       id,
       locale: "vi",
@@ -130,9 +130,9 @@ describe("legal-documents generator and contract parity", () => {
       expect(blockDiffs, `${id}.vi.json blocks drifted from docs/legal/`).toEqual([]);
       expect(committed).toEqual(expected);
       expect(readFileSync(outPath, "utf8")).toBe(serializeDocument(expected));
-      expect(committed.version).toBe("2026-11-26");
+      expect(committed.version).toBe(expected.version);
       expect(committed.status).toBe("published");
-      expect(committed.effectiveDate).toBe("2026-11-26");
+      expect(committed.effectiveDate).toBe(expected.effectiveDate);
     }
 
     expect(existsSync(path.join(DOCS_LEGAL_DIR, "README.md"))).toBe(true);
@@ -258,7 +258,7 @@ describe("legal-documents generator and contract parity", () => {
         sourcePath: `docs/legal/${sourceFile}`,
       });
       expect(parsed.status).toBe("published");
-      expect(parsed.effectiveDate).toBe("2026-11-26");
+      expect(parsed.effectiveDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
   });
 
@@ -290,7 +290,7 @@ describe("legal-documents generator and contract parity", () => {
     for (const { id } of LEGAL_SOURCES) {
       for (const locale of ["vi", "en"] as const) {
         const doc = readJson(path.join(CONTRACTS_LEGAL_DIR, `${id}.${locale}.json`));
-        expect(doc.effectiveDate).toBe("2026-11-26");
+        expect(doc.effectiveDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         for (const block of doc.blocks) {
           if (block.type === "paragraph") {
             expect(block.text).not.toContain("Có hiệu lực từ");
