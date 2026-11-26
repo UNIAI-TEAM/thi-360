@@ -1,8 +1,8 @@
-Your Thi 360 email verification code
+Your [(${productName})] email verification code
 Hello [(${fullName})],
 
 Your email verification code is: [(${code})]
 
 The code is only valid for a short time. If you did not request it, please ignore this message.
 
-Thi 360
+[(${productName})]

@@ -1,4 +1,4 @@
-Xác nhận email mới cho tài khoản Thi 360
+Xác nhận email mới cho tài khoản [(${productName})]
 Xin chào [(${fullName})],
 
 Bạn vừa yêu cầu đổi email của tài khoản sang [(${newEmail})].
@@ -6,4 +6,4 @@ Mã xác nhận của bạn là: [(${code})]
 
 Mã chỉ có hiệu lực trong thời gian ngắn. Nếu bạn không yêu cầu đổi email, hãy bỏ qua thư; email hiện tại của bạn được giữ nguyên.
 
-Thi 360
+[(${productName})]
