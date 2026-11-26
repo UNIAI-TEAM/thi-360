@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "wc-01-empty",
+      "description": "Chuỗi rỗng",
+      "html": "",
+      "expected": 0
+    },
+    {
+      "id": "wc-02-empty-tags",
+      "description": "Thẻ rỗng, khoảng trắng và br",
+      "html": "<p></p><p>   </p><p><br></p>",
+      "expected": 0
+    },
+    {
+      "id": "wc-03-basic-vietnamese",
+      "description": "Câu tiếng Việt có dấu cơ bản",
+      "html": "<p>Người lính trẻ bước ra mặt trận bảo vệ Tổ quốc.</p>",
+      "expected": 11
+    },
+    {
+      "id": "wc-04-block-boundary",
+      "description": "Ranh giới đoạn là khoảng trắng",
+      "html": "<p>a</p><p>b</p><p>c</p>",
+      "expected": 3
+    },
+    {
+      "id": "wc-05-br-line-breaks",
+      "description": "Xuống dòng bằng br tách chữ",
+      "html": "<p>một<br>hai<br>ba</p>",
+      "expected": 3
+    },
+    {
+      "id": "wc-06-nested-lists",
+      "description": "Danh sách lồng nhau ul và ol",
+      "html": "<ol><li><p>Ý một</p><ul><li><p>Chi tiết hai</p></li><li><p>Chi tiết ba</p></li></ul></li></ol>",
+      "expected": 8
+    },
+    {
+      "id": "wc-07-inline-tags-within-word",
+      "description": "Thẻ nội dòng không tách một chữ",
+      "html": "<p>ng<strong>ười</strong> l<em>ính</em> trẻ</p>",
+      "expected": 3
+    },
+    {
+      "id": "wc-08-hyphenated-words",
+      "description": "Chữ có dấu gạch nối bên trong",
+      "html": "<p>khoa-học kỹ-thuật lớp 12A-1 Bắc-Nam</p>",
+      "expected": 5
+    },
+    {
+      "id": "wc-09-standalone-dashes-punctuation",
+      "description": "Gạch nối, gạch dài và dấu câu đứng riêng không tính",
+      "html": "<p>Xin chào - thế giới – hôm nay — nhé !</p>",
+      "expected": 7
+    },
+    {
+      "id": "wc-10-numbers-decimals",
+      "description": "Số nguyên và số thập phân là chữ",
+      "html": "<p>Năm 2026 đạt 9,75 điểm và 3.14 rad</p>",
+      "expected": 8
+    },
+    {
+      "id": "wc-11-numbers-with-symbols",
+      "description": "Số đi kèm ký hiệu đơn vị và phép toán đứng riêng",
+      "html": "<p>100% + 50km/h - 20°C = ?</p>",
+      "expected": 3
+    },
+    {
+      "id": "wc-12-only-symbols",
+      "description": "Chỉ gồm ký hiệu và dấu câu đứng riêng",
+      "html": "<p>... ! ? ; : ( ) [ ] + - = × ÷ — –</p>",
+      "expected": 0
+    },
+    {
+      "id": "wc-13-unicode-nbsp",
+      "description": "Khoảng trắng không ngắt Unicode U+00A0",
+      "html": "<p>một hai  ba bốn</p>",
+      "expected": 4
+    },
+    {
+      "id": "wc-14-entity-nbsp",
+      "description": "Thực thể khoảng trắng không ngắt &nbsp;",
+      "html": "<p>một&nbsp;hai&nbsp;&nbsp;ba</p>",
+      "expected": 3
+    },
+    {
+      "id": "wc-15-mixed-whitespace",
+      "description": "Hỗn hợp tab, xuống dòng và khoảng trắng không ngắt",
+      "html": "<p>đầu\tgiữa\n\ncuối hết</p>",
+      "expected": 4
+    },
+    {
+      "id": "wc-16-vietnamese-nfc",
+      "description": "Tiếng Việt dạng dựng sẵn (NFC)",
+      "html": "<p>Tiếng Việt có dấu đầy đủ</p>",
+      "expected": 6
+    },
+    {
+      "id": "wc-17-vietnamese-nfd",
+      "description": "Tiếng Việt dạng tổ hợp (NFD)",
+      "html": "<p>Tiếng Việt có dấu đầy đủ</p>",
+      "expected": 6
+    },
+    {
+      "id": "wc-18-mixed-nfc-nfd",
+      "description": "Trộn tiếng Việt tổ hợp và dựng sẵn trong cùng đoạn",
+      "html": "<p>ê ê ớ ớ ằ ằ</p>",
+      "expected": 6
+    },
+    {
+      "id": "wc-19-inline-math",
+      "description": "Công thức cùng dòng bị loại khỏi đếm chữ",
+      "html": "<p>Ta có <span class=\"math-inline\">\\(x^2 + y^2 = 1\\)</span> trong mặt phẳng.</p>",
+      "expected": 5
+    },
+    {
+      "id": "wc-20-block-math",
+      "description": "Công thức khối bị loại khỏi đếm chữ",
+      "html": "<p>Xét phương trình:</p><span class=\"math-block\">\\[\\int_0^1 x^2\\,dx = \\frac{1}{3}\\]</span><p>Suy ra kết quả.</p>",
+      "expected": 7
+    },
+    {
+      "id": "wc-21-mhchem-formula",
+      "description": "Công thức hóa học mhchem không tính vào số chữ",
+      "html": "<p>Phản ứng <span class=\"math-inline\">\\(\\ce{2H2 + O2 -> 2H2O}\\)</span> tỏa nhiệt.</p>",
+      "expected": 4
+    },
+    {
+      "id": "wc-22-formulas-only",
+      "description": "Chỉ có công thức, không có chữ thường",
+      "html": "<p><span class=\"math-inline\">\\(a + b\\)</span></p><span class=\"math-block\">\\[E = mc^2\\]</span>",
+      "expected": 0
+    },
+    {
+      "id": "wc-23-multiple-inline-formulas",
+      "description": "Nhiều công thức cùng dòng xen kẽ từ ngữ",
+      "html": "<p>Nếu <span class=\"math-inline\">\\(x &gt; 0\\)</span> và <span class=\"math-inline\">\\(y &lt; 0\\)</span> thì <span class=\"math-inline\">\\(xy &lt; 0\\)</span> đúng.</p>",
+      "expected": 4
+    },
+    {
+      "id": "wc-24-html-entities",
+      "description": "Thực thể HTML < > & \" cùng từ và ký hiệu đứng riêng",
+      "html": "<p>Giá trị a &lt; b &amp; c &gt; d &quot;đúng&quot;.</p>",
+      "expected": 7
+    },
+    {
+      "id": "wc-25-quotes-brackets",
+      "description": "Ngoặc đơn, ngoặc vuông và ngoặc kép gắn liền chữ",
+      "html": "<p>(Mở bài) “Nhân vật chính” [đoạn 1].</p>",
+      "expected": 7
+    },
+    {
+      "id": "wc-26-slash-dot-tokens",
+      "description": "Cụm nối bằng dấu chấm và gạch chéo",
+      "html": "<p>TP.HCM ngày 26/11/2026 tỉ lệ 3/4</p>",
+      "expected": 6
+    },
+    {
+      "id": "wc-27-table-cells",
+      "description": "Ranh giới ô bảng tách chữ",
+      "html": "<table><tbody><tr><td>Một</td><td>Hai</td></tr><tr><td>Ba</td><td>Bốn</td></tr></tbody></table>",
+      "expected": 4
+    },
+    {
+      "id": "wc-28-bilingual-brand",
+      "description": "Câu song ngữ Việt-Anh có số và tên Thi360",
+      "html": "<p>Học sinh lớp 12 làm bài Thi360 online.</p>",
+      "expected": 8
+    },
+    {
+      "id": "wc-29-sub-sup",
+      "description": "Chỉ số trên dưới trong công thức văn bản không tách chữ",
+      "html": "<p>H<sub>2</sub>O và CO<sub>2</sub> tạo axit yếu</p>",
+      "expected": 6
+    },
+    {
+      "id": "wc-30-combined-realistic",
+      "description": "Đoạn tự luận tổng hợp có định dạng, gạch nối, số, nbsp, NFD và công thức",
+      "html": "<p><strong>Nhận xét:</strong> Tốc độ phản ứng ở 25 °C — đo theo <span class=\"math-inline\">\\(v = k[A]^2\\)</span> — tăng gấp 2 lần tại bước&nbsp;1-2.</p><p>Xem thêm bảng số liệu (2026).</p>",
+      "expected": 24
+    }
+  ]
+}

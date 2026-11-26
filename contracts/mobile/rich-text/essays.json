@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "samples": [
+    {
+      "id": "essay-01-plain-paragraphs",
+      "description": "Nhiều đoạn văn xuôi tiếng Việt có dấu đầy đủ",
+      "input": "<p>Hình tượng người lính trong thơ ca kháng chiến luôn mang vẻ đẹp giản dị mà kiên cường.</p><p>Từ những miền quê khác nhau, họ gặp nhau ở lý tưởng chung và gắn bó bằng tình đồng đội sâu nặng.</p>",
+      "serverHtml": "<p>Hình tượng người lính trong thơ ca kháng chiến luôn mang vẻ đẹp giản dị mà kiên cường.</p><p>Từ những miền quê khác nhau, họ gặp nhau ở lý tưởng chung và gắn bó bằng tình đồng đội sâu nặng.</p>",
+      "wordCount": 40
+    },
+    {
+      "id": "essay-02-bold-italic",
+      "description": "In đậm, in nghiêng và kết hợp lồng nhau",
+      "input": "<p>Luận điểm <strong>trung tâm</strong> của bài viết nhấn mạnh <em>giá trị nhân đạo</em> và <strong><em>khát vọng tự do</em></strong> của nhân vật.</p>",
+      "serverHtml": "<p>Luận điểm <strong>trung tâm</strong> của bài viết nhấn mạnh <em>giá trị nhân đạo</em> và <strong><em>khát vọng tự do</em></strong> của nhân vật.</p>",
+      "wordCount": 21
+    },
+    {
+      "id": "essay-03-bullet-list",
+      "description": "Danh sách dấu đầu dòng có định dạng trong mục",
+      "input": "<p>Các luận cứ chính:</p><ul><li><p><strong>Bối cảnh lịch sử</strong> gắn liền với đời sống nông thôn.</p></li><li><p><em>Chi tiết nghệ thuật</em> lặp lại tạo chiều sâu tâm lý.</p></li></ul>",
+      "serverHtml": "<p>Các luận cứ chính:</p><ul><li><p><strong>Bối cảnh lịch sử</strong> gắn liền với đời sống nông thôn.</p></li><li><p><em>Chi tiết nghệ thuật</em> lặp lại tạo chiều sâu tâm lý.</p></li></ul>",
+      "wordCount": 26
+    },
+    {
+      "id": "essay-04-ordered-list",
+      "description": "Danh sách đánh số theo trình tự lập luận",
+      "input": "<p>Trình tự phân tích gồm ba bước:</p><ol><li><p>Khái quát hoàn cảnh sáng tác của tác phẩm.</p></li><li><p>Phân tích diễn biến tâm trạng qua từng đoạn.</p></li><li><p>Đánh giá giá trị tư tưởng và nghệ thuật.</p></li></ol>",
+      "serverHtml": "<p>Trình tự phân tích gồm ba bước:</p><ol><li><p>Khái quát hoàn cảnh sáng tác của tác phẩm.</p></li><li><p>Phân tích diễn biến tâm trạng qua từng đoạn.</p></li><li><p>Đánh giá giá trị tư tưởng và nghệ thuật.</p></li></ol>",
+      "wordCount": 34
+    },
+    {
+      "id": "essay-05-nested-lists",
+      "description": "Hai loại danh sách lồng nhau cả hai chiều (ul trong ol và ol trong ul)",
+      "input": "<ol><li><p>Phần mở bài và định hướng</p><ul><li><p>Giới thiệu tác giả, tác phẩm</p></li><li><p>Nêu vấn đề nghị luận</p></li></ul></li><li><p>Phần thân bài</p><ul><li><p>Phân tích dẫn chứng tiêu biểu</p><ol><li><p>Dẫn chứng thứ nhất</p></li><li><p>Dẫn chứng thứ hai</p></li></ol></li></ul></li></ol>",
+      "serverHtml": "<ol><li><p>Phần mở bài và định hướng</p><ul><li><p>Giới thiệu tác giả, tác phẩm</p></li><li><p>Nêu vấn đề nghị luận</p></li></ul></li><li><p>Phần thân bài</p><ul><li><p>Phân tích dẫn chứng tiêu biểu</p><ol><li><p>Dẫn chứng thứ nhất</p></li><li><p>Dẫn chứng thứ hai</p></li></ol></li></ul></li></ol>",
+      "wordCount": 34
+    },
+    {
+      "id": "essay-06-line-breaks",
+      "description": "Xuống dòng trong cùng một đoạn văn bằng thẻ br",
+      "input": "<p>Trích bốn dòng thơ quen thuộc:<br>Dòng thứ nhất mở ra không gian rộng.<br>Dòng thứ hai gợi nỗi nhớ xa quê.<br>Dòng thứ ba khép lại bằng nhịp chậm.</p>",
+      "serverHtml": "<p>Trích bốn dòng thơ quen thuộc:<br>Dòng thứ nhất mở ra không gian rộng.<br>Dòng thứ hai gợi nỗi nhớ xa quê.<br>Dòng thứ ba khép lại bằng nhịp chậm.</p>",
+      "wordCount": 30
+    },
+    {
+      "id": "essay-07-nbsp",
+      "description": "Khoảng trắng không ngắt dạng thực thể và ký tự Unicode",
+      "input": "<p>Khoảng&nbsp;trắng không ngắt giúp giữ cụm <strong>năm&nbsp;2026</strong> và đơn vị <em>100 %</em> trên cùng một dòng.</p>",
+      "serverHtml": "<p>Khoảng&nbsp;trắng&nbsp;không&nbsp;ngắt giúp giữ cụm <strong>năm&nbsp;2026</strong> và đơn vị <em>100&nbsp;%</em> trên cùng một dòng.</p>",
+      "wordCount": 17
+    },
+    {
+      "id": "essay-08-html-entities",
+      "description": "Các ký tự đặc biệt <, >, & và dấu ngoặc kép trong văn bản",
+      "input": "<p>Trong bài nghị luận cần phân biệt biểu thức a &lt; b, c &gt; d, quan hệ A &amp; B và trích dẫn nguyên văn &quot;Thi360&quot; cũng như dấu \"kép\" trong chữ.</p>",
+      "serverHtml": "<p>Trong bài nghị luận cần phân biệt biểu thức a &lt; b, c &gt; d, quan hệ A &amp; B và trích dẫn nguyên văn \"Thi360\" cũng như dấu \"kép\" trong chữ.</p>",
+      "wordCount": 29
+    },
+    {
+      "id": "essay-09-combined-rich",
+      "description": "Tổng hợp đậm, nghiêng, danh sách lồng nhau, xuống dòng, khoảng trắng không ngắt và ký tự đặc biệt",
+      "input": "<p><strong>Kết luận:</strong> Giá trị tác phẩm vượt qua giới hạn <em>thời gian</em> &amp; không gian.<br>Người đọc nhận ra hai thông điệp &quot;cốt lõi&quot;:</p><ol><li><p>Tôn trọng sự thật khi <strong>a&nbsp;&lt;&nbsp;b</strong> và <em>b&nbsp;&gt;&nbsp;c</em>.</p><ul><li><p>Đối chiếu dẫn chứng<br>Nêu nhận xét khách quan</p></li></ul></li><li><p>Giữ gìn tiếng Việt trong sáng trong bài thi Thi360.</p></li></ol>",
+      "serverHtml": "<p><strong>Kết luận:</strong> Giá trị tác phẩm vượt qua giới hạn <em>thời gian</em> &amp; không gian.<br>Người đọc nhận ra hai thông điệp \"cốt lõi\":</p><ol><li><p>Tôn trọng sự thật khi <strong>a&nbsp;&lt;&nbsp;b</strong> và <em>b&nbsp;&gt;&nbsp;c</em>.</p><ul><li><p>Đối chiếu dẫn chứng<br>Nêu nhận xét khách quan</p></li></ul></li><li><p>Giữ gìn tiếng Việt trong sáng trong bài thi Thi360.</p></li></ol>",
+      "wordCount": 52
+    },
+    {
+      "id": "essay-10-empty",
+      "description": "Bài tự luận trống hoàn toàn",
+      "input": "",
+      "serverHtml": "",
+      "wordCount": 0
+    }
+  ]
+}

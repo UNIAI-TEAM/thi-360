@@ -1,0 +1,2060 @@
+{
+  "serverNow": "2026-11-26T08:30:00Z",
+  "attemptId": "10000000-0000-4000-8000-000000000001",
+  "state": "IN_PROGRESS",
+  "examId": "20000000-0000-4000-8000-000000000001",
+  "examVersionNo": 1,
+  "examName": "Đề mẫu tổng hợp Thi360 · 50 câu",
+  "examKindCode": "HSA",
+  "scope": "FULL",
+  "timing": "PER_PART",
+  "navigationMode": "FREE",
+  "attemptNo": 1,
+  "choices": {},
+  "startedAt": "2026-11-26T08:00:00Z",
+  "deadlineAt": "2026-11-26T09:30:00Z",
+  "lastPosition": {
+    "partId": "30000000-0000-4000-8000-000000000001",
+    "itemId": "40000000-0000-4000-8000-000000000001"
+  },
+  "maxScore": 100,
+  "audioPolicy": {
+    "maxPlays": 2,
+    "seekable": false
+  },
+  "audioPlays": [
+    {
+      "assetId": "50000000-0000-4000-8000-000000000001",
+      "partId": "30000000-0000-4000-8000-000000000001",
+      "durationMs": 45000,
+      "playsUsed": 0,
+      "playsLeft": 2,
+      "state": "IDLE",
+      "positionMs": 0
+    }
+  ],
+  "parts": [
+    {
+      "partId": "30000000-0000-4000-8000-000000000001",
+      "partCode": "P1",
+      "partName": "Phần 1 · Tổng hợp 50 câu",
+      "ord": 0,
+      "state": "OPEN",
+      "durationMinutes": 90,
+      "questionCount": 50,
+      "maxPoints": 100,
+      "startedAt": "2026-11-26T08:00:00Z",
+      "deadlineAt": "2026-11-26T09:30:00Z",
+      "closedAt": null,
+      "choice": null,
+      "choiceDeadlineAt": null,
+      "items": [
+        {
+          "itemId": "40000000-0000-4000-8000-000000000001",
+          "parentItemId": null,
+          "displayNo": 1,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "o1",
+            "o2",
+            "o3",
+            "o4"
+          ],
+          "flagged": true,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Tính giới hạn <span class=\"math-inline\">\\(\\lim_{x \\to 1} \\frac{x^2 - 1}{x - 1}\\)</span>.</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "o1",
+                "content": "<p><span class=\"math-inline\">\\(2\\)</span></p>"
+              },
+              {
+                "id": "o2",
+                "content": "<p><span class=\"math-inline\">\\(1\\)</span></p>"
+              },
+              {
+                "id": "o3",
+                "content": "<p><span class=\"math-inline\">\\(0\\)</span></p>"
+              },
+              {
+                "id": "o4",
+                "content": "<p>Không tồn tại</p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000002",
+          "parentItemId": null,
+          "displayNo": 2,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc2-a",
+            "sc2-b",
+            "sc2-c",
+            "sc2-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 2\\)</span>:</p><span class=\"math-block\">\\[S_2 = \\frac{2(2 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc2-a",
+                "content": "<p><span class=\"math-inline\">\\(4\\)</span></p>"
+              },
+              {
+                "id": "sc2-b",
+                "content": "<p><span class=\"math-inline\">\\(5\\)</span></p>"
+              },
+              {
+                "id": "sc2-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{2}{3}\\)</span></p>"
+              },
+              {
+                "id": "sc2-d",
+                "content": "<p><span class=\"math-inline\">\\(4\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000003",
+          "parentItemId": null,
+          "displayNo": 3,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc3-a",
+            "sc3-b",
+            "sc3-c",
+            "sc3-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 3x + 4\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc3-a",
+                "content": "<p><span class=\"math-inline\">\\(5\\)</span></p>"
+              },
+              {
+                "id": "sc3-b",
+                "content": "<p><span class=\"math-inline\">\\(7\\)</span></p>"
+              },
+              {
+                "id": "sc3-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{3}{4}\\)</span></p>"
+              },
+              {
+                "id": "sc3-d",
+                "content": "<p><span class=\"math-inline\">\\(6\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000004",
+          "parentItemId": null,
+          "displayNo": 4,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc4-a",
+            "sc4-b",
+            "sc4-c",
+            "sc4-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trong phản ứng <span class=\"math-inline\">\\(\\ce{4H2 + O2 -> 2H2O}\\)</span>, đại lượng nào được bảo toàn ở mẫu thử số 4?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc4-a",
+                "content": "<p><span class=\"math-inline\">\\(6\\)</span></p>"
+              },
+              {
+                "id": "sc4-b",
+                "content": "<p><span class=\"math-inline\">\\(9\\)</span></p>"
+              },
+              {
+                "id": "sc4-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{4}{5}\\)</span></p>"
+              },
+              {
+                "id": "sc4-d",
+                "content": "<p><span class=\"math-inline\">\\(8\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000005",
+          "parentItemId": null,
+          "displayNo": 5,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc5-a",
+            "sc5-b",
+            "sc5-c",
+            "sc5-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 5\\)</span>:</p><span class=\"math-block\">\\[S_5 = \\frac{5(5 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc5-a",
+                "content": "<p><span class=\"math-inline\">\\(7\\)</span></p>"
+              },
+              {
+                "id": "sc5-b",
+                "content": "<p><span class=\"math-inline\">\\(11\\)</span></p>"
+              },
+              {
+                "id": "sc5-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{5}{6}\\)</span></p>"
+              },
+              {
+                "id": "sc5-d",
+                "content": "<p><span class=\"math-inline\">\\(10\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000006",
+          "parentItemId": null,
+          "displayNo": 6,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc6-a",
+            "sc6-b",
+            "sc6-c",
+            "sc6-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 6x + 7\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc6-a",
+                "content": "<p><span class=\"math-inline\">\\(8\\)</span></p>"
+              },
+              {
+                "id": "sc6-b",
+                "content": "<p><span class=\"math-inline\">\\(13\\)</span></p>"
+              },
+              {
+                "id": "sc6-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{6}{7}\\)</span></p>"
+              },
+              {
+                "id": "sc6-d",
+                "content": "<p><span class=\"math-inline\">\\(12\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000007",
+          "parentItemId": null,
+          "displayNo": 7,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc7-a",
+            "sc7-b",
+            "sc7-c",
+            "sc7-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trong phản ứng <span class=\"math-inline\">\\(\\ce{7H2 + O2 -> 2H2O}\\)</span>, đại lượng nào được bảo toàn ở mẫu thử số 7?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc7-a",
+                "content": "<p><span class=\"math-inline\">\\(9\\)</span></p>"
+              },
+              {
+                "id": "sc7-b",
+                "content": "<p><span class=\"math-inline\">\\(15\\)</span></p>"
+              },
+              {
+                "id": "sc7-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{7}{8}\\)</span></p>"
+              },
+              {
+                "id": "sc7-d",
+                "content": "<p><span class=\"math-inline\">\\(14\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000008",
+          "parentItemId": null,
+          "displayNo": 8,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc8-a",
+            "sc8-b",
+            "sc8-c",
+            "sc8-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 8\\)</span>:</p><span class=\"math-block\">\\[S_8 = \\frac{8(8 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc8-a",
+                "content": "<p><span class=\"math-inline\">\\(10\\)</span></p>"
+              },
+              {
+                "id": "sc8-b",
+                "content": "<p><span class=\"math-inline\">\\(17\\)</span></p>"
+              },
+              {
+                "id": "sc8-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{8}{9}\\)</span></p>"
+              },
+              {
+                "id": "sc8-d",
+                "content": "<p><span class=\"math-inline\">\\(16\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000009",
+          "parentItemId": null,
+          "displayNo": 9,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc9-a",
+            "sc9-b",
+            "sc9-c",
+            "sc9-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 9x + 10\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc9-a",
+                "content": "<p><span class=\"math-inline\">\\(11\\)</span></p>"
+              },
+              {
+                "id": "sc9-b",
+                "content": "<p><span class=\"math-inline\">\\(19\\)</span></p>"
+              },
+              {
+                "id": "sc9-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{9}{10}\\)</span></p>"
+              },
+              {
+                "id": "sc9-d",
+                "content": "<p><span class=\"math-inline\">\\(18\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000010",
+          "parentItemId": null,
+          "displayNo": 10,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc10-a",
+            "sc10-b",
+            "sc10-c",
+            "sc10-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trong phản ứng <span class=\"math-inline\">\\(\\ce{10H2 + O2 -> 2H2O}\\)</span>, đại lượng nào được bảo toàn ở mẫu thử số 10?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc10-a",
+                "content": "<p><span class=\"math-inline\">\\(12\\)</span></p>"
+              },
+              {
+                "id": "sc10-b",
+                "content": "<p><span class=\"math-inline\">\\(21\\)</span></p>"
+              },
+              {
+                "id": "sc10-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{10}{11}\\)</span></p>"
+              },
+              {
+                "id": "sc10-d",
+                "content": "<p><span class=\"math-inline\">\\(20\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000011",
+          "parentItemId": null,
+          "displayNo": 11,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc11-a",
+            "sc11-b",
+            "sc11-c",
+            "sc11-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 11\\)</span>:</p><span class=\"math-block\">\\[S_11 = \\frac{11(11 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc11-a",
+                "content": "<p><span class=\"math-inline\">\\(13\\)</span></p>"
+              },
+              {
+                "id": "sc11-b",
+                "content": "<p><span class=\"math-inline\">\\(23\\)</span></p>"
+              },
+              {
+                "id": "sc11-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{11}{12}\\)</span></p>"
+              },
+              {
+                "id": "sc11-d",
+                "content": "<p><span class=\"math-inline\">\\(22\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000012",
+          "parentItemId": null,
+          "displayNo": 12,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc12-a",
+            "sc12-b",
+            "sc12-c",
+            "sc12-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 12x + 13\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc12-a",
+                "content": "<p><span class=\"math-inline\">\\(14\\)</span></p>"
+              },
+              {
+                "id": "sc12-b",
+                "content": "<p><span class=\"math-inline\">\\(25\\)</span></p>"
+              },
+              {
+                "id": "sc12-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{12}{13}\\)</span></p>"
+              },
+              {
+                "id": "sc12-d",
+                "content": "<p><span class=\"math-inline\">\\(24\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000013",
+          "parentItemId": null,
+          "displayNo": 13,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc13-a",
+            "sc13-b",
+            "sc13-c",
+            "sc13-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trong phản ứng <span class=\"math-inline\">\\(\\ce{13H2 + O2 -> 2H2O}\\)</span>, đại lượng nào được bảo toàn ở mẫu thử số 13?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc13-a",
+                "content": "<p><span class=\"math-inline\">\\(15\\)</span></p>"
+              },
+              {
+                "id": "sc13-b",
+                "content": "<p><span class=\"math-inline\">\\(27\\)</span></p>"
+              },
+              {
+                "id": "sc13-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{13}{14}\\)</span></p>"
+              },
+              {
+                "id": "sc13-d",
+                "content": "<p><span class=\"math-inline\">\\(26\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000014",
+          "parentItemId": null,
+          "displayNo": 14,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc14-a",
+            "sc14-b",
+            "sc14-c",
+            "sc14-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 14\\)</span>:</p><span class=\"math-block\">\\[S_14 = \\frac{14(14 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc14-a",
+                "content": "<p><span class=\"math-inline\">\\(16\\)</span></p>"
+              },
+              {
+                "id": "sc14-b",
+                "content": "<p><span class=\"math-inline\">\\(29\\)</span></p>"
+              },
+              {
+                "id": "sc14-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{14}{15}\\)</span></p>"
+              },
+              {
+                "id": "sc14-d",
+                "content": "<p><span class=\"math-inline\">\\(28\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000015",
+          "parentItemId": null,
+          "displayNo": 15,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc15-a",
+            "sc15-b",
+            "sc15-c",
+            "sc15-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 15x + 16\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc15-a",
+                "content": "<p><span class=\"math-inline\">\\(17\\)</span></p>"
+              },
+              {
+                "id": "sc15-b",
+                "content": "<p><span class=\"math-inline\">\\(31\\)</span></p>"
+              },
+              {
+                "id": "sc15-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{15}{16}\\)</span></p>"
+              },
+              {
+                "id": "sc15-d",
+                "content": "<p><span class=\"math-inline\">\\(30\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000016",
+          "parentItemId": null,
+          "displayNo": 16,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc16-a",
+            "sc16-b",
+            "sc16-c",
+            "sc16-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trong phản ứng <span class=\"math-inline\">\\(\\ce{16H2 + O2 -> 2H2O}\\)</span>, đại lượng nào được bảo toàn ở mẫu thử số 16?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc16-a",
+                "content": "<p><span class=\"math-inline\">\\(18\\)</span></p>"
+              },
+              {
+                "id": "sc16-b",
+                "content": "<p><span class=\"math-inline\">\\(33\\)</span></p>"
+              },
+              {
+                "id": "sc16-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{16}{17}\\)</span></p>"
+              },
+              {
+                "id": "sc16-d",
+                "content": "<p><span class=\"math-inline\">\\(32\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000017",
+          "parentItemId": null,
+          "displayNo": 17,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc17-a",
+            "sc17-b",
+            "sc17-c",
+            "sc17-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 17\\)</span>:</p><span class=\"math-block\">\\[S_17 = \\frac{17(17 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc17-a",
+                "content": "<p><span class=\"math-inline\">\\(19\\)</span></p>"
+              },
+              {
+                "id": "sc17-b",
+                "content": "<p><span class=\"math-inline\">\\(35\\)</span></p>"
+              },
+              {
+                "id": "sc17-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{17}{18}\\)</span></p>"
+              },
+              {
+                "id": "sc17-d",
+                "content": "<p><span class=\"math-inline\">\\(34\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000018",
+          "parentItemId": null,
+          "displayNo": 18,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc18-a",
+            "sc18-b",
+            "sc18-c",
+            "sc18-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 18x + 19\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc18-a",
+                "content": "<p><span class=\"math-inline\">\\(20\\)</span></p>"
+              },
+              {
+                "id": "sc18-b",
+                "content": "<p><span class=\"math-inline\">\\(37\\)</span></p>"
+              },
+              {
+                "id": "sc18-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{18}{19}\\)</span></p>"
+              },
+              {
+                "id": "sc18-d",
+                "content": "<p><span class=\"math-inline\">\\(36\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000019",
+          "parentItemId": null,
+          "displayNo": 19,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc19-a",
+            "sc19-b",
+            "sc19-c",
+            "sc19-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trong phản ứng <span class=\"math-inline\">\\(\\ce{19H2 + O2 -> 2H2O}\\)</span>, đại lượng nào được bảo toàn ở mẫu thử số 19?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc19-a",
+                "content": "<p><span class=\"math-inline\">\\(21\\)</span></p>"
+              },
+              {
+                "id": "sc19-b",
+                "content": "<p><span class=\"math-inline\">\\(39\\)</span></p>"
+              },
+              {
+                "id": "sc19-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{19}{20}\\)</span></p>"
+              },
+              {
+                "id": "sc19-d",
+                "content": "<p><span class=\"math-inline\">\\(38\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000020",
+          "parentItemId": null,
+          "displayNo": 20,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc20-a",
+            "sc20-b",
+            "sc20-c",
+            "sc20-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 20\\)</span>:</p><span class=\"math-block\">\\[S_20 = \\frac{20(20 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc20-a",
+                "content": "<p><span class=\"math-inline\">\\(22\\)</span></p>"
+              },
+              {
+                "id": "sc20-b",
+                "content": "<p><span class=\"math-inline\">\\(41\\)</span></p>"
+              },
+              {
+                "id": "sc20-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{20}{21}\\)</span></p>"
+              },
+              {
+                "id": "sc20-d",
+                "content": "<p><span class=\"math-inline\">\\(40\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000021",
+          "parentItemId": null,
+          "displayNo": 21,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc21-a",
+            "sc21-b",
+            "sc21-c",
+            "sc21-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 21x + 22\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc21-a",
+                "content": "<p><span class=\"math-inline\">\\(23\\)</span></p>"
+              },
+              {
+                "id": "sc21-b",
+                "content": "<p><span class=\"math-inline\">\\(43\\)</span></p>"
+              },
+              {
+                "id": "sc21-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{21}{22}\\)</span></p>"
+              },
+              {
+                "id": "sc21-d",
+                "content": "<p><span class=\"math-inline\">\\(42\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000022",
+          "parentItemId": null,
+          "displayNo": 22,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc22-a",
+            "sc22-b",
+            "sc22-c",
+            "sc22-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trong phản ứng <span class=\"math-inline\">\\(\\ce{22H2 + O2 -> 2H2O}\\)</span>, đại lượng nào được bảo toàn ở mẫu thử số 22?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc22-a",
+                "content": "<p><span class=\"math-inline\">\\(24\\)</span></p>"
+              },
+              {
+                "id": "sc22-b",
+                "content": "<p><span class=\"math-inline\">\\(45\\)</span></p>"
+              },
+              {
+                "id": "sc22-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{22}{23}\\)</span></p>"
+              },
+              {
+                "id": "sc22-d",
+                "content": "<p><span class=\"math-inline\">\\(44\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000023",
+          "parentItemId": null,
+          "displayNo": 23,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc23-a",
+            "sc23-b",
+            "sc23-c",
+            "sc23-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Giá trị của biểu thức khối sau đây ứng với <span class=\"math-inline\">\\(n = 23\\)</span>:</p><span class=\"math-block\">\\[S_23 = \\frac{23(23 + 1)}{2}\\]</span>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc23-a",
+                "content": "<p><span class=\"math-inline\">\\(25\\)</span></p>"
+              },
+              {
+                "id": "sc23-b",
+                "content": "<p><span class=\"math-inline\">\\(47\\)</span></p>"
+              },
+              {
+                "id": "sc23-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{23}{24}\\)</span></p>"
+              },
+              {
+                "id": "sc23-d",
+                "content": "<p><span class=\"math-inline\">\\(46\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000024",
+          "parentItemId": null,
+          "displayNo": 24,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-sc",
+          "optionOrder": [
+            "sc24-a",
+            "sc24-b",
+            "sc24-c",
+            "sc24-d"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Cho hàm số <span class=\"math-inline\">\\(f(x) = x^2 + 24x + 25\\)</span>. Giá trị đạo hàm tại <span class=\"math-inline\">\\(x = 1\\)</span> là:</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "sc24-a",
+                "content": "<p><span class=\"math-inline\">\\(26\\)</span></p>"
+              },
+              {
+                "id": "sc24-b",
+                "content": "<p><span class=\"math-inline\">\\(49\\)</span></p>"
+              },
+              {
+                "id": "sc24-c",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{24}{25}\\)</span></p>"
+              },
+              {
+                "id": "sc24-d",
+                "content": "<p><span class=\"math-inline\">\\(48\\)</span></p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000025",
+          "parentItemId": null,
+          "displayNo": 25,
+          "unitCount": 1,
+          "questionType": "MULTIPLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-mc",
+          "optionOrder": [
+            "mc1-1",
+            "mc1-2",
+            "mc1-3",
+            "mc1-4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Chọn các mệnh đề đúng về hàm số <span class=\"math-inline\">\\(y = \\cos(1x)\\)</span> và đạo hàm của nó:</p>",
+          "questionBody": {
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+              {
+                "id": "mc1-1",
+                "content": "<p>Hàm số chẵn trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              },
+              {
+                "id": "mc1-2",
+                "content": "<p>Tuần hoàn với chu kỳ <span class=\"math-inline\">\\(\\frac{2\\pi}{1}\\)</span></p>"
+              },
+              {
+                "id": "mc1-3",
+                "content": "<p>Tập giá trị là <span class=\"math-inline\">\\([-1; 1]\\)</span></p>"
+              },
+              {
+                "id": "mc1-4",
+                "content": "<p>Đồng biến trên toàn <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              }
+            ],
+            "scoringRule": "ALL_OR_NOTHING"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000026",
+          "parentItemId": null,
+          "displayNo": 26,
+          "unitCount": 1,
+          "questionType": "MULTIPLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-mc",
+          "optionOrder": [
+            "mc2-1",
+            "mc2-2",
+            "mc2-3",
+            "mc2-4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Chọn các mệnh đề đúng về hàm số <span class=\"math-inline\">\\(y = \\cos(2x)\\)</span> và đạo hàm của nó:</p>",
+          "questionBody": {
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+              {
+                "id": "mc2-1",
+                "content": "<p>Hàm số chẵn trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              },
+              {
+                "id": "mc2-2",
+                "content": "<p>Tuần hoàn với chu kỳ <span class=\"math-inline\">\\(\\frac{2\\pi}{2}\\)</span></p>"
+              },
+              {
+                "id": "mc2-3",
+                "content": "<p>Tập giá trị là <span class=\"math-inline\">\\([-1; 1]\\)</span></p>"
+              },
+              {
+                "id": "mc2-4",
+                "content": "<p>Đồng biến trên toàn <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              }
+            ],
+            "scoringRule": "PARTIAL"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000027",
+          "parentItemId": null,
+          "displayNo": 27,
+          "unitCount": 1,
+          "questionType": "MULTIPLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-mc",
+          "optionOrder": [
+            "mc3-1",
+            "mc3-2",
+            "mc3-3",
+            "mc3-4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Chọn các mệnh đề đúng về hàm số <span class=\"math-inline\">\\(y = \\cos(3x)\\)</span> và đạo hàm của nó:</p>",
+          "questionBody": {
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+              {
+                "id": "mc3-1",
+                "content": "<p>Hàm số chẵn trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              },
+              {
+                "id": "mc3-2",
+                "content": "<p>Tuần hoàn với chu kỳ <span class=\"math-inline\">\\(\\frac{2\\pi}{3}\\)</span></p>"
+              },
+              {
+                "id": "mc3-3",
+                "content": "<p>Tập giá trị là <span class=\"math-inline\">\\([-1; 1]\\)</span></p>"
+              },
+              {
+                "id": "mc3-4",
+                "content": "<p>Đồng biến trên toàn <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              }
+            ],
+            "scoringRule": "ALL_OR_NOTHING"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000028",
+          "parentItemId": null,
+          "displayNo": 28,
+          "unitCount": 1,
+          "questionType": "MULTIPLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-mc",
+          "optionOrder": [
+            "mc4-1",
+            "mc4-2",
+            "mc4-3",
+            "mc4-4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Chọn các mệnh đề đúng về hàm số <span class=\"math-inline\">\\(y = \\cos(4x)\\)</span> và đạo hàm của nó:</p>",
+          "questionBody": {
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+              {
+                "id": "mc4-1",
+                "content": "<p>Hàm số chẵn trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              },
+              {
+                "id": "mc4-2",
+                "content": "<p>Tuần hoàn với chu kỳ <span class=\"math-inline\">\\(\\frac{2\\pi}{4}\\)</span></p>"
+              },
+              {
+                "id": "mc4-3",
+                "content": "<p>Tập giá trị là <span class=\"math-inline\">\\([-1; 1]\\)</span></p>"
+              },
+              {
+                "id": "mc4-4",
+                "content": "<p>Đồng biến trên toàn <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              }
+            ],
+            "scoringRule": "PARTIAL"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000029",
+          "parentItemId": null,
+          "displayNo": 29,
+          "unitCount": 1,
+          "questionType": "MULTIPLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-mc",
+          "optionOrder": [
+            "mc5-1",
+            "mc5-2",
+            "mc5-3",
+            "mc5-4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Chọn các mệnh đề đúng về hàm số <span class=\"math-inline\">\\(y = \\cos(5x)\\)</span> và đạo hàm của nó:</p>",
+          "questionBody": {
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+              {
+                "id": "mc5-1",
+                "content": "<p>Hàm số chẵn trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              },
+              {
+                "id": "mc5-2",
+                "content": "<p>Tuần hoàn với chu kỳ <span class=\"math-inline\">\\(\\frac{2\\pi}{5}\\)</span></p>"
+              },
+              {
+                "id": "mc5-3",
+                "content": "<p>Tập giá trị là <span class=\"math-inline\">\\([-1; 1]\\)</span></p>"
+              },
+              {
+                "id": "mc5-4",
+                "content": "<p>Đồng biến trên toàn <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              }
+            ],
+            "scoringRule": "ALL_OR_NOTHING"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000030",
+          "parentItemId": null,
+          "displayNo": 30,
+          "unitCount": 1,
+          "questionType": "MULTIPLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "MATH",
+          "blockId": "blk-mc",
+          "optionOrder": [
+            "mc6-1",
+            "mc6-2",
+            "mc6-3",
+            "mc6-4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Chọn các mệnh đề đúng về hàm số <span class=\"math-inline\">\\(y = \\cos(6x)\\)</span> và đạo hàm của nó:</p>",
+          "questionBody": {
+            "type": "MULTIPLE_CHOICE",
+            "options": [
+              {
+                "id": "mc6-1",
+                "content": "<p>Hàm số chẵn trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              },
+              {
+                "id": "mc6-2",
+                "content": "<p>Tuần hoàn với chu kỳ <span class=\"math-inline\">\\(\\frac{2\\pi}{6}\\)</span></p>"
+              },
+              {
+                "id": "mc6-3",
+                "content": "<p>Tập giá trị là <span class=\"math-inline\">\\([-1; 1]\\)</span></p>"
+              },
+              {
+                "id": "mc6-4",
+                "content": "<p>Đồng biến trên toàn <span class=\"math-inline\">\\(\\mathbb{R}\\)</span></p>"
+              }
+            ],
+            "scoringRule": "PARTIAL"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000031",
+          "parentItemId": null,
+          "displayNo": 31,
+          "unitCount": 1,
+          "questionType": "SHORT_ANSWER",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "CHEM",
+          "blockId": "blk-sa",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Tính tích phân <span class=\"math-inline\">\\(\\int_0^2 3x^2\\,dx\\)</span>.</p>",
+          "questionBody": {
+            "type": "SHORT_ANSWER",
+            "inputHint": "Số nguyên, không ghi đơn vị",
+            "answerFormat": "INTEGER"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000032",
+          "parentItemId": null,
+          "displayNo": 32,
+          "unitCount": 1,
+          "questionType": "SHORT_ANSWER",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "CHEM",
+          "blockId": "blk-sa",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Một vật chuyển động đều với vận tốc <span class=\"math-inline\">\\(v = 12,5\\ \\mathrm{m/s}\\)</span> trong 4 giây. Quãng đường đi được (m) là:</p>",
+          "questionBody": {
+            "type": "SHORT_ANSWER",
+            "inputHint": "Số thập phân làm tròn 1 chữ số",
+            "answerFormat": "DECIMAL"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000033",
+          "parentItemId": null,
+          "displayNo": 33,
+          "unitCount": 1,
+          "questionType": "SHORT_ANSWER",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "CHEM",
+          "blockId": "blk-sa",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Viết công thức ion sunfat trong dung dịch <span class=\"math-inline\">\\(\\ce{H2SO4}\\)</span>.</p>",
+          "questionBody": {
+            "type": "SHORT_ANSWER",
+            "inputHint": "Nhập công thức ion dạng ASCII, ví dụ SO4(2-)",
+            "answerFormat": "CHEM_FORMULA"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000034",
+          "parentItemId": null,
+          "displayNo": 34,
+          "unitCount": 1,
+          "questionType": "SHORT_ANSWER",
+          "points": 2,
+          "sectionId": "sec-1",
+          "componentCode": "CHEM",
+          "blockId": "blk-sa",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Nêu tên gọi quốc tế của nguyên tố có số hiệu nguyên tử <span class=\"math-inline\">\\(Z = 6\\)</span>.</p>",
+          "questionBody": {
+            "type": "SHORT_ANSWER",
+            "inputHint": "Viết chữ thường hoặc in hoa",
+            "answerFormat": "TEXT"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000035",
+          "parentItemId": null,
+          "displayNo": 35,
+          "unitCount": 1,
+          "questionType": "CLOZE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-cloze",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Điền giá trị còn thiếu cho thí nghiệm số 1.</p>",
+          "questionBody": {
+            "type": "CLOZE",
+            "passage": "<p>Phản ứng <span class=\"math-inline\">\\(\\ce{2H2 + O2 -> 2H2O}\\)</span> ở nhiệt độ [[b1]] độ C đạt trạng thái ổn định sau 10 giây.</p>",
+            "blanks": [
+              {
+                "id": "b1"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000036",
+          "parentItemId": null,
+          "displayNo": 36,
+          "unitCount": 1,
+          "questionType": "CLOZE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-cloze",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Điền giá trị còn thiếu cho thí nghiệm số 2.</p>",
+          "questionBody": {
+            "type": "CLOZE",
+            "passage": "<p>Phản ứng <span class=\"math-inline\">\\(\\ce{2H2 + O2 -> 2H2O}\\)</span> ở nhiệt độ [[b1]] độ C đạt trạng thái ổn định sau 20 giây.</p>",
+            "blanks": [
+              {
+                "id": "b1"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000037",
+          "parentItemId": null,
+          "displayNo": 37,
+          "unitCount": 1,
+          "questionType": "CLOZE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-cloze",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Điền giá trị còn thiếu cho thí nghiệm số 3.</p>",
+          "questionBody": {
+            "type": "CLOZE",
+            "passage": "<p>Phản ứng <span class=\"math-inline\">\\(\\ce{2H2 + O2 -> 2H2O}\\)</span> ở nhiệt độ [[b1]] độ C đạt trạng thái ổn định sau 30 giây.</p>",
+            "blanks": [
+              {
+                "id": "b1"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000038",
+          "parentItemId": null,
+          "displayNo": 38,
+          "unitCount": 1,
+          "questionType": "CLOZE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-cloze",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Điền giá trị còn thiếu cho thí nghiệm số 4.</p>",
+          "questionBody": {
+            "type": "CLOZE",
+            "passage": "<p>Phản ứng <span class=\"math-inline\">\\(\\ce{2H2 + O2 -> 2H2O}\\)</span> ở nhiệt độ [[b1]] độ C đạt trạng thái ổn định sau 40 giây.</p>",
+            "blanks": [
+              {
+                "id": "b1"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000039",
+          "parentItemId": null,
+          "displayNo": 39,
+          "unitCount": 1,
+          "questionType": "TRUE_FALSE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "PHYS",
+          "blockId": "blk-tf",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Xét hệ số góc tiếp tuyến của đường cong <span class=\"math-inline\">\\(y = x^3 - 1x\\)</span>. Mỗi phát biểu sau đúng hay sai?</p>",
+          "questionBody": {
+            "type": "TRUE_FALSE",
+            "statements": [
+              {
+                "id": "tf1-a",
+                "content": "<p>Đạo hàm bậc nhất là <span class=\"math-inline\">\\(y' = 3x^2 - 1\\)</span>.</p>"
+              },
+              {
+                "id": "tf1-b",
+                "content": "<p>Đồ thị luôn đi qua gốc tọa độ <span class=\"math-inline\">\\(O(0; 0)\\)</span>.</p>"
+              },
+              {
+                "id": "tf1-c",
+                "content": "<p>Hàm số là hàm số lẻ trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span>.</p>"
+              },
+              {
+                "id": "tf1-d",
+                "content": "<p>Phương trình <span class=\"math-inline\">\\(y' = 0\\)</span> vô nghiệm.</p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000040",
+          "parentItemId": null,
+          "displayNo": 40,
+          "unitCount": 1,
+          "questionType": "TRUE_FALSE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "PHYS",
+          "blockId": "blk-tf",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Xét hệ số góc tiếp tuyến của đường cong <span class=\"math-inline\">\\(y = x^3 - 2x\\)</span>. Mỗi phát biểu sau đúng hay sai?</p>",
+          "questionBody": {
+            "type": "TRUE_FALSE",
+            "statements": [
+              {
+                "id": "tf2-a",
+                "content": "<p>Đạo hàm bậc nhất là <span class=\"math-inline\">\\(y' = 3x^2 - 2\\)</span>.</p>"
+              },
+              {
+                "id": "tf2-b",
+                "content": "<p>Đồ thị luôn đi qua gốc tọa độ <span class=\"math-inline\">\\(O(0; 0)\\)</span>.</p>"
+              },
+              {
+                "id": "tf2-c",
+                "content": "<p>Hàm số là hàm số lẻ trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span>.</p>"
+              },
+              {
+                "id": "tf2-d",
+                "content": "<p>Phương trình <span class=\"math-inline\">\\(y' = 0\\)</span> vô nghiệm.</p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000041",
+          "parentItemId": null,
+          "displayNo": 41,
+          "unitCount": 1,
+          "questionType": "TRUE_FALSE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "PHYS",
+          "blockId": "blk-tf",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Xét hệ số góc tiếp tuyến của đường cong <span class=\"math-inline\">\\(y = x^3 - 3x\\)</span>. Mỗi phát biểu sau đúng hay sai?</p>",
+          "questionBody": {
+            "type": "TRUE_FALSE",
+            "statements": [
+              {
+                "id": "tf3-a",
+                "content": "<p>Đạo hàm bậc nhất là <span class=\"math-inline\">\\(y' = 3x^2 - 3\\)</span>.</p>"
+              },
+              {
+                "id": "tf3-b",
+                "content": "<p>Đồ thị luôn đi qua gốc tọa độ <span class=\"math-inline\">\\(O(0; 0)\\)</span>.</p>"
+              },
+              {
+                "id": "tf3-c",
+                "content": "<p>Hàm số là hàm số lẻ trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span>.</p>"
+              },
+              {
+                "id": "tf3-d",
+                "content": "<p>Phương trình <span class=\"math-inline\">\\(y' = 0\\)</span> vô nghiệm.</p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000042",
+          "parentItemId": null,
+          "displayNo": 42,
+          "unitCount": 1,
+          "questionType": "TRUE_FALSE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "PHYS",
+          "blockId": "blk-tf",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Xét hệ số góc tiếp tuyến của đường cong <span class=\"math-inline\">\\(y = x^3 - 4x\\)</span>. Mỗi phát biểu sau đúng hay sai?</p>",
+          "questionBody": {
+            "type": "TRUE_FALSE",
+            "statements": [
+              {
+                "id": "tf4-a",
+                "content": "<p>Đạo hàm bậc nhất là <span class=\"math-inline\">\\(y' = 3x^2 - 4\\)</span>.</p>"
+              },
+              {
+                "id": "tf4-b",
+                "content": "<p>Đồ thị luôn đi qua gốc tọa độ <span class=\"math-inline\">\\(O(0; 0)\\)</span>.</p>"
+              },
+              {
+                "id": "tf4-c",
+                "content": "<p>Hàm số là hàm số lẻ trên <span class=\"math-inline\">\\(\\mathbb{R}\\)</span>.</p>"
+              },
+              {
+                "id": "tf4-d",
+                "content": "<p>Phương trình <span class=\"math-inline\">\\(y' = 0\\)</span> vô nghiệm.</p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000043",
+          "parentItemId": null,
+          "displayNo": 43,
+          "unitCount": 1,
+          "questionType": "MATCHING",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "PHYS",
+          "blockId": "blk-match",
+          "optionOrder": [
+            "m1-r1",
+            "m1-r2",
+            "m1-r3",
+            "m1-r4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Ghép mỗi đại lượng vật lý với biểu thức hoặc đơn vị tương ứng (nhóm 1).</p>",
+          "questionBody": {
+            "type": "MATCHING",
+            "left": [
+              {
+                "id": "m1-l1",
+                "content": "<p>Động năng</p>"
+              },
+              {
+                "id": "m1-l2",
+                "content": "<p>Công suất</p>"
+              },
+              {
+                "id": "m1-l3",
+                "content": "<p>Áp suất</p>"
+              }
+            ],
+            "right": [
+              {
+                "id": "m1-r1",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{1}{2}mv^2\\)</span></p>"
+              },
+              {
+                "id": "m1-r2",
+                "content": "<p><span class=\"math-inline\">\\(P = \\frac{A}{t}\\)</span></p>"
+              },
+              {
+                "id": "m1-r3",
+                "content": "<p><span class=\"math-inline\">\\(p = \\frac{F}{S}\\)</span></p>"
+              },
+              {
+                "id": "m1-r4",
+                "content": "<p><span class=\"math-inline\">\\(F = ma\\)</span></p>"
+              }
+            ],
+            "reuseRight": false
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000044",
+          "parentItemId": null,
+          "displayNo": 44,
+          "unitCount": 1,
+          "questionType": "MATCHING",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "PHYS",
+          "blockId": "blk-match",
+          "optionOrder": [
+            "m2-r1",
+            "m2-r2",
+            "m2-r3",
+            "m2-r4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Ghép mỗi đại lượng vật lý với biểu thức hoặc đơn vị tương ứng (nhóm 2).</p>",
+          "questionBody": {
+            "type": "MATCHING",
+            "left": [
+              {
+                "id": "m2-l1",
+                "content": "<p>Động năng</p>"
+              },
+              {
+                "id": "m2-l2",
+                "content": "<p>Công suất</p>"
+              },
+              {
+                "id": "m2-l3",
+                "content": "<p>Áp suất</p>"
+              }
+            ],
+            "right": [
+              {
+                "id": "m2-r1",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{1}{2}mv^2\\)</span></p>"
+              },
+              {
+                "id": "m2-r2",
+                "content": "<p><span class=\"math-inline\">\\(P = \\frac{A}{t}\\)</span></p>"
+              },
+              {
+                "id": "m2-r3",
+                "content": "<p><span class=\"math-inline\">\\(p = \\frac{F}{S}\\)</span></p>"
+              },
+              {
+                "id": "m2-r4",
+                "content": "<p><span class=\"math-inline\">\\(F = ma\\)</span></p>"
+              }
+            ],
+            "reuseRight": false
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000045",
+          "parentItemId": null,
+          "displayNo": 45,
+          "unitCount": 1,
+          "questionType": "MATCHING",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "PHYS",
+          "blockId": "blk-match",
+          "optionOrder": [
+            "m3-r1",
+            "m3-r2",
+            "m3-r3",
+            "m3-r4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Ghép mỗi đại lượng vật lý với biểu thức hoặc đơn vị tương ứng (nhóm 3).</p>",
+          "questionBody": {
+            "type": "MATCHING",
+            "left": [
+              {
+                "id": "m3-l1",
+                "content": "<p>Động năng</p>"
+              },
+              {
+                "id": "m3-l2",
+                "content": "<p>Công suất</p>"
+              },
+              {
+                "id": "m3-l3",
+                "content": "<p>Áp suất</p>"
+              }
+            ],
+            "right": [
+              {
+                "id": "m3-r1",
+                "content": "<p><span class=\"math-inline\">\\(\\frac{1}{2}mv^2\\)</span></p>"
+              },
+              {
+                "id": "m3-r2",
+                "content": "<p><span class=\"math-inline\">\\(P = \\frac{A}{t}\\)</span></p>"
+              },
+              {
+                "id": "m3-r3",
+                "content": "<p><span class=\"math-inline\">\\(p = \\frac{F}{S}\\)</span></p>"
+              },
+              {
+                "id": "m3-r4",
+                "content": "<p><span class=\"math-inline\">\\(F = ma\\)</span></p>"
+              }
+            ],
+            "reuseRight": true
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000046",
+          "parentItemId": null,
+          "displayNo": null,
+          "unitCount": 0,
+          "questionType": "QUESTION_SET",
+          "points": 6,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-set",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Nghe đoạn âm thanh và đọc bảng số liệu sau để trả lời các câu 46–48.</p>",
+          "questionBody": {
+            "type": "QUESTION_SET",
+            "passage": "<p>Phân tích mẫu thí nghiệm với phương trình <span class=\"math-inline\">\\(\\ce{CaCO3(s) &lt;=&gt; CaO(s) + CO2(g)}\\)</span>.</p><figure class=\"data-table\"><figcaption>Áp suất riêng phần CO2 theo nhiệt độ</figcaption><table><thead><tr><th scope=\"col\">Nhiệt độ (K)</th><th scope=\"col\">Áp suất (kPa)</th></tr></thead><tbody><tr><td>900</td><td class=\"num\">0,5</td></tr><tr><td>1100</td><td class=\"num\">25,3</td></tr></tbody></table><p class=\"figure-note\">Số liệu phòng thí nghiệm mẫu</p></figure>",
+            "blankNumberStart": 1
+          },
+          "attachments": [
+            {
+              "assetId": "50000000-0000-4000-8000-000000000001",
+              "fileName": "listening-part-1.mp3",
+              "mime": "audio/mpeg",
+              "url": "/api/v1/me/attempts/10000000-0000-4000-8000-000000000001/assets/50000000-0000-4000-8000-000000000001"
+            }
+          ]
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000047",
+          "parentItemId": "40000000-0000-4000-8000-000000000046",
+          "displayNo": 46,
+          "unitCount": 1,
+          "questionType": "SINGLE_CHOICE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-set",
+          "optionOrder": [
+            "set-o1",
+            "set-o2",
+            "set-o3",
+            "set-o4"
+          ],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Theo đoạn nghe và bảng số liệu, khi tăng nhiệt độ từ 900 K lên 1100 K thì áp suất <span class=\"math-inline\">\\(\\ce{CO2}\\)</span> thay đổi thế nào?</p>",
+          "questionBody": {
+            "type": "SINGLE_CHOICE",
+            "options": [
+              {
+                "id": "set-o1",
+                "content": "<p>Tăng mạnh</p>"
+              },
+              {
+                "id": "set-o2",
+                "content": "<p>Giảm nhẹ</p>"
+              },
+              {
+                "id": "set-o3",
+                "content": "<p>Không đổi</p>"
+              },
+              {
+                "id": "set-o4",
+                "content": "<p>Bằng 0</p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000048",
+          "parentItemId": "40000000-0000-4000-8000-000000000046",
+          "displayNo": 47,
+          "unitCount": 1,
+          "questionType": "SHORT_ANSWER",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-set",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Ghi giá trị áp suất (kPa) đo được ở 1100 K từ bảng số liệu.</p>",
+          "questionBody": {
+            "type": "SHORT_ANSWER",
+            "inputHint": "Số thập phân",
+            "answerFormat": "DECIMAL"
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000049",
+          "parentItemId": "40000000-0000-4000-8000-000000000046",
+          "displayNo": 48,
+          "unitCount": 1,
+          "questionType": "TRUE_FALSE",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "SCI",
+          "blockId": "blk-set",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Nhận định nào sau đây đúng với phản ứng nhiệt phân đã cho?</p>",
+          "questionBody": {
+            "type": "TRUE_FALSE",
+            "statements": [
+              {
+                "id": "set-tf1",
+                "content": "<p>Phản ứng thuận thu nhiệt.</p>"
+              },
+              {
+                "id": "set-tf2",
+                "content": "<p>Khí sinh ra là <span class=\"math-inline\">\\(\\ce{CO2}\\)</span>.</p>"
+              }
+            ]
+          },
+          "attachments": []
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000050",
+          "parentItemId": null,
+          "displayNo": 49,
+          "unitCount": 1,
+          "questionType": "ESSAY",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "LIT",
+          "blockId": "blk-essay",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Dựa vào tài liệu đính kèm, viết bài nghị luận xã hội khoảng 200 chữ phân tích vai trò của tinh thần tự học trong kỷ nguyên số.</p>",
+          "questionBody": {
+            "type": "ESSAY",
+            "wordLimit": 200
+          },
+          "attachments": [
+            {
+              "assetId": "50000000-0000-4000-8000-000000000002",
+              "fileName": "bang-so-lieu.pdf",
+              "mime": "application/pdf",
+              "url": "/api/v1/me/attempts/10000000-0000-4000-8000-000000000001/assets/50000000-0000-4000-8000-000000000002"
+            }
+          ]
+        },
+        {
+          "itemId": "40000000-0000-4000-8000-000000000051",
+          "parentItemId": null,
+          "displayNo": 50,
+          "unitCount": 1,
+          "questionType": "ESSAY",
+          "points": 2,
+          "sectionId": "sec-2",
+          "componentCode": "LIT",
+          "blockId": "blk-essay",
+          "optionOrder": [],
+          "flagged": false,
+          "answerSeq": 0,
+          "answer": null,
+          "content": "<p>Trình bày ngắn gọn cảm nhận của em về hình tượng nhân vật trung tâm trong tác phẩm đã học.</p>",
+          "questionBody": {
+            "type": "ESSAY",
+            "wordLimit": null
+          },
+          "attachments": []
+        }
+      ],
+      "displaySegments": [
+        {
+          "code": "SEG-1",
+          "name": "Phần trắc nghiệm và trả lời ngắn",
+          "fromPosition": 1,
+          "toPosition": 34,
+          "commandCount": 34,
+          "maxPoints": 68
+        },
+        {
+          "code": "SEG-2",
+          "name": "Phần khoa học, bộ câu hỏi và tự luận",
+          "fromPosition": 35,
+          "toPosition": 50,
+          "commandCount": 16,
+          "maxPoints": 32
+        }
+      ]
+    }
+  ]
+}
