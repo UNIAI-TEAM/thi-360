@@ -1,0 +1,10 @@
+{
+  "code" : "IDEMPOTENCY_KEY_REQUIRED",
+  "message" : "Thiếu header Idempotency-Key",
+  "fieldErrors" : [ {
+    "field" : "Idempotency-Key",
+    "code" : "IDEMPOTENCY_KEY_REQUIRED",
+    "message" : "Thiếu header Idempotency-Key"
+  } ],
+  "traceId" : "fixture-trace-id"
+}

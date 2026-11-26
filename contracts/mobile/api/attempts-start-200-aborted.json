@@ -1,0 +1,7 @@
+{
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "ABORTED",
+  "resumed" : false,
+  "abortReason" : "GENERATION_FAILED",
+  "retryable" : true
+}

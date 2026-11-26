@@ -1,0 +1,866 @@
+{
+  "serverNow" : "2026-11-20T10:00:00Z",
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "IN_PROGRESS",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examVersionNo" : 1,
+  "examName" : "H-SCA Toán (bộ dữ liệu)",
+  "examKindCode" : "HSCA",
+  "scope" : "SUBJECT",
+  "timing" : "SHARED",
+  "navigationMode" : "SEQUENTIAL",
+  "attemptNo" : 1,
+  "choices" : { },
+  "startedAt" : "2026-11-20T10:00:00Z",
+  "deadlineAt" : "2026-11-20T10:00:00Z",
+  "maxScore" : 10.0,
+  "audioPlays" : [ ],
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000003",
+    "partCode" : "48e21c0c-8b53-5e04-baf6-6ca3df5d5d3d",
+    "partName" : "Phần 1 · Trắc nghiệm",
+    "ord" : 0,
+    "state" : "OPEN",
+    "durationMinutes" : null,
+    "questionCount" : 25,
+    "maxPoints" : 6.25,
+    "startedAt" : "2026-11-20T10:00:00Z",
+    "deadlineAt" : "2026-11-20T10:00:00Z",
+    "closedAt" : null,
+    "choice" : null,
+    "choiceDeadlineAt" : null,
+    "items" : [ {
+      "itemId" : "00000000-0000-7000-8000-000000000004",
+      "parentItemId" : null,
+      "displayNo" : 1,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "b", "a", "c", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-035 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000005",
+      "parentItemId" : null,
+      "displayNo" : 2,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "c", "d", "a", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-HSCA-TOAN-SC-036 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000006",
+      "parentItemId" : null,
+      "displayNo" : 3,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "a", "c", "b", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-005 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000007",
+      "parentItemId" : null,
+      "displayNo" : 4,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "c", "b", "d", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-016 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000008",
+      "parentItemId" : null,
+      "displayNo" : 5,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "d", "a", "c", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>H-SCA TOAN single 7</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "d",
+          "content" : "<p>H-SCA TOAN single 7 option D</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>H-SCA TOAN single 7 option A</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>H-SCA TOAN single 7 option C</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>H-SCA TOAN single 7 option B</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000009",
+      "parentItemId" : null,
+      "displayNo" : 6,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "b", "a", "c", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-HSCA-TOAN-SC-030 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000010",
+      "parentItemId" : null,
+      "displayNo" : 7,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "c", "d", "b", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-028 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000011",
+      "parentItemId" : null,
+      "displayNo" : 8,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "a", "c", "b", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>H-SCA TOAN single 9</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "a",
+          "content" : "<p>H-SCA TOAN single 9 option A</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>H-SCA TOAN single 9 option C</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>H-SCA TOAN single 9 option B</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>H-SCA TOAN single 9 option D</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000012",
+      "parentItemId" : null,
+      "displayNo" : 9,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "b", "d", "c", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-007 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000013",
+      "parentItemId" : null,
+      "displayNo" : 10,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "b", "a", "c", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>H-SCA TOAN single 15</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>H-SCA TOAN single 15 option B</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>H-SCA TOAN single 15 option A</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>H-SCA TOAN single 15 option C</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>H-SCA TOAN single 15 option D</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000014",
+      "parentItemId" : null,
+      "displayNo" : 11,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "c", "a", "d", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-HSCA-TOAN-SC-027 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000015",
+      "parentItemId" : null,
+      "displayNo" : 12,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "c", "a", "b", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-017 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000016",
+      "parentItemId" : null,
+      "displayNo" : 13,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "c", "a", "b", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-030 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000017",
+      "parentItemId" : null,
+      "displayNo" : 14,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "b", "d", "a", "c" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-037 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000018",
+      "parentItemId" : null,
+      "displayNo" : 15,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "b", "a", "c", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-008 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000019",
+      "parentItemId" : null,
+      "displayNo" : 16,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "a", "b", "c", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-HSCA-TOAN-SC-018 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000020",
+      "parentItemId" : null,
+      "displayNo" : 17,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "b", "c", "d", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-038 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000021",
+      "parentItemId" : null,
+      "displayNo" : 18,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "d", "a", "c", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>H-SCA TOAN single 2</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "d",
+          "content" : "<p>H-SCA TOAN single 2 option D</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>H-SCA TOAN single 2 option A</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>H-SCA TOAN single 2 option C</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>H-SCA TOAN single 2 option B</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000022",
+      "parentItemId" : null,
+      "displayNo" : 19,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "a", "c", "d", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>H-SCA TOAN single 17</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "a",
+          "content" : "<p>H-SCA TOAN single 17 option A</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>H-SCA TOAN single 17 option C</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>H-SCA TOAN single 17 option D</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>H-SCA TOAN single 17 option B</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000023",
+      "parentItemId" : null,
+      "displayNo" : 20,
+      "unitCount" : 1,
+      "questionType" : "SINGLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "af935e54-00a4-574c-a830-d25fadd36ffa",
+      "optionOrder" : [ "c", "a", "d", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-TOAN-DLTH-006 question</p>",
+      "questionBody" : {
+        "type" : "SINGLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        } ]
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000024",
+      "parentItemId" : null,
+      "displayNo" : 21,
+      "unitCount" : 1,
+      "questionType" : "MULTIPLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "12d3f8b5-10ad-53bb-804c-e778c2a0bced",
+      "optionOrder" : [ "c", "d", "b", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-HSCA-TOAN-NDA-001 question</p>",
+      "questionBody" : {
+        "type" : "MULTIPLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        } ],
+        "scoringRule" : "PARTIAL"
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000025",
+      "parentItemId" : null,
+      "displayNo" : 22,
+      "unitCount" : 1,
+      "questionType" : "MULTIPLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "12d3f8b5-10ad-53bb-804c-e778c2a0bced",
+      "optionOrder" : [ "b", "c", "a", "d" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>H-SCA TOAN multiple 2</p>",
+      "questionBody" : {
+        "type" : "MULTIPLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>H-SCA TOAN multiple 2 option B</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>H-SCA TOAN multiple 2 option C</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>H-SCA TOAN multiple 2 option A</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>H-SCA TOAN multiple 2 option D</p>"
+        } ],
+        "scoringRule" : "PARTIAL"
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000026",
+      "parentItemId" : null,
+      "displayNo" : 23,
+      "unitCount" : 1,
+      "questionType" : "MULTIPLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "12d3f8b5-10ad-53bb-804c-e778c2a0bced",
+      "optionOrder" : [ "c", "a", "b" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>TESTQ-TOAN-NQ025-300 content</p>",
+      "questionBody" : {
+        "type" : "MULTIPLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Three</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>One</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Two</p>"
+        } ],
+        "scoringRule" : "ALL_OR_NOTHING"
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000027",
+      "parentItemId" : null,
+      "displayNo" : 24,
+      "unitCount" : 1,
+      "questionType" : "MULTIPLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "12d3f8b5-10ad-53bb-804c-e778c2a0bced",
+      "optionOrder" : [ "b", "d", "a", "c" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>H-SCA TOAN multiple 1</p>",
+      "questionBody" : {
+        "type" : "MULTIPLE_CHOICE",
+        "options" : [ {
+          "id" : "b",
+          "content" : "<p>H-SCA TOAN multiple 1 option B</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>H-SCA TOAN multiple 1 option D</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>H-SCA TOAN multiple 1 option A</p>"
+        }, {
+          "id" : "c",
+          "content" : "<p>H-SCA TOAN multiple 1 option C</p>"
+        } ],
+        "scoringRule" : "PARTIAL"
+      },
+      "attachments" : [ ]
+    }, {
+      "itemId" : "00000000-0000-7000-8000-000000000028",
+      "parentItemId" : null,
+      "displayNo" : 25,
+      "unitCount" : 1,
+      "questionType" : "MULTIPLE_CHOICE",
+      "points" : 0.25,
+      "sectionId" : "0ed9f689-82cf-5aae-8932-1dc0433acb2d",
+      "componentCode" : "TOAN",
+      "blockId" : "12d3f8b5-10ad-53bb-804c-e778c2a0bced",
+      "optionOrder" : [ "c", "b", "d", "a" ],
+      "flagged" : false,
+      "answerSeq" : 0,
+      "answer" : null,
+      "content" : "<p>DS-Q-HSCA-TOAN-NDA-006 question</p>",
+      "questionBody" : {
+        "type" : "MULTIPLE_CHOICE",
+        "options" : [ {
+          "id" : "c",
+          "content" : "<p>Option c</p>"
+        }, {
+          "id" : "b",
+          "content" : "<p>Option b</p>"
+        }, {
+          "id" : "d",
+          "content" : "<p>Option d</p>"
+        }, {
+          "id" : "a",
+          "content" : "<p>Option a</p>"
+        } ],
+        "scoringRule" : "PARTIAL"
+      },
+      "attachments" : [ ]
+    } ]
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000029",
+    "partCode" : "d7ca90c7-82cc-537f-937b-2dfc8efaaa60",
+    "partName" : "Phần 2 · Dữ liệu tổng hợp",
+    "ord" : 1,
+    "state" : "PENDING",
+    "durationMinutes" : null,
+    "questionCount" : 5,
+    "maxPoints" : 1.25,
+    "startedAt" : null,
+    "deadlineAt" : null,
+    "closedAt" : null,
+    "choice" : null,
+    "choiceDeadlineAt" : null,
+    "items" : [ ]
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000030",
+    "partCode" : "c7273f82-354d-505c-8b45-bc5754d72b02",
+    "partName" : "Phần 3 · Điền đáp án",
+    "ord" : 2,
+    "state" : "PENDING",
+    "durationMinutes" : null,
+    "questionCount" : 10,
+    "maxPoints" : 2.5,
+    "startedAt" : null,
+    "deadlineAt" : null,
+    "closedAt" : null,
+    "choice" : null,
+    "choiceDeadlineAt" : null,
+    "items" : [ ]
+  } ]
+}

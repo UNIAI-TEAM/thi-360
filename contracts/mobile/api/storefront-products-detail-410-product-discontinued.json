@@ -1,0 +1,10 @@
+{
+  "code" : "PRODUCT_DISCONTINUED",
+  "message" : "Bài thi đã ngừng bán",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000",
+  "product" : {
+    "code" : "EXAM-DEMO-01",
+    "name" : "Đề thi HSA đã ngừng bán DEMO"
+  }
+}

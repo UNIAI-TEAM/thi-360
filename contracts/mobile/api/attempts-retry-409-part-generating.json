@@ -1,0 +1,6 @@
+{
+  "code" : "PART_GENERATING",
+  "message" : "Phần thi đang được sinh đề, vui lòng chờ",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

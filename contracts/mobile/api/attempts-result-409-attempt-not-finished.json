@@ -1,0 +1,6 @@
+{
+  "code" : "ATTEMPT_NOT_FINISHED",
+  "message" : "Lượt thi chưa kết thúc nên chưa có kết quả",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

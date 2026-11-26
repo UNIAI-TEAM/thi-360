@@ -1,0 +1,6 @@
+{
+  "code" : "PART_NOT_LAST",
+  "message" : "Vui lòng hoàn thành các phần trước khi nộp bài",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

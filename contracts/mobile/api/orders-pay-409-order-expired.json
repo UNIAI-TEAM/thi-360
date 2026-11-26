@@ -1,0 +1,6 @@
+{
+  "code" : "ORDER_EXPIRED",
+  "message" : "Đơn hàng đã hết hạn thanh toán, vui lòng tạo đơn mới",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

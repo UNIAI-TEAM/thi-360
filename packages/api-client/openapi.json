@@ -14102,8 +14102,8 @@
         "description" : "Yêu cầu sửa hồ sơ; trường không gửi thì giữ nguyên",
         "properties" : {
           "fullName" : {
-            "description" : "Họ và tên, bắt buộc khi gửi, tối đa 100 ký tự",
-            "maxLength" : 100,
+            "description" : "Họ và tên, bắt buộc khi gửi, tối đa 200 ký tự",
+            "maxLength" : 200,
             "type" : "string"
           },
           "phone" : {
@@ -50311,9 +50311,10 @@
       "post" : {
         "operationId" : "start",
         "parameters" : [ {
+          "description" : "Khóa chống gửi lặp bắt buộc cho thao tác bắt đầu lượt thi",
           "in" : "header",
           "name" : "Idempotency-Key",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "type" : "string"
           }
@@ -50337,7 +50338,17 @@
                 }
               }
             },
-            "description" : "OK"
+            "description" : "Trạng thái hiện tại khi nối lại lượt đang mở hoặc gửi lại cùng khóa idempotency"
+          },
+          "202" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StartAttemptResponse"
+                }
+              }
+            },
+            "description" : "Đã giữ lượt và đưa việc sinh đề vào hàng chờ"
           },
           "400" : {
             "content" : {

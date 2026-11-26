@@ -1,0 +1,6 @@
+{
+  "code" : "IDEMPOTENCY_KEY_REUSED",
+  "message" : "Khóa Idempotency-Key đã được sử dụng cho yêu cầu khác",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

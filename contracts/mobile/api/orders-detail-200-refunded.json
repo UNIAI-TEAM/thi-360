@@ -1,0 +1,74 @@
+{
+  "id" : "00000000-0000-7000-8000-000000000001",
+  "code" : "DH261126000001",
+  "userId" : "00000000-0000-7000-8000-000000000002",
+  "buyerUsername" : "student.demo",
+  "buyerFullName" : "Nguyễn Văn An",
+  "productType" : "EXAM",
+  "examId" : "00000000-0000-7000-8000-000000000003",
+  "examVersionNo" : 1,
+  "bundleId" : null,
+  "bundleVersionNo" : null,
+  "optionCodes" : [
+    "OPT-A"
+  ],
+  "productCode" : "EXAM-DEMO-04",
+  "productName" : "Exam DEMO",
+  "listPriceVnd" : 200000,
+  "promotionId" : null,
+  "promotionDiscountVnd" : 0,
+  "voucherId" : null,
+  "voucherCode" : null,
+  "voucherDiscountVnd" : 0,
+  "discountApplied" : "NONE",
+  "amountDueVnd" : 200000,
+  "attemptsGranted" : 3,
+  "benefits" : {
+    "aiExplanation" : true
+  },
+  "resultView" : "FULL_SOLUTION",
+  "paymentMethod" : "VNPAY",
+  "state" : "REFUNDED",
+  "replacedByOrderId" : null,
+  "replacedByOrderCode" : null,
+  "expiresAt" : "2026-11-20T10:00:00Z",
+  "paidAt" : "2026-11-20T10:00:00Z",
+  "fulfilledAt" : "2026-11-20T10:00:00Z",
+  "createdAt" : "2026-11-20T10:00:00Z",
+  "updatedAt" : "2026-11-20T10:00:00Z",
+  "items" : [
+    {
+      "id" : "00000000-0000-7000-8000-000000000005",
+      "examId" : "00000000-0000-7000-8000-000000000003",
+      "examVersionNo" : 1,
+      "examCode" : "EXAM-DEMO-04",
+      "examName" : "Exam DEMO",
+      "optionCodes" : [
+        "OPT-A"
+      ],
+      "attemptsGranted" : 3,
+      "benefits" : {
+        "aiExplanation" : true
+      },
+      "resultView" : "FULL_SOLUTION",
+      "position" : 1
+    }
+  ],
+  "payments" : [
+    {
+      "id" : "00000000-0000-7000-8000-000000000006",
+      "attemptSeq" : 1,
+      "txnRef" : "DH26112600000101",
+      "amountVnd" : 200000,
+      "state" : "SUCCEEDED",
+      "duplicate" : false,
+      "vnpTransactionNo" : null,
+      "bankCode" : null,
+      "cardType" : null,
+      "payDate" : null,
+      "responseCode" : null,
+      "createdAt" : "2026-11-20T10:00:00Z"
+    }
+  ],
+  "history" : [ ]
+}

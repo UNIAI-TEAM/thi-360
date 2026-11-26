@@ -1,0 +1,158 @@
+{
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examVersionNo" : 1,
+  "examName" : "BCA đầy đủ (thu nhỏ)",
+  "examKindCode" : "BCA",
+  "scope" : "FULL",
+  "choices" : {
+    "5704c7c4-eb29-55d9-b491-ac2c64615302" : {
+      "optionCode" : "CA2"
+    }
+  },
+  "attemptNo" : 1,
+  "state" : "PENDING_REVIEW",
+  "regrading" : true,
+  "regradingLabel" : "Đang chấm lại",
+  "endReason" : "SUBMITTED",
+  "startedAt" : "2026-11-20T10:00:00Z",
+  "finishedAt" : "2026-11-20T10:00:00Z",
+  "gradedAt" : "2026-11-20T10:00:00Z",
+  "practiceScoring" : "RAW",
+  "rawScore" : 45.5,
+  "displayScore" : 45.5,
+  "rawMaxScore" : 47.75,
+  "scaleMax" : 47.75,
+  "resultView" : "FULL_SOLUTION",
+  "reviewAvailable" : true,
+  "compensated" : false,
+  "statistics" : {
+    "correctCount" : 1,
+    "partialCount" : 0,
+    "wrongCount" : 0,
+    "blankCount" : 25,
+    "pendingReviewCount" : 1,
+    "totalCount" : 27
+  },
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000003",
+    "partCode" : "9121a1f1-c924-572a-82cd-614cfe31b94b",
+    "partName" : "Tự luận Ngữ văn",
+    "ord" : 0,
+    "skipped" : false,
+    "pendingReview" : true,
+    "maxScore" : 25.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 0,
+      "pendingReviewCount" : 1,
+      "totalCount" : 1
+    }
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000004",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "partName" : "Trắc nghiệm bắt buộc",
+    "ord" : 1,
+    "skipped" : false,
+    "pendingReview" : false,
+    "score" : 1.0,
+    "maxScore" : 18.75,
+    "stats" : {
+      "correctCount" : 1,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 21,
+      "pendingReviewCount" : 0,
+      "totalCount" : 22
+    }
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000005",
+    "partCode" : "5704c7c4-eb29-55d9-b491-ac2c64615302",
+    "partName" : "Trắc nghiệm tự chọn",
+    "ord" : 2,
+    "skipped" : false,
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 4.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 4,
+      "pendingReviewCount" : 0,
+      "totalCount" : 4
+    }
+  } ],
+  "subjects" : [ {
+    "code" : "VAN",
+    "name" : "Ngữ văn",
+    "pendingReview" : true,
+    "maxScore" : 25.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 0,
+      "pendingReviewCount" : 1,
+      "totalCount" : 1
+    }
+  }, {
+    "code" : "TOAN",
+    "name" : "Toán học",
+    "pendingReview" : false,
+    "score" : 1.0,
+    "maxScore" : 5.0,
+    "stats" : {
+      "correctCount" : 1,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 4,
+      "pendingReviewCount" : 0,
+      "totalCount" : 5
+    }
+  }, {
+    "code" : "SU",
+    "name" : "Lịch sử",
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 4.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 4,
+      "pendingReviewCount" : 0,
+      "totalCount" : 4
+    }
+  }, {
+    "code" : "ANH",
+    "name" : "Tiếng Anh",
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 9.75,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 13,
+      "pendingReviewCount" : 0,
+      "totalCount" : 13
+    }
+  }, {
+    "code" : "HOA",
+    "name" : "Hóa học",
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 4.0,
+    "stats" : {
+      "correctCount" : 0,
+      "partialCount" : 0,
+      "wrongCount" : 0,
+      "blankCount" : 4,
+      "pendingReviewCount" : 0,
+      "totalCount" : 4
+    }
+  } ]
+}

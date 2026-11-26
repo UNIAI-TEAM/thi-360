@@ -1,0 +1,12 @@
+{
+  "code" : "VALIDATION_FAILED",
+  "message" : "Dữ liệu không hợp lệ",
+  "fieldErrors" : [
+    {
+      "field" : "codes",
+      "code" : "NOTNULL",
+      "message" : "Danh sách mã bài thi là bắt buộc"
+    }
+  ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

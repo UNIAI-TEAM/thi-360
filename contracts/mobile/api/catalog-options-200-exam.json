@@ -1,0 +1,83 @@
+[
+  {
+    "id" : "00000000-0000-7000-8000-000000000001",
+    "code" : "HSA",
+    "value" : 1,
+    "nameVi" : "Đánh giá năng lực ĐHQG Hà Nội (HSA)",
+    "nameEn" : "VNU Hanoi Competency Assessment (HSA)",
+    "description" : null,
+    "displayOrder" : 0
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000002",
+    "code" : "QDA",
+    "value" : 2,
+    "nameVi" : "Đánh giá năng lực Bộ Quốc phòng (QDA)",
+    "nameEn" : "Ministry of Defence Competency Assessment (QDA)",
+    "description" : null,
+    "displayOrder" : 1
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000003",
+    "code" : "BCA",
+    "value" : 3,
+    "nameVi" : "Đánh giá tuyển sinh Công an nhân dân (BCA)",
+    "nameEn" : "People's Public Security admission assessment (BCA)",
+    "description" : null,
+    "displayOrder" : 2
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000004",
+    "code" : "VACT",
+    "value" : 4,
+    "nameVi" : "Đánh giá năng lực ĐHQG TP.HCM (V-ACT)",
+    "nameEn" : "VNU-HCM Competency Assessment (V-ACT)",
+    "description" : null,
+    "displayOrder" : 3
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000005",
+    "code" : "SPT",
+    "value" : 5,
+    "nameVi" : "Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)",
+    "nameEn" : "HNUE competency assessment (SPT)",
+    "description" : null,
+    "displayOrder" : 4
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000006",
+    "code" : "SP2E",
+    "value" : 6,
+    "nameVi" : "Đánh giá năng lực ĐH Sư phạm Hà Nội 2 (SP2E)",
+    "nameEn" : "HNUE2 competency assessment (SP2E)",
+    "description" : null,
+    "displayOrder" : 5
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000007",
+    "code" : "THPTQG",
+    "value" : 7,
+    "nameVi" : "Tốt nghiệp THPT (THPTQG)",
+    "nameEn" : "National high school graduation exam (THPTQG)",
+    "description" : null,
+    "displayOrder" : 6
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000008",
+    "code" : "HSCA",
+    "value" : 8,
+    "nameVi" : "Đánh giá năng lực H-SCA",
+    "nameEn" : "H-SCA assessment",
+    "description" : null,
+    "displayOrder" : 7
+  },
+  {
+    "id" : "00000000-0000-7000-8000-000000000009",
+    "code" : "VSAT",
+    "value" : 9,
+    "nameVi" : "Đánh giá năng lực V-SAT",
+    "nameEn" : "V-SAT assessment",
+    "description" : null,
+    "displayOrder" : 8
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "results" : [ {
+    "itemId" : "00000000-0000-7000-8000-000000000001",
+    "seq" : 4,
+    "status" : "REJECTED",
+    "reason" : "INVALID_ANSWER"
+  } ],
+  "serverNow" : "2026-11-20T10:00:00Z"
+}

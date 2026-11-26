@@ -1,0 +1,6 @@
+{
+  "code" : "VNPAY_SIGNATURE_INVALID",
+  "message" : "Chữ ký phản hồi thanh toán không hợp lệ",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

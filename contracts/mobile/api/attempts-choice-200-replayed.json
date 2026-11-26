@@ -1,0 +1,21 @@
+{
+  "serverNow" : "2026-11-20T10:00:00Z",
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "attemptState" : "IN_PROGRESS",
+  "partId" : "00000000-0000-7000-8000-000000000002",
+  "partCode" : "a765a87b-4a21-5e50-a3c8-39f0bc627955",
+  "state" : "GENERATION_FAILED",
+  "choice" : {
+    "optionCode" : "SCIENCE",
+    "subjectCodes" : [ "LY", "HOA", "SU" ],
+    "subjectCounts" : {
+      "LY" : 8,
+      "SU" : 7,
+      "HOA" : 8
+    }
+  },
+  "choiceConfirmedAt" : "2026-11-20T10:00:00Z",
+  "choiceDeadlineAt" : "2026-11-20T10:15:00Z",
+  "generationTries" : 1,
+  "generationError" : "GENERATION_FAILED"
+}

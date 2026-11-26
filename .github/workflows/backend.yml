@@ -2,11 +2,11 @@ name: Backend
 
 on:
   push:
-    branches: [develop]
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    branches: [develop, "integration/**"]
+    paths: ["backend/**", "contracts/mobile/**", ".github/workflows/backend.yml"]
   pull_request:
-    branches: [develop]
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    branches: [develop, "integration/**"]
+    paths: ["backend/**", "contracts/mobile/**", ".github/workflows/backend.yml"]
 
 permissions:
   contents: read

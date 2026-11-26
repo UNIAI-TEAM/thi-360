@@ -1,0 +1,1450 @@
+{
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "PENDING_REVIEW",
+  "resultView" : "FULL_SOLUTION",
+  "selectedPartCode" : null,
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000002",
+    "partCode" : "9121a1f1-c924-572a-82cd-614cfe31b94b",
+    "partName" : "Tự luận Ngữ văn",
+    "ord" : 0,
+    "state" : "CLOSED",
+    "pendingReview" : true,
+    "score" : null,
+    "maxScore" : 25.0
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000003",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "partName" : "Trắc nghiệm bắt buộc",
+    "ord" : 1,
+    "state" : "CLOSED",
+    "pendingReview" : false,
+    "score" : 1.0,
+    "maxScore" : 18.75
+  }, {
+    "partId" : "00000000-0000-7000-8000-000000000004",
+    "partCode" : "5704c7c4-eb29-55d9-b491-ac2c64615302",
+    "partName" : "Trắc nghiệm tự chọn",
+    "ord" : 2,
+    "state" : "CLOSED",
+    "pendingReview" : false,
+    "score" : 0.0,
+    "maxScore" : 4.0
+  } ],
+  "items" : [ {
+    "itemId" : "00000000-0000-7000-8000-000000000005",
+    "partId" : "00000000-0000-7000-8000-000000000006",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "displayNo" : 2,
+    "ord" : 1,
+    "unitCount" : 1,
+    "sectionId" : "59b48679-0a34-5fb6-886e-969ad178ba0c",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>TESTQ-TOAN-MC1-HEP-173 content</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "studentAnswer" : {
+      "type" : "SINGLE_CHOICE",
+      "optionId" : "a"
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 1.0,
+    "outcome" : "CORRECT",
+    "flagged" : false,
+    "gradingDetail" : {
+      "selectedOptionId" : "a"
+    },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000007",
+    "partId" : "00000000-0000-7000-8000-000000000008",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "ord" : 2,
+    "unitCount" : 0,
+    "sectionId" : "59b48679-0a34-5fb6-886e-969ad178ba0c",
+    "componentCode" : "TOAN",
+    "questionType" : "QUESTION_SET",
+    "content" : "<p>TESTQ-TOAN-CTX-HEP-S001 content</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : "<p>Context</p>",
+      "blankNumberStart" : null,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 3.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : {
+      "itemType" : "QUESTION_SET",
+      "childCount" : 3
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000009",
+    "partId" : "00000000-0000-7000-8000-000000000010",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000011",
+    "displayNo" : 3,
+    "ord" : 3,
+    "unitCount" : 1,
+    "sectionId" : "59b48679-0a34-5fb6-886e-969ad178ba0c",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>TESTQ-TOAN-CTX-HEP-S001-c1 content</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000012",
+    "partId" : "00000000-0000-7000-8000-000000000013",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000014",
+    "displayNo" : 4,
+    "ord" : 4,
+    "unitCount" : 1,
+    "sectionId" : "59b48679-0a34-5fb6-886e-969ad178ba0c",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>TESTQ-TOAN-CTX-HEP-S001-c2 content</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000015",
+    "partId" : "00000000-0000-7000-8000-000000000016",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000017",
+    "displayNo" : 5,
+    "ord" : 5,
+    "unitCount" : 1,
+    "sectionId" : "59b48679-0a34-5fb6-886e-969ad178ba0c",
+    "componentCode" : "TOAN",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>TESTQ-TOAN-CTX-HEP-S001-c3 content</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000018",
+    "partId" : "00000000-0000-7000-8000-000000000019",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "displayNo" : 6,
+    "ord" : 6,
+    "unitCount" : 1,
+    "sectionId" : "59b48679-0a34-5fb6-886e-969ad178ba0c",
+    "componentCode" : "TOAN",
+    "questionType" : "SHORT_ANSWER",
+    "content" : "<p>TESTQ-TOAN-SA1-134 content</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : "",
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : null,
+      "acceptedTexts" : [ "1" ],
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000020",
+    "partId" : "00000000-0000-7000-8000-000000000021",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "displayNo" : 7,
+    "ord" : 7,
+    "unitCount" : 1,
+    "sectionId" : "51d3cb9f-7be1-521b-ae2a-25f84611967e",
+    "componentCode" : "SU",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Practice example 28</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000022",
+    "partId" : "00000000-0000-7000-8000-000000000023",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "ord" : 8,
+    "unitCount" : 0,
+    "sectionId" : "51d3cb9f-7be1-521b-ae2a-25f84611967e",
+    "componentCode" : "SU",
+    "questionType" : "QUESTION_SET",
+    "content" : "<p>Science set</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : "<p>Science context</p>",
+      "blankNumberStart" : null,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 3.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : {
+      "itemType" : "QUESTION_SET",
+      "childCount" : 3
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000024",
+    "partId" : "00000000-0000-7000-8000-000000000025",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000026",
+    "displayNo" : 8,
+    "ord" : 9,
+    "unitCount" : 1,
+    "sectionId" : "51d3cb9f-7be1-521b-ae2a-25f84611967e",
+    "componentCode" : "SU",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Science child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000027",
+    "partId" : "00000000-0000-7000-8000-000000000028",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000029",
+    "displayNo" : 9,
+    "ord" : 10,
+    "unitCount" : 1,
+    "sectionId" : "51d3cb9f-7be1-521b-ae2a-25f84611967e",
+    "componentCode" : "SU",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Science child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000030",
+    "partId" : "00000000-0000-7000-8000-000000000031",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000032",
+    "displayNo" : 10,
+    "ord" : 11,
+    "unitCount" : 1,
+    "sectionId" : "51d3cb9f-7be1-521b-ae2a-25f84611967e",
+    "componentCode" : "SU",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Science child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000033",
+    "partId" : "00000000-0000-7000-8000-000000000034",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "displayNo" : 11,
+    "ord" : 12,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Language example 10</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000035",
+    "partId" : "00000000-0000-7000-8000-000000000036",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "displayNo" : 12,
+    "ord" : 13,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Language example 13</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000037",
+    "partId" : "00000000-0000-7000-8000-000000000038",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "displayNo" : 13,
+    "ord" : 14,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Language example 11</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000039",
+    "partId" : "00000000-0000-7000-8000-000000000040",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "ord" : 15,
+    "unitCount" : 0,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "QUESTION_SET",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 question</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 passage</p>",
+      "blankNumberStart" : 1,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 3.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : {
+      "itemType" : "QUESTION_SET",
+      "childCount" : 5
+    },
+    "solution" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 solution</p>"
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000041",
+    "partId" : "00000000-0000-7000-8000-000000000042",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000043",
+    "displayNo" : 14,
+    "ord" : 16,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 child 1</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "d", "c", "a", "b" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000044",
+    "partId" : "00000000-0000-7000-8000-000000000045",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000046",
+    "displayNo" : 15,
+    "ord" : 17,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 child 2</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "d", "a", "c", "b" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000047",
+    "partId" : "00000000-0000-7000-8000-000000000048",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000049",
+    "displayNo" : 16,
+    "ord" : 18,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 child 3</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      }, {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "c", "b", "d" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000050",
+    "partId" : "00000000-0000-7000-8000-000000000051",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000052",
+    "displayNo" : 17,
+    "ord" : 19,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 child 4</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      }, {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "c", "a", "b", "d" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000053",
+    "partId" : "00000000-0000-7000-8000-000000000054",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000055",
+    "displayNo" : 18,
+    "ord" : 20,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-DIEN-004 child 5</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "d", "c", "b" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000056",
+    "partId" : "00000000-0000-7000-8000-000000000057",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "ord" : 21,
+    "unitCount" : 0,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "QUESTION_SET",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 question</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 passage</p>",
+      "blankNumberStart" : 1,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 3.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : {
+      "itemType" : "QUESTION_SET",
+      "childCount" : 5
+    },
+    "solution" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 solution</p>"
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000058",
+    "partId" : "00000000-0000-7000-8000-000000000059",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000060",
+    "displayNo" : 19,
+    "ord" : 22,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 child 1</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "c", "a", "d", "b" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000061",
+    "partId" : "00000000-0000-7000-8000-000000000062",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000063",
+    "displayNo" : 20,
+    "ord" : 23,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 child 2</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "c", "d", "b", "a" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000064",
+    "partId" : "00000000-0000-7000-8000-000000000065",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000066",
+    "displayNo" : 21,
+    "ord" : 24,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 child 3</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      }, {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "d", "b", "c", "a" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000067",
+    "partId" : "00000000-0000-7000-8000-000000000068",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000069",
+    "displayNo" : 22,
+    "ord" : 25,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 child 4</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "d", "c", "a", "b" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000070",
+    "partId" : "00000000-0000-7000-8000-000000000071",
+    "partCode" : "390de1a3-b572-5215-b0be-af7b6158c49a",
+    "parentItemId" : "00000000-0000-7000-8000-000000000072",
+    "displayNo" : 23,
+    "ord" : 26,
+    "unitCount" : 1,
+    "sectionId" : "278cb261-75d8-5954-bc6b-47bc90384d15",
+    "componentCode" : "ANH",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>DS-Q-ANH-BCA-DOC-HIEU-003 child 5</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "d",
+        "content" : "<p>Option d</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Option b</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>Option a</p>"
+      }, {
+        "id" : "c",
+        "content" : "<p>Option c</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "d", "b", "a", "c" ],
+    "pointsMax" : 0.75,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000073",
+    "partId" : "00000000-0000-7000-8000-000000000074",
+    "partCode" : "5704c7c4-eb29-55d9-b491-ac2c64615302",
+    "displayNo" : 24,
+    "ord" : 1,
+    "unitCount" : 1,
+    "sectionId" : "7980a7cb-6698-5e06-8e69-fadab942838a",
+    "componentCode" : "HOA",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Practice example 6</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000075",
+    "partId" : "00000000-0000-7000-8000-000000000076",
+    "partCode" : "5704c7c4-eb29-55d9-b491-ac2c64615302",
+    "ord" : 2,
+    "unitCount" : 0,
+    "sectionId" : "7980a7cb-6698-5e06-8e69-fadab942838a",
+    "componentCode" : "HOA",
+    "questionType" : "QUESTION_SET",
+    "content" : "<p>Science set</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : "<p>Science context</p>",
+      "blankNumberStart" : null,
+      "options" : null,
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "pointsMax" : 3.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : {
+      "itemType" : "QUESTION_SET",
+      "childCount" : 3
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000077",
+    "partId" : "00000000-0000-7000-8000-000000000078",
+    "partCode" : "5704c7c4-eb29-55d9-b491-ac2c64615302",
+    "parentItemId" : "00000000-0000-7000-8000-000000000079",
+    "displayNo" : 25,
+    "ord" : 3,
+    "unitCount" : 1,
+    "sectionId" : "7980a7cb-6698-5e06-8e69-fadab942838a",
+    "componentCode" : "HOA",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Science child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000080",
+    "partId" : "00000000-0000-7000-8000-000000000081",
+    "partCode" : "5704c7c4-eb29-55d9-b491-ac2c64615302",
+    "parentItemId" : "00000000-0000-7000-8000-000000000082",
+    "displayNo" : 26,
+    "ord" : 4,
+    "unitCount" : 1,
+    "sectionId" : "7980a7cb-6698-5e06-8e69-fadab942838a",
+    "componentCode" : "HOA",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Science child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      }, {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "a", "b" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  }, {
+    "itemId" : "00000000-0000-7000-8000-000000000083",
+    "partId" : "00000000-0000-7000-8000-000000000084",
+    "partCode" : "5704c7c4-eb29-55d9-b491-ac2c64615302",
+    "parentItemId" : "00000000-0000-7000-8000-000000000085",
+    "displayNo" : 27,
+    "ord" : 5,
+    "unitCount" : 1,
+    "sectionId" : "7980a7cb-6698-5e06-8e69-fadab942838a",
+    "componentCode" : "HOA",
+    "questionType" : "SINGLE_CHOICE",
+    "content" : "<p>Science child</p>",
+    "attachments" : [ ],
+    "body" : {
+      "passage" : null,
+      "blankNumberStart" : null,
+      "options" : [ {
+        "id" : "b",
+        "content" : "<p>Two</p>"
+      }, {
+        "id" : "a",
+        "content" : "<p>One</p>"
+      } ],
+      "scoringRule" : null,
+      "inputHint" : null,
+      "answerFormat" : null,
+      "blanks" : null,
+      "statements" : null,
+      "left" : null,
+      "right" : null,
+      "reuseRight" : null,
+      "wordLimit" : null
+    },
+    "optionOrder" : [ "b", "a" ],
+    "pointsMax" : 1.0,
+    "earnedPoints" : 0.0,
+    "outcome" : "BLANK",
+    "flagged" : false,
+    "gradingDetail" : { },
+    "expectedAnswer" : {
+      "expectedOptionIds" : [ "a" ],
+      "acceptedTexts" : null,
+      "clozeKeys" : null,
+      "trueFalseKeys" : null,
+      "matchingKeys" : null
+    }
+  } ]
+}

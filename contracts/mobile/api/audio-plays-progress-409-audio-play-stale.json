@@ -1,0 +1,6 @@
+{
+  "code" : "AUDIO_PLAY_STALE",
+  "message" : "Lần nghe audio không còn hiệu lực hoặc đã kết thúc",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

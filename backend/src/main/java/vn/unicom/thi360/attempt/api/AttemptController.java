@@ -1,6 +1,12 @@
 package vn.unicom.thi360.attempt.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -43,7 +49,22 @@ public class AttemptController {
 
     @PostMapping("/attempts")
     @Operation(summary = "Bắt đầu lượt thi mới hoặc nối lại lượt đang mở (sinh đề chạy nền)")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Trạng thái hiện tại khi nối lại lượt đang mở hoặc gửi lại cùng khóa idempotency",
+                content = @Content(schema = @Schema(implementation = StartAttemptResponse.class))),
+        @ApiResponse(
+                responseCode = "202",
+                description = "Đã giữ lượt và đưa việc sinh đề vào hàng chờ",
+                content = @Content(schema = @Schema(implementation = StartAttemptResponse.class)))
+    })
     public ResponseEntity<StartAttemptResponse> start(
+            @Parameter(
+                    in = ParameterIn.HEADER,
+                    name = "Idempotency-Key",
+                    required = true,
+                    description = "Khóa chống gửi lặp bắt buộc cho thao tác bắt đầu lượt thi")
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody StartAttemptRequest request) {
         return startService.startAttempt(idempotencyKey, request);

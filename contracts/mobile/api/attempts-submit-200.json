@@ -1,0 +1,20 @@
+{
+  "serverNow" : "2026-11-20T10:00:00Z",
+  "attemptId" : "00000000-0000-7000-8000-000000000001",
+  "state" : "GRADING",
+  "endReason" : "SUBMITTED",
+  "finishedAt" : "2026-11-20T10:00:00Z",
+  "parts" : [ {
+    "partId" : "00000000-0000-7000-8000-000000000002",
+    "partCode" : "c67b0d64-6dd5-53b1-be54-face59125e3e",
+    "partName" : "Toán học và xử lí số liệu",
+    "ord" : 0,
+    "state" : "CLOSED",
+    "startedAt" : "2026-11-20T10:00:00Z",
+    "deadlineAt" : "2026-11-20T10:00:00Z",
+    "closedAt" : "2026-11-20T10:00:00Z",
+    "closeReason" : "ATTEMPT_SUBMITTED",
+    "choiceDeadlineAt" : null
+  } ],
+  "results" : [ ]
+}

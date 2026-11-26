@@ -1,0 +1,12 @@
+{
+  "code" : "UPLOAD_TOO_LARGE",
+  "message" : "Kích thước tệp tải lên vượt quá giới hạn cho phép (tối đa 21 MB)",
+  "fieldErrors" : [
+    {
+      "field" : "file",
+      "code" : "UPLOAD_TOO_LARGE",
+      "message" : "Kích thước tệp tải lên vượt quá giới hạn cho phép (tối đa 21 MB)"
+    }
+  ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

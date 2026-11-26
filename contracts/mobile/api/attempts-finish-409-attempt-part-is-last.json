@@ -1,0 +1,6 @@
+{
+  "code" : "ATTEMPT_PART_IS_LAST",
+  "message" : "Phần cuối của bài thi cần nộp bài thay vì hoàn thành phần",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

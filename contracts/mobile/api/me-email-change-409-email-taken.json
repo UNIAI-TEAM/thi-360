@@ -1,0 +1,6 @@
+{
+  "code" : "EMAIL_TAKEN",
+  "message" : "Email đã được sử dụng bởi tài khoản khác",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

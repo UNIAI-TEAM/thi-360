@@ -1,0 +1,6 @@
+{
+  "code" : "ATTEMPT_SESSION_REVOKED",
+  "message" : "Lượt thi đã được tiếp tục ở thiết bị khác",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

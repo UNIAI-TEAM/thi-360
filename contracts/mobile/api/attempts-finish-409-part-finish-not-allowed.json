@@ -1,0 +1,6 @@
+{
+  "code" : "PART_FINISH_NOT_ALLOWED",
+  "message" : "Bài thi này cho phép chuyển tự do giữa các phần và không hỗ trợ hoàn thành từng phần",
+  "fieldErrors" : [ ],
+  "traceId" : "fixture-trace-id"
+}

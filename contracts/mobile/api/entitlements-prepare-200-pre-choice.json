@@ -1,0 +1,79 @@
+{
+  "entitlementId" : "00000000-0000-7000-8000-000000000001",
+  "examId" : "00000000-0000-7000-8000-000000000002",
+  "examCode" : "DS-SPT-INFORMATICS-MINI",
+  "examName" : "SPT Tin học (thu nhỏ)",
+  "examKind" : {
+    "id" : "00000000-0000-7000-8400-000000000105",
+    "code" : "SPT",
+    "nameVi" : "Đánh giá năng lực ĐH Sư phạm Hà Nội (SPT)",
+    "nameEn" : "HNUE competency assessment (SPT)"
+  },
+  "scope" : "SUBJECT",
+  "partCode" : null,
+  "subject" : {
+    "id" : "00000000-0000-7000-8400-000000000215",
+    "code" : "INFORMATICS",
+    "nameVi" : "Tin học",
+    "nameEn" : "Informatics"
+  },
+  "buildMode" : "STANDARD",
+  "grantSource" : {
+    "source" : "PURCHASE",
+    "orderCode" : "DH261126000001",
+    "grantedAt" : "2026-11-20T10:00:00Z"
+  },
+  "instructions" : null,
+  "timing" : "PER_PART",
+  "durationMinutes" : 0,
+  "navigationMode" : "SEQUENTIAL",
+  "attemptsLeft" : 2,
+  "servingStatus" : "PUBLISHED",
+  "openAttempt" : null,
+  "omittedGroups" : [ {
+    "name" : "Tự luận – tạm bỏ qua",
+    "points" : null
+  } ],
+  "parts" : [ {
+    "partCode" : "69faf359-18fd-57f9-a2a5-a63f8853c8b6",
+    "ord" : 0,
+    "name" : "Phần I · Trắc nghiệm",
+    "required" : true,
+    "choiceTiming" : "NONE",
+    "durationMinutes" : null,
+    "questionCount" : 1,
+    "maxPoints" : 0.25
+  }, {
+    "partCode" : "a2bf28a0-9391-509d-b1b0-e3c8d4604360",
+    "ord" : 1,
+    "name" : "Phần II · Đúng/Sai",
+    "required" : false,
+    "choiceTiming" : "PRE_START",
+    "durationMinutes" : null,
+    "questionCount" : 2,
+    "maxPoints" : 2
+  } ],
+  "preChoice" : {
+    "partCode" : "a2bf28a0-9391-509d-b1b0-e3c8d4604360",
+    "kind" : "BRANCH",
+    "preselectedCode" : "CS",
+    "options" : [ {
+      "code" : "CS",
+      "name" : "Khoa học máy tính",
+      "kind" : "BRANCH",
+      "chooseSubjects" : null,
+      "countsByPick" : [ ],
+      "subjects" : [ {
+        "code" : "INFORMATICS",
+        "nameVi" : "Tin học",
+        "nameEn" : "Informatics"
+      } ],
+      "questionCount" : 3,
+      "durationMinutes" : 0,
+      "maxPoints" : 2.25
+    } ]
+  },
+  "afterStartChoices" : [ ],
+  "answerFormats" : [ "SINGLE_CHOICE", "TRUE_FALSE" ],
+  "listeningPolicy" : null
+}

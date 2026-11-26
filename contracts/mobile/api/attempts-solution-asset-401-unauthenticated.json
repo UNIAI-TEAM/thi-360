@@ -1,0 +1,6 @@
+{
+  "code" : "UNAUTHENTICATED",
+  "message" : "Chưa xác thực hoặc phiên đăng nhập đã hết hạn",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  */
 @Schema(description = "Yêu cầu sửa hồ sơ; trường không gửi thì giữ nguyên")
 public record ProfileUpdateRequest(
-        @Schema(description = "Họ và tên, bắt buộc khi gửi, tối đa 100 ký tự", maxLength = 100)
+        @Schema(description = "Họ và tên, bắt buộc khi gửi, tối đa 200 ký tự", maxLength = 200)
         String fullName,
 
         @Schema(description = "Số điện thoại Việt Nam 10 chữ số bắt đầu bằng 0; chuỗi rỗng để xóa số",
