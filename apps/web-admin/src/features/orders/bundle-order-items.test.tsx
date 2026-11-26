@@ -274,6 +274,7 @@ describe("Bundle orders display in /orders and /orders/[code] (AC-9)", () => {
     renderOrdersUi(<OrderListView />, { permissions: ["ORDER.VIEW"] });
 
     await screen.findByText("DH-BUNDLE-FILTER");
+    await user.click(screen.getByRole("button", { name: /^Bộ lọc/ }));
     const examCombo = screen.getByRole("combobox", { name: "Bài thi" });
     await user.click(examCombo);
 

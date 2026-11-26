@@ -42,6 +42,8 @@ describe("ReconciliationReportCard (AC-22)", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText("Tiền về muộn chờ xử lý")).toBeInTheDocument();
     expect(screen.getByText("4")).toBeInTheDocument();
+    // uniworkos UNI-1717: bỏ dòng ghi chú dưới thẻ khi đã có báo cáo.
+    expect(screen.queryByText("Báo cáo được tạo tự động bởi tác vụ đối soát cuối ngày.")).not.toBeInTheDocument();
 
     const firstCounterTile = screen.getByText("Đã thu tiền chưa cấp quyền").closest("div");
     expect(firstCounterTile?.className).toContain("bg-warning-bg");

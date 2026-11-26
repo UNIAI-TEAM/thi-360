@@ -2127,7 +2127,9 @@
       "refundStatusAll": "All refund statuses",
       "searchLabel": "Search orders",
       "searchPlaceholder": "Search order code, username, full name, or txn ref...",
-      "to": "To date"
+      "to": "To date",
+      "more": "Filters",
+      "moreCount": "{count, plural, one {# filter} other {# filters}} applied"
     },
     "grantStatuses": {
       "ACTIVE": "Active",
