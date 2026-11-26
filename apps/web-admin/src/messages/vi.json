@@ -6072,7 +6072,7 @@
         "SECTION_SET_COUNT_RANGE": "Môn {subject}: số chùm phải từ 1 đến 2 và mỗi chùm có 3 câu con.",
         "SHORT_ANSWER_MIN": "Môn {subject}: cần ít nhất 1 câu Điền đáp án (loại Trả lời ngắn).",
         "STORED_ID_COLLISION": "Id đã lưu \"{id}\" trùng tên giữ chỗ cho chùm trực tiếp của một tùy chọn (id tùy chọn cộng :blocks), nên không đường nào của bài thi này kiểm tra hay công bố được. Hãy đổi tên hoặc tạo lại mục mang id này, rồi kiểm tra lại.",
-        "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
+        "MAPID_RULE_CONFLICT": "{kind, select, GROUP_MINIMUM_ABOVE_GROUP_UNITS {Quy tắc {rules} cần ít nhất {required, number} câu nhưng nhóm chỉ có {available, number} câu.} SUBJECT_EXACT_BELOW_GROUP_MINIMUM {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, quy tắc của nhóm cần ít nhất {required, number} câu.} GROUP_MINIMUMS_ABOVE_SUBJECT_EXACT {Quy tắc {rules} xung đột: quy tắc toàn môn chỉ cho đúng {available, number} câu, các nhóm cần tổng cộng {required, number} câu.} EXACT_COUNTS_DIFFER {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc đòi đúng {available, number} câu, quy tắc kia đòi đúng {required, number} câu.} EXACT_BELOW_MINIMUM {Quy tắc {rules} xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng {available, number} câu, quy tắc kia cần ít nhất {required, number} câu.} ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất {required, number} câu thuộc MAPID đó.} GROUP_RULE_OUTSIDE_SUBJECT_SOURCE {Quy tắc {rules} xung đột: MAPID của quy tắc nhóm nằm ngoài nguồn của toàn môn.} SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS {Quy tắc {rules} xung đột: MAPID chỉ được xuất hiện ở một nhóm có {available, number} câu, nhưng toàn môn cần ít nhất {required, number} câu thuộc MAPID đó.} other {Quy tắc {rules} xung đột, không thể cùng đúng.}}",
         "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc.",
         "STATEMENT_POINTS_UNEVEN": "Khối {block}: câu {codes} có các ý Đúng/Sai không chia điểm đều, trong khi khối chấm theo từng ý cần mọi ý bằng điểm nhau. Thay câu này bằng câu khác."
       },
@@ -6951,7 +6951,9 @@
           "SUBSUMES_RULE": "Quy tắc mới chặt hơn đã bao gồm điều kiện hiện có ({rules}). Bạn có thể lưu hoặc bấm «Thay quy tắc cũ».",
           "openRule": "Mở quy tắc để sửa",
           "openRuleNamed": "Sửa: {rule}",
-          "replaceRule": "Thay quy tắc cũ"
+          "replaceRule": "Thay quy tắc cũ",
+          "OUTSIDE_SUBJECT_SOURCE": "{topics} nằm ngoài nguồn của toàn môn ({rules}). Quy tắc của nhóm chỉ chọn được MAPID nằm trong nguồn toàn môn.",
+          "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP": "Xung đột với {rule}: {topics} chỉ xuất hiện ở nhóm {onlyGroup} ({available, number} câu) nên toàn môn không thể có {required, number} câu thuộc chủ đề này."
         },
         "count": "Số câu",
         "countAria": "Số câu của quy tắc",
@@ -6972,7 +6974,10 @@
           "PERCENT_POOL": "Môn tự chọn chưa dùng được tỷ lệ vì số câu của môn tính theo số môn học viên chọn. Chuyển sang nhập theo số câu.",
           "PERCENT_RANGE": "Tỷ lệ phải từ 0 đến 100.",
           "TYPE_CLEARED_FOR_SUBJECT": "Quy tắc «MAPID chỉ được xuất hiện ở nhóm này» không áp dụng cho toàn môn. Chọn loại quy tắc phù hợp.",
-          "TYPE_REQUIRED": "Chọn một loại quy tắc."
+          "TYPE_REQUIRED": "Chọn một loại quy tắc.",
+          "BELOW_GROUP_SHARES": "Các nhóm đã cần {allocated, number} câu {topics} ({shares}). Nhập ít nhất {allocated, number}.",
+          "ABOVE_ONLY_GROUP": "{topics} chỉ xuất hiện ở nhóm {group} ({units, number} câu) nên toàn môn có tối đa {units, number} câu. Nhập số nhỏ hơn hoặc bằng {units, number}.",
+          "ABOVE_SUBJECT_REMAINING": "Toàn môn chỉ còn {remaining, number} câu {topics} chưa chia ({rule}). Nhập số nhỏ hơn hoặc bằng {remaining, number}."
         },
         "nodeRemove": "Bỏ MAPID {code} {name}",
         "nodesEmpty": "Chưa chọn MAPID nào.",
@@ -7054,7 +7059,20 @@
         },
         "withNumber": "Kèm số lượng",
         "withNumberHint": "Bỏ chọn nếu chỉ giới hạn vị trí (cho phép 0 câu).",
-        "overTotal": "Các quy tắc của môn sẽ cần {allocated, number} câu, nhiều hơn {over, number} câu so với {total, number} câu đã chọn ở cấu trúc. Vẫn lưu được, nhưng đề có thể không ghép đủ các quy tắc."
+        "overTotal": "Các quy tắc của môn sẽ cần {allocated, number} câu, nhiều hơn {over, number} câu so với {total, number} câu đã chọn ở cấu trúc. Vẫn lưu được, nhưng đề có thể không ghép đủ các quy tắc.",
+        "budget": {
+          "share": "{group} {count, number}",
+          "subjectExact": "Các nhóm đã cần {allocated, number} câu {topics} ({shares}); còn {free, number} câu lấy ngẫu nhiên.",
+          "subjectEnough": "Đã đủ nhờ các nhóm ({shares}).",
+          "subjectPartial": "Các nhóm đã cần {allocated, number} câu {topics} ({shares}); toàn môn còn cần thêm {more, number} câu.",
+          "groupRemaining": "Toàn môn còn {remaining, number} câu {topics} chưa chia."
+        },
+        "narrowSource": {
+          "message": "Nguồn mới của toàn môn không còn chứa MAPID của {count, number} quy tắc nhóm dưới đây. Nếu vẫn lưu, các dòng này sẽ hiện cảnh báo để sửa.",
+          "confirm": "Vẫn lưu",
+          "back": "Quay lại sửa"
+        },
+        "pickerDescriptionLimited": "Quy tắc của {name}: chỉ hiện MAPID nằm trong nguồn của toàn môn và không bị giới hạn ở nhóm khác. Chọn được Chương, Bài hoặc Kiến thức."
       },
       "edit": "Sửa",
       "editAria": "Sửa quy tắc: {sentence}",
@@ -7109,7 +7127,18 @@
       },
       "title": "Quy tắc MAPID",
       "topicsPending": "(đang tải MAPID)",
-      "untitledGroup": "Nhóm chưa đặt tên"
+      "untitledGroup": "Nhóm chưa đặt tên",
+      "warning": {
+        "SUBJECT_BELOW_GROUPS": "Các nhóm đang cần {allocated, number} câu ({shares}), nhiều hơn số câu của quy tắc này.",
+        "GROUP_ABOVE_SUBJECT": "Toàn môn chỉ còn {remaining, number} câu {topics} chưa chia cho nhóm này ({rule}).",
+        "ABOVE_UNITS_GROUP": "Nhóm chỉ còn {units, number} câu sau khi sửa cấu trúc.",
+        "ABOVE_UNITS_SUBJECT": "Môn chỉ còn {units, number} câu sau khi sửa cấu trúc.",
+        "ABOVE_ONLY_GROUP": "{topics} chỉ xuất hiện ở nhóm {group}, nhóm này có {units, number} câu.",
+        "OUTSIDE_SUBJECT_SOURCE": "MAPID nằm ngoài nguồn của toàn môn ({rules}). Sửa MAPID hoặc xóa quy tắc.",
+        "fixGroup": "Giảm nhóm {group} còn {count, number}",
+        "fixRaiseSubject": "Nâng toàn môn lên {count, number}",
+        "fixLowerSubject": "Giảm toàn môn còn {count, number}"
+      }
     },
     "scopeField": {
       "legend": "Phạm vi kiến thức",

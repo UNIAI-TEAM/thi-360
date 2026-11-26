@@ -227,6 +227,27 @@ MT hiện hai hàng ô số: **Khối lớp** (Lớp 10, 11, 12, và Liên lớp
 
 - Dữ liệu trong tài liệu cấu trúc, không migration: `section.mapidMode` (`ALL` | `MATRIX`) và `section.mapidRules[]` với 4 loại `PRESENT`, `COUNT`, `ONLY_IN_GROUP`, `SOURCE`; `groupId` trỏ `QuestionBlock.id`, `null` là cả môn. Chỉ HSA; không giới hạn số quy tắc mỗi mục (bỏ mức 20 cũ theo BA, uniworkos UNI-1718, 2026-11-26, `UNI-2822`). Hộp thêm/sửa quy tắc cảnh báo, không chặn, khi tổng số câu các quy tắc cần vượt số câu của môn ở cấu trúc (uniworkos UNI-1719). Khi có `mapidMode`, máy chủ biên dịch quy tắc và bỏ qua `knowledgeScope.nodeIds`, `topicQuotas` của mục và của nhóm (năng lực và điều kiện khác giữ).
 - Bài HSA cũ chưa có `mapidMode`: web của HSA-D chuyển phạm vi và chỉ tiêu cũ thành quy tắc khi nạp, không mất dữ liệu, ghi ở lần lưu sau (HSA-D AC-10).
+- **Ngân sách lồng nhau** (M.Trường chốt 2026-11-26, `.thi360-dev/decisions-2026-11-26-mapid-ngan-sach-long-nhau.md`, `UNI-2824`). Số của toàn môn vẫn là tổng cả đề, câu trong nhóm vẫn tính vào; dữ liệu cũ giữ nghĩa, không đổi lược đồ.
+  - Với MAPID X, phần đã chia bằng tổng mức tối thiểu của các nhóm có quy tắc trên X hoặc MAPID con của X. Trong một nhóm lấy mức lớn nhất, như `MapidRuleConflicts`. Phần còn lại dành cho các vị trí ngẫu nhiên.
+  - Ô số của hộp quy tắc báo giới hạn ngay khi gõ và chặn lưu:
+    - toàn môn "đúng N": N ≥ phần đã chia, kèm chữ "Các nhóm đã cần 4 câu Hàm số (Trả lời ngắn 2, Chùm 2)";
+    - quy tắc nhóm: tối đa là phần toàn môn còn lại sau các nhóm khác ("Toàn môn còn 1 câu Hàm số chưa chia"), cùng với giới hạn số câu của nhóm đã có;
+    - toàn môn "ít nhất N": không vướng nhóm; các nhóm đã đủ thì ghi "Đã đủ nhờ các nhóm".
+  - Quy tắc không có ô số ("phải xuất hiện") vẫn qua kiểm tra chéo.
+  - Nguồn toàn môn (`SOURCE`, `groupId = null`) là biên ngoài:
+    - hộp chọn MAPID của nhóm chỉ hiện nút nằm trong hợp các nguồn toàn môn; tổ tiên của các nút đó hiện để dẫn đường nhưng không chọn được;
+    - quy tắc nhóm (kể cả `SOURCE` của nhóm) nằm ngoài nguồn thì bị chặn;
+    - thu hẹp nguồn toàn môn (hoặc thêm nguồn đầu tiên) làm quy tắc nhóm rơi ra ngoài thì hỏi trước, liệt kê các dòng đó, và cho "Vẫn lưu".
+    - Trường hợp "nguồn toàn môn A, nguồn nhóm B, câu gắn cả A và B" trước đây hợp lệ (nguồn ghép AND), nay là xung đột.
+  - "MAPID chỉ xuất hiện ở nhóm A": hộp chọn của nhóm khác không hiện MAPID đó (cùng nhánh con); số toàn môn của MAPID đó không vượt số câu nhóm A.
+  - Sửa cấu trúc làm số không khớp thì vẫn lưu được. Dòng bị ảnh hưởng của bảng quy tắc hiện cảnh báo kèm nút sửa nhanh:
+    - "Nâng toàn môn lên 4", "Giảm nhóm Chùm còn 1": nút đặt số câu cố định và bỏ tỷ lệ;
+    - vượt số câu của nhóm hoặc của môn;
+    - nằm ngoài nguồn toàn môn: không có nút sửa nhanh.
+  - Kết quả không phụ thuộc thứ tự dòng.
+  - Máy chủ giữ `MapidRuleConflicts` làm lưới an toàn và thêm hai loại `MAPID_RULE_CONFLICT`:
+    - `GROUP_RULE_OUTSIDE_SUBJECT_SOURCE`: `ruleIds` = các nguồn toàn môn và quy tắc nhóm, `blockId` = nhóm;
+    - `SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS`: `required` = mức toàn môn, `available` = số câu nhóm A.
 - Giao diện: lựa chọn "Toàn bài (không giới hạn MAPID)" / "Theo ma trận MAPID"; bảng "Quy tắc MAPID" (mỗi quy tắc một câu, sửa, xóa); hộp "Thêm quy tắc" (Áp dụng cho, Loại quy tắc, MAPID, số câu hoặc %); cột "Phạm vi nguồn" của nhóm; mã `MAPID_RULE_CONFLICT` và thông báo thiếu theo quy tắc.
 
 **FTM làm ở MT của HSA** (6 môn `TOAN`, `LY`, `HOA`, `SINH`, `SU`, `DIA`; bài `FULL`, `PART`, `SUBJECT`):

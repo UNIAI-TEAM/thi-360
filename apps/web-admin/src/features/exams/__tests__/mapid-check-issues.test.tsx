@@ -131,6 +131,9 @@ describe("MAPID_RULE_CONFLICT nêu cả hai quy tắc bằng câu mô tả của
     ["EXACT_COUNTS_DIFFER", ["r1", "r2"], `Quy tắc «${R1}» và «${R2}» xung đột: cùng phạm vi nhưng một quy tắc đòi đúng 15 câu, quy tắc kia đòi đúng 20 câu.`],
     ["EXACT_BELOW_MINIMUM", ["r1", "r2"], `Quy tắc «${R1}» và «${R2}» xung đột: cùng phạm vi nhưng một quy tắc chỉ cho đúng 15 câu, quy tắc kia cần ít nhất 20 câu.`],
     ["ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE", ["r1", "r2"], `Quy tắc «${R1}» và «${R2}» xung đột: MAPID chỉ được xuất hiện ở một nhóm nên nhóm còn lại không thể có ít nhất 20 câu thuộc MAPID đó.`],
+    // UNI-2824: nguồn toàn môn là biên ngoài; MAPID chỉ ở một nhóm giới hạn số toàn môn.
+    ["GROUP_RULE_OUTSIDE_SUBJECT_SOURCE", ["r1", "r2"], `Quy tắc «${R1}» và «${R2}» xung đột: MAPID của quy tắc nhóm nằm ngoài nguồn của toàn môn.`],
+    ["SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS", ["r1", "r2"], `Quy tắc «${R1}» và «${R2}» xung đột: MAPID chỉ được xuất hiện ở một nhóm có 15 câu, nhưng toàn môn cần ít nhất 20 câu thuộc MAPID đó.`],
     ["KIND_FROM_THE_FUTURE", ["r1", "r2"], `Quy tắc «${R1}» và «${R2}» xung đột, không thể cùng đúng.`],
   ])("vi %s", async (conflictKind, ruleIds, expected) => {
     const text = await textOf(issueOf({ ruleId: ruleIds[0]!, ruleIds, conflictKind, required: 20, available: 15 }));

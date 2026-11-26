@@ -1,11 +1,12 @@
 "use client";
 
 import { Button, cn, focusRing, IconButton, StatusChip } from "@thi360/ui";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, TriangleAlert, Wrench } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference } from "@/features/content/types";
+import { mapidRuleWarnings, type RuleWarning, withRuleCount } from "../mapid-rule-budget";
 import {
   deletedGroupRules,
   describeRule,
@@ -94,6 +95,51 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
   const rules = section.mapidRules ?? [];
   const view = useMemo(() => ({ ...section, blocks: [...groups] }), [section, groups]);
   const deleted = useMemo(() => new Set(deletedGroupRules(view).map((rule) => rule.id)), [view]);
+  const knowledgeIndex = useMemo(() => indexKnowledge(reference.knowledgeTree), [reference]);
+  // UNI-2824 điểm 6: sửa cấu trúc làm số không khớp vẫn lưu được; dòng bị ảnh hưởng hiện cảnh báo kèm nút sửa nhanh.
+  const warnings = useMemo(() => mapidRuleWarnings(view, knowledgeIndex), [view, knowledgeIndex]);
+  const format = useFormatter();
+
+  const applyFix = (rule: MapidRule, count: number) => onChange(rules.map((item) => (item.id === rule.id ? withRuleCount(item, count) : item)));
+
+  const warningText = (rule: MapidRule, warning: RuleWarning): string => {
+    switch (warning.code) {
+      case "SUBJECT_BELOW_GROUPS":
+        return t("warning.SUBJECT_BELOW_GROUPS", {
+          allocated: warning.allocated,
+          shares: format.list(
+            warning.shares.map((share) => t("dialog.budget.share", { group: text.scopeLabel(groups, share.groupId), count: share.need })),
+            { type: "unit" },
+          ),
+        });
+      case "GROUP_ABOVE_SUBJECT":
+        return t("warning.GROUP_ABOVE_SUBJECT", {
+          remaining: warning.remaining,
+          topics: text.topics(warning.subjectRule.nodeIds, true),
+          rule: text.sentence(view, warning.subjectRule, true),
+        });
+      case "ABOVE_UNITS":
+        return t(rule.groupId ? "warning.ABOVE_UNITS_GROUP" : "warning.ABOVE_UNITS_SUBJECT", { units: warning.units });
+      case "ABOVE_ONLY_GROUP":
+        return t("warning.ABOVE_ONLY_GROUP", {
+          topics: text.topics(rule.nodeIds, true),
+          group: text.scopeLabel(groups, warning.groupId),
+          units: warning.units,
+        });
+      case "OUTSIDE_SUBJECT_SOURCE":
+        return t("warning.OUTSIDE_SUBJECT_SOURCE", {
+          rules: format.list(
+            warning.sources.map((source) => text.sentence(view, source, true)),
+            { type: "conjunction" },
+          ),
+        });
+    }
+  };
+
+  const fixLabel = (rule: MapidRule, warning: RuleWarning, count: number): string =>
+    rule.groupId
+      ? t("warning.fixGroup", { group: text.scopeLabel(groups, rule.groupId), count })
+      : t(warning.code === "SUBJECT_BELOW_GROUPS" ? "warning.fixRaiseSubject" : "warning.fixLowerSubject", { count });
 
   const remove = (rule: MapidRule) => {
     onChange(rules.filter((item) => item.id !== rule.id));
@@ -153,6 +199,39 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
                   <tr key={rule.id} id={anchor} data-field={anchor} data-testid={`mapid-rule-row-${rule.id}`} tabIndex={-1} className={cn("scroll-mt-24 data-[mapid-highlight]:bg-primary-50 data-[mapid-focus]:outline-2 data-[mapid-focus]:-outline-offset-2 data-[mapid-focus]:outline-primary-text", focusRing)}>
                     <td className="border-b border-border px-3 py-2 text-text">
                       <span className="wrap-anywhere"><ExamContentText text={text.sentence(view, rule, true)} /></span>
+                      {(warnings.get(rule.id) ?? []).map((warning) => {
+                        const fix = "fix" in warning ? warning.fix : null;
+                        return (
+                          <span
+                            key={warning.code}
+                            data-testid={`mapid-rule-warning-${rule.id}`}
+                            data-code={warning.code}
+                            className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1"
+                          >
+                            <span className="flex min-w-0 items-start gap-1.5 text-caption text-text-secondary">
+                              <TriangleAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-warning" />
+                              <span className="min-w-0 wrap-anywhere">
+                                <ExamContentText text={warningText(rule, warning)} />
+                              </span>
+                            </span>
+                            {fix !== null && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                data-testid={`mapid-rule-fix-${rule.id}`}
+                                className="h-auto min-h-8 min-w-0 max-w-full whitespace-normal py-1 text-left [&>span]:min-w-0"
+                                onClick={() => applyFix(rule, fix)}
+                              >
+                                <Wrench />
+                                <span className="min-w-0 wrap-anywhere">
+                                  <ExamContentText text={fixLabel(rule, warning, fix)} />
+                                </span>
+                              </Button>
+                            )}
+                          </span>
+                        );
+                      })}
                       {deleted.has(rule.id) && (
                         <span className="mt-1 flex flex-wrap items-center gap-2">
                           <StatusChip tone="danger">{rule.deletedGroupName ? t("deletedGroupNamed", { name: rule.deletedGroupName }) : t("deletedGroup")}</StatusChip>

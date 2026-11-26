@@ -1,6 +1,7 @@
 package vn.unicom.thi360.exam.application;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,6 +28,8 @@ final class MapidRuleConflicts {
     static final String EXACT_COUNTS_DIFFER = "EXACT_COUNTS_DIFFER";
     static final String EXACT_BELOW_MINIMUM = "EXACT_BELOW_MINIMUM";
     static final String ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE = "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE";
+    static final String GROUP_RULE_OUTSIDE_SUBJECT_SOURCE = "GROUP_RULE_OUTSIDE_SUBJECT_SOURCE";
+    static final String SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS = "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS";
 
     /**
      * @param ruleIds  every rule that cannot hold together, in declaration order
@@ -68,12 +71,17 @@ final class MapidRuleConflicts {
         Map<String, Integer> exacts = new LinkedHashMap<>();
         compiled.caps().forEach(cap -> exacts.put(cap.ruleId(), cap.max()));
         List<Resolved> rules = new ArrayList<>();
+        List<Resolved> sources = new ArrayList<>();
         int order = 0;
         for (MapidRule rule : section.mapidRules()) {
             order++;
-            if (rule.type() == MapidRuleType.SOURCE || rule.nodeIds().isEmpty()) continue;
+            if (rule.nodeIds().isEmpty()) continue;
             // A rule of a gone group is reported as MAPID_RULE_GROUP_MISSING and compiles to nothing: not compared.
             if (rule.groupId() != null && section.blocks().stream().noneMatch(block -> rule.groupId().equals(block.id()))) continue;
+            if (rule.type() == MapidRuleType.SOURCE) {
+                sources.add(new Resolved(rule, order, 0, null));
+                continue;
+            }
             int minimum = minimums.getOrDefault(rule.id(), 0);
             rules.add(new Resolved(rule, order, minimum, exacts.get(rule.id())));
         }
@@ -107,8 +115,38 @@ final class MapidRuleConflicts {
                 add(found, new Conflict(ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP_RULE, ordered(only, other),
                         other.groupId(), other.minimum(), 0));
             }
+            // Decision 2026-11-26 point 5: the whole subject cannot ask for more of the node than group A holds.
+            Integer units = units(section, only.groupId());
+            if (units == null) continue;
+            for (Resolved subject : rules) {
+                if (subject.groupId() != null || subject.minimum() <= units || !covers(only, subject)) continue;
+                add(found, new Conflict(SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS, ordered(only, subject),
+                        only.groupId(), subject.minimum(), units));
+            }
         }
+        outsideSubjectSource(found, rules, sources);
         return List.copyOf(found.values());
+    }
+
+    /**
+     * Decision 2026-11-26 point 4: the whole-subject source is the outer boundary, so every node of a group rule
+     * (a group SOURCE too) has to be a node of the subject sources or below one.
+     */
+    private void outsideSubjectSource(Map<String, Conflict> found, List<Resolved> rules, List<Resolved> sources) {
+        List<Resolved> subjectSources = sources.stream().filter(source -> source.groupId() == null).toList();
+        if (subjectSources.isEmpty()) return;
+        Set<UUID> boundary = new LinkedHashSet<>();
+        subjectSources.forEach(source -> boundary.addAll(source.nodes()));
+        List<Resolved> groupRules = new ArrayList<>(rules);
+        groupRules.addAll(sources);
+        groupRules.sort(Comparator.comparingInt(Resolved::order));
+        for (Resolved rule : groupRules) {
+            if (rule.groupId() == null || within(boundary, rule.nodes())) continue;
+            List<Resolved> involved = new ArrayList<>(subjectSources);
+            involved.add(rule);
+            add(found, new Conflict(GROUP_RULE_OUTSIDE_SUBJECT_SOURCE, ordered(involved.toArray(Resolved[]::new)),
+                    rule.groupId(), null, null));
+        }
     }
 
     /** The minimums of several groups add up: a question fills one slot, so each group needs its own carriers. */
@@ -139,11 +177,15 @@ final class MapidRuleConflicts {
 
     /** {@code wide} counts every question {@code narrow} counts: each node of narrow is a node of wide or below one. */
     private boolean covers(Resolved wide, Resolved narrow) {
-        Set<UUID> narrowNodes = narrow.nodes();
+        return within(wide.nodes(), narrow.nodes());
+    }
+
+    /** Every node of {@code narrowNodes} is one of {@code wideNodes} or below one; false when there is none. */
+    private boolean within(Set<UUID> wideNodes, Set<UUID> narrowNodes) {
         if (narrowNodes.isEmpty()) return false;
         for (UUID node : narrowNodes) {
             boolean covered = false;
-            for (UUID candidate : wide.nodes()) {
+            for (UUID candidate : wideNodes) {
                 if (candidate.equals(node) || isAncestor(candidate, node)) {
                     covered = true;
                     break;
