@@ -12,11 +12,13 @@ export interface AppleAppSiteAssociation {
     readonly details: readonly {
       readonly appIDs: readonly [string];
       readonly components: readonly [
-        {
-          readonly "/": "/reset-password";
-        },
+        { readonly "/": "/reset-password" },
+        { readonly "/": "/checkout/result/app" },
       ];
     }[];
+  };
+  readonly webcredentials?: {
+    readonly apps: readonly [string];
   };
 }
 
@@ -72,9 +74,12 @@ export function buildAppleAppSiteAssociation(
       details: [
         {
           appIDs: [appId],
-          components: [{ "/": "/reset-password" }],
+          components: [{ "/": "/reset-password" }, { "/": "/checkout/result/app" }],
         },
       ],
+    },
+    webcredentials: {
+      apps: [appId],
     },
   };
 }
