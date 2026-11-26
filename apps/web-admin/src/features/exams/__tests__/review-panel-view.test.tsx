@@ -101,7 +101,7 @@ describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
     await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
     expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveAttribute("readonly");
 
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const section = sentOf(server).parts[0]!.sections[0]!;
     expect(section.questionCount).toBe(10);
@@ -127,7 +127,7 @@ describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
     expect(screen.queryByRole("button", { name: "Dùng số của bước 1" })).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /^Số lượng/ })).toHaveValue("10");
 
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const section = sentOf(server).parts[0]!.sections[0]!;
     expect(section.questionCount).toBe(10);
@@ -152,7 +152,7 @@ describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
     boot({}, 500);
     open();
     expect(await screen.findByRole("button", { name: "Thử lại" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tiếp tục → Thông tin bán" })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: /Số câu của mục/ })).not.toBeInTheDocument();
   });
 
@@ -169,7 +169,7 @@ describe("Bài ôn: sửa và lưu (R1-17, R1-30)", () => {
     const sets = await screen.findByRole("textbox", { name: /^Số chùm/ });
     await user.clear(sets);
     await user.type(sets, "2");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const block = sentOf(server).parts[0]!.sections[0]!.blocks[0]!;
     expect(block).toMatchObject({ setCount: 2, setSize: 2, questionCount: 4 });
@@ -202,7 +202,7 @@ describe("Bài ôn vừa tạo từ mẫu: nhóm chưa khai số câu (V-01b)", 
     open();
     await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
     await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const section = sentOf(server).parts[0]!.sections[0]!;
     expect(section.questionCount).toBe(10);
@@ -220,7 +220,7 @@ describe("Bài ôn: đổi số câu khi bảng nhập theo tỷ lệ (R2-01)", 
     const sets = await screen.findByRole("textbox", { name: /^Số chùm/ });
     await user.clear(sets);
     await user.type(sets, "4");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const section = sentOf(server).parts[0]!.sections[0]!;
     expect(section.questionCount).toBe(20);
@@ -244,7 +244,7 @@ describe("Bài ôn: tải mẫu và phạm vi (R2-03, R2-05, R2-02)", () => {
     open();
     expect(await screen.findByRole("status", { name: "Đang tải" })).toBeInTheDocument();
     await waitFor(() => expect(server.calls("GET", "/api/v1/admin/exam-templates")).toHaveLength(1));
-    expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tiếp tục → Thông tin bán" })).not.toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Số câu của mục" })).not.toBeInTheDocument();
     server.release("GET", "/api/v1/admin/exam-templates");
     expect(await screen.findByRole("combobox", { name: "Dạng câu" })).toBeInTheDocument();
@@ -273,7 +273,7 @@ describe("Bài ôn: tải mẫu và phạm vi (R2-03, R2-05, R2-02)", () => {
     const scope = (await screen.findByText("Phạm vi kiến thức")).closest("fieldset")!;
     expect(within(scope).getByRole("radio", { name: "Theo chủ đề" })).toBeChecked();
     await user.click(within(scope).getByRole("radio", { name: "Toàn môn" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     expect(sentOf(server).parts[0]!.sections[0]!.knowledgeScope ?? null).toBeNull();
   });
@@ -290,7 +290,7 @@ describe("Bài ôn: tải mẫu và phạm vi (R2-03, R2-05, R2-02)", () => {
     await user.click(boxes.find((box) => !(box as HTMLInputElement).disabled) ?? boxes[0]!);
     await user.click(within(dialog).getByRole("button", { name: /^Áp dụng/ }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     expect(sentOf(server).parts[0]!.sections[0]!.knowledgeScope?.nodeIds.length).toBeGreaterThan(0);
   });
@@ -303,7 +303,7 @@ describe("Bài ôn: lưu không ghi điểm mỗi câu, đầu trang chỉ nêu 
   async function chooseTypeAndSave(server: FakeServer, user: ReturnType<typeof userEvent.setup>) {
     await user.click(await screen.findByRole("combobox", { name: "Dạng câu" }));
     await user.click(await screen.findByRole("option", { name: "Trả lời ngắn" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     return sentOf(server).parts[0]!.sections[0]!.blocks[0]!;
   }
@@ -347,6 +347,7 @@ describe("Bài ôn: lưu không ghi điểm mỗi câu, đầu trang chỉ nêu 
     boot(fresh, 200, {}, { maxScore: 150 });
     open();
     await screen.findByRole("combobox", { name: "Dạng câu" });
-    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" })).toBeEnabled();
+    expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull();
   });
 });

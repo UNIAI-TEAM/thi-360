@@ -2,6 +2,27 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### Đợt hoàn thiện quản trị đề thi/câu hỏi, logo tạm thời & trang pháp lý/footer học viên (2026-11-26, `UNI-2827`–`UNI-2831`, `UNI-2833`, `UNI-2835`–`UNI-2837`)
+
+- **Quản trị bài thi (`apps/web-admin`, `e2e/tests`):**
+  - **`UNI-2827` (uniworkos `UNI-1721`):** màn Bước 4 (`Kiểm tra cấu hình`) bỏ dòng metadata `Kiểm tra lúc ... · giới hạn xử lý 30 giây` khi kết quả mới, bỏ dải `<dl>` tóm tắt trùng lặp và thẻ chú thích `Ba kết quả kiểm tra`.
+  - **`UNI-2828` (uniworkos `UNI-1720`):** chuẩn hóa luồng 4 bước đánh số (`1. Thông tin chung` → `4. Kiểm tra, xem trước và công bố`), tách `Lịch sử phiên bản` lên header; thống nhất lưu bản nháp & điều hướng (`Tiếp tục → ...`, `Lưu nháp và thoát`, hộp thoại rời 3 nút, `?from=review` → `Lưu và quay lại kiểm tra` về `/review?recheck=1`, modal `Áp dụng`); Bước 2 thêm kiểm tra nhanh trong bộ nhớ (`Kiểm tra cấu trúc`, không gọi PUT, đổi môn giữ nháp không hỏi rời); Bước 4 gom đủ lỗi cấu trúc + thông tin bán, đặt nút `Xem trước đề` cạnh kết luận, gắn link `?field=...&from=review` cho từng lỗi và nút `Công bố bài thi` / `Công bố bản cập nhật` ngay tại Bước 4. Đã cập nhật toàn bộ test đơn vị (146 file) + bổ sung `uni-1720-1724-acceptance.test.tsx` và cập nhật selector E2E liên quan.
+  - **`UNI-2829` (uniworkos `UNI-1722`), `UNI-2830` (uniworkos `UNI-1723`), `UNI-2831` (uniworkos `UNI-1724`):** ẩn thông tin khối lớp cho HSA & QDA các môn `VAN`, `SU`, `DIA`; với `SU` & `DIA` đưa `1. Cấu trúc thành phần câu hỏi` lên đầu trên `Mạch kiến thức`, tiêu đề khối phân bố đổi thành `Độ khó` và xóa `byGrade` cũ khi sửa; riêng `DIA` bỏ khối `Điều kiện tư liệu`. Giới hạn fallback `GRADE_REQUIRED_HIDDEN` trong `fit.ts` chỉ áp cho `ROWS` để mẫu `SU`/`DIA` hiện có mở đúng `MatrixForm`.
+  - **`UNI-2837` (uniworkos `UNI-1728`):** sửa hiển thị mã tổ hợp trong `ExamStructureList`, `CodedPartPanel` và `codesUsing` dùng `item.code` thay vì `item.examCode ?? item.code` để phần tự chọn BCA hiển thị đúng `CA1`–`CA4` thay vì lặp lại mã kỳ thi `BCA`.
+- **Trình soạn câu hỏi (`apps/web-admin`):**
+  - **`UNI-2833`:** câu Điền khuyết (`CLOZE`) khi gõ/dán `___` trực tiếp trong `Đề bài` tự sinh đủ các ô đáp án bên dưới trong `BlanksEditor` mà không cướp tiêu điểm và giữ nguyên đáp án đã nhập.
+  - **`UNI-2835` (uniworkos `UNI-1726`):** `MatchingEditor` lọc nội dung lựa chọn cột phải qua `questionHtmlText` để ô `Lựa chọn đúng` không còn hiển thị thẻ HTML thô (`<p>...</p>`).
+  - **`UNI-2836` (uniworkos `UNI-1725`):** mọi `RichTextEditor` cho phép kéo giãn chiều cao trực tiếp (`resize: vertical`, tối đa `75dvh`) và thêm nút **Mở rộng / Thu gọn ô nhập** ở thanh công cụ (overlay toàn màn hình qua portal để thoát `@container`, `Esc` để thu gọn, các hộp thoại Chèn hoạt động trên lớp `z-50`).
+- **Logo tạm thời, Footer & Trang pháp lý (`packages/ui`, `apps/web-admin`, `apps/web-student`):**
+  - Tích hợp bộ logo mới (`BrandLogo`, `BrandWordmark`, `/logo.svg`, `/logo.png`, `/logo-full.png`, `icon.svg`, `apple-icon.png`) thay toàn bộ ô chữ `360` ở sidebar/header/auth/footer.
+  - Dựng footer 4 cột mới trên `apps/web-student` (`PublicFooter`), kèm 2 trang công khai `/chinh-sach-bao-mat-thong-tin` và `/dieu-khoan-giao-dich-chung` (mở công khai trong `proxy.ts`, đổi tên thương hiệu sang `Thi360`, URL lấy động theo base URL của web qua `resolveSiteBase`).
+- **Kiểm chứng:**
+  - `@thi360/ui`: `typecheck`, `lint`, `test` (79 file, 600 test) xanh.
+  - `@thi360/web-student`: `typecheck`, `lint`, `test` (75 file, 563 test), `build` xanh.
+  - `@thi360/web-admin`: `typecheck`, `lint` (0 lỗi, 0 cảnh báo), `test` toàn bộ (306 file, 3.208 test) + chạy lại 27 file / 220 test sau `UNI-1725`/`UNI-1726`, `build` xanh.
+  - `@thi360/e2e`: `typecheck`, `lint` xanh.
+- **Tiếp theo:** chờ người dùng kiểm tra thay đổi tại máy và yêu cầu commit/push/PR; các issue UniAI vẫn giữ `in_progress`.
+
 ### Màn làm bài: đầu trang gọn, ổn định, thanh danh sách câu luôn thấy trên màn hẹp (2026-11-26, `UNI-2826`)
 
 - **Yêu cầu:** M.Trường thấy đầu trang `AttemptPlayer` (sau UNI-2813) xấu ở cả màn to và nhỏ: thu gọn vẫn 3 hàng, hàng nút lúc 2 lúc 3 hàng, màn hẹp phải kéo lên đầu mới mở được danh sách câu.
@@ -11,7 +32,7 @@
   - Dưới 1024px thanh "đã trả lời · danh sách câu" gắn vào đầu trang dính (portal), luôn thấy khi cuộn.
   - DESIGN.md 5.16 ghi quy tắc.
 - **Kiểm chứng:** web-student typecheck, lint sạch; vitest 73 file, 558 test qua. Kiểm bố cục thật bằng trang thử tạm ở máy (không commit): ở 360px hàng điều khiển vừa 328px không tràn; chiều cao đầu trang chỉ đổi theo khoảng bề rộng (dưới 640: 102/172px, 640–1023: 102/146px, từ 1024: 53/97px, thu gọn/mở).
-- **Tiếp theo:** chờ CI, merge, deploy demo, kiểm trên demo với một lượt thi thật.
+- **Đã xong:** PR #224 vượt 6/6 cổng CI (`link`, `api-client-drift`, `build`, `e2e (1..3)`), squash-merge vào `develop` (`2aa5175a`), và chạy `deploy-develop.sh` trên VPS `bro` thành công (backup DB `3.59 MB`, `backend exit=0`, `web exit=0`, Flyway `95|0|202611220200`, `demo-smoke.sh` và kiểm storefront/admin HTTP xanh). Issue chuyển sang `in_review` chờ nghiệm thu.
 
 ### Đồng bộ đầu trang các màn chi tiết web quản trị (2026-11-26, `UNI-2825`)
 
@@ -115,18 +136,12 @@
 - **Danh sách việc sau merge (Post-Merge Checklist, D-34):** cập nhật realm `thi-360` trên Keycloak máy chủ demo (client `thi360-mobile`, offline idle 7 ngày / max 30 ngày); cấu hình nginx demo cho `/.well-known/*` và `/mobile/*`; đặt biến deep link (`THI360_IOS_APP_ID` gồm Apple Team ID, `THI360_ANDROID_CERT_SHA256`); kiểm tra hệ điều hành mở app từ liên kết đặt lại mật khẩu trong thư trên tên miền demo (`AC-45`); đăng nhập/luồng thật từ đầu tới cuối bằng bản `demo` trên `https://thi360.zone17.click` sau khi cập nhật realm; kiểm tra trên thiết bị thật (vân tay/khuôn mặt Android, Face ID/Touch ID iOS, máy gập Android, iPhone Duo, gỡ cài lại xóa phiên `AC-86`).
 - **Tiếp theo:** chờ người yêu cầu review PR QA (`feature/UNI-2809-qa-app-hoc-vien` → `integration/app-hoc-vien`) và PR tích hợp cuối (`integration/app-hoc-vien` → `develop`). Không tự chuyển issue sang `done`.
 
-### Nâng cấp trang giới thiệu (Landing `/`) trên `web-student` theo bản demo đã chốt (2026-11-25, `UNI-2810`)
+### Hoàn tất & triển khai Demo 3 nâng cấp UI/UX (`UNI-2810`, `UNI-2812`, `UNI-2813` — PR #201, #202, #203) (2026-11-25)
 
-- **Nhánh & Issue:** nhánh `feature/UNI-2810-landing-storefront-upgrade` tách từ `develop` (`d96acc89`); issue `UNI-2810` (`in_progress`, con của `UNI-2730`).
-- **Thay đổi đã thực hiện:**
-  - **Khung rộng `90%` + nền cố định `<AuthBackdrop />` kèm dải kính mờ nhẹ:** mở rộng `variant="landing"` trên `PublicShell`, `PublicStudentHeader`, `StudentHeader` và `AuthBackdrop` (`className="fixed"`), nâng bề rộng nội dung trang Landing lên `sm:w-[90%] sm:max-w-[90%]` (dưới `sm` giữ `w-full px-4`), giữ nguyên bố cục các trang khác (`/exams/[code]`, `/home`, `/history`, `/checkout`...). Áp dụng nền kính mờ bán trong suốt nhẹ (`backdrop-blur`) cho `Header`, `HeroSection`, `WhySection` và `FaqSection` theo semantic CSS tokens Sáng/Tối.
-  - **Danh sách các kỳ thi lấy động từ danh mục hệ thống `EXAM` (`Cấu hình chung`):** bổ sung `catalogKinds` (`code`, `nameVi`, `nameEn`) vào `StorefrontFilters` (`GET /api/v1/public/storefront/filters`, `StorefrontQueryService.filters()`) lấy từ các mục `ACTIVE` của nhóm `EXAM` theo đúng `display_order` (`HSA`, `QDA`, `BCA`, `VACT`, `SPT`, `SP2E`, `THPTQG`, `HSCA`, `VSAT`...), không thay đổi ngữ nghĩa của `kinds` (`count > 0`). Cập nhật `packages/api-client/openapi.json` và sinh lại `packages/api-client/src/schema.d.ts`; nối dữ liệu vào `HeroSection` và dải chip lọc nhanh Kỳ thi của `CatalogSection`.
-  - **Làm đẹp khối `#exams` (`Chọn bài thi`) & cuộn ngang 1 dòng:** tổ chức hộp công cụ lọc kính mờ 2 tầng (tầng 1: dải chip chọn nhanh Kỳ thi; tầng 2: Tìm kiếm + Hình thức + Phần/môn + Sắp xếp + Xóa bộ lọc, giữ nguyên đồng bộ URL); chuyển danh sách bài thi sang dải cuộn ngang 1 hàng (`flex-nowrap`, `role="region"`, `tabIndex={0}`, kéo chuột, phím `←`/`→`, nút `‹`/`›`, thanh tiến độ cuộn và phân trang `Pagination`); nâng cấp bìa mặc định `DefaultProductCover` trong `ProductCard` theo 4 hình thức (`BUNDLE`, `FULL`, `PART`, `SUBJECT`) với vòng quỹ đạo SVG, huy hiệu `-{percent}%` và bảo toàn bố cục nút `AccessAction` xếp dọc của `UNI-2797`.
-- **Kiểm chứng đã chạy:**
-  - Frontend: `pnpm --filter @thi360/api-client generate`, `typecheck`, `lint` đạt; `@thi360/web-student` đạt `typecheck`, `lint`, `vitest run` (`71/71` file = `513/513` test pass, gồm `page.test.tsx`, `catalog-section.test.tsx`, `product-card.test.tsx`, `messages.test.ts`, `source-scan.test.ts`, `focus-styles.test.ts`) và `next build` (`17/17` route).
-  - Backend: biên dịch sạch `1.280` file chính + `635` file test; chạy pass `StorefrontQueryServiceTest` (`2/2` test, gồm đối chiếu schema `StorefrontFilters`/`CatalogKind` qua `ModelResolver` OpenAPI 3.1 của SpringDoc) và `AttemptOpenApiContractTest` (`4/4` test).
-  - **Chưa chạy được tại máy cục bộ:** các IT cần Testcontainers (`StorefrontPublicApiIT`, `OpenApiExportIT`) và E2E trình duyệt trực tiếp trên stack chạy sống vì Docker daemon trên máy Windows hiện đang tắt (`//./pipe/dockerDesktopLinuxEngine` không khả dụng).
-- **Tiếp theo:** chờ người yêu cầu xem lại; chưa `git commit`, `git push`, mở PR hay chuyển `UNI-2810` sang `done`.
+- **`UNI-2810` (`in_review`, PR #201 — squash-merge `fa3c4265`):** nâng cấp trang giới thiệu `/` trên `web-student` với khung rộng `90%` (`sm:w-[90%] sm:max-w-[90%]`), nền cố định `<AuthBackdrop className="fixed" />` dùng lại đúng nền màn xác thực kèm dải kính mờ nhẹ, danh sách kỳ thi lấy động từ danh mục hệ thống `EXAM` (`catalogKinds` trên `GET /api/v1/public/storefront/filters` theo `display_order`), hộp lọc 2 tầng và danh sách bài thi cuộn ngang 1 dòng (`flex-nowrap`) kèm bìa mặc định `DefaultProductCover` mới. Đạt **7/7 cổng CI** (gồm `verify` Testcontainers `OpenApiExportIT` & `StorefrontPublicApiIT`, `api-client-drift`, `build`, `e2e (1..3)`, `link`).
+- **`UNI-2812` (`in_review`, PR #202 — squash-merge `fbac2382`):** bổ sung UX hướng dẫn cách xử lý (`ExamQuotaDeviationHint`, `ExamQuotaScopePrefix`) và nút/liên kết điều hướng **`Đi tới chỉ tiêu`** ở cả Tab 2 (`ExamStructureCheckResult`) và Tab 3 (`ExamReviewFindings`) trên `web-admin` cho cảnh báo `EXAM_QUOTA_DEVIATION`, nhảy thẳng về `?exam=1#exam-quota-<quotaId>`, cuộn mượt, tô sáng thẻ chỉ tiêu và focus vào điều khiển tương tác (hỗ trợ cả chỉ tiêu 1 môn lẫn nhiều môn như Phần 3 Khoa học HSA). Đạt **6/6 cổng CI**.
+- **`UNI-2813` (`in_review`, PR #203 — squash-merge `d794b214`):** nâng cấp màn làm bài `AttemptPlayer` trên `web-student` & `@thi360/ui` theo 4 hạng mục: (1) thu gọn `<header>` bám dính + nút thu gọn/mở rộng (`attempt-header-collapse`) đồng bộ `--attempt-sticky-top`; (2) ghim cột ngữ cảnh đọc hiểu `<aside>` theo từng nhóm câu chùm `QUESTION_SET` ngang hàng với `QuestionNav`; (3) trải toàn bộ câu hỏi của phần đang mở trên 1 màn liên tục, bỏ nút `Câu trước`/`Câu sau`, cuộn mượt khi bấm số câu và tự cập nhật `Đang xem` khi cuộn; (4) tự gắn `SubjectGroupHeader` (`Môn ...` + `Câu X–Y` + số câu) và gom nhóm câu hỏi trên cả thân bài lẫn `QuestionNav` khi phần thi có từ 2 môn trở lên (HSA Phần 3 tự chọn 3 môn, QDA, BCA, V-ACT). Đạt **6/6 cổng CI**.
+- **Triển khai Demo (`https://thi360.zone17.click`, `https://admin.thi360.zone17.click`):** đã chạy `deploy-develop.sh` trên VPS `bro` lên commit `d794b214` (backup DB `3.54 MB`, `backend exit=0`, `web exit=0`, Flyway `95|0|202611220200`) và vượt toàn bộ `demo-smoke.sh` + kiểm tra trực tiếp `catalogKinds` trên `/api/v1/public/storefront/filters`. Cả 3 issue giữ ở `in_review` chờ người yêu cầu nghiệm thu.
 
 ### App học viên native Android/iOS: khung và xác thực — đặc tả và kế hoạch đã duyệt, chờ lệnh bắt đầu (2026-11-25, `UNI-2785`)
 

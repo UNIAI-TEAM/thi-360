@@ -110,7 +110,7 @@ describe("Thân PUT không đổi (FTM AC 6, plan B4)", () => {
     const original = hsaFull();
     const { server, state } = boot({ kind: "HSA", parts: original });
     openStructure("?part=part-1");
-    await user.click(await screen.findByRole("button", { name: "Lưu" }));
+    await user.click(await screen.findByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const body = putCalls(server)[0]!.body as { parts: Wire[]; examQuotas: unknown[]; expectedRevision: number };
     expect(body.expectedRevision).toBe(7);
@@ -133,13 +133,13 @@ describe("Thân PUT không đổi (FTM AC 6, plan B4)", () => {
     expect((option.sections as Wire[]).map((section) => section.choiceGroup)).toEqual(["NATURAL", "SOCIAL"]);
     // Sau khi lưu, GET lại và so lần nữa: bản đã lưu giống thân đã gửi.
     expect(diffWire(body.parts, state.parts)).toEqual([]);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled());
+    await waitFor(() => expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull());
 
     // Sửa một trường do người dùng nhập: chỉ trường đó đổi.
     const points = await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ });
     await user.clear(points);
     await user.type(points, "55");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
     expect(diffWire(body.parts, (putCalls(server)[1]!.body as { parts: Wire[] }).parts)).toEqual(["$[0].maxPoints: undefined -> 55"]);
   });
@@ -183,7 +183,7 @@ describe("Thân PUT không đổi (FTM AC 6, plan B4)", () => {
     const field = await screen.findByRole("textbox", { name: "Số câu" });
     await user.clear(field);
     await user.type(field, "18");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body);
     expect(sent["sec-kt"]).toMatchObject({ subjectCode: "GDKTPL" });
@@ -209,7 +209,7 @@ describe("Thân PUT của Danh sách dòng thật (CR-3 AC-12, FTM AC 6, AC 40)"
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });
     await user.click(document.querySelector<HTMLElement>(`[data-form-row="${row}"] button`)!);
     await user.type(await screen.findByRole("textbox", { name: /Tên nhóm/ }), "X");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const body = putCalls(server)[0]!.body as { parts: Wire[] };
     const diff = diffWire(original, body.parts);
@@ -286,7 +286,7 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
       const { server } = boot({ kind: template.kindCode, parts: wireParts });
       const view = openStructure(`?section=${target.id}`);
       await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
-      expect(screen.getByRole("button", { name: "Lưu" }), template.code).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }), template.code).toBeEnabled();
       expect(screen.queryByText("Có thay đổi chưa lưu"), template.code).toBeNull();
       view.unmount();
       const loaded = await getExamStructure(EXAM_ID);
@@ -311,7 +311,7 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
     const fill = document.querySelector<HTMLInputElement>(`[data-form-block="${fillId}"] input`)!;
     await user.clear(fill);
     await user.type(fill, "2");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = putCalls(server)[0]!.body as { parts: Wire[] };
     expect(diffWire(wireParts, sent.parts)).toEqual(["$[0].sections[0].blocks[2].questionCount: 1 -> 2"]);
@@ -330,7 +330,7 @@ describe("Thân PUT không đổi với MT thật (CR-2 AC-8)", () => {
     const children = document.querySelector<HTMLInputElement>(`[data-form-block="${setId}"] input`)!;
     await user.clear(children);
     await user.type(children, "15");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = putCalls(server)[0]!.body as { parts: Wire[] };
     expect(diffWire(wireParts, sent.parts)).toEqual(["$[0].sections[0].blocks[1].questionCount: 18 -> 15"]);
@@ -358,7 +358,7 @@ describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9)", () => {
       const { server } = boot({ kind: "HSA", parts: wireParts });
       const view = openStructure(`?section=${targets[0]!.id}`);
       await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" });
-      expect(screen.getByRole("button", { name: "Lưu" }), template.code).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }), template.code).toBeEnabled();
       expect(screen.queryByText("Có thay đổi chưa lưu"), template.code).toBeNull();
       expect(screen.queryByTestId("full-form-notice"), template.code).toBeNull();
       view.unmount();
@@ -407,7 +407,7 @@ describe("Thân PUT và chuyển đổi HSA MT thật (CR-2H AC-9)", () => {
     openStructure("?section=sec-toan");
     expect(await screen.findByRole("heading", { level: 3, name: "Cấu trúc thành phần câu hỏi" })).toBeInTheDocument();
     expect(screen.getByTestId("mapid-rules-table")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!;
     expect(saved.mapidMode).toBe("MATRIX");

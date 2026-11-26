@@ -65,7 +65,7 @@ export function codePositions(combination: StructureCombination, pool: readonly 
 }
 
 export function codesUsing(subjectCode: string, combinations: readonly StructureCombination[]): string[] {
-  return combinations.filter((item) => item.subjectCodes.includes(subjectCode)).map((item) => item.examCode ?? item.code);
+  return combinations.filter((item) => item.subjectCodes.includes(subjectCode)).map((item) => item.code);
 }
 
 export function addPoolSection(parts: readonly ExamPart[], partId: string, subjectCode: string): ExamPart[] {

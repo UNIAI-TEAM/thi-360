@@ -64,7 +64,7 @@ function matrixReason(matrix: BlockMatrix | null, entry: SubjectFormEntry, block
   if (matrix.unit === "PERCENT" && entry.percentEntry === "NONE") return "PERCENT_ENTRY";
   const required = requiredDimensions(matrix);
   if ((matrix.basis ?? "QUESTION") !== "QUESTION" && (required.grade || required.difficulty)) return "COUNT_BASIS";
-  if (entry.hideGrade && required.grade) return "GRADE_REQUIRED_HIDDEN";
+  if (entry.form === "ROWS" && entry.hideGrade && required.grade) return "GRADE_REQUIRED_HIDDEN";
   return null;
 }
 
@@ -73,7 +73,7 @@ function topicQuotaReason(quotas: readonly TopicQuota[] | undefined, entry: Subj
     const required = quota.enforcement === "REQUIRED";
     if (quota.percent != null && entry.percentEntry === "NONE") return "PERCENT_ENTRY";
     if (required && (quota.basis ?? "QUESTION") !== "QUESTION") return "COUNT_BASIS";
-    if (required && entry.hideGrade && (quota.gradeCodes?.length ?? 0) > 0) return "GRADE_REQUIRED_HIDDEN";
+    if (required && entry.form === "ROWS" && entry.hideGrade && (quota.gradeCodes?.length ?? 0) > 0) return "GRADE_REQUIRED_HIDDEN";
   }
   return null;
 }

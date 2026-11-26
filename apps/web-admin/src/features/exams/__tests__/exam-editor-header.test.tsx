@@ -87,11 +87,11 @@ describe("ExamEditorLayout & ExamEditorHeader (AC-01, AC-02)", () => {
     expect(screen.getByTestId("create-child")).toBeInTheDocument();
 
     const nav = screen.getByRole("navigation", { name: "Các phần của bài thi" });
-    const generalLink = within(nav).getByRole("link", { name: "Thông tin chung" });
+    const generalLink = within(nav).getByRole("link", { name: "1. Thông tin chung" });
     expect(generalLink).toHaveAttribute("aria-current", "page");
     expect(generalLink).toHaveAttribute("href", "/exams/new");
 
-    for (const label of ["Cấu trúc và ma trận", "Thông tin bán", "Kiểm tra và xem trước", "Phiên bản và công bố"]) {
+    for (const label of ["2. Cấu trúc và ma trận", "3. Thông tin bán", "4. Kiểm tra, xem trước và công bố"]) {
       const tab = within(nav).getByText(label);
       expect(tab).toHaveAttribute("aria-disabled", "true");
       expect(tab.closest("a")).toBeNull();

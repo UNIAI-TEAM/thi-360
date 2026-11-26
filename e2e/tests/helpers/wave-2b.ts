@@ -564,8 +564,8 @@ export async function fillExamStep1InUi(page: Page, spec: UiExamSpec): Promise<v
 export async function submitExamStep1InUi(page: Page, spec: UiExamSpec): Promise<string> {
   await page.getByRole("textbox", { name: /Mã bài thi/ }).fill(spec.code);
   await page.getByRole("textbox", { name: /Tên bài thi/ }).fill(spec.name);
-  await page.getByRole("button", { name: "Lưu và tiếp tục" }).click();
-  // Form có ô sai thì "Lưu và tiếp tục" không gửi gì: báo ngay tên ô sai thay vì chờ hết hạn của cả kịch bản.
+  await page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }).click();
+  // Form có ô sai thì "Tiếp tục → Cấu trúc và ma trận" không gửi gì: báo ngay tên ô sai thay vì chờ hết hạn của cả kịch bản.
   const form = page.getByRole("form", { name: "Tạo bài thi" });
   const invalid = form.locator('[aria-invalid="true"]');
   const stepTwo = /\/exams\/[^/]+\/structure$/;
@@ -599,17 +599,19 @@ export async function expectStructureQuestions(page: Page, questions: RegExp): P
   await expect(summary.locator("div").filter({ has: page.locator("dt", { hasText: /^Số câu$/ }) }).locator("dd")).toHaveText(questions);
 }
 
-/** Bấm "Lưu" của bước 2 và đợi máy chủ nhận (PUT 200); sau lưu không còn thay đổi chưa lưu nên nút Lưu tắt. */
+/** Lưu bản nháp bước 2 bằng "Tiếp tục → Thông tin bán" (PUT 200), rồi quay lại đúng URL bước 2 để kịch bản làm tiếp. */
 export async function saveStructureInUi(page: Page, examId: string): Promise<void> {
-  const save = page.getByRole("button", { name: "Lưu", exact: true });
+  const returnUrl = page.url();
+  const next = page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true });
   const [response] = await Promise.all([
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/structure`) && item.request().method() === "PUT", {
       timeout: SOLVER_TIMEOUT_MS,
     }),
-    save.click(),
+    next.click(),
   ]);
   expect(response.status(), await response.text()).toBe(200);
-  await expect(save).toBeDisabled();
+  await page.waitForURL(/\/exams\/[^/]+\/listing/);
+  await page.goto(returnUrl);
 }
 
 const MATRIX_SUBJECTS_BY_KIND: Readonly<Record<string, ReadonlySet<string>>> = {
@@ -720,31 +722,48 @@ export async function renameFirstBlockAndSaveInUi(page: Page, admin: AdminApi, e
 }
 
 /**
- * "Tiếp tục" của bước 2: kiểm tra cả bài rồi sang tab Kiểm tra nếu không có lỗi chặn; có lỗi chặn thì ở lại bước 2. Trả kết
- * quả kiểm tra mà giao diện nhận từ máy chủ.
+ * Đi tiếp qua luồng 4 bước (Cấu trúc -> Thông tin bán -> Kiểm tra) rồi chạy "Kiểm tra cấu hình" / "Kiểm tra lại" ở bước 4.
+ * Trả kết quả kiểm tra mà giao diện nhận từ máy chủ.
  */
 export async function continueToReviewInUi(page: Page, examId: string): Promise<CheckResult> {
+  if (/\/exams\/[^/]+\/structure/.test(page.url())) {
+    await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
+    await page.waitForURL(/\/exams\/[^/]+\/listing/, { timeout: SOLVER_TIMEOUT_MS });
+  }
+  if (/\/exams\/[^/]+\/listing/.test(page.url())) {
+    await page.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước", exact: true }).click();
+    await page.waitForURL(/\/exams\/[^/]+\/review/, { timeout: SOLVER_TIMEOUT_MS });
+  }
+  const runButton = page.getByRole("button", { name: /^Kiểm tra( cấu hình| lại)$/ }).first();
+  await expect(runButton).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
   const [response] = await Promise.all([
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/check`) && item.request().method() === "POST", {
       timeout: SOLVER_TIMEOUT_MS,
     }),
-    page.getByRole("button", { name: "Tiếp tục", exact: true }).click(),
+    runButton.click(),
   ]);
   expect(response.status(), await response.text()).toBe(200);
-  const check = (await response.json()) as CheckResult;
-  if (blockingCodes(check.groups ?? []).length === 0) await page.waitForURL(/\/exams\/[^/]+\/review/);
-  return check;
+  return (await response.json()) as CheckResult;
 }
 
-/** Mở một trang con của bài bằng thanh tab (Thông tin chung, Cấu trúc và ma trận, Kiểm tra và xem trước, Phiên bản và công bố). */
+/** Mở một bước trong thanh 4 bước (hoặc "Lịch sử phiên bản" trên thanh đầu trang). */
 export async function openEditorTab(page: Page, label: string, url: RegExp): Promise<void> {
-  await page.getByRole("navigation", { name: "Các phần của bài thi" }).getByRole("link", { name: label }).click();
+  if (label === "Phiên bản và công bố" || label === "Lịch sử phiên bản") {
+    await page.getByRole("link", { name: "Lịch sử phiên bản" }).click();
+    await page.waitForURL(url);
+    return;
+  }
+  const normalized = label === "Kiểm tra và xem trước" ? "4. Kiểm tra, xem trước và công bố" : label;
+  await page.getByRole("navigation", { name: "Các phần của bài thi" }).getByRole("link", { name: normalized }).click();
   await page.waitForURL(url);
 }
 
-/** Tab Kiểm tra cấu hình: dòng tóm tắt "<hợp lệ> / <tổng> hợp lệ" của các đường. */
+/** Tab Kiểm tra cấu hình: bảng Kết quả theo đường lựa chọn có đủ `total` đường và đúng `valid` đường Hợp lệ. */
 export async function expectValidPaths(page: Page, valid: number, total: number): Promise<void> {
-  await expect(page.getByText(`${valid} / ${total} hợp lệ`)).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
+  const section = page.getByRole("region", { name: "Kết quả theo đường lựa chọn" });
+  const rows = section.locator("tbody tr");
+  await expect(rows).toHaveCount(total, { timeout: SOLVER_TIMEOUT_MS });
+  await expect(rows.filter({ hasText: "Hợp lệ" })).toHaveCount(valid, { timeout: SOLVER_TIMEOUT_MS });
 }
 
 /** Sang tab Đề xem trước của trang Kiểm tra và xem trước; trả vùng nội dung của tab. */
@@ -836,8 +855,8 @@ export async function ensureListingFilledInUi(page: Page, examId: string): Promi
     await descriptionInput.fill("Đề thi luyện tập chuẩn bị kỳ thi.");
     shouldSave = true;
   }
-  const saveListing = page.getByRole("button", { name: "Lưu", exact: true });
-  if (shouldSave || (await saveListing.isEnabled())) {
+  const saveListing = page.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước", exact: true });
+  if (shouldSave) {
     await expect(saveListing).toBeEnabled();
     const [savedListing, refreshedExam] = await Promise.all([
       page.waitForResponse(
@@ -853,7 +872,7 @@ export async function ensureListingFilledInUi(page: Page, examId: string): Promi
     ]);
     expect(savedListing.status(), await savedListing.text()).toBe(200);
     expect(refreshedExam.status(), await refreshedExam.text()).toBe(200);
-    await expect(saveListing).toBeDisabled();
+    await page.waitForURL(/\/exams\/[^/]+\/review/);
   }
 }
 
@@ -969,7 +988,7 @@ export async function setMaxScoreInGeneralTab(page: Page, admin: AdminApi, examI
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}`) && item.request().method() !== "GET", {
       timeout: SOLVER_TIMEOUT_MS,
     }),
-    page.getByRole("button", { name: "Lưu thông tin", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận", exact: true }).click(),
   ]);
   expect(response.status(), await response.text()).toBe(200);
   expect((await getExam(admin, examId)).maxScore).toBe(maxScore);

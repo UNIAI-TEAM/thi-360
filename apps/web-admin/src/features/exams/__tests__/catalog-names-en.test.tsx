@@ -117,12 +117,12 @@ function IssueLine({ locale }: { locale: "en" | "vi" }) {
 describe("Dòng lỗi cấu trúc: môn có mã môn chỉ dùng tên danh mục (V-05)", () => {
   it("en: không ghép tên phần của mẫu với tên môn", () => {
     renderIn("en", <IssueLine locale="en" />);
-    expect(screen.getByText("Mathematics: the blocks have 3 questions; the subject needs 5.")).toBeInTheDocument();
+    expect(screen.getByText("Mathematics is short by 2 questions")).toBeInTheDocument();
   });
 
   it("vi: tên môn tiếng Việt", () => {
     renderIn("vi", <IssueLine locale="vi" />);
-    expect(screen.getByText(/^Toán: /)).toBeInTheDocument();
+    expect(screen.getByText("Toán đang thiếu 2 câu")).toBeInTheDocument();
     expect(screen.queryByText(/Toán · Toán/)).not.toBeInTheDocument();
   });
 });

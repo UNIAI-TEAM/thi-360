@@ -83,7 +83,7 @@ describe("Nút của phân bố tham khảo ghi đúng vào bản lưu (R1-19, R
     const user = userEvent.setup();
     open();
     await user.click(await screen.findByRole("button", { name: /Dùng ma trận tham khảo/ }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = sentOf(server);
     expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ mode: "SEPARATE", unit: "PERCENT", difficultyEnforcement: "REQUIRED" });
@@ -96,7 +96,7 @@ describe("Nút của phân bố tham khảo ghi đúng vào bản lưu (R1-19, R
     const user = userEvent.setup();
     open();
     await user.click(await screen.findByRole("button", { name: /Áp dụng phân bổ này/ }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     expect(sentOf(server).examQuotas).toMatchObject([{ id: "toan-difficulty-reference", enforcement: "REQUIRED" }]);
   });
@@ -108,7 +108,7 @@ describe("Nút của phân bố tham khảo ghi đúng vào bản lưu (R1-19, R
     const buttons = await screen.findAllByRole("button", { name: /Áp dụng phân bổ này/ });
     expect(buttons.length).toBeGreaterThanOrEqual(2);
     await user.click(buttons[0]!);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const matrix = sentOf(server).parts[0]!.sections[0]!.matrix!;
     expect([matrix.gradeEnforcement, matrix.difficultyEnforcement].sort()).toEqual(["REFERENCE", "REQUIRED"]);
@@ -135,7 +135,7 @@ describe("Nút của phân bố tham khảo ghi đúng vào bản lưu (R1-19, R
     const user = userEvent.setup();
     open();
     await user.click(await screen.findByRole("button", { name: /Dùng ma trận tham khảo/ }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     expect(screen.queryByText(/bảng phân bổ còn lỗi/)).not.toBeInTheDocument();
   });
@@ -152,7 +152,7 @@ describe("Mức Bắt buộc của khối lớp và độ khó đổi riêng (R1
     const user = userEvent.setup();
     const view = open();
     await toggle(user, /Mức của Theo khối lớp/, "Tham khảo");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(first.calls("PUT", STRUCTURE)).toHaveLength(1));
     const grade = sentOf(first).parts[0]!.sections[0]!.matrix!;
     expect(grade.gradeEnforcement).toBe("REFERENCE");
@@ -162,7 +162,7 @@ describe("Mức Bắt buộc của khối lớp và độ khó đổi riêng (R1
     const second = boot({ matrix: separatePercent() });
     open();
     await toggle(user, /Mức của Theo độ khó/, "Tham khảo");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(second.calls("PUT", STRUCTURE)).toHaveLength(1));
     const difficulty = sentOf(second).parts[0]!.sections[0]!.matrix!;
     expect(difficulty.difficultyEnforcement).toBe("REFERENCE");

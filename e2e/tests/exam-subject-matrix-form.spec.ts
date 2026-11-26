@@ -65,13 +65,15 @@ async function checkSection(admin: AdminApi, examId: string, sectionId: string):
 }
 
 async function saveInUi(page: Page, examId: string): Promise<void> {
-  const save = page.getByRole("button", { name: "Lưu", exact: true });
+  const returnUrl = page.url();
+  const next = page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true });
   const [response] = await Promise.all([
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/structure`) && item.request().method() === "PUT", { timeout: SOLVER_TIMEOUT_MS }),
-    save.click(),
+    next.click(),
   ]);
   expect(response.status(), await response.text()).toBe(200);
-  await expect(save).toBeDisabled();
+  await page.waitForURL(/\/exams\/[^/]+\/listing/);
+  await page.goto(returnUrl);
 }
 
 const MATRIX_STRUCTURE_HEADING = "Cấu trúc thành phần câu hỏi";
@@ -121,7 +123,7 @@ test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 3
     await page.goto(`${ADMIN_URL}/exams/${exam.id}/structure?section=${ly.id}`);
     await typeInto(page, "Số chùm", "3");
     await expect(page.getByText("Số chùm từ 1 đến 2")).toBeVisible();
-    await page.getByRole("button", { name: "Lưu", exact: true }).click();
+    await page.getByRole("button", { name: "Lưu nháp và thoát", exact: true }).click();
     // Không gửi PUT: cấu trúc ở máy chủ không đổi và nút giữ nguyên trạng thái chưa lưu.
     expect(roleBlock(sectionOf(await getStructure(admin, exam.id), "LY"), "QUESTION_SET")!.setCount).toBe(1);
     await expect(field(page, "Số chùm")).toBeFocused();
@@ -129,7 +131,7 @@ test.describe("MT của QDA: khung, giới hạn Khoa học, ma trận (FTM AC 3
     await typeInto(page, "Số chùm", "2");
     await typeInto(page, "Điền đáp án", "0");
     await expect(page.getByText("Cần ít nhất 1 câu điền đáp án")).toBeVisible();
-    await page.getByRole("button", { name: "Kiểm tra toàn bài", exact: true }).click();
+    await page.getByRole("button", { name: "Kiểm tra cấu trúc", exact: true }).click();
     expect(roleBlock(sectionOf(await getStructure(admin, exam.id), "LY"), "SHORT_ANSWER")!.questionCount).toBe(fillBefore);
 
     await typeInto(page, "Điền đáp án", String(fillBefore));

@@ -12,7 +12,7 @@ import { ReferenceDistributions } from "../components/subject-allocation-extras"
 import { TopicQuotaTable } from "../components/topic-quota-table";
 import { referenceEntries } from "../reference-distribution";
 import type { ExamQuota, ExamSection, TopicQuota } from "../types";
-import { checkResultWire, EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
+import { EXAM_ID, EXAM_PATH, examDetailWire, FakeServer, FIXED_PART } from "./fake-exams-server";
 
 vi.mock("@/features/content/api", async (importOriginal) => ({
   ...(await importOriginal<typeof ContentApi>()),
@@ -74,14 +74,14 @@ describe("Row 5: tổng tỷ lệ khác 100% (R-118)", () => {
     open();
     expect(await screen.findByText(/Theo khối lớp đang là 90%/)).toBeInTheDocument();
     await makeDirty(user);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
     expect(screen.getByText(/Theo khối lớp đang là 90%/)).toBeInTheDocument();
 
     const grade = screen.getByRole("textbox", { name: /Lớp 12 · tỷ lệ phần trăm/ });
     await user.clear(grade);
     await user.type(grade, "100");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
   });
 });
@@ -110,7 +110,7 @@ describe("R1-03: đổi tổng của nhóm tính lại chỉ tiêu chủ đề t
     await user.clear(count);
     await user.type(count, "20");
     expect(await screen.findByText("2 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ blocks: Array<{ topicQuotas: TopicQuota[] }> }> }> };
     expect(sent.parts[0]!.sections[0]!.blocks[0]!.topicQuotas[0]).toMatchObject({ count: 2, percent: 10 });
@@ -136,15 +136,15 @@ describe("Row 8: Đủ nguồn theo ma trận (R-122)", () => {
     expect(screen.queryByText("Đủ nguồn theo ma trận")).not.toBeInTheDocument();
   });
 
-  it("hiện sau khi bấm Kiểm tra môn và máy chủ trả môn đạt", async () => {
+  it("không gọi POST /check khi bấm Kiểm tra cấu trúc ở bước 2; kiểm tra nguồn thực hiện ở bước 4", async () => {
     const server = boot();
-    server.on("POST", `${EXAM_PATH}/check`, { status: 200, body: { ...checkResultWire("VALID"), sectionStates: checked } });
     const user = userEvent.setup();
     open();
     await screen.findByText("Khớp số câu của môn");
-    expect(screen.queryByText("Đủ nguồn theo ma trận")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Kiểm tra môn" }));
-    expect(await screen.findByText("Đủ nguồn theo ma trận")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Kiểm tra môn" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    expect(await screen.findByTestId("structure-quick-check-result")).toHaveTextContent("Cấu trúc hợp lệ");
+    expect(server.calls("POST", `${EXAM_PATH}/check`)).toHaveLength(0);
   });
 });
 
@@ -313,7 +313,7 @@ describe("H20: không xác định được cấp từ fieldErrors (ADV:FE-3b:2)
     open("?block=blk-1");
     const first = await screen.findByRole("textbox", { name: "Tên chủ đề của chỉ tiêu 1" });
     await user.type(first, "x");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const block = screen.getByRole("region", { name: /Chỉ tiêu chủ đề của/ }).closest("section")!;
     expect(await within(block).findByRole("alert")).toHaveTextContent(/tối đa 8 chỉ tiêu chủ đề/);

@@ -79,3 +79,18 @@ export function usePermissions(): PermissionsApi {
     [state.status, permissions],
   );
 }
+
+/** Bản không ném lỗi khi dùng trong cây thử nghiệm tách rời không bọc `<SessionProvider>`. */
+export function useOptionalPermissions(): PermissionsApi {
+  const context = useContext(SessionContext);
+  const status = context?.state.status ?? "ready";
+  const permissions = context?.permissions ?? EMPTY_PERMISSIONS;
+  return useMemo(
+    () => ({
+      isLoading: status === "loading",
+      permissions,
+      can: (required) => hasPermission(permissions, required),
+    }),
+    [status, permissions],
+  );
+}

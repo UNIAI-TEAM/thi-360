@@ -53,10 +53,22 @@ export function useUnsavedChangesGuard(hasUnsavedChanges: boolean) {
   return {
     pendingHref,
     stay: () => setPendingHref(null),
+    navigate: (href: string) => {
+      if (hasUnsavedChanges) {
+        setPendingHref(href);
+        return;
+      }
+      router.push(href);
+    },
     leave: () => {
       if (!pendingHref) return;
       bypass.current = true;
       const href = pendingHref;
+      setPendingHref(null);
+      router.push(href);
+    },
+    leaveTo: (href: string) => {
+      bypass.current = true;
       setPendingHref(null);
       router.push(href);
     },

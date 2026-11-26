@@ -6,13 +6,22 @@
 
 .rich-text-editor-content {
   min-height: 7rem;
-  max-height: 28rem;
+  max-height: 75dvh;
   overflow-y: auto;
+  resize: vertical;
   padding: 0.625rem 0.75rem;
   font-size: var(--text-body);
   line-height: var(--text-body--line-height);
   color: var(--color-text);
   outline: none;
+}
+
+.rich-text-editor[data-expanded="true"] .rich-text-editor-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  height: 100% !important;
+  resize: none;
 }
 
 .rich-text-editor .ProseMirror-focused {

@@ -312,9 +312,9 @@ test("rowPercentWholeSets: 25% của 40 không chia được chùm 4, chặn lư
     if ((request.method() === "PUT" && request.url().endsWith(`/exams/${id}/structure`)) ||
         (request.method() === "POST" && request.url().endsWith(`/exams/${id}/check`))) sends += 1;
   });
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
-  await page.getByRole("button", { name: "Kiểm tra toàn bài" }).click();
-  await page.getByRole("button", { name: "Tiếp tục", exact: true }).click();
+  await page.getByRole("button", { name: "Lưu nháp và thoát", exact: true }).click();
+  await page.getByRole("button", { name: "Kiểm tra cấu trúc", exact: true }).click();
+  await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
   expect(sends).toBe(0);
   await expect(page.locator('[data-form-row-editor] [data-form-field="COUNT"]')).toContainText("10 câu");
 });
@@ -332,8 +332,11 @@ test("SP2E Văn: bật lại dòng Viết được lưu mà không có lỗi kh�
   await expect(toggle).toBeEnabled();
   await expect(toggle).toBeChecked();
   await toggle.click();
-  await page.getByRole("button", { name: "Lưu", exact: true }).click();
-  await expect(page.getByText("Có thay đổi chưa lưu")).toBeHidden();
+  const [saved] = await Promise.all([
+    page.waitForResponse((item) => item.url().endsWith(`/exams/${id}/structure`) && item.request().method() === "PUT"),
+    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+  ]);
+  expect(saved.status(), await saved.text()).toBe(200);
   const after = await getStructure(admin, id);
   expect(allSections(after).flatMap((item) => item.blocks ?? []).find((block) => block.id === writing.id)?.omitted).toBe(false);
   const check = await admin.api.post(`${ADMIN_URL}/api/v1/admin/exams/${id}/check`, { headers: admin.headers, data: { scope: "EXAM" } });

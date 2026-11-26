@@ -73,6 +73,9 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
         return t("partChoose", { part: prefix, choose: issue.choose, options: issue.options });
       }
       if (issue.code === "SECTIONS_TOTAL") {
+        const diff = issue.actual - issue.expected;
+        if (diff > 0) return t("sectionsTotalOver", { part: prefix, diff, actual: issue.actual, expected: issue.expected });
+        if (diff < 0) return t("sectionsTotalUnder", { part: prefix, diff: -diff, actual: issue.actual, expected: issue.expected });
         return t("sectionsTotal", { part: prefix, actual: issue.actual, expected: issue.expected });
       }
       if (issue.code === "PART_POINTS") {
@@ -84,6 +87,9 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
       // Môn có mã môn: chỉ dùng tên danh mục (theo ngôn ngữ đang chọn); ghép thêm tên phần của mẫu cho ra "Toán · Mathematics" (V-05).
       const sectionText = section?.subjectCode ? names.subject(section.subjectCode) : prefix;
       if (issue.code === "BLOCKS_TOTAL") {
+        const diff = issue.actual - issue.expected;
+        if (diff > 0) return t("blocksTotalOver", { section: sectionText, diff, actual: issue.actual, expected: issue.expected });
+        if (diff < 0) return t("blocksTotalUnder", { section: sectionText, diff: -diff, actual: issue.actual, expected: issue.expected });
         return t("blocksTotal", { section: sectionText, actual: issue.actual, expected: issue.expected });
       }
       if (issue.code === "SUBJECT_COUNT_EXCEEDS_ALLOCATION") {
@@ -99,8 +105,9 @@ export function useStructureIssueText(parts: readonly ExamPart[], names: Structu
   );
 }
 
-/** Nơi sửa một lỗi: khối có lỗi, hoặc phần chứa lỗi. */
+/** Nơi sửa một lỗi: khối, môn hoặc phần chứa lỗi. */
 export function issueTarget(issue: StructureIssue): StructureSelection {
   if (issue.code === "BLOCK") return { kind: "block", blockId: issue.blockId };
-  return { kind: "part", partId: "partId" in issue ? issue.partId : issue.location.partId };
+  if ("location" in issue) return { kind: "section", sectionId: issue.location.sectionId };
+  return { kind: "part", partId: issue.partId };
 }

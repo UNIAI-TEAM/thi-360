@@ -33,10 +33,11 @@ function useInvalidateExam(examId: string, { includeCheck = true }: { includeChe
     ]);
 }
 
-export function useExamCheck(examId: string) {
+export function useExamCheck(examId: string, enabled = true) {
   return useQuery({
     queryKey: EXAM_REVIEW_QUERY_KEYS.check(examId),
     queryFn: () => getExamCheck({ examId }),
+    enabled,
   });
 }
 
@@ -160,10 +161,11 @@ export function useGeneratePreview(examId: string) {
   });
 }
 
-export function useExamVersions(examId: string) {
+export function useExamVersions(examId: string, enabled = true) {
   return useQuery({
     queryKey: EXAM_REVIEW_QUERY_KEYS.versions(examId),
     queryFn: () => listExamVersions({ examId }),
+    enabled,
   });
 }
 

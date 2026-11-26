@@ -307,36 +307,24 @@ describe("ExamStructureCheckResult với EXAM_QUOTA_DEVIATION", () => {
 });
 
 describe("Tích hợp ExamStructureView (Tab 2) và ExamReviewCheck (Tab 3)", () => {
-  it("Tab 2: đang xem môn, chạy Kiểm tra toàn bài có EXAM_QUOTA_DEVIATION -> bấm Đi tới chỉ tiêu chuyển sang Tổng quan bài và focus thẻ chỉ tiêu", async () => {
-    const checkBody = {
-      ...checkResultWire("VALID"),
-      issueCount: 1,
-      groups: [{ group: "MATRIX", status: "WARN", issues: [makeDeviationIssue("q-math-grade")] }],
-      paths: [{ pathId: "default", result: "VALID", issues: [] }],
-    };
-    new FakeServer()
+  it("Tab 2: mở ?exam=1&quota=q-math-grade tự mở Tổng quan bài và focus thẻ chỉ tiêu (không gọi POST /check ở bước 2)", async () => {
+    const server = new FakeServer()
       .on("GET", EXAM_PATH, { status: 200, body: examDetailWire({ kind: "VACT", questionCount: 10 }) })
       .on("GET", "/api/v1/admin/exam-templates", { status: 200, body: [] })
       .on("GET", STRUCTURE_PATH, {
         status: 200,
         body: { examId: EXAM_ID, revision: 1, parts: [FIXED_PART], examQuotas: [SINGLE_QUOTA] },
       })
-      .on("POST", CHECK_PATH, { status: 200, body: checkBody })
       .install();
 
-    const user = userEvent.setup();
-    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?section=sec-1`);
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}/structure?exam=1&quota=q-math-grade`);
     renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
-
-    await user.click(await screen.findByRole("button", { name: "Kiểm tra toàn bài" }));
-    const goButton = await screen.findByRole("button", { name: /^Đi tới chỉ tiêu/ });
-    await user.click(goButton);
 
     const quotaSection = await screen.findByRole("region", { name: "Lớp tham khảo Toán" });
     expect(quotaSection).toHaveAttribute("id", "exam-quota-q-math-grade");
     expect(quotaSection).toHaveAttribute("data-exam-quota-id", "q-math-grade");
     await waitFor(() => expect(within(quotaSection).getByRole("radio", { name: "Bắt buộc" })).toHaveFocus());
-    expect(window.location.search).toBe("?exam=1");
+    expect(server.calls("POST", CHECK_PATH)).toHaveLength(0);
   });
 
   it("Tab 2: mở trực tiếp đường dẫn ?exam=1&quota=<id> tự động cuộn và focus ô nhập của chỉ tiêu nhiều môn", async () => {
@@ -383,7 +371,7 @@ describe("Tích hợp ExamStructureView (Tab 2) và ExamReviewCheck (Tab 3)", ()
 
     const warnings = within(await screen.findByTestId("findings-warnings"));
     const link = await warnings.findByRole("link", { name: /^Go to quota/ });
-    expect(link).toHaveAttribute("href", `/exams/${EXAM_ID}/structure?exam=1&quota=q-sci-grade`);
+    expect(link).toHaveAttribute("href", `/exams/${EXAM_ID}/structure?exam=1&quota=q-sci-grade&from=review`);
     await waitFor(() => expect(warnings.getByTestId("exam-quota-deviation-hint")).toHaveTextContent("2A · Grade"));
     expect(vietnameseOutsideExamContent(container)).toEqual([]);
   });

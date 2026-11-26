@@ -119,7 +119,7 @@ export function ExamStructureList({
                   key={item.code}
                   className="flex flex-wrap items-center gap-x-1.5 rounded-md px-2 py-1 text-caption text-text"
                 >
-                  <span className="font-semibold">{item.examCode ?? item.code}</span>
+                  <span className="font-semibold">{item.code}</span>
                   <ChevronRight aria-hidden className="size-3 text-text-muted" />
                   <span>{item.subjectCodes.map(names.subject).join(" – ")}</span>
                   {item.missingSubjects.length > 0 && (

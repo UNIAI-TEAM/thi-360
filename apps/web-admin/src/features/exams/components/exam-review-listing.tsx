@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo } from "react";
 import { collectCheckIssues, findBlockContext } from "../check";
-import { examTabHref } from "../editor-tabs";
+import { examTabHref, withFromReview } from "../editor-tabs";
 import { LISTING_CHECK_ROWS, useListingIssueText } from "../listing/issue-text";
 import type { ExamCheckResult, ListingCheckGroup, ListingCheckIssue } from "../review-types";
 import type { ExamDetail } from "../types";
@@ -21,6 +21,18 @@ const LISTING_TONE: Record<ListingCheckGroup["status"], StatusTone> = { PASS: "s
 /** Số lỗi chặn công bố của nhóm Thông tin bán; thiếu nhóm (máy chủ chưa tính được) là 0. */
 export function listingErrorCount(group: ListingCheckGroup | null | undefined): number {
   return group?.issues.filter((issue) => issue.severity === "ERROR").length ?? 0;
+}
+
+/** Số cảnh báo (không chặn công bố) của nhóm Thông tin bán. */
+export function listingWarningCount(group: ListingCheckGroup | null | undefined): number {
+  return group?.issues.filter((issue) => issue.severity === "WARNING").length ?? 0;
+}
+
+/** Đường dẫn tới đúng trường cần sửa ở bước 3 Thông tin bán (kèm `?from=review`). */
+export function listingFieldHref(examId: string, field?: string | null): string {
+  const base = examTabHref(examId, "listing");
+  const target = field ? `${base}?field=${encodeURIComponent(field)}` : base;
+  return withFromReview(target);
 }
 
 /** Chip tổng của nhóm: "Đạt", "n cảnh báo" hoặc "n lỗi". */
@@ -72,7 +84,7 @@ export function ListingCheckSection({ exam, group, onReload, reloading }: Listin
   const rows = LISTING_CHECK_ROWS.map((row) => {
     const issue = group.issues.find((item) => item.field === row.field);
     if (issue) covered.add(issue);
-    return { id: row.id, issue };
+    return { id: row.id, field: row.field, issue };
   });
   const extras = group.issues.filter((issue) => !covered.has(issue));
 
@@ -89,7 +101,7 @@ export function ListingCheckSection({ exam, group, onReload, reloading }: Listin
           <p className="mt-0.5 text-body text-text-muted">{t("description")}</p>
         </div>
         <Link
-          href={examTabHref(exam.id, "listing")}
+          href={listingFieldHref(exam.id)}
           className="inline-flex min-h-11 items-center gap-1.5 rounded-sm font-semibold whitespace-nowrap text-primary-text hover:underline"
         >
           {t("edit")}
@@ -97,24 +109,42 @@ export function ListingCheckSection({ exam, group, onReload, reloading }: Listin
         </Link>
       </div>
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fit,minmax(min(26rem,100%),1fr))] gap-x-6 px-4 py-0">
-        {rows.map(({ id, issue }) => (
+        {rows.map(({ id, field, issue }) => (
           <ListingRow
             key={id}
             name={t(`rows.${id}.name`)}
             issue={issue}
             detail={issue ? issueText(issue) : t(`rows.${id}.pass`)}
+            fixHref={issue ? listingFieldHref(exam.id, field) : undefined}
           />
         ))}
         {extras.map((issue) => (
-          <ListingRow key={issue.key} name={t("title")} issue={issue} detail={issueText(issue)} />
+          <ListingRow
+            key={issue.key}
+            name={t("title")}
+            issue={issue}
+            detail={issueText(issue)}
+            fixHref={listingFieldHref(exam.id, issue.field)}
+          />
         ))}
       </ul>
     </section>
   );
 }
 
-function ListingRow({ name, issue, detail }: { name: string; issue: ListingCheckIssue | undefined; detail: string }) {
+function ListingRow({
+  name,
+  issue,
+  detail,
+  fixHref,
+}: {
+  name: string;
+  issue: ListingCheckIssue | undefined;
+  detail: string;
+  fixHref?: string;
+}) {
   const t = useTranslations("exams.review.listing.rowStatus");
+  const tListing = useTranslations("exams.review.listing");
   const state = !issue ? "pass" : issue.severity === "ERROR" ? "error" : "warning";
   const tone: StatusTone = state === "pass" ? "success" : state === "error" ? "danger" : "warning";
   return (
@@ -127,9 +157,19 @@ function ListingRow({ name, issue, detail }: { name: string; issue: ListingCheck
         <TriangleAlert aria-hidden className="mt-0.5 size-[18px] shrink-0 text-warning" />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-text">{name}</span>
-          <StatusChip tone={tone}>{t(state)}</StatusChip>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-text">{name}</span>
+            <StatusChip tone={tone}>{t(state)}</StatusChip>
+          </div>
+          {fixHref && (
+            <Button asChild variant="link" size="sm" className="h-auto p-0">
+              <Link href={fixHref} aria-label={tListing("fixFieldAria", { field: name })}>
+                {tListing("fixField")}
+                <ArrowRight aria-hidden className="size-4" />
+              </Link>
+            </Button>
+          )}
         </div>
         <p className="text-body text-text-muted tabular-nums">{detail}</p>
       </div>
@@ -171,7 +211,7 @@ export function ManualGradingSection({ exam, result }: { exam: ExamDetail; resul
     const blockNameId = (row: ManualRow) => domId(REVIEW_MANUAL_ANCHOR, "block", row.key);
     const location = (row: ManualRow) => (
       <IconLink
-        href={structureHref(exam.id, row.blockId)}
+        href={withFromReview(structureHref(exam.id, row.blockId))}
         label={labelBeforeName(t, "openAria", "block")}
         nameId={blockNameId(row)}
         labelAfter={labelAfterName(t, "openAria", "block")}

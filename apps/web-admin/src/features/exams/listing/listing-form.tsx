@@ -2,13 +2,17 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Card, Checkbox, FormField, Input, notify, Textarea } from "@thi360/ui";
-import { CircleAlert, Lock, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, CircleAlert, Lock, Save } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
+import { useUnsavedChangesGuard } from "@/features/shell/unsaved-changes-guard";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { ChoiceCardGroup } from "../components/choice-card-group";
-import { ExamEditorActions } from "../components/exam-editor-actions";
+import { ExamDraftLeaveDialog } from "../components/exam-draft-leave-dialog";
+import { reviewHref } from "../components/exam-review-shared";
+import { examTabHref, isFromReview, reviewReturnHref } from "../editor-tabs";
 import { ExamsApiError } from "../errors";
 import type { ExamDetail } from "../types";
 import {
@@ -40,11 +44,26 @@ interface ListingFormProps {
 
 const BENEFITS = ["benefitAiExplanation", "benefitStrengthWeakness", "benefitPractice"] as const;
 
+const FIELD_PARAM_TARGET: Readonly<Record<string, string>> = {
+  listPriceVnd: "price",
+  price: "price",
+  attemptsGranted: "attempts",
+  attempts: "attempts",
+  description: "description",
+  coverAssetId: "cover",
+  cover: "cover",
+};
+
+type ListingSubmitIntent = "continue" | "review" | "exit" | "leave";
+
 export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: ListingFormProps) {
   const t = useTranslations("exams.listing");
   const tv = useTranslations("exams.listing.validation");
   const format = useFormatter();
   const formId = useId();
+  const [fromReview] = useState(() => (typeof window !== "undefined" ? isFromReview(window.location.search) : false));
+  const [activeSubmitIntent, setActiveSubmitIntent] = useState<ListingSubmitIntent>(fromReview ? "review" : "continue");
+  const [leaveError, setLeaveError] = useState<string | null>(null);
   const save = useSaveExamListing(exam.id, {
     onSaved: () => {
       notify.success(t("saved"));
@@ -72,14 +91,31 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
     mode: "onTouched",
     shouldFocusError: true,
   });
-  const { control, register, handleSubmit, setError, formState } = form;
+  const { control, register, handleSubmit, setError, reset, formState } = form;
   const values = useWatch({ control });
   const live = { ...formValuesOf(listing), ...values } as ListingFormValues;
   const terms = termsOfValues(live, cover.cover?.assetId ?? null);
   const coverChanged = (cover.cover?.assetId ?? null) !== listing.coverAssetId;
   const unchanged = !formState.isDirty && !coverChanged;
+  const hasUnsavedChanges = canEdit && !unchanged;
+  const guard = useUnsavedChangesGuard(hasUnsavedChanges);
   const disabled = !canEdit;
   const minPrice = listing.minPriceVnd;
+
+  // Mở từ danh sách lỗi ở bước 4 (`?field=listPriceVnd&from=review`): cuộn và đưa tiêu điểm vào đúng ô cần sửa.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const rawField = new URLSearchParams(window.location.search).get("field");
+    if (!rawField) return;
+    const target = FIELD_PARAM_TARGET[rawField] ?? rawField;
+    const frame = requestAnimationFrame(() => {
+      const element = document.querySelector<HTMLElement>(`[data-listing-field="${CSS.escape(target)}"]`);
+      if (!element) return;
+      element.scrollIntoView?.({ block: "center" });
+      element.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   /** Chữ lỗi theo mã của máy chủ (`EXAM_LISTING_INVALID`); chữ của máy chủ không in ra. */
   const serverMessage = (field: keyof ListingFormValues, code: string): string => {
@@ -93,27 +129,102 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
     return tv("fieldInvalid");
   };
 
-  const onSubmit = handleSubmit((submitted) => {
-    setSubmitError(null);
-    save.mutate(toListingRequest(submitted, cover.cover?.assetId ?? null, listing.revision), {
-      onError: (error) => {
-        if (getErrorStatus(error) === 412) {
-          onConflict();
+  const navigateForIntent = (intent: ListingSubmitIntent, savedChanges: boolean) => {
+    setLeaveError(null);
+    if (intent === "leave") {
+      guard.leave();
+      return;
+    }
+    if (intent === "exit") {
+      guard.leaveTo("/exams");
+      return;
+    }
+    if (intent === "review") {
+      guard.leaveTo(savedChanges ? reviewReturnHref(exam.id) : reviewHref(exam.id));
+      return;
+    }
+    guard.leaveTo(examTabHref(exam.id, "review"));
+  };
+
+  const submitWithIntent = (intent: ListingSubmitIntent) => {
+    setActiveSubmitIntent(intent);
+    return handleSubmit(
+      (submitted) => {
+        setSubmitError(null);
+        setLeaveError(null);
+        if (unchanged) {
+          navigateForIntent(intent, false);
           return;
         }
-        const fieldErrors = error instanceof ExamsApiError && getErrorStatus(error) === 422 ? error.fieldErrors : [];
-        const mapped = fieldErrors.flatMap((item) => {
-          const field = FORM_FIELD_OF[item.field ?? ""];
-          return field ? [{ field, code: item.code ?? "" }] : [];
+        save.mutate(toListingRequest(submitted, cover.cover?.assetId ?? null, listing.revision), {
+          onSuccess: () => {
+            navigateForIntent(intent, true);
+          },
+          onError: (error) => {
+            if (getErrorStatus(error) === 412) {
+              onConflict();
+              if (intent === "leave") setLeaveError(t("conflict.title"));
+              return;
+            }
+            const fieldErrors = error instanceof ExamsApiError && getErrorStatus(error) === 422 ? error.fieldErrors : [];
+            const mapped = fieldErrors.flatMap((item) => {
+              const field = FORM_FIELD_OF[item.field ?? ""];
+              return field ? [{ field, code: item.code ?? "" }] : [];
+            });
+            mapped.forEach(({ field, code }, index) => {
+              setError(field, { message: serverMessage(field, code) }, { shouldFocus: index === 0 });
+            });
+            let message: string | null = null;
+            if (fieldErrors.some((item) => item.field === "coverAssetId")) {
+              message = t("errors.coverNotFound");
+              setSubmitError(message);
+            } else if (mapped.length === 0) {
+              message = t(getErrorStatus(error) === 422 ? "errors.invalid" : "errors.saveFailed");
+              setSubmitError(message);
+            }
+            if (intent === "leave") {
+              setLeaveError(message ?? t("errors.invalid"));
+            }
+          },
         });
-        mapped.forEach(({ field, code }, index) => {
-          setError(field, { message: serverMessage(field, code) }, { shouldFocus: index === 0 });
-        });
-        if (fieldErrors.some((item) => item.field === "coverAssetId")) setSubmitError(t("errors.coverNotFound"));
-        else if (mapped.length === 0) setSubmitError(t(getErrorStatus(error) === 422 ? "errors.invalid" : "errors.saveFailed"));
       },
-    });
-  });
+      () => {
+        if (intent === "leave") {
+          setLeaveError(t("errors.invalid"));
+        }
+      },
+    );
+  };
+
+  const handleSaveDraftAndExit = () => {
+    if (unchanged) {
+      guard.leaveTo("/exams");
+      return;
+    }
+    void submitWithIntent("exit")();
+  };
+
+  const handleBack = () => {
+    guard.navigate(examTabHref(exam.id, "structure"));
+  };
+
+  const handleLeaveSaveAndGo = () => {
+    setLeaveError(null);
+    void submitWithIntent("leave")();
+  };
+
+  const handleLeaveDiscardAndGo = () => {
+    reset(formValuesOf(listing));
+    cover.reset();
+    setSubmitError(null);
+    setLeaveError(null);
+    guard.leave();
+  };
+
+  const handleLeaveStay = () => {
+    setLeaveError(null);
+    guard.stay();
+  };
 
   const counter = (field: "summary" | "description" | "objectives" | "audience" | "benefitNote", extra?: string) => {
     const text = t("counter", { count: live[field].length, max: LISTING_LIMITS[field] });
@@ -127,7 +238,7 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
           id={formId}
           aria-label={t("formLabel")}
           noValidate
-          onSubmit={(event) => void onSubmit(event)}
+          onSubmit={(event) => void submitWithIntent(fromReview ? "review" : "continue")(event)}
           className="flex min-w-0 flex-col gap-4"
         >
           <p className="flex flex-wrap gap-x-3 gap-y-1 text-caption text-text-muted">
@@ -158,7 +269,7 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
               error={formState.errors.description?.message}
               hint={counter("description", t("hints.description"))}
             >
-              {(controlProps) => <Textarea {...controlProps} rows={5} maxLength={LISTING_LIMITS.description} disabled={disabled} {...register("description")} />}
+              {(controlProps) => <Textarea {...controlProps} data-listing-field="description" rows={5} maxLength={LISTING_LIMITS.description} disabled={disabled} {...register("description")} />}
             </FormField>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(18.75rem,100%),1fr))] gap-4">
               <FormField label={t("fields.objectives")} error={formState.errors.objectives?.message} hint={counter("objectives")}>
@@ -191,6 +302,7 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
                             {/* Keep raw digits in input so focus/select/paste does not shift cursor or break Playwright fill(). */}
                             <Input
                               {...controlProps}
+                              data-listing-field="price"
                               aria-describedby={[controlProps["aria-describedby"], amount !== null ? amountId : ""].filter(Boolean).join(" ") || undefined}
                               name={field.name}
                               ref={field.ref}
@@ -227,6 +339,7 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
                 {(controlProps) => (
                   <Input
                     {...controlProps}
+                    data-listing-field="attempts"
                     type="number"
                     min={LISTING_LIMITS.attemptsMin}
                     max={LISTING_LIMITS.attemptsMax}
@@ -293,22 +406,63 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
             />
             <p className="text-caption text-text-muted">{t("result.note")}</p>
           </Section>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <Button type="button" variant="secondary" disabled={save.isPending} onClick={handleBack}>
+              <ArrowLeft aria-hidden />
+              {t("back")}
+            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {canEdit ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={save.isPending && activeSubmitIntent === "exit"}
+                    disabled={save.isPending || cover.uploading}
+                    onClick={handleSaveDraftAndExit}
+                  >
+                    <Save aria-hidden />
+                    {t("saveDraftAndExit")}
+                  </Button>
+                  <Button
+                    type="submit"
+                    loading={save.isPending && activeSubmitIntent !== "exit"}
+                    disabled={cover.uploading}
+                  >
+                    {fromReview ? t("saveAndReturnReview") : t("continueToReview")}
+                    <ArrowRight aria-hidden />
+                  </Button>
+                </>
+              ) : (
+                <Button asChild>
+                  <Link href={examTabHref(exam.id, "review")}>
+                    {t("continueToReview")}
+                    <ArrowRight aria-hidden />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
         </form>
 
         <aside aria-labelledby="listing-preview-title" className="flex min-w-0 flex-col gap-3 @5xl:sticky @5xl:top-4">
           <ListingCardPreview exam={exam} terms={terms} coverUrl={cover.cover?.url ?? null} listing={listing} />
           <ListingCheckSummary examId={exam.id} issues={listing.checkIssues} />
         </aside>
-
-        {canEdit && (
-          <ExamEditorActions>
-            <Button type="submit" form={formId} loading={save.isPending} disabled={unchanged || cover.uploading}>
-              <Save />
-              {t("save")}
-            </Button>
-          </ExamEditorActions>
-        )}
       </div>
+
+      {canEdit && (
+        <ExamDraftLeaveDialog
+          open={guard.pendingHref !== null}
+          saving={save.isPending}
+          error={leaveError}
+          examId={exam.id}
+          pendingHref={guard.pendingHref}
+          onSaveAndGo={handleLeaveSaveAndGo}
+          onDiscardAndGo={handleLeaveDiscardAndGo}
+          onStay={handleLeaveStay}
+        />
+      )}
     </div>
   );
 }

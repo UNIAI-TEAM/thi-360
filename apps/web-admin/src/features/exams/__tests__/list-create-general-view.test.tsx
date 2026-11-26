@@ -51,7 +51,7 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
 
     await user.clear(shared);
     await user.type(shared, "170");
-    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
     await waitFor(() => expect(backend.app(exam.id).durationMinutes).toBe(170));
     expect(backend.app(exam.id).parts).toHaveLength(3);
   });
@@ -74,7 +74,7 @@ describe("Thông tin chung: trường mới của bảy kỳ thi", () => {
     expect(facts().getByText("Chờ chuyên gia xác nhận")).toBeInTheDocument();
 
     await user.click(confirm);
-    await user.click(screen.getByRole("button", { name: "Lưu thông tin" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
     await waitFor(() => expect(backend.app(exam.id).yearsConfirmed).toBe(true));
     expect(await facts().findByText("Chuyên gia đã xác nhận")).toBeInTheDocument();
   });

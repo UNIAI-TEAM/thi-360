@@ -16,7 +16,7 @@ import {
   StatusChip,
   Textarea,
 } from "@thi360/ui";
-import { ArrowRight, Info, Lock, RefreshCw, TriangleAlert } from "lucide-react";
+import { ArrowRight, Info, Lock, RefreshCw, Save, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -62,7 +62,7 @@ import {
   toCreateExamRequest,
   yearsDiffer,
 } from "../create-exam-schema";
-import { examTabHref } from "../editor-tabs";
+import { examTabHref, isFromReview, reviewReturnHref } from "../editor-tabs";
 import { EXAMS_QUERY_KEYS } from "../keys";
 import { useCreateExam, useExamStructure, useExamTemplates, useSuggestedExamCode } from "../queries";
 import { EXAM_CHECK_TONE, EXAM_STATUS_TONE } from "../status";
@@ -71,8 +71,9 @@ import { blockCountsLocked } from "./block-form";
 import { GenerateCodeButton, KindSelect, TemplateNotes, useExamInfoSchema, useKindLabel, usePartNames } from "./create-exam-fields";
 import { CreateExamScopeFields } from "./create-exam-scope-fields";
 import { type CreateExamIssue, CreateExamSummaryPanel, focusField } from "./create-exam-summary";
+import { ExamDraftLeaveDialog } from "./exam-draft-leave-dialog";
 import { ExamOverviewTable } from "./exam-overview-table";
-import { ExamName, richNodes } from "./exam-review-shared";
+import { ExamName, reviewHref, richNodes } from "./exam-review-shared";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "@/features/shell/unsaved-changes-guard";
 import { ReloadStructureDialog } from "./reload-structure-dialog";
 
@@ -308,8 +309,21 @@ function ExamGeneralFormBody({
   const fixedCounts = appliedTemplate?.fixedCounts === true;
   const savedCountsLocked = exam ? fixedCounts || blockCountsLocked(appliedTemplate, exam.scope, exam.buildMode === "REVIEW") : false;
   const [confirmReplace, setConfirmReplace] = useState<PendingInfoSave | null>(null);
+  const [confirmReplaceIntent, setConfirmReplaceIntent] = useState<"continue" | "review" | "exit" | "leave">("continue");
   const [cellEdits, setCellEdits] = useState<CellEdits>({});
   const [scopeTouched, setScopeTouched] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [fromReview] = useState(() => (typeof window !== "undefined" ? isFromReview(window.location.search) : false));
+  const [activeSubmitIntent, setActiveSubmitIntent] = useState<"continue" | "review" | "exit" | "leave">(fromReview ? "review" : "continue");
+
+  // Đi từ danh sách lỗi bước 4 tới một trường ở bước 1 (`?field=yearsConfirmed`): đưa tiêu điểm tới ô đó.
+  useEffect(() => {
+    if (mode !== "edit" || typeof window === "undefined") return;
+    const field = new URLSearchParams(window.location.search).get("field");
+    if (!field) return;
+    const frame = requestAnimationFrame(() => focusField(field));
+    return () => cancelAnimationFrame(frame);
+  }, [mode]);
 
   const loadDraftScope = useCallback(
     (selection: ScopeSelection): LoadedScope => {
@@ -679,89 +693,163 @@ function ExamGeneralFormBody({
     setHeld(false);
   };
 
-  const onSubmit = handleSubmit(async (submitted) => {
-    if (!canModify || isDiscontinued) return;
-    setSubmitError(null);
-    if ((mode === "create" || overviewChanged || (editingSaved && hasCellEdits)) && overviewIssues.length > 0) {
-      const first = overviewIssues[0]!;
-      focusField(`${first.rowKey}.${first.field}`);
+  const navigateAfterEditSave = (intent: "continue" | "review" | "exit" | "leave") => {
+    if (!exam) return;
+    setLeaveError(null);
+    if (intent === "leave") {
+      guard.leave();
       return;
     }
-
-    if (mode === "edit" && exam && savedScope) {
-      const changed = !sameSelection(savedScope, selection);
-      const effectiveMaxScore =
-        showPoints && partPointsEdited && !maxScoreEdited ? (totals.maxPoints ?? submitted.maxScore) : submitted.maxScore;
-      const request = buildUpdateInfoRequest({
-        exam,
-        submitted,
-        kinds,
-        appliedTemplate: changed ? template : appliedTemplate,
-        changed,
-        maxScore: effectiveMaxScore,
-      });
-      const pending: PendingInfoSave = {
-        request,
-        parts: changed
-          ? reloadPartRows({ templates, kinds, combinations: reference.combinations, partName: partNames.partName, subjectName, next: selection })
-          : [],
-        modeChange:
-          savedScope.scope === "SUBJECT" &&
-          selection.scope === "SUBJECT" &&
-          (savedScope.buildMode ?? "STANDARD") !== (selection.buildMode ?? "STANDARD"),
-      };
-      if (changed) setConfirmReplace(pending);
-      else if (overviewChanged) await saveOverviewThenInfo(pending);
-      else if (isDirty || maxScoreSynced || scopeTouched) save(pending);
+    if (intent === "exit") {
+      guard.leaveTo(EXAMS_HREF);
       return;
     }
+    if (intent === "review") {
+      guard.leaveTo(reviewReturnHref(exam.id));
+      return;
+    }
+    guard.leaveTo(examTabHref(exam.id, "structure"));
+  };
 
-    const request = toCreateExamRequest({
-      name: submitted.name,
-      code: submitted.code,
-      selection,
-      description: submitted.description,
-      instructions: submitted.instructions,
-      timing: submitted.timing,
-      sharedDuration: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
-      maxScore: showPoints ? (totals.maxPoints ?? submitted.maxScore) : submitted.maxScore,
-      overview: overviewDiff(rows),
-    });
-
-    try {
-      const created = await createExam.mutateAsync(request);
-      if (submitted.yearsConfirmed && yearsDiffer(template)) {
-        setConfirmingYears(true);
-        try {
-          await updateExamInfo(created.id, {
-            expectedRevision: created.revision,
-            yearsConfirmed: true,
-          });
-          await queryClient.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.all });
-        } catch {
-          // `POST /exams` already created the draft (`201`); still route to Tab 2 instead of stranding on `/exams/new` (`SF-2`).
-        } finally {
-          setConfirmingYears(false);
+  const submitWithIntent = (intent: "continue" | "review" | "exit" | "leave") => {
+    setActiveSubmitIntent(intent);
+    return handleSubmit(
+      async (submitted) => {
+        if (!canModify || isDiscontinued) return;
+        setSubmitError(null);
+        setLeaveError(null);
+        if ((mode === "create" || overviewChanged || (editingSaved && hasCellEdits)) && overviewIssues.length > 0) {
+          const first = overviewIssues[0]!;
+          if (intent === "leave") setLeaveError(tGeneral("saveInvalid"));
+          else focusField(`${first.rowKey}.${first.field}`);
+          return;
         }
-      }
-      const message = t("success", { code: created.code });
-      notify.success(message);
-      setLiveMessage(message);
-      router.push(examTabHref(created.id, "structure"));
-    } catch (error) {
-      const status = getErrorStatus(error);
-      if (status === 409) {
-        const code = submitted.code.trim().toUpperCase();
-        setTakenCodes((current) => new Set([...current, code]));
-        setError("code", { message: t("errors.codeTaken") }, { shouldFocus: true });
-      } else if (status === 422) {
-        const reason = apiErrorCode(error);
-        setSubmitError(reason && t.has(`errors.codes.${reason}`) ? t(`errors.codes.${reason}`) : t("errors.structure"));
-      } else {
-        setSubmitError(t("errors.generic"));
-      }
+
+        if (mode === "edit" && exam && savedScope) {
+          if (!hasUnsavedChanges) {
+            if (intent === "exit") guard.leaveTo(EXAMS_HREF);
+            else if (intent === "review") guard.leaveTo(reviewHref(exam.id));
+            else if (intent === "leave") guard.leave();
+            else guard.leaveTo(examTabHref(exam.id, "structure"));
+            return;
+          }
+          const changed = !sameSelection(savedScope, selection);
+          const effectiveMaxScore =
+            showPoints && partPointsEdited && !maxScoreEdited ? (totals.maxPoints ?? submitted.maxScore) : submitted.maxScore;
+          const request = buildUpdateInfoRequest({
+            exam,
+            submitted,
+            kinds,
+            appliedTemplate: changed ? template : appliedTemplate,
+            changed,
+            maxScore: effectiveMaxScore,
+          });
+          const pending: PendingInfoSave = {
+            request,
+            parts: changed
+              ? reloadPartRows({ templates, kinds, combinations: reference.combinations, partName: partNames.partName, subjectName, next: selection })
+              : [],
+            modeChange:
+              savedScope.scope === "SUBJECT" &&
+              selection.scope === "SUBJECT" &&
+              (savedScope.buildMode ?? "STANDARD") !== (selection.buildMode ?? "STANDARD"),
+          };
+          const callbacks = {
+            onSuccess: () => navigateAfterEditSave(intent),
+            onError: (message: string) => {
+              if (intent === "leave") setLeaveError(message);
+            },
+          };
+          if (changed) {
+            setConfirmReplaceIntent(intent);
+            setConfirmReplace(pending);
+          } else if (overviewChanged) {
+            await saveOverviewThenInfo(pending, callbacks);
+          } else if (isDirty || maxScoreSynced || scopeTouched) {
+            save(pending, false, callbacks);
+          } else {
+            navigateAfterEditSave(intent);
+          }
+          return;
+        }
+
+        const request = toCreateExamRequest({
+          name: submitted.name,
+          code: submitted.code,
+          selection,
+          description: submitted.description,
+          instructions: submitted.instructions,
+          timing: submitted.timing,
+          sharedDuration: submitted.timing === "SHARED" ? submitted.sharedDuration : null,
+          maxScore: showPoints ? (totals.maxPoints ?? submitted.maxScore) : submitted.maxScore,
+          overview: overviewDiff(rows),
+        });
+
+        try {
+          const created = await createExam.mutateAsync(request);
+          if (submitted.yearsConfirmed && yearsDiffer(template)) {
+            setConfirmingYears(true);
+            try {
+              await updateExamInfo(created.id, {
+                expectedRevision: created.revision,
+                yearsConfirmed: true,
+              });
+              await queryClient.invalidateQueries({ queryKey: EXAMS_QUERY_KEYS.all });
+            } catch {
+              // `POST /exams` already created the draft (`201`); still route onward instead of stranding on `/exams/new` (`SF-2`).
+            } finally {
+              setConfirmingYears(false);
+            }
+          }
+          const message = t("success", { code: created.code });
+          notify.success(message);
+          setLiveMessage(message);
+          router.push(intent === "exit" ? EXAMS_HREF : examTabHref(created.id, "structure"));
+        } catch (error) {
+          const status = getErrorStatus(error);
+          if (status === 409) {
+            const code = submitted.code.trim().toUpperCase();
+            setTakenCodes((current) => new Set([...current, code]));
+            setError("code", { message: t("errors.codeTaken") }, { shouldFocus: true });
+          } else if (status === 422) {
+            const reason = apiErrorCode(error);
+            setSubmitError(reason && t.has(`errors.codes.${reason}`) ? t(`errors.codes.${reason}`) : t("errors.structure"));
+          } else {
+            setSubmitError(t("errors.generic"));
+          }
+        }
+      },
+      () => {
+        if (intent === "leave") {
+          setLeaveError(tGeneral("saveInvalid"));
+        }
+      },
+    );
+  };
+
+  const handleSaveDraftAndExit = () => {
+    if (mode === "edit" && exam && !hasUnsavedChanges) {
+      guard.leaveTo(EXAMS_HREF);
+      return;
     }
-  });
+    void submitWithIntent("exit")();
+  };
+
+  const handleLeaveSaveAndGo = () => {
+    setLeaveError(null);
+    void submitWithIntent("leave")();
+  };
+
+  const handleLeaveDiscardAndGo = () => {
+    onDiscard();
+    setLeaveError(null);
+    guard.leave();
+  };
+
+  const handleLeaveStay = () => {
+    setLeaveError(null);
+    guard.stay();
+  };
 
   const isBusy = createExam.isPending || confirmingYears || update.isPending || structureUpdate.isPending;
 
@@ -786,7 +874,7 @@ function ExamGeneralFormBody({
             id={formId}
             noValidate
             aria-label={mode === "create" ? t("formAriaLabel") : tGeneral("formTitle")}
-            onSubmit={(event) => void onSubmit(event)}
+            onSubmit={(event) => void submitWithIntent(mode === "create" ? "continue" : fromReview ? "review" : "continue")(event)}
             className="flex min-w-0 flex-col gap-5"
           >
             <FormSection mode={mode} step={1} title={t("sections.info")}>
@@ -939,18 +1027,20 @@ function ExamGeneralFormBody({
                         : tOverview("descriptionNoTemplate")
               }
             >
-              <Controller
-                control={control}
-                name="yearsConfirmed"
-                render={({ field }) => (
-                  <TemplateNotes
-                    template={templatesStatus === "loading" ? undefined : editingSaved ? (template ?? exam) : template}
-                    yearsConfirmed={field.value}
-                    onYearsConfirmedChange={field.onChange}
-                    disabled={lockForm}
-                  />
-                )}
-              />
+              <div data-field="yearsConfirmed">
+                <Controller
+                  control={control}
+                  name="yearsConfirmed"
+                  render={({ field }) => (
+                    <TemplateNotes
+                      template={templatesStatus === "loading" ? undefined : editingSaved ? (template ?? exam) : template}
+                      yearsConfirmed={field.value}
+                      onYearsConfirmedChange={field.onChange}
+                      disabled={lockForm}
+                    />
+                  )}
+                />
+              </div>
               {lockedCounts && !previewOnly && (
                 <p className="inline-flex w-fit items-center gap-1.5 rounded-full bg-subtle px-3 py-1 text-caption text-text-secondary">
                   <Lock aria-hidden className="size-3.5" />
@@ -1052,14 +1142,28 @@ function ExamGeneralFormBody({
             )}
 
             {canModify && !isDiscontinued && (
-              <div className="flex flex-wrap justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 {mode === "create" ? (
                   <>
                     <Button asChild variant="secondary">
                       <Link href={EXAMS_HREF}>{t("cancel")}</Link>
                     </Button>
-                    <Button type="submit" loading={isBusy} disabled={templatesStatus === "loading"}>
-                      {t("submit")}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      loading={isBusy && activeSubmitIntent === "exit"}
+                      disabled={isBusy || templatesStatus === "loading"}
+                      onClick={handleSaveDraftAndExit}
+                    >
+                      <Save aria-hidden className="size-4" />
+                      {t("saveDraftAndExit")}
+                    </Button>
+                    <Button
+                      type="submit"
+                      loading={isBusy && activeSubmitIntent !== "exit"}
+                      disabled={templatesStatus === "loading"}
+                    >
+                      {t("continueToStructure")}
                       <ArrowRight aria-hidden className="size-4" />
                     </Button>
                   </>
@@ -1068,8 +1172,23 @@ function ExamGeneralFormBody({
                     <Button type="button" variant="secondary" disabled={!hasUnsavedChanges || isBusy} onClick={onDiscard}>
                       {tGeneral("discard")}
                     </Button>
-                    <Button type="submit" loading={isBusy} disabled={templatesStatus === "loading"}>
-                      {tGeneral("save")}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      loading={isBusy && activeSubmitIntent === "exit"}
+                      disabled={isBusy || templatesStatus === "loading"}
+                      onClick={handleSaveDraftAndExit}
+                    >
+                      <Save aria-hidden className="size-4" />
+                      {t("saveDraftAndExit")}
+                    </Button>
+                    <Button
+                      type="submit"
+                      loading={isBusy && activeSubmitIntent !== "exit"}
+                      disabled={templatesStatus === "loading"}
+                    >
+                      {fromReview ? tGeneral("saveAndReturnReview") : t("continueToStructure")}
+                      <ArrowRight aria-hidden className="size-4" />
                     </Button>
                   </>
                 )}
@@ -1112,7 +1231,20 @@ function ExamGeneralFormBody({
         </div>
       </div>
 
-      <UnsavedChangesDialog guard={guard} />
+      {mode === "edit" && exam ? (
+        <ExamDraftLeaveDialog
+          open={guard.pendingHref !== null}
+          saving={isBusy}
+          error={leaveError}
+          examId={exam.id}
+          pendingHref={guard.pendingHref}
+          onSaveAndGo={handleLeaveSaveAndGo}
+          onDiscardAndGo={handleLeaveDiscardAndGo}
+          onStay={handleLeaveStay}
+        />
+      ) : (
+        <UnsavedChangesDialog guard={guard} />
+      )}
       <ReloadStructureDialog
         open={confirmReplace !== null}
         onOpenChange={(open) => {
@@ -1125,7 +1257,14 @@ function ExamGeneralFormBody({
         cancelLabel={confirmReplace?.modeChange ? tStep("buildModeChange.cancel") : undefined}
         loading={update.isPending}
         onConfirm={() => {
-          if (confirmReplace) save(confirmReplace);
+          if (confirmReplace) {
+            save(confirmReplace, false, {
+              onSuccess: () => navigateAfterEditSave(confirmReplaceIntent),
+              onError: (message) => {
+                if (confirmReplaceIntent === "leave") setLeaveError(message);
+              },
+            });
+          }
         }}
       />
       <LiveStatus message={liveMessage} />

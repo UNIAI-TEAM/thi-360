@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  BrandWordmark,
   Button,
   Checkbox,
   cn,
@@ -341,14 +342,8 @@ export function RegisterView({
   return (
     <AuthPageStage>
       <div className="flex w-full max-w-[920px] items-center gap-2">
-        <Link href="/" className="flex items-center gap-2.5 md:hidden">
-          <span
-            aria-hidden
-            className="flex size-10 items-center justify-center rounded-lg bg-primary-fill font-bold text-on-primary"
-          >
-            {common("logoMark")}
-          </span>
-          <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+        <Link href="/" className="flex items-center md:hidden">
+          <BrandWordmark alt={common("appName")} className="h-9" />
         </Link>
         <div className="ml-auto flex items-center gap-2">
           {headerActions ?? (
@@ -679,14 +674,8 @@ export function RegisterView({
 
         <section className={AUTH_BRAND_PANEL_CLASS}>
           <AuthBrandDecor />
-          <Link href="/" className="hidden items-center gap-3 md:flex">
-            <span
-              aria-hidden
-              className="flex size-11 items-center justify-center rounded-lg bg-primary-fill text-title font-bold text-on-primary"
-            >
-              {common("logoMark")}
-            </span>
-            <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+          <Link href="/" className="hidden items-center md:flex">
+            <BrandWordmark alt={common("appName")} className="h-10" />
           </Link>
 
           <h2 className="text-h2 font-bold text-primary-900">{t("intro.headline")}</h2>

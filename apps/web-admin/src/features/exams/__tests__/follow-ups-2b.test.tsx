@@ -168,17 +168,17 @@ describe("lỗi soạn đề 2B", () => {
       const list = bar.querySelector("ul") as HTMLElement;
       phoneLayout(list);
 
-      nav.pathname = `/exams/${EXAM_ID}/versions`;
+      nav.pathname = `/exams/${EXAM_ID}/review`;
       rerender(<ExamEditorLayout examId={EXAM_ID}>nội dung</ExamEditorLayout>);
-      // Tab thứ 5 chiếm x=624..774; thanh chỉ tới x=366, cộng phần lộ của tab kế bên (40px).
-      await waitFor(() => expect(list.scrollLeft).toBe(448));
-      const active = within(bar).getByRole("link", { name: "Phiên bản và công bố" });
+      // Tab thứ 4 chiếm x=474..624; thanh chỉ tới x=366, cộng phần lộ của tab kế bên (40px).
+      await waitFor(() => expect(list.scrollLeft).toBe(298));
+      const active = within(bar).getByRole("link", { name: "4. Kiểm tra, xem trước và công bố" });
       expect(active).toHaveAttribute("aria-current", "page");
       expect(active.getBoundingClientRect().right).toBeLessThanOrEqual(366);
 
       nav.pathname = `/exams/${EXAM_ID}`;
       rerender(<ExamEditorLayout examId={EXAM_ID}>nội dung</ExamEditorLayout>);
-      // Tab đầu chiếm x=24..174 khi đã cuộn 448: cần lùi quá đầu, trình duyệt giới hạn về 0.
+      // Tab đầu chiếm x=24..174 khi đã cuộn 298: cần lùi quá đầu, trình duyệt giới hạn về 0.
       await waitFor(() => expect(list.scrollLeft).toBeLessThanOrEqual(0));
     });
   });
@@ -719,7 +719,7 @@ describe("xem trước và đổi phiên bản 2B", () => {
       };
       const user = userEvent.setup();
       renderWithProviders(<ExamStructureCheckResult result={result} names={{ subject: () => "Toán" }} onSelect={onSelect} />);
-      await user.click(screen.getByRole("button", { name: "Đến chỗ sửa" }));
+      await user.click(screen.getByRole("button", { name: "Đến vị trí cần sửa" }));
       expect(onSelect).toHaveBeenCalledWith({ kind: "block", blockId: "b1" });
 
       const { container } = renderEditor({});

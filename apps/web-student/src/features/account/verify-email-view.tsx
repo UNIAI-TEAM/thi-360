@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import {
+  BrandWordmark,
   Button,
   cn,
   EmptyState,
@@ -155,14 +156,8 @@ export function VerifyEmailView({
 
   const header = (
     <div className="flex w-full max-w-[480px] items-center gap-2">
-      <Link href="/" className="flex items-center gap-2.5">
-        <span
-          aria-hidden
-          className="flex size-10 items-center justify-center rounded-lg bg-primary-fill font-bold text-on-primary"
-        >
-          {common("logoMark")}
-        </span>
-        <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+      <Link href="/" className="flex items-center">
+        <BrandWordmark alt={common("appName")} className="h-9" />
       </Link>
       <div className="ml-auto flex items-center gap-2">
         <ThemeToggle />

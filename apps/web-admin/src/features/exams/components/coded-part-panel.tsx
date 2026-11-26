@@ -113,7 +113,7 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
               missingOf(item).map((subjectCode) => (
                 <li key={`${item.code}-${subjectCode}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-danger">
                   <TriangleAlert aria-hidden className="size-4 shrink-0" />
-                  <span>{t("missingSubject", { code: item.examCode ?? item.code, subject: names.subject(subjectCode) })}</span>
+                  <span>{t("missingSubject", { code: item.code, subject: names.subject(subjectCode) })}</span>
                   <Button type="button" variant="secondary" size="sm" onClick={() => onAddSubject(subjectCode)}>
                     <Plus />
                     <span>{t("addSubject", { subject: names.subject(subjectCode) })}</span>
@@ -143,7 +143,7 @@ export function CodedPartPanel({ part, names, axes, combinations, sectionStates,
               const positions = codePositions(item, pool);
               return (
                 <li key={item.code} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border px-3 py-2">
-                  <strong className="font-semibold text-text">{item.examCode ?? item.code}</strong>
+                  <strong className="font-semibold text-text">{item.code}</strong>
                   <span className="inline-flex flex-wrap items-center gap-1 text-body text-text-secondary">
                     {item.subjectCodes.map((subjectCode, index) => (
                       <span key={subjectCode} className="inline-flex items-center gap-1">

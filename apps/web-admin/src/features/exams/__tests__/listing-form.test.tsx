@@ -29,7 +29,7 @@ afterEach(() => vi.restoreAllMocks());
 const price = () => screen.findByRole("textbox", { name: /Giá bán/ });
 const attempts = () => screen.findByRole("spinbutton", { name: /Số lượt mỗi lần mua/ });
 const preview = () => within(screen.getByTestId("listing-card-preview"));
-const saveButton = () => screen.getByRole("button", { name: "Lưu" });
+const saveButton = () => screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" });
 
 describe("tab Thông tin bán: xem trước thẻ", () => {
   it("thẻ đổi theo dữ liệu đang nhập và dùng giá gốc", async () => {
@@ -210,7 +210,11 @@ describe("tab Thông tin bán: lưu", () => {
     const user = userEvent.setup();
     renderListingTab();
 
-    expect(await screen.findByRole("button", { name: "Lưu" })).toBeDisabled();
+    // Bản nháp sạch: Tiếp tục đi thẳng không gọi PUT dư thừa.
+    expect(await screen.findByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" })).toBeEnabled();
+    await user.click(saveButton());
+    expect(server.calls("PUT", LISTING_PATH)).toHaveLength(0);
+
     const priceInput = await price();
     await user.clear(priceInput);
     await user.type(priceInput, "300000");
@@ -228,7 +232,6 @@ describe("tab Thông tin bán: lưu", () => {
       coverAssetId: "33333333-3333-3333-3333-333333333333",
     });
 
-    await waitFor(() => expect(saveButton()).toBeDisabled());
     await user.clear(await attempts());
     await user.type(await attempts(), "4");
     await user.click(saveButton());
@@ -404,7 +407,8 @@ describe("tab Thông tin bán: chỉ xem", () => {
     expect(within(form).getByRole("spinbutton", { name: /Số lượt/ })).toBeDisabled();
     expect(within(form).getByText("249.000 đ")).toBeInTheDocument();
 
-    expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Lưu nháp và thoát" })).not.toBeInTheDocument();
     expect(screen.queryByText("Đổi ảnh")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Bỏ ảnh" })).not.toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).toBeNull();

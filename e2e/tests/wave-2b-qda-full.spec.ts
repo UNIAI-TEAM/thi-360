@@ -21,7 +21,6 @@ import {
   saveStructureInUi,
   SCENARIO_TIMEOUT_MS,
   selectPathInUi,
-  SOLVER_TIMEOUT_MS,
   SUBJECT_NAME,
 } from "./helpers/wave-2b";
 
@@ -151,19 +150,24 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
         ).toHaveCount(0);
       }
 
-      // Khối lớp và độ khó (MT): Khối lớp khai đủ 25/25 và Bắt buộc; Độ khó hiện các mức của mẫu (trống nếu chưa khai).
-      await expect(page.getByRole("heading", { level: 3, name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
-      const gradeField = page.locator('[data-form-field="GRADE"]');
-      await expect(gradeField, `môn ${name}: khối lớp`).toBeVisible();
-      await expect(gradeField.locator('[data-enforcement-mode="DECLARED_REQUIRED"]')).toHaveText("Bắt buộc");
-      await expect(gradeField.getByText(`Đã khai ${count}/${count}`), `môn ${name}: tổng khối lớp`).toBeVisible();
-      const byGrade = section.matrix!.byGrade!;
-      const gradeItems = byGrade.filter((item) => /^G\d+$/.test(item.code));
-      for (const item of gradeItems) {
-        const grade = item.code.replace(/^G(RADE_)?/, "");
-        await expect(gradeField.getByLabel(`Lớp ${grade}`, { exact: true }), `môn ${name}: khối lớp ${grade}`).toHaveValue(String(item.value));
+      // Khối lớp và độ khó (MT): Sử/Địa ẩn Khối lớp (UNI-1723/1724); Lý/Hóa/Sinh khai đủ 25/25 và Bắt buộc.
+      if (code === "SU" || code === "DIA") {
+        await expect(page.getByRole("heading", { level: 3, name: "Độ khó" }), `môn ${name}`).toBeVisible();
+        await expect(page.locator('[data-form-field="GRADE"]'), `môn ${name}: ẩn khối lớp`).toHaveCount(0);
+      } else {
+        await expect(page.getByRole("heading", { level: 3, name: "Khối lớp và độ khó" }), `môn ${name}`).toBeVisible();
+        const gradeField = page.locator('[data-form-field="GRADE"]');
+        await expect(gradeField, `môn ${name}: khối lớp`).toBeVisible();
+        await expect(gradeField.locator('[data-enforcement-mode="DECLARED_REQUIRED"]')).toHaveText("Bắt buộc");
+        await expect(gradeField.getByText(`Đã khai ${count}/${count}`), `môn ${name}: tổng khối lớp`).toBeVisible();
+        const byGrade = section.matrix!.byGrade!;
+        const gradeItems = byGrade.filter((item) => /^G\d+$/.test(item.code));
+        for (const item of gradeItems) {
+          const grade = item.code.replace(/^G(RADE_)?/, "");
+          await expect(gradeField.getByLabel(`Lớp ${grade}`, { exact: true }), `môn ${name}: khối lớp ${grade}`).toHaveValue(String(item.value));
+        }
+        await expect(gradeField.getByLabel("Liên lớp", { exact: true }), `môn ${name}: không có Liên lớp`).toHaveCount(0);
       }
-      await expect(gradeField.getByLabel("Liên lớp", { exact: true }), `môn ${name}: không có Liên lớp`).toHaveCount(0);
 
       const difficultyField = page.locator('[data-form-field="DIFFICULTY"]');
       await expect(difficultyField, `môn ${name}: độ khó`).toBeVisible();
@@ -224,32 +228,17 @@ test("QDA toàn bài: tạo, thiết lập sáu môn, kiểm tra toàn bài, sin
   await openEditorTab(page, "Cấu trúc và ma trận", /\/exams\/[^/]+\/structure/);
   await expectStructureQuestions(page, /^150(\D|$)/);
 
-  // Kiểm tra riêng từng môn bằng nút "Kiểm tra môn": mỗi môn không lỗi chặn và hiện "Đã kiểm tra" trong danh sách.
-  for (const { code } of PART3_SUBJECTS) {
-    const name = SUBJECT_NAME[code]!;
-    const subjectButton = nav.getByRole("button", { name: new RegExp(`^${name}`) });
-    await subjectButton.click();
-    await expect(page.getByRole("heading", { name: new RegExp(`^Môn ${name}`) }), `môn ${name}`).toBeVisible();
-    const [response] = await Promise.all([
-      page.waitForResponse((item) => item.url().endsWith(`/exams/${id}/check`) && item.request().method() === "POST", {
-        timeout: SOLVER_TIMEOUT_MS,
-      }),
-      page.getByRole("button", { name: "Kiểm tra môn", exact: true }).click(),
-    ]);
-    expect(response.status(), `môn ${name}: ${await response.text()}`).toBe(200);
-    expect(blockingCodes(await response.json()), `môn ${name}`).toEqual([]);
-    await expect(subjectButton, `môn ${name}`).toContainText("Đã kiểm tra");
-  }
+  // Kiểm tra nhanh cấu trúc tại chỗ (không gọi PUT/POST): báo "Cấu trúc hợp lệ".
+  await page.getByRole("button", { name: "Kiểm tra cấu trúc", exact: true }).click();
+  await expect(page.getByTestId("structure-quick-check-result")).toContainText("Cấu trúc hợp lệ");
 
-  // 3. "Tiếp tục": kiểm tra toàn bài, sang tab Kiểm tra cấu hình: năm mã QĐ01–QĐ05, cả năm hợp lệ.
+  // 3. Đi tiếp qua bước 3 -> bước 4 và kiểm tra toàn bài: năm mã QĐ01–QĐ05, cả năm hợp lệ.
   const check = await continueToReviewInUi(page, id);
   expect(check.status, `lỗi chặn: ${blockingCodes(check).join(", ")}`).toBe("VALID");
   expect(blockingCodes(check)).toEqual([]);
   expect(check.paths).toHaveLength(5);
   expect(check.paths.every((path) => path.result === "VALID")).toBe(true);
   await expectValidPaths(page, 5, 5);
-  // Tab Kiểm tra: "Môn đã kiểm tra 8/8" (Toán, Văn và sáu môn của kho); máy chủ ghi cả tám môn ở trạng thái đã kiểm tra.
-  await expect(page.getByText("8/8", { exact: true })).toBeVisible();
   const allStates = (await getStructure(admin, id)).sectionStates ?? [];
   expect(allStates.map((state) => state.subjectCode).sort()).toEqual(["ANH", "DIA", "HOA", "LY", "SINH", "SU", "TOAN", "VAN"]);
   expect(allStates.filter((state) => state.state !== "CHECKED")).toEqual([]);

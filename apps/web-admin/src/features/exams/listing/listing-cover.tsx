@@ -25,6 +25,7 @@ export interface CoverField {
   uploading: boolean;
   pick: (file: File) => void;
   remove: () => void;
+  reset: () => void;
 }
 
 export function useCoverField(examId: string, initial: CoverValue | null): CoverField {
@@ -51,6 +52,10 @@ export function useCoverField(examId: string, initial: CoverValue | null): Cover
     remove() {
       setFailure(null);
       setCover(null);
+    },
+    reset() {
+      setFailure(null);
+      setCover(initial);
     },
   };
 }
@@ -116,6 +121,7 @@ export function ListingCover({ value, fallbackLabel, readOnly }: ListingCoverPro
               <div className="relative">
                 <input
                   id={inputId}
+                  data-listing-field="cover"
                   type="file"
                   accept={COVER_ACCEPT}
                   aria-labelledby={`${labelId} ${inputId}-text`}

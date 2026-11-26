@@ -47,18 +47,18 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const { server } = boot({ parts: qdaParts({ vanR2: 0 }) });
     openStructure("?section=sec-toan");
     await dirtyToan(user);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
     expect(putCalls(server)).toHaveLength(0);
     expect(window.location.search).toBe("?section=sec-van");
   });
 
-  it("(a) Lưu và chuyển: hộp thoại ở lại, báo lỗi, không PUT, focus về dòng lỗi", async () => {
+  it("(a) Lưu và chuyển (khi rời bước 2): hộp thoại ở lại, báo lỗi, không PUT, focus về dòng lỗi", async () => {
     const user = userEvent.setup();
     const { server } = boot({ parts: qdaParts({ vanR2: 0 }) });
     openStructure("?section=sec-toan");
     await dirtyToan(user);
-    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
+    await user.click(screen.getByRole("button", { name: "Quay lại" }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent(/TOAN|Toán/);
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
@@ -69,16 +69,17 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     expect(window.location.search).toBe("?section=sec-van");
   });
 
-  it("(a) Kiểm tra toàn bài và Tiếp tục: không gửi PUT hay kiểm tra, focus về dòng lỗi", async () => {
+  it("(a) Kiểm tra cấu trúc và Tiếp tục: không gửi PUT hay POST /check, báo lỗi và focus về dòng lỗi", async () => {
     const user = userEvent.setup();
     const { server } = boot({ parts: qdaParts({ vanR2: 0 }) });
     openStructure("?section=sec-toan");
     await dirtyToan(user);
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    const quick = await screen.findByTestId("structure-quick-check-result");
+    await user.click(within(quick).getAllByRole("button", { name: "Đến vị trí cần sửa" })[0]!);
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
-    await user.click(await screen.findByRole("button", { name: "Ở lại" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
@@ -93,17 +94,17 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await user.clear(input);
     await user.type(input, "abc");
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(input).toHaveFocus());
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
     expect(routerMock.push).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Lưu nháp và thoát" }));
     expect(putCalls(server)).toHaveLength(0);
   });
 
-  it("(c) đóng dòng không làm mất lỗi nhập thô; Hủy thay đổi xóa đúng lỗi đó và Kiểm tra chạy lại được", async () => {
+  it("(c) đóng dòng không làm mất lỗi nhập thô; Hủy thay đổi xóa đúng lỗi đó và Kiểm tra cấu trúc hợp lệ", async () => {
     const user = userEvent.setup();
     const sptParts = [wirePart([wireSection("sec-van", "VAN", [wireBlock("van-r1", { name: "Van dong 1", questionCount: 5 }), wireBlock("van-r2", { name: "Van dong 2", questionCount: 5 })])])];
     const { server } = boot({ kind: "SPT", parts: sptParts });
@@ -114,15 +115,16 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await user.type(field, "x");
     await user.click(screen.getByRole("button", { name: "Về danh sách" }));
     expect(screen.queryByRole("heading", { name: /Sửa dòng: Van dong 1/ })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r1"]')).toContainElement(document.activeElement as HTMLElement));
-    expect(checkCalls(server)).toHaveLength(0);
+    expect(putCalls(server)).toHaveLength(0);
 
     await user.click(screen.getByRole("button", { name: "Hủy thay đổi" }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Hủy thay đổi" }));
     await waitFor(() => expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull());
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
-    await waitFor(() => expect(checkCalls(server)).toHaveLength(1));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    expect(await screen.findByTestId("structure-quick-check-result")).toHaveTextContent("Cấu trúc hợp lệ");
+    expect(checkCalls(server)).toHaveLength(0);
   });
 
   it("(d) nháp trộn: mục MD và mục bật-mà-lùi-MD không bị luật MT/DS xét; mục DS bên cạnh có lỗi thì bị chặn", async () => {
@@ -139,7 +141,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
     await dirtyToan(user);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
 
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /VAN/ }));
@@ -147,7 +149,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const field = screen.getByRole("textbox", { name: /^Số câu/ });
     await user.clear(field);
     await user.type(field, "0");
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(checkCalls(server)).toHaveLength(0);
     expect(putCalls(server)).toHaveLength(1);
   });
@@ -160,7 +162,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const input = await screen.findByRole("textbox", { name: /^Số câu/ });
     await user.clear(input);
     await user.type(input, "6");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body);
     expect((sent["sec-van"] as { blocks: Array<{ id: string; questionCount: number }> }).blocks[1]).toMatchObject({ id: "van-r2", questionCount: 6 });
@@ -176,11 +178,11 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const input = await lySetsInput();
     await user.clear(input);
     await user.type(input, "3");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await user.clear(input);
     await user.type(input, "2");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(withoutMappingDefaults(sectionsOf(putCalls(server)[0]!.body)["sec-hoa"])).toEqual(withoutMappingDefaults(wireScience("sec-hoa", "HOA")));
   });
@@ -198,21 +200,20 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     await user.type(input, value);
   };
 
-  it("matrixLimitsBlockAllSaves: Lý 2 → 3 chùm rồi chuyển môn: Lưu và chuyển, Kiểm tra, Tiếp tục không gửi request, focus về ô Số chùm của Lý", async () => {
+  it("matrixLimitsBlockAllSaves: Lý 2 → 3 chùm rồi rời bước: Lưu và chuyển, Tiếp tục không gửi request, focus về ô Số chùm của Lý", async () => {
     const user = userEvent.setup();
     const { server } = boot({ parts: [wirePart([science("sec-ly", "LY", 2), science("sec-hoa", "HOA")])] });
     openStructure("?section=sec-ly");
     await typeSets(user, "3");
     expect(await screen.findByText("Số chùm từ 1 đến 2")).toBeInTheDocument();
-    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
+    await user.click(screen.getByRole("button", { name: "Quay lại" }));
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "Lưu và chuyển" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Còn lỗi cần sửa trước khi lưu hoặc kiểm tra.");
     expect(putCalls(server)).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
     await waitFor(() => expect(screen.getByRole("textbox", { name: SETS_INPUT_NAME })).toHaveFocus());
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
     expect(routerMock.push).not.toHaveBeenCalled();
@@ -224,10 +225,12 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     openStructure("?section=sec-ly");
     await typeSets(user, "3");
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
-    await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Ở lại" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await waitFor(() => expect(window.location.search).toBe("?section=sec-ly"));
+    expect(putCalls(server)).toHaveLength(0);
     await typeSets(user, "2");
     await waitFor(() => expect(screen.queryByText("Số chùm từ 1 đến 2")).toBeNull());
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body);
     expect((sent["sec-ly"]!.blocks as Wire[])[1]).toMatchObject({ setCount: 2, questionCount: 6 });
@@ -245,7 +248,7 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     const fill = await screen.findByRole("textbox", { name: FILL_INPUT_NAME });
     await user.clear(fill);
     await user.type(fill, "2");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body);
     expect((sent["sec-ly"]!.blocks as Wire[])[1]).toMatchObject({ setCount: 3, setSize: 3, questionCount: 9 });

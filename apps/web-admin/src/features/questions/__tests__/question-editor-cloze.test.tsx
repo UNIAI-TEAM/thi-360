@@ -143,4 +143,26 @@ describe("trinh soan Dien khuyet", () => {
     ).toBeInTheDocument();
     expect(navigation.push).not.toHaveBeenCalled();
   });
+
+  it("gõ trực tiếp ___ vào Đề bài tự sinh đủ ô đáp án tương ứng bên dưới (UNI-2833)", async () => {
+    const user = userEvent.setup();
+    renderEn(<QuestionEditorView mode="create" type="CLOZE" />);
+    const text = await screen.findByRole("textbox", { name: /^Question text/ });
+
+    expect(screen.queryByRole("textbox", { name: "Answer 1 for blank 1" })).not.toBeInTheDocument();
+
+    rich(text).set("<p>anh không biết ___</p>");
+    const blank1 = await screen.findByRole("textbox", { name: "Answer 1 for blank 1" });
+    expect(blank1).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Points of blank 1" })).toHaveValue("1");
+    expect(screen.getByText("The text has 1 gap ___ and 1 answer blank.")).toBeInTheDocument();
+
+    // Nhập đáp án ô 1 rồi dán/gõ thêm chỗ trống thứ hai và thứ ba: tự sinh thêm đúng 2 ô, giữ nguyên đáp án ô 1.
+    await user.type(blank1, "gì");
+    rich(text).set("<p>anh không biết ___ và ___ lẫn ___</p>");
+    expect(await screen.findByRole("textbox", { name: "Answer 1 for blank 2" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 3" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 1" })).toHaveValue("gì");
+    expect(screen.getByText("The text has 3 gaps ___ and 3 answer blanks.")).toBeInTheDocument();
+  });
 });

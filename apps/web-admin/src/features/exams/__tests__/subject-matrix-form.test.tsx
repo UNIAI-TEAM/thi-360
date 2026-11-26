@@ -73,7 +73,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     expect(rowCountInput("Su chum")).toHaveValue("8");
     const structure = document.querySelector<HTMLElement>('[data-form-field="STRUCTURE"]')!;
     expect(within(structure).getByText("Vượt 5 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [single, set] = (sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[]) as [Wire, Wire];
     expect(single).toMatchObject({ id: "sec-su-single", questionCount: 7, templateGroupCode: "SU_SINGLE" });
@@ -84,7 +84,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     expect(screen.queryByRole("textbox", { name: "Số chùm của Su chum" })).not.toBeInTheDocument();
     expect(rowCountInput("Su chum")).not.toHaveAttribute("readonly");
     await type(user, rowCountInput("Su chum"), "3");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
     const [, flexSet] = (sectionsOf(putCalls(server)[1]!.body)["sec-su"]!.blocks as Wire[]) as [Wire, Wire];
     expect(flexSet).toMatchObject({ id: "sec-su-set", questionCount: 3, tagCodes: ["SU_TU_LIEU_LICH_SU"] });
@@ -97,14 +97,14 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
     await type(user, rowSetsInput("Su chum"), "0");
     expect(await screen.findByText("Ít nhất 1 chùm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(rowSetsInput("Su chum")).toHaveFocus());
 
     await type(user, rowSetsInput("Su chum"), "1");
     await type(user, rowSetSizeInput("Su chum"), "0");
     expect(await screen.findByText("Ít nhất 1 câu/chùm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(rowSetSizeInput("Su chum")).toHaveFocus());
   });
@@ -135,7 +135,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
 
     // Đưa Bài luận mở lên trên Su chum rồi lưu kiểm tra thứ tự.
     await user.click(screen.getByRole("button", { name: "Đưa dòng Bài luận mở lên trên" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const reordered = sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[];
     expect(reordered.map((item) => item.name)).toEqual(["Su don", "Bài luận mở", "Su chum"]);
@@ -168,14 +168,14 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     expect(screen.getByRole("button", { name: "Đưa dòng Su don xuống dưới" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Đưa dòng Su chum lên trên" })).toHaveAttribute("aria-disabled", "true");
 
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.mixBlocks).toBe(true);
 
     await user.click(mixSwitch);
     expect(mixSwitch).not.toBeChecked();
     expect(banner).toHaveAttribute("data-mixed", "false");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
     expect(sectionsOf(putCalls(server)[1]!.body)["sec-su"]).not.toHaveProperty("mixBlocks");
   });
@@ -184,7 +184,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     const user = userEvent.setup();
     const { server } = await openSection("sec-ly", lyParts());
     await type(user, structureInput("Điền đáp án"), "2");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body)["sec-ly"]!;
     expect(sent.answerQuotas ?? null).toBeNull();
@@ -214,7 +214,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     );
     const { server } = await openSection("sec-toan", [wirePart([toan])]);
     await type(user, structureInput("Điền đáp án"), "12");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.answerQuotas).toEqual({
       unit: "COUNT",
@@ -237,7 +237,7 @@ describe("MT của QDA, BCA: khối lớp, độ khó và mức áp dụng (R-4,
     await type(user, difficulty().getByLabelText("Vận dụng"), "5");
     // 25 = 22 trắc nghiệm + 1 điền... số câu của môn là 25 (21 + 3 + 1); tổng khai 25/25.
     expect(await screen.findByText("Đã khai 25/25")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const matrix = sectionsOf(putCalls(server)[0]!.body)["sec-ly"]!.matrix as Wire;
     expect(matrix.byDifficulty).toEqual([
@@ -258,7 +258,7 @@ describe("MT của QDA, BCA: khối lớp, độ khó và mức áp dụng (R-4,
     await type(user, difficulty().getByLabelText("Thông hiểu"), "5");
     await type(user, difficulty().getByLabelText("Vận dụng"), "5");
     expect(await screen.findByText("Đã khai 20/25")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(checkCalls(server)).toHaveLength(0);
   });
@@ -295,16 +295,16 @@ describe("MT: giới hạn Khoa học của QDA (R-12)", () => {
     const { server } = await openSection("sec-ly", parts);
     await type(user, structureInput("Số chùm"), "3");
     expect(await screen.findByText("Số chùm từ 1 đến 2")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await type(user, structureInput("Số chùm"), "2");
     await type(user, structureInput("Điền đáp án"), "0");
     expect(await screen.findByText("Cần ít nhất 1 câu điền đáp án")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await type(user, structureInput("Điền đáp án"), "1");
     await waitFor(() => expect(screen.queryByText(/Cần ít nhất 1 câu điền/)).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     // Sử cho 0 câu điền: mở môn Sử không có lỗi nào.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -315,7 +315,7 @@ describe("MT: giới hạn Khoa học của QDA (R-12)", () => {
     const parts = [wirePart([wireQdaScience("sec-ly", "LY")])];
     const { server } = await openSection("sec-ly", parts, "BCA");
     await type(user, structureInput("Số chùm"), "3");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
   });
 });
@@ -358,7 +358,7 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
     await user.click(await screen.findByRole("menuitem", { name: /Nhãn nguồn/ }));
     const tag = await within(source).findAllByRole("checkbox");
     await user.click(tag[0]!);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [single, set, fill] = sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.blocks as Wire[];
     const seeded = (original[0]!.sections as Wire[])[0]!.blocks as Wire[];
@@ -411,7 +411,7 @@ describe("MT: Nguồn chùm và phạm vi (R-3, R-6)", () => {
       expect(el.getAttribute("aria-label")).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
     }
 
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Continue → Listing" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [, savedSet] = sectionsOf(putCalls(server)[0]!.body)["sec-hoa"]!.blocks as Wire[];
     expect(savedSet!.name).toBe("Chùm");
@@ -493,7 +493,7 @@ describe("MT: bàn phím và focus (CR-2 AC-10; R1-3, R1-6)", () => {
     const grade = within(screen.getByRole("heading", { level: 4, name: "Khối lớp" }).closest("[data-form-field]") as HTMLElement);
     await type(user, grade.getByLabelText("Lớp 12"), "abc");
     expect(await grade.findByRole("alert")).toHaveTextContent("Nhập một số không âm.");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(grade.getByLabelText("Lớp 12")).toHaveFocus());
   });

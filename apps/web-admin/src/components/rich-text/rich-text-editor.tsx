@@ -12,6 +12,7 @@ import { deferUntilMhchem, hasUnbalancedMath, sanitizeQuestionHtml, stripTrailin
 import "katex/dist/katex.min.css";
 import { useTranslations } from "next-intl";
 import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type AriaAttributes, type Ref } from "react";
+import { createPortal } from "react-dom";
 import { createRichTextExtensions } from "./extensions";
 import { MathInputRule } from "./extensions/math-input-rule";
 import { SlashMenu } from "./extensions/slash-menu";
@@ -170,6 +171,24 @@ export function RichTextEditor({
   const t = useTranslations("richText");
   const [dialogState, setDialogState] = useState<{ entry: InsertEntry; editing: unknown } | null>(null);
   const [dialogModule, setDialogModule] = useState<InsertDialogModule | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  // Mở rộng ô nhập: khóa cuộn nền và hỗ trợ Esc để thu gọn (khi không mở hộp Chèn).
+  useEffect(() => {
+    if (!expanded || typeof document === "undefined") return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || dialogState) return;
+      event.preventDefault();
+      setExpanded(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [expanded, dialogState]);
 
   // Ô soạn render lại theo mỗi phím gõ (qua `value`): chỉ quét công thức khi `value` đổi.
   const mathWarning = useMemo(() => typeof document !== "undefined" && hasUnbalancedMath(value ?? ""), [value]);
@@ -416,24 +435,44 @@ export function RichTextEditor({
 
   const DialogComponent = dialogModule?.default;
   const SelectionPanel = selection?.entry.selectionPanel;
+  const expandedTitle =
+    ariaProps["aria-label"] ??
+    (expanded && ariaProps["aria-labelledby"] && typeof document !== "undefined"
+      ? document.getElementById(ariaProps["aria-labelledby"])?.textContent?.trim()
+      : undefined) ??
+    t("toolbar.expand");
 
-  return (
+  const editorBox = (
     <div
+      data-expanded={expanded ? "true" : undefined}
+      role={expanded ? "dialog" : undefined}
+      aria-modal={expanded ? true : undefined}
+      aria-label={expanded ? expandedTitle : undefined}
       className={cn(
         "rich-text-editor min-w-0 max-w-full rounded-md border bg-surface transition-colors duration-150 motion-reduce:transition-none",
         "focus-within:border-primary-text focus-within:ring-3 focus-within:ring-primary-text/15",
         invalid && "border-danger focus-within:ring-danger/15",
         !invalid && "border-border hover:border-border-strong",
         disabled && "cursor-not-allowed bg-subtle opacity-60",
+        expanded && "fixed inset-4 z-40 flex flex-col rounded-xl shadow-2xl sm:inset-8",
         className,
       )}
     >
+      {expanded && (
+        <div className="flex items-center justify-between gap-3 border-b border-border bg-subtle/60 px-4 py-2.5">
+          <span className="truncate text-label font-semibold text-text">{expandedTitle}</span>
+          <span className="shrink-0 text-caption text-text-muted">Esc</span>
+        </div>
+      )}
+
       <RichTextToolbar
         editor={editor}
         disabled={disabled}
         insertEntries={insertEntries}
         selectedEntryId={selection?.entry.id ?? null}
         onOpenEntry={onToolbarEntry}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded((current) => !current)}
       />
 
       {/* Khung "đang chọn" của mục registry khớp node/mark hiện tại (spec 4.1). */}
@@ -445,7 +484,10 @@ export function RichTextEditor({
         />
       )}
 
-      <EditorContent editor={editor} />
+      <EditorContent
+        editor={editor}
+        className={cn(expanded && "flex min-h-0 flex-1 flex-col overflow-hidden")}
+      />
 
       {mathWarning && (
         <p role="alert" className="border-t border-border px-3 py-1.5 text-caption text-warning">
@@ -470,4 +512,21 @@ export function RichTextEditor({
       )}
     </div>
   );
+
+  if (expanded && typeof document !== "undefined") {
+    return (
+      <>
+        <div aria-hidden="true" className="min-h-36 rounded-md border border-dashed border-border bg-subtle/50" />
+        {createPortal(
+          <>
+            <div aria-hidden="true" className="fixed inset-0 z-40 bg-overlay" onClick={() => setExpanded(false)} />
+            {editorBox}
+          </>,
+          document.body,
+        )}
+      </>
+    );
+  }
+
+  return editorBox;
 }

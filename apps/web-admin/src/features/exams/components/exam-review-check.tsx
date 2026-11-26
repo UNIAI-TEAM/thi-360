@@ -18,12 +18,13 @@ import {
   TabsTrigger,
   type TableCards,
 } from "@thi360/ui";
-import { ArrowRight, ChevronDown, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { createContext, Fragment, type RefObject, useCallback, useContext, useId, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, type RefObject, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { EXTENDED_CHECK_TIME_LIMIT_SECONDS } from "../check";
+import { examTabHref, withFromReview } from "../editor-tabs";
 import { type DeepCheck, useDeepCheck, useExamCheck, useRunExamCheck } from "../review-queries";
 import type {
   BlockCheck,
@@ -59,9 +60,20 @@ interface ExamReviewCheckProps {
   onPreview: (pathId: string | null) => void;
   /** `false` khi tab bị che: kiểm tra kỹ ngừng hỏi kết quả, hỏi tiếp khi quay lại. */
   active?: boolean;
+  /** Tự chạy kiểm tra lại một lần sau khi quay về từ thao tác "Lưu và quay lại kiểm tra" (`?recheck=1`). */
+  autoRecheck?: boolean;
+  onAutoRecheckStarted?: () => void;
+  onBusyChange?: (busy: boolean) => void;
 }
 
-export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCheckProps) {
+export function ExamReviewCheck({
+  exam,
+  onPreview,
+  active = true,
+  autoRecheck = false,
+  onAutoRecheckStarted,
+  onBusyChange,
+}: ExamReviewCheckProps) {
   const t = useTranslations("exams.review");
   const checkQuery = useExamCheck(exam.id);
   const runCheck = useRunExamCheck(exam.id);
@@ -69,6 +81,7 @@ export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCh
   const blocksRef = useRef<HTMLHeadingElement>(null);
   const [blockTab, setBlockTab] = useState<string | null>(null);
   const [blocksOpen, setBlocksOpen] = useState(false);
+  const autoRecheckStartedRef = useRef(false);
 
   const announceDone = (result: ExamCheckResult) => {
     const count = (value: PathCheckResult) => result.paths.filter((path) => path.result === value).length;
@@ -88,6 +101,22 @@ export function ExamReviewCheck({ exam, onPreview, active = true }: ExamReviewCh
       { onSuccess: announceDone, onError: () => setLiveMessage(t("runError")) },
     );
   }
+
+  useEffect(() => {
+    onBusyChange?.(runCheck.isPending || deep.phase === "running");
+  }, [runCheck.isPending, deep.phase, onBusyChange]);
+
+  useEffect(() => {
+    if (!autoRecheck || autoRecheckStartedRef.current) return;
+    autoRecheckStartedRef.current = true;
+    onAutoRecheckStarted?.();
+    setLiveMessage(t("live.running"));
+    runCheck.mutate(
+      {},
+      { onSuccess: announceDone, onError: () => setLiveMessage(t("runError")) },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRecheck]);
 
   function showOverlap(pathId: string) {
     flushSync(() => {
@@ -212,35 +241,44 @@ function CheckResultView({
   showActions,
 }: CheckResultViewProps) {
   const t = useTranslations("exams.review");
-  const format = useFormatter();
   const stale = result.stale || exam.check.status === "NEEDS_RECHECK";
-  const validCount = result.paths.filter((path) => path.result === "VALID").length;
-  const first = result.paths[0];
   const deepRunning = deep.phase === "running";
   // Chưa xác nhận được ở cả đường lẫn từng cách chọn môn (đường Không hợp lệ vẫn có thể còn cách chọn chưa xác nhận).
   const hasUnconfirmed = result.paths.some(
     (path) => path.result === "UNCONFIRMED" || path.selections.some((selection) => selection.result === "UNCONFIRMED"),
   );
+  const hasNotice = stale || runFailed || (hasUnconfirmed && !deepRunning);
 
   return (
     <>
-      <Card padding="md" className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="flex items-start gap-2 text-body text-text-secondary">
-            <RefreshCw aria-hidden className="mt-0.5 size-4 shrink-0" />
-            <span>
-              {t("lastRun", {
-                time: format.dateTime(new Date(result.checkedAt), "dateTime"),
-                seconds: result.durationSeconds,
-                limit: result.timeLimitSeconds,
-              })}
-            </span>
-          </p>
+      {showActions && (
+        <ExamEditorActions>
+          {hasUnconfirmed && (
+            <Button
+              variant="outline"
+              onClick={deep.start}
+              loading={deepRunning}
+              disabled={running}
+              aria-label={deepRunning ? t("deep.runningLabel") : undefined}
+            >
+              <SearchCheck />
+              {deepRunning ? t("deep.runningLabel") : t("deep.start")}
+            </Button>
+          )}
+          <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
+            <RefreshCw />
+            {t("rerun")}
+          </Button>
+        </ExamEditorActions>
+      )}
+      {hasNotice && (
+        <Card padding="md" className="flex flex-col gap-1.5">
           {stale && (
-            <p className="flex items-start gap-2 text-body text-warning">
+            <div className="flex flex-wrap items-start gap-2 text-body text-warning">
               <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+              <StatusChip tone="warning">{t("needsRecheckChip")}</StatusChip>
               <span>{result.invalidReason ? t(`staleReason.${result.invalidReason}`) : t("stale")}</span>
-            </p>
+            </div>
           )}
           {runFailed && <p className="text-body text-danger">{t("runError")}</p>}
           {hasUnconfirmed && !deepRunning && (
@@ -249,71 +287,11 @@ function CheckResultView({
               <span>{t("deep.hint", { seconds: EXTENDED_CHECK_TIME_LIMIT_SECONDS })}</span>
             </p>
           )}
-        </div>
-        {showActions && (
-          <ExamEditorActions>
-            {hasUnconfirmed && (
-              <Button
-                variant="outline"
-                onClick={deep.start}
-                loading={deepRunning}
-                disabled={running}
-                aria-label={deepRunning ? t("deep.runningLabel") : undefined}
-              >
-                <SearchCheck />
-                {deepRunning ? t("deep.runningLabel") : t("deep.start")}
-              </Button>
-            )}
-            <Button variant="secondary" onClick={onRun} loading={running} disabled={deepRunning}>
-              <RefreshCw />
-              {t("rerun")}
-            </Button>
-          </ExamEditorActions>
-        )}
-      </Card>
+        </Card>
+      )}
       <DeepCheckStatus deep={deep} />
 
-      <dl aria-label={t("summary.label")} className="flex flex-wrap gap-x-6 gap-y-2 text-body">
-        <SummaryItem
-          label={t("summary.paths")}
-          value={t("summary.pathsValue", {
-            valid: validCount,
-            total: result.paths.length,
-          })}
-        />
-        <SummaryItem
-          label={t("summary.questions")}
-          value={
-            result.printedQuestions !== (first?.totalQuestions ?? 0)
-              ? t("summary.questionsPrinted", { count: first?.totalQuestions ?? 0, printed: result.printedQuestions })
-              : format.number(first?.totalQuestions ?? 0)
-          }
-        />
-        <SummaryItem
-          label={t("summary.minutes")}
-          value={t("summary.minutesValue", {
-            count: first?.totalMinutes ?? 0,
-            shared: exam.timing === "SHARED" ? "yes" : "no",
-          })}
-        />
-        <SummaryItem
-          label={t("summary.points")}
-          value={
-            result.maxScore !== null
-              ? t("summary.pointsOfScale", {
-                  points: format.number(result.totalPoints, { maximumFractionDigits: 2 }),
-                  scale: format.number(result.maxScore, { maximumFractionDigits: 2 }),
-                })
-              : format.number(result.totalPoints, { maximumFractionDigits: 2 })
-          }
-        />
-        <SummaryItem
-          label={t("summary.issues")}
-          value={result.issueCount ? t("summary.issuesValue", { count: result.issueCount }) : t("summary.none")}
-        />
-      </dl>
-
-      <ExamReviewFindings exam={exam} result={result} />
+      <ExamReviewFindings exam={exam} result={result} onPreview={onPreview} />
       <ManualGradingSection exam={exam} result={result} />
       <ListingCheckSection exam={exam} group={result.listingCheck} onReload={onReloadCheck} reloading={reloadingCheck} />
       <PathsSection
@@ -340,22 +318,19 @@ function CheckResultView({
         onOpenChange={onBlocksOpenChange}
       />
 
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button asChild variant="secondary">
+          <Link href={examTabHref(exam.id, "listing")}>
+            <ArrowLeft aria-hidden />
+            {t("backToListing")}
+          </Link>
+        </Button>
         <Button variant="outline" onClick={() => onPreview(null)}>
           <Eye />
           {t("toPreview")}
         </Button>
       </div>
     </>
-  );
-}
-
-function SummaryItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline gap-1.5">
-      <dt className="text-text-muted">{label}</dt>
-      <dd className="m-0 font-semibold text-text tabular-nums">{value}</dd>
-    </div>
   );
 }
 
@@ -550,7 +525,7 @@ function PathActions({ path }: { path: PathCheck }) {
     const blockId = path.issues.find((issue) => issue.blockId)?.blockId ?? null;
     return (
       <Button asChild variant="link" size="sm">
-        <Link {...labelled} href={structureHref(examId, blockId)} aria-label={labelBeforeName(t, "paths.fixAria", "path")}>
+        <Link {...labelled} href={withFromReview(structureHref(examId, blockId))} aria-label={labelBeforeName(t, "paths.fixAria", "path")}>
           {t("paths.fix")}
           <ArrowRight />
         </Link>
@@ -705,32 +680,7 @@ function PathsSection({
           />
         </PathActionsContext>
       </Card>
-      <Legend />
     </section>
-  );
-}
-
-function Legend() {
-  const t = useTranslations("exams.review");
-  const results: PathCheckResult[] = ["VALID", "INVALID", "UNCONFIRMED"];
-  return (
-    <Card padding="md" className="flex flex-col gap-2">
-      <h3 className="text-label font-semibold text-text">{t("legend.title")}</h3>
-      <ul className="flex flex-col gap-1.5">
-        {results.map((value) => (
-          <li key={value} className="flex items-start gap-2 text-body text-text-secondary">
-            <PathResultIcon result={value} className="mt-0.5 size-4 shrink-0" />
-            <span>
-              <strong className="font-semibold text-text">{t(`result.${value}`)}:</strong> {t(`legend.${value}`)}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p className="flex items-start gap-2 text-body text-text-muted">
-        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-        {t("legend.note")}
-      </p>
-    </Card>
   );
 }
 

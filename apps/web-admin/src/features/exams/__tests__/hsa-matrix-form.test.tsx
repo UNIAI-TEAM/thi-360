@@ -210,7 +210,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     expect(header).toHaveTextContent(/Thiếu 3/);
     expect(within(structureBlock).getByText(/Thiếu 3 câu/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
   });
 
@@ -218,7 +218,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     const user = userEvent.setup();
     const hsaB = await openHsa("sec-toan", [wirePart([wireHsaMath()])]);
     await type(user, structureInput("Điền đáp án"), "12");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(hsaB.server)).toHaveLength(1));
     expect(sectionsOf(putCalls(hsaB.server)[0]!.body)["sec-toan"]!.answerQuotas).toEqual({
       unit: "COUNT",
@@ -244,7 +244,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
       ]),
     ]);
     await type(user, structureInput("Điền đáp án"), "12");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(legacy.server)).toHaveLength(1));
     expect(sectionsOf(putCalls(legacy.server)[0]!.body)["sec-toan"]!.answerQuotas).toEqual({
       unit: "COUNT",
@@ -261,7 +261,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     const { server, view } = await openHsa("sec-su", parts);
     const fill = () => structureInput("Điền đáp án");
     await type(user, fill(), "0");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const afterZero = (sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[]).find((b) => b.id === "sec-su-fill")!;
     expect(afterZero).toMatchObject({ id: "sec-su-fill", questionCount: 0, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_CUSTOM", tagCodes: [] });
@@ -270,7 +270,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     openStructure("?section=sec-su");
     await screen.findByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING });
     await type(user, fill(), "1");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
     const afterRestore = (sectionsOf(putCalls(server)[1]!.body)["sec-su"]!.blocks as Wire[]).find((b) => b.id === "sec-su-fill")!;
     expect(afterRestore).toMatchObject({ id: "sec-su-fill", questionCount: 1, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_CUSTOM", tagCodes: [] });
@@ -298,7 +298,8 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     mathView.view.unmount();
 
     const suView = await openHsa("sec-su", [wirePart([wireHsaSocial("sec-su", "SU")])]);
-    expect(screen.getByRole("heading", { level: 4, name: "Khối lớp" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 4, name: "Khối lớp" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 4, name: "Độ khó" })).toBeInTheDocument();
     suView.view.unmount();
 
     boot({ kind: "HSA", parts: [wirePart([wireHsaEnglish()])] });
@@ -319,16 +320,16 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
 
     await type(user, structureInput("Số chùm"), "3");
     expect(await screen.findByText("Số chùm từ 1 đến 2")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await user.click(screen.getByRole("button", { name: "Lưu nháp và thoát" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
 
-    await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /Lịch sử|SU/ }));
+    await user.click(screen.getByRole("button", { name: "Quay lại" }));
     const leaveDialog = await screen.findByTestId("structure-leave-dialog");
     await user.click(within(leaveDialog).getByRole("button", { name: "Lưu và chuyển" }));
     expect(putCalls(server)).toHaveLength(0);
@@ -340,18 +341,18 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     await type(user, structureInput("Số chùm"), "2");
     await type(user, structureInput("Điền đáp án"), "0");
     expect(await screen.findByText("Cần ít nhất 1 câu điền đáp án")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục" }));
+    await user.click(screen.getByRole("button", { name: "Lưu nháp và thoát" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
 
     await type(user, structureInput("Điền đáp án"), "1");
     await waitFor(() => expect(screen.queryByText(/Cần ít nhất 1 câu điền/)).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
 
     await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /Lịch sử|SU/ }));
@@ -374,8 +375,8 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
   });
 });
 
-describe("HSA Sử & Địa lí: AD-98 (thứ tự, gọn, phân bổ, khối lớp tùy chọn) và AD-99 (tư liệu động)", () => {
-  it("hsaHistoryGeographyOrderAndAllocated: Sử/Địa đặt Mạch kiến thức trước Cấu trúc câu gọn, đếm đã phân bổ và còn tự do theo quy tắc & %; Toán/Lý/Hóa/Sinh giữ thứ tự chuẩn", async () => {
+describe("HSA Sử & Địa lí: UNI-1723 & UNI-1724 (Cấu trúc lên đầu, ẩn khối lớp, bỏ điều kiện tư liệu Địa lí)", () => {
+  it("hsaHistoryGeographyOrderAndAllocated: Sử/Địa đặt Cấu trúc câu lên trước Mạch kiến thức, đếm đã phân bổ và còn tự do theo quy tắc & %", async () => {
     const user = userEvent.setup();
     const parts = [
       wirePart([
@@ -394,14 +395,13 @@ describe("HSA Sử & Địa lí: AD-98 (thứ tự, gọn, phân bổ, khối l�
     const strand = screen.getByTestId("hsa-strand-section");
     const structure = document.querySelector<HTMLElement>('[data-form-field="STRUCTURE"]')!;
     expect(structure).toHaveAttribute("data-structure-variant", "compact");
-    expect(strand.compareDocumentPosition(structure) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(structure.compareDocumentPosition(strand) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 
     const alloc = screen.getByTestId("hsa-mapid-allocation");
     expect(alloc).toHaveTextContent(/10 \/ 17/);
     expect(alloc).toHaveTextContent(/còn tự do: 7/);
     expect(strand).toHaveTextContent(/không ấn định vị trí câu trong đề/);
 
-    // Bảng v3 cộng thẳng: đổi Trắc nghiệm độc lập 14 -> 11 và Số chùm 1 -> 2 (tổng giữ 17) thì quy tắc 25% trên nhóm đơn giảm còn 3 -> phân bổ 5 + 3 + 1 = 9, còn 8.
     await type(user, rowCountInput("Trắc nghiệm độc lập"), "11");
     await type(user, structureInput("Số chùm"), "2");
     expect(alloc).toHaveTextContent(/9 \/ 17/);
@@ -413,63 +413,28 @@ describe("HSA Sử & Địa lí: AD-98 (thứ tự, gọn, phân bổ, khối l�
     expect(document.querySelector('[data-form-field="STRUCTURE"]')).not.toHaveAttribute("data-structure-variant");
   });
 
-  it("hsaHistoryGeographyOptionalGrade: xóa 3 ô khối lớp trên HSA Sử/Địa hiện Chưa áp dụng và lưu byGrade rỗng không bị chặn", async () => {
+  it("hsaHistoryGeographyHidesGrade: HSA Sử và Địa ẩn Khối lớp (chỉ giữ Độ khó) và xóa byGrade cũ khi chỉnh sửa lưu", async () => {
     const user = userEvent.setup();
     const { server } = await openHsa("sec-su", [wirePart([wireHsaSocial("sec-su", "SU")])]);
-    const gradeSection = screen.getByRole("heading", { level: 4, name: "Khối lớp" }).closest("[data-form-field]") as HTMLElement;
-    expect(within(gradeSection).getByText("Bắt buộc")).toBeInTheDocument();
-
-    for (const label of ["Lớp 10", "Lớp 11", "Lớp 12"]) {
-      await user.clear(within(gradeSection).getByLabelText(label));
-    }
-    expect(within(gradeSection).getByText("Chưa áp dụng")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    expect(screen.queryByRole("heading", { level: 4, name: "Khối lớp" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Độ khó" })).toBeInTheDocument();
+    const diffSection = screen.getByRole("heading", { level: 4, name: "Độ khó" }).closest("[data-form-field]") as HTMLElement;
+    await type(user, within(diffSection).getByLabelText("Nhận biết"), "6");
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect((sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix as Wire).byGrade).toEqual([]);
   });
 
-  it("hsaGeographyMaterialTagsDynamic: HSA Địa lí đọc tag từ danh mục động, lưu vào set.tagCodes, nạp lại vẫn còn; Toán/Sử/Hóa không có mục tư liệu", async () => {
-    const user = userEvent.setup();
+  it("hsaGeographyOmitsMaterialAndGrade: HSA Địa lí không còn Điều kiện tư liệu và Khối lớp, Cấu trúc câu đứng trước Mạch kiến thức", async () => {
     const firstDia = await openHsa("sec-dia", [wirePart([wireHsaSocial("sec-dia", "DIA")])]);
-    const matSection = screen.getByTestId("hsa-dia-material-section");
-    expect(within(matSection).getByText("Chưa áp dụng")).toBeInTheDocument();
-    await user.click(screen.getByTestId("hsa-dia-material-add"));
-
-    const picker = screen.getByTestId("hsa-dia-material-picker");
-    await waitFor(() => expect(within(picker).getByRole("searchbox")).toHaveFocus());
-    await user.click(within(picker).getByRole("checkbox", { name: "Bản đồ" }));
-    await user.click(within(picker).getByRole("checkbox", { name: "Át-lát" }));
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(putCalls(firstDia.server)).toHaveLength(1));
-    const blocks = sectionsOf(putCalls(firstDia.server)[0]!.body)["sec-dia"]!.blocks as Wire[];
-    expect(blocks[1]!.tagCodes).toEqual(["DIA_BAN_DO", "DIA_ATLAT"]);
-    expect(blocks[0]!.tagCodes).toEqual([]);
+    expect(screen.queryByTestId("hsa-dia-material-section")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 4, name: "Khối lớp" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 4, name: "Độ khó" })).toBeInTheDocument();
+    const strand = screen.getByTestId("hsa-strand-section");
+    const structure = document.querySelector<HTMLElement>('[data-form-field="STRUCTURE"]')!;
+    expect(structure.compareDocumentPosition(strand) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
     firstDia.view.unmount();
 
-    // Nạp lại với server đã lưu -> mở sẵn picker với 2 nhãn đã chọn; bỏ hết nhãn vẫn giữ mở để chọn nhãn khác, chỉ đóng khi bấm Bỏ.
-    const reloadedDia = await openHsa("sec-dia", [
-      wirePart([
-        {
-          ...wireHsaSocial("sec-dia", "DIA"),
-          blocks: blocks,
-        },
-      ]),
-    ]);
-    const reloadedPicker = screen.getByTestId("hsa-dia-material-picker");
-    expect(reloadedPicker).toBeInTheDocument();
-    await user.click(within(reloadedPicker).getByRole("checkbox", { name: "Bản đồ" }));
-    await user.click(within(reloadedPicker).getByRole("checkbox", { name: "Át-lát" }));
-    expect(screen.getByTestId("hsa-dia-material-picker")).toBeInTheDocument();
-    await user.click(within(screen.getByTestId("hsa-dia-material-picker")).getByRole("checkbox", { name: "Át-lát" }));
-    await user.click(screen.getByTestId("hsa-dia-material-clear"));
-    expect(screen.queryByTestId("hsa-dia-material-picker")).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId("hsa-dia-material-add")).toHaveFocus());
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
-    await waitFor(() => expect(putCalls(reloadedDia.server)).toHaveLength(1));
-    expect((sectionsOf(putCalls(reloadedDia.server)[0]!.body)["sec-dia"]!.blocks as Wire[])[1]!.tagCodes).toEqual([]);
-    reloadedDia.view.unmount();
-
-    // Toán, Sử, Hóa không có mục điều kiện tư liệu Địa lí.
     const toanView = await openHsa("sec-toan", [wirePart([wireHsaMath()])]);
     expect(screen.queryByTestId("hsa-dia-material-section")).not.toBeInTheDocument();
     toanView.view.unmount();
@@ -582,7 +547,7 @@ describe("HSA Sử & Địa lí: AD-98 (thứ tự, gọn, phân bổ, khối l�
     await user.click(everyChild);
     expect(everyChild).not.toBeChecked();
 
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sentScope = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.knowledgeScope as Wire;
     expect(sentScope).not.toHaveProperty("everyChildInScope");
@@ -609,10 +574,9 @@ describe("HSA Sử & Địa lí: AD-98 (thứ tự, gọn, phân bổ, khối l�
     const enView = renderWithProviders(<ExamStructureView examId={EXAM_ID} />, { locale: "en", messages: en });
     const strand = await screen.findByTestId("hsa-strand-section");
     const alloc = screen.getByTestId("hsa-mapid-allocation");
-    const mat = screen.getByTestId("hsa-dia-material-section");
+    expect(screen.queryByTestId("hsa-dia-material-section")).not.toBeInTheDocument();
     const vnRe = /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i;
     expect(alloc.textContent).not.toMatch(vnRe);
-    expect(mat.textContent).not.toMatch(vnRe);
     expect(strand.querySelector("h3")?.textContent).not.toMatch(vnRe);
     expect(alloc).toHaveTextContent("MAPID allocated: 16 / 17 questions · remaining free: 1 question");
     enView.unmount();

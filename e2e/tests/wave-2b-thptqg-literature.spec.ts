@@ -56,11 +56,11 @@ test("THPTQG Ngữ văn: tạo, lưu được, kiểm tra báo TEMPLATE_NOT_PUBL
   expect(check.paths.every((path) => path.result !== "VALID")).toBe(true);
 
   // Tab Kiểm tra cấu hình: lỗi mẫu chưa công bố được hiện trong kết quả.
-  await openEditorTab(page, "Kiểm tra và xem trước", /\/exams\/[^/]+\/review/);
+  await openEditorTab(page, "4. Kiểm tra, xem trước và công bố", /\/exams\/[^/]+\/review/);
   await expect(page.getByText(/Mẫu chuẩn của môn .* chưa công bố được/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
 
   // Công bố bị từ chối: hộp thoại không cho chọn đường nào; máy chủ từ chối 422 PATH_NOT_VALID và không tạo phiên bản.
-  await openEditorTab(page, "Phiên bản và công bố", /\/exams\/[^/]+\/versions/);
+  await openEditorTab(page, "Lịch sử phiên bản", /\/exams\/[^/]+\/versions/);
   await page.getByRole("button", { name: "Công bố", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("checkbox").first()).toBeDisabled();

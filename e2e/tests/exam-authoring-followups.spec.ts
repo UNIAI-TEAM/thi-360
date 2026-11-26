@@ -107,9 +107,9 @@ test.describe("giao diện soạn đề 2B", () => {
     await loginAdmin(context, "vi");
     await page.goto(`${ADMIN_URL}/exams/${examId}/review`);
 
-    // Thanh thẻ: các trang của bài thi, thẻ đang mở là Kiểm tra và xem trước.
+    // Thanh thẻ: các trang của bài thi, thẻ đang mở là 4. Kiểm tra, xem trước và công bố.
     const tabs = page.getByRole("navigation", { name: "Các phần của bài thi" });
-    await expect(tabs.getByRole("link", { name: "Kiểm tra và xem trước" })).toHaveAttribute("aria-current", "page");
+    await expect(tabs.getByRole("link", { name: "4. Kiểm tra, xem trước và công bố" })).toHaveAttribute("aria-current", "page");
     // Nút đầu trang: hàng tiêu đề của bài có nút Kiểm tra lại.
     await expect(page.locator("header").getByRole("button", { name: "Kiểm tra lại" })).toBeVisible();
     // Dải tóm tắt: lỗi, cảnh báo, chưa xác nhận, môn đã kiểm tra.

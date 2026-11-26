@@ -305,7 +305,7 @@ describe("Đi tới quy tắc", () => {
     await waitFor(() => expect(screen.getByTestId("row-r1")).toHaveFocus());
     expect(screen.getByTestId("row-r1")).toHaveAttribute("data-mapid-highlight");
     expect(screen.getByTestId("row-r1")).toHaveAttribute("data-mapid-focus");
-    await userEvent.click(screen.getByRole("button", { name: "Đến chỗ sửa" }));
+    await userEvent.click(screen.getByRole("button", { name: "Đến vị trí cần sửa" }));
     expect(onSelect).toHaveBeenLastCalledWith({ kind: "block", blockId: "short" });
     expect(screen.getAllByRole("button", { name: /Đi tới quy tắc/ })).toHaveLength(1);
   });
@@ -322,7 +322,7 @@ describe("lỗi sinh thử nêu quy tắc", () => {
     );
 
     const link = screen.getByRole("link", { name: "Đi tới quy tắc: Quy tắc A thiếu nguồn" });
-    expect(link).toHaveAttribute("href", "/exams/ex-1/structure?section=s1&rule=r2");
+    expect(link).toHaveAttribute("href", "/exams/ex-1/structure?section=s1&rule=r2&from=review");
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 });

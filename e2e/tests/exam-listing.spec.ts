@@ -119,7 +119,7 @@ function solidPng(size: number): Buffer {
 const priceBox = (page: Page) => page.getByRole("textbox", { name: "Giá bán", exact: true });
 const attemptsBox = (page: Page) => page.getByRole("spinbutton", { name: "Số lượt mỗi lần mua" });
 const descriptionBox = (page: Page) => page.getByRole("textbox", { name: "Mô tả", exact: true });
-const saveButton = (page: Page) => page.getByRole("button", { name: "Lưu", exact: true });
+const saveButton = (page: Page) => page.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước", exact: true });
 const listingForm = (page: Page) => page.getByRole("form", { name: "Thông tin bán" });
 const isListingPut = (id: string) => (response: { url(): string; request(): { method(): string } }) =>
   response.url().endsWith(`/exams/${id}/listing`) && response.request().method() === "PUT";
@@ -133,11 +133,10 @@ test.describe("FA-1: tab Thông tin bán", () => {
     await page.goto(`${ADMIN_URL}/exams/${id}`);
     const tabs = page.getByRole("navigation", { name: "Các phần của bài thi" });
     await expect(tabs.getByRole("link")).toHaveText([
-      "Thông tin chung",
-      "Cấu trúc và ma trận",
-      "Thông tin bán",
-      "Kiểm tra và xem trước",
-      "Phiên bản và công bố",
+      "1. Thông tin chung",
+      "2. Cấu trúc và ma trận",
+      "3. Thông tin bán",
+      "4. Kiểm tra, xem trước và công bố",
     ]);
 
     await tabs.getByRole("link", { name: "Thông tin bán" }).click();
@@ -175,8 +174,8 @@ test.describe("FA-1: tab Thông tin bán", () => {
     expect(saved).toMatchObject({ listPriceVnd: 249000, attemptsGranted: 3, benefitPractice: true, resultView: "FULL_SOLUTION" });
     await expect(page.locator("[data-sonner-toast]").getByText("Đã lưu thông tin bán.")).toBeVisible();
 
-    // Tải lại: giá trị đã lưu hiện lại; lưu tiếp dùng revision mới.
-    await page.reload();
+    // Mở lại tab Thông tin bán: giá trị đã lưu hiện lại; lưu tiếp dùng revision mới.
+    await page.goto(`${ADMIN_URL}/exams/${id}/listing`);
     await expect(priceBox(page)).toHaveValue("249000");
     await expect(attemptsBox(page)).toHaveValue("3");
     await expect(descriptionBox(page)).toHaveValue(`Mô tả của bài ${TAG}`);
@@ -332,7 +331,7 @@ test.describe("FA-1: tab Thông tin bán", () => {
       await expect(descriptionBox(page)).toBeDisabled();
       await expect(page.getByRole("checkbox").first()).toBeDisabled();
       await expect(page.getByRole("radio").first()).toBeDisabled();
-      await expect(page.getByRole("button", { name: "Lưu", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Lưu nháp và thoát", exact: true })).toHaveCount(0);
       await expect(page.getByText("Đổi ảnh")).toHaveCount(0);
       await expect(page.getByText("Chọn ảnh")).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Bỏ ảnh" })).toHaveCount(0);

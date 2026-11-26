@@ -328,10 +328,10 @@ describe("bấm vào lỗi của mã mới dẫn tới đúng dòng ở bước 
 
     expect(await errors.findByText(/nguồn có audio chưa đủ cho dòng: cần 3, hiện ghép được 2/)).toBeInTheDocument();
     const structure = `/exams/${EXAM_ID}/structure`;
-    expect(errors.getByRole("link", { name: /nguồn có audio chưa đủ/ })).toHaveAttribute("href", `${structure}?block=blk-1`);
-    expect(errors.getByRole("link", { name: /mẫu khóa/ })).toHaveAttribute("href", `${structure}?block=blk-1`);
-    expect(errors.getByRole("link", { name: /Thang đang là 150/ })).toHaveAttribute("href", `${structure}?part=part-1`);
-    expect(errors.getByRole("link", { name: /một phân đoạn có 3 lệnh/ })).toHaveAttribute("href", `${structure}?part=part-1`);
+    expect(errors.getByRole("link", { name: /nguồn có audio chưa đủ/ })).toHaveAttribute("href", `${structure}?block=blk-1&from=review`);
+    expect(errors.getByRole("link", { name: /mẫu khóa/ })).toHaveAttribute("href", `${structure}?block=blk-1&from=review`);
+    expect(errors.getByRole("link", { name: /Thang đang là 150/ })).toHaveAttribute("href", `${structure}?part=part-1&from=review`);
+    expect(errors.getByRole("link", { name: /một phân đoạn có 3 lệnh/ })).toHaveAttribute("href", `${structure}?part=part-1&from=review`);
   });
 });
 

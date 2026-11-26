@@ -24,7 +24,7 @@ vi.mock(import("@/features/content/api"), async (importOriginal) => {
 
 const EXAMS_PATH = "/api/v1/admin/exams";
 const TEMPLATES_PATH = "/api/v1/admin/exam-templates";
-const SUBMIT = "Lưu và tiếp tục";
+const SUBMIT = "Tiếp tục → Cấu trúc và ma trận";
 
 /** Kỳ thi chọn bằng ô chọn (không còn thẻ radio): mở danh sách rồi chọn mục có mã trong ngoặc. */
 async function pickKind(user: UserEvent, code: string) {

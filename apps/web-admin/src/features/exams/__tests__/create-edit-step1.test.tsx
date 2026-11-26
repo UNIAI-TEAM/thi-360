@@ -36,7 +36,7 @@ const EXAM_ID = "ex-edit-step1";
 const EXAM_PATH = `/api/v1/admin/exams/${EXAM_ID}`;
 const STRUCTURE_PATH = `${EXAM_PATH}/structure`;
 const FORM_NAME = "Thông tin bài thi";
-const SAVE = "Lưu thông tin";
+const SAVE = "Tiếp tục → Cấu trúc và ma trận";
 const MATH = "Toán học và xử lí số liệu";
 const LITERATURE = "Ngôn ngữ – Văn học";
 const SCIENCE = "Khoa học tự nhiên";
@@ -154,7 +154,7 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
     await open();
     expect(screen.getByRole("heading", { name: "HSA quay lại bước 1", level: 1 })).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Các phần của bài thi" });
-    expect(within(nav).getByRole("link", { name: "Thông tin chung" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "1. Thông tin chung" })).toHaveAttribute("aria-current", "page");
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
     expect(headings).toEqual(expect.arrayContaining(["Thông tin chung", "Phạm vi bài thi", "Cấu trúc tổng quan", "Tóm tắt", "Tình trạng"]));
     expect(screen.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue("HSA quay lại bước 1");
@@ -210,20 +210,20 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
     expect(body.parts[0]).toMatchObject({ id: "part-1", questionCount: 40 });
     expect(backend.calls("POST", "/api/v1/admin/exams")).toHaveLength(0);
     expect(backend.app(EXAM_ID).parts[0]!.questionCount).toBe(40);
-    expect(routerMock.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
   }, 30_000);
 
-  it("không sửa gì: bấm Lưu thông tin không gửi ghi và không điều hướng đi nơi khác", async () => {
+  it("không sửa gì: bấm Tiếp tục không gửi ghi và chuyển sang bước 2", async () => {
     setup();
     const user = userEvent.setup();
     await open();
     await user.click(screen.getByRole("button", { name: SAVE }));
     expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
     expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
-    expect(routerMock.push).not.toHaveBeenCalled();
+    expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`);
   }, 30_000);
 
-  it("AC-1697-4: đổi phạm vi sang Theo phần thì hỏi nạp lại cấu trúc, xác nhận mới gửi confirmReplace và giữ nguyên trên tab 1", async () => {
+  it("AC-1697-4: đổi phạm vi sang Theo phần thì hỏi nạp lại cấu trúc, xác nhận mới gửi confirmReplace rồi sang bước 2", async () => {
     const hsaFull = FIXTURE_TEMPLATES.find((item) => item.code === "HSA_FULL")!;
     const englishPart = FIXTURE_TEMPLATES.find((item) => item.code === "HSA_SINGLE")!;
     setup({}, (server) =>
@@ -242,7 +242,7 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
     await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
     await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));
     expect(backend.calls("PATCH", EXAM_PATH)[0]!.body).toMatchObject({ kind: "HSA", scope: "PART", confirmReplace: true, expectedRevision: seeded.revision });
-    expect(routerMock.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
   }, 30_000);
 
   it("AC-1697-5a: bài chưa công bố đổi được cách dựng bài; Lưu thông tin hỏi xác nhận, xác nhận gửi buildMode + confirmReplace và máy chủ dựng lại cấu trúc", async () => {
@@ -282,7 +282,7 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
       expectedRevision: seeded.revision,
     });
     expect(backend.app(EXAM_ID).buildMode).toBe("REVIEW");
-    expect(routerMock.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
   }, 30_000);
 
   it("AC-1697-5b: Quay lại ở hộp xác nhận đổi cách dựng bài không gửi gì, cách dựng bài đã lưu giữ nguyên", async () => {
@@ -381,7 +381,7 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
       expectedRevision: seeded.revision + 1,
     });
     expect(backend.app(EXAM_ID).parts[0]!.questionCount).toBe(40);
-    expect(routerMock.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
   }, 30_000);
 
   it("R1-9..11/R1-23: bài đã công bố gặp 409 EXAM_CODE_TAKEN vẫn báo lỗi và focus ô Mã; 409 khác không gán nhầm vào ô Mã", async () => {
@@ -438,9 +438,10 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
     await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));
     expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
     expect(backend.calls("PATCH", EXAM_PATH)[0]!.body).toMatchObject({ name: "Chỉ sửa tên", expectedRevision: seeded.revision });
-    expect(routerMock.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
     first.unmount();
 
+    routerMock.push.mockReset();
     setup();
     await open();
     await user.clear(countOf(MATH));
@@ -458,7 +459,7 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
       name: "Sửa cả hai",
       expectedRevision: seeded.revision + 1,
     });
-    expect(routerMock.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
   }, 30_000);
 
   it("R1-21: GET /exam-templates về sau khi biểu mẫu dựng giữ nguyên phạm vi đã lưu và áp khóa mẫu", async () => {
@@ -485,7 +486,7 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
     await user.click(screen.getByRole("button", { name: SAVE }));
     expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
     expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(0);
-    expect(routerMock.push).not.toHaveBeenCalled();
+    expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`);
   }, 30_000);
 
   it("R1-15: chế độ sửa với cấu trúc rỗng (parts: []) hiện câu thông báo rỗng thay vì bảng trống", async () => {
@@ -585,7 +586,7 @@ describe("Tab Thông tin chung hợp nhất ở chế độ sửa (/exams/<id>, 
     await waitFor(() => expect(backend.calls("PATCH", EXAM_PATH)).toHaveLength(1));
     expect(screen.queryByRole("heading", { name: "Không tải được bài thi" })).not.toBeInTheDocument();
     expect(backend.app(EXAM_ID).name).toBe("HSA sau retry vẫn lưu được");
-    expect(routerMock.push).not.toHaveBeenCalled();
+    expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`);
   }, 30_000);
 
   it("R2-3: tải lại nền gặp lỗi 500 khi đã có dữ liệu giữ nguyên biểu mẫu và nội dung đang sửa dở", async () => {

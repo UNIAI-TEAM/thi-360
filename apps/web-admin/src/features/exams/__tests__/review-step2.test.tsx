@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ContentApi from "@/features/content/api";
@@ -101,26 +101,25 @@ describe("Bài ôn: chỗ sửa của khối duy nhất là màn bài ôn (AC-3)
     expect(screen.queryByRole("heading", { name: "Về màn môn" })).not.toBeInTheDocument();
   });
 
-  it("'Tiếp tục' gặp lỗi của nhóm: dẫn tới màn bài ôn, không phải màn nhóm", async () => {
-    boot();
-    const user = userEvent.setup();
-    open("");
-    await user.click(await screen.findByRole("button", { name: "Tiếp tục" }));
-    await waitFor(() => expect(screen.getByTestId("structure-check-result")).toBeInTheDocument());
-    expect(router.push).not.toHaveBeenCalled();
-    expect(await reviewHeading()).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: /^Tên nhóm/ })).not.toBeInTheDocument();
-  });
-
-  it("'Đến chỗ sửa' của lỗi nhóm trong kết quả kiểm tra mở màn bài ôn", async () => {
-    boot();
+  it("'Kiểm tra cấu trúc' chạy tại chỗ không gọi POST /check và báo Cấu trúc hợp lệ cho bài ôn hợp lệ", async () => {
+    const server = boot();
     const user = userEvent.setup();
     open("?part=part-1");
-    await user.click(await screen.findByRole("button", { name: "Kiểm tra toàn bài" }));
-    const result = await screen.findByTestId("structure-check-result");
-    await user.click(within(result).getByRole("button", { name: "Đến chỗ sửa" }));
-    expect(await reviewHeading()).toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: /^Tên nhóm/ })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: "Kiểm tra cấu trúc" }));
+    const result = await screen.findByTestId("structure-quick-check-result");
+    expect(result).toHaveTextContent("Cấu trúc hợp lệ");
+    expect(server.calls("POST", CHECK)).toHaveLength(0);
+    expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
+  });
+
+  it("'Tiếp tục → Thông tin bán' chuyển thẳng sang bước 3 khi bài ôn chưa sửa", async () => {
+    const server = boot();
+    const user = userEvent.setup();
+    open("?section=sec-1");
+    await reviewHeading();
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    expect(router.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/listing`);
+    expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
   });
 });
 

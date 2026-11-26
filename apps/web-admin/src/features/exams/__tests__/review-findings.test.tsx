@@ -79,7 +79,7 @@ describe("Kiểm tra: lỗi và cảnh báo tách riêng", () => {
   it("lỗi chặn công bố và cảnh báo nằm ở hai danh sách, kèm số đếm và câu kết luận", async () => {
     renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: wire([...ERRORS, ...WARNINGS]) }));
 
-    expect(await screen.findByText("Chưa công bố được: 3 lỗi chặn công bố.")).toBeInTheDocument();
+    expect(await screen.findByText("Cấu trúc có 3 lỗi · Chưa thể công bố")).toBeInTheDocument();
     expect(screen.getByText(/2 cảnh báo không chặn công bố\./)).toBeInTheDocument();
     const errors = await errorsList();
     const warnings = within(screen.getByTestId("findings-warnings"));
@@ -166,8 +166,8 @@ describe("Kiểm tra: bấm lỗi mở đúng chỗ ở bước Cấu trúc", ()
     const errors = await errorsList();
     const links = errors.getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
-      `${STRUCTURE}?section=sec-1`,
-      `${STRUCTURE}?block=blk-1&field=itemShape`,
+      `${STRUCTURE}?section=sec-1&from=review`,
+      `${STRUCTURE}?block=blk-1&field=itemShape&from=review`,
     ]);
     expect(links[1]).toHaveAccessibleName(/^Mở chỗ lỗi: /);
   });
@@ -320,7 +320,7 @@ describe("Kiểm tra: tiếng Anh", () => {
   it("câu kết luận và nhãn nhóm theo ngôn ngữ en", async () => {
     renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: wire(ERRORS) }), "en");
 
-    expect(await screen.findByText("Cannot publish yet: 3 errors block publishing.")).toBeInTheDocument();
+    expect(await screen.findByText("Structure has 3 errors · Cannot publish yet")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Code" })).toBeInTheDocument();
   });
 });

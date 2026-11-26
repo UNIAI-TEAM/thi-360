@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuestionEditorView } from "../components/question-editor-view";
-import { renderEn, seedQuestion, storedQuestion } from "./editor-test-kit";
+import { renderEn, rich, seedQuestion, storedQuestion } from "./editor-test-kit";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -139,5 +139,26 @@ describe("trinh soan Ghep doi", () => {
     expect(await screen.findAllByText("Enter the left column item.")).toHaveLength(2);
     expect(screen.getAllByText("Enter the choice text or delete the choice.")).toHaveLength(2);
     expect(navigation.push).not.toHaveBeenCalled();
+  });
+
+  it("lựa chọn đúng không hiển thị thẻ HTML thô của nội dung cột phải (UNI-1726 / UNI-2835)", async () => {
+    const user = userEvent.setup();
+    renderEn(<QuestionEditorView mode="create" type="MATCHING" />);
+    const choiceA = await screen.findByRole("textbox", { name: "Choice A" });
+    const choiceB = screen.getByRole("textbox", { name: "Choice B" });
+    rich(choiceA).set("<p>tôi chịu</p>");
+    rich(choiceB).set("<p><strong>chịu</strong> phần 2</p>");
+
+    const combobox = screen.getAllByRole("combobox", { name: /^Correct choice/ })[0]!;
+    await user.click(combobox);
+    const optA = await screen.findByRole("option", { name: "A. tôi chịu" });
+    const optB = screen.getByRole("option", { name: "B. chịu phần 2" });
+    expect(optA).not.toHaveTextContent("<p>");
+    expect(optB).not.toHaveTextContent("<p>");
+    expect(optB).not.toHaveTextContent("<strong>");
+
+    await user.click(optA);
+    expect(combobox).toHaveTextContent("A. tôi chịu");
+    expect(combobox).not.toHaveTextContent("<p>");
   });
 });

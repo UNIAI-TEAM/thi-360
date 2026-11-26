@@ -51,9 +51,12 @@ describe("tab Kiểm tra: lỗi của listingCheck", () => {
       }),
     );
 
-    const banner = await screen.findByText("Chưa công bố được: Thông tin bán có 2 lỗi.");
+    const banner = await screen.findByText("Cấu trúc hợp lệ · Thông tin bán có 2 lỗi · Chưa thể công bố");
     expect(screen.queryByText("Công bố được. Không có lỗi chặn.")).not.toBeInTheDocument();
-    expect(within(banner.closest("div")!).getByRole("link", { name: "Sửa thông tin bán" })).toHaveAttribute("href", `/exams/${EXAM_ID}/listing`);
+    expect(within(banner.closest("div")!).getByRole("link", { name: "Sửa thông tin bán" })).toHaveAttribute(
+      "href",
+      `/exams/${EXAM_ID}/listing?from=review`,
+    );
 
     const group = within(document.getElementById("review-listing")!);
     expect(group.getByText("2 lỗi")).toBeInTheDocument();
@@ -78,7 +81,7 @@ describe("tab Kiểm tra: lỗi của listingCheck", () => {
         },
       }),
     );
-    expect(await screen.findByText("Chưa công bố được: 1 lỗi chặn công bố.")).toBeInTheDocument();
+    expect(await screen.findByText("Cấu trúc có 1 lỗi · Thông tin bán có 1 lỗi · Chưa thể công bố")).toBeInTheDocument();
     expect(within(document.getElementById("review-listing")!).getByText("Chưa có mô tả.")).toBeInTheDocument();
   });
 
@@ -163,7 +166,10 @@ describe("hộp thoại công bố: lỗi LISTING_*", () => {
     expect(within(alert).getByText(text)).toBeInTheDocument();
     expect(within(alert).queryByText(/Có đường lựa chọn không còn hợp lệ/)).not.toBeInTheDocument();
     expect(within(alert).queryByText("server text")).not.toBeInTheDocument();
-    expect(within(alert).getByRole("link", { name: "Sửa thông tin bán" })).toHaveAttribute("href", `/exams/${EXAM_ID}/listing`);
+    expect(within(alert).getByRole("link", { name: "Sửa thông tin bán" })).toHaveAttribute(
+      "href",
+      `/exams/${EXAM_ID}/listing?from=review`,
+    );
   });
 
   it("nhiều lỗi một lần: mỗi lỗi một dòng; giá thấp hơn mức tối thiểu lấy mức từ nhóm Thông tin bán của lần kiểm tra", async () => {

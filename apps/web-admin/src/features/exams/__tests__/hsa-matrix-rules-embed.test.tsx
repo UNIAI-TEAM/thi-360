@@ -103,7 +103,7 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
         await screen.findByTestId("mapid-rules-table");
         await addMathRule(user, { type: "COUNT", scope: /^Điền đáp án/, exactCount: 3 });
         await addMathRule(user, { type: "SOURCE", scope: /^Chùm cuối/ });
-        await user.click(screen.getByRole("button", { name: "Lưu" }));
+        await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
         await waitFor(() => expect(putCalls(server)).toHaveLength(1));
         const sec = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!;
         return { mapidMode: sec.mapidMode, mapidRules: sec.mapidRules };
@@ -146,7 +146,7 @@ describe("HSA MT nhúng nguyên vẹn HSA-D/HSA-G Quy tắc MAPID (CR-2H AC-6, A
 
     await user.clear(fill());
     await user.type(fill(), "12");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const savedRules = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.mapidRules as Wire[];
     expect(savedRules[0]).toMatchObject({ id: "r-pct", groupId: "b-short", percent: 20, count: 2 });

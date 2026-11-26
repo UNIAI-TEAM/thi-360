@@ -91,17 +91,17 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     link.remove();
   });
 
-  it("chuyển mục (môn khác) hỏi bằng hộp thoại ba nút; Ở lại giữ chữ đã gõ", async () => {
+  it("chuyển mục (môn khác) trong bước 2 không hỏi và giữ nguyên chữ đã gõ khi quay lại", async () => {
     const user = userEvent.setup();
     boot();
     openStructure("?section=sec-ly");
-    const input = await typeBadValue(user);
-    await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByRole("button", { name: "Lưu và chuyển" })).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
-    expect(input).toHaveValue("abc");
-    expect(window.location.search).toBe("?section=sec-ly");
+    await typeBadValue(user);
+    const nav = await screen.findByRole("navigation", { name: "Cấu trúc" });
+    await user.click(within(nav).getByRole("button", { name: /TOAN/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.location.search).toBe("?section=sec-toan");
+    await user.click(within(nav).getByRole("button", { name: /LY/ }));
+    expect(await fillInput()).toHaveValue("abc");
   });
 
   it("đổi mẫu ở StructureVersionPicker hỏi với ghi chú mất thay đổi chưa lưu; Hủy giữ chữ đã gõ", async () => {
@@ -117,19 +117,21 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     expect(input).toHaveValue("abc");
   });
 
-  it("Hủy thay đổi xóa nhập thô, ghim lại biểu mẫu; sau đó Kiểm tra không còn lỗi từ id cũ", async () => {
+  it("Hủy thay đổi xóa nhập thô, ghim lại biểu mẫu; sau đó Kiểm tra cấu trúc hợp lệ", async () => {
     const user = userEvent.setup();
     const { server } = boot();
     openStructure("?section=sec-ly");
     await typeBadValue(user);
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    expect(await screen.findByTestId("structure-quick-check-result")).not.toHaveTextContent("Cấu trúc hợp lệ");
     expect(checkCalls(server)).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Hủy thay đổi" }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Hủy thay đổi" }));
     await waitFor(() => expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull());
     expect(await fillInput()).toHaveValue("1");
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
-    await waitFor(() => expect(checkCalls(server)).toHaveLength(1));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    expect(await screen.findByTestId("structure-quick-check-result")).toHaveTextContent("Cấu trúc hợp lệ");
+    expect(checkCalls(server)).toHaveLength(0);
   });
 
   it("nạp mẫu đã xác nhận xóa nhập thô và ghim lại biểu mẫu theo cấu trúc mới", async () => {
@@ -149,8 +151,9 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     await waitFor(() => expect(screen.queryByText("Có thay đổi chưa lưu")).toBeNull());
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /LY/ }));
     expect(await fillInput()).toHaveValue("1");
-    await user.click(screen.getByRole("button", { name: "Kiểm tra toàn bài" }));
-    await waitFor(() => expect(checkCalls(server)).toHaveLength(1));
+    await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
+    expect(await screen.findByTestId("structure-quick-check-result")).toHaveTextContent("Cấu trúc hợp lệ");
+    expect(checkCalls(server)).toHaveLength(0);
   });
 
   it("dữ liệu nền tải lại không thay bản nháp đang sửa khi còn nhập thô; bản nháp sạch thì nhận dữ liệu mới", async () => {
@@ -176,11 +179,11 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     const { server } = boot();
     openStructure("?section=sec-ly");
     const input = await typeBadValue(user);
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await user.clear(input);
     await user.type(input, "2");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(JSON.stringify(putCalls(server)[0]!.body)).not.toContain("abc");
     const ly = sectionsOf(putCalls(server)[0]!.body)["sec-ly"] as { blocks: Array<{ id: string; questionCount: number }> };

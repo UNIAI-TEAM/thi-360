@@ -79,7 +79,7 @@ describe("Mở bài đã lưu mức Tham khảo (UNI-1701 AC-4)", () => {
     expect(await screen.findByText(/Đã chuyển mức Tham khảo sang Bắt buộc theo quy định HSA/)).toBeInTheDocument();
     expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ matrix: Record<string, unknown> }> }> };
     expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ gradeEnforcement: "REQUIRED", difficultyEnforcement: "REQUIRED" });
@@ -113,7 +113,7 @@ describe("Bài HSA theo mẫu thật (UNI-1701 R1-2, R1-3)", () => {
     await user.click(await screen.findByRole("radio", { name: "Câu" }));
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ matrix: Record<string, unknown> }> }> };
     expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ basis: "QUESTION", gradeEnforcement: "REQUIRED", difficultyEnforcement: "REQUIRED" });
@@ -167,7 +167,7 @@ describe("Chỉ tiêu Tiếng Anh chờ chuyên gia của mẫu HSA (UNI-1701 R1
     await user.type(grade10!, "40");
     await user.clear(grade12!);
     await user.type(grade12!, "60");
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ id: string; enforcement: string }> };
     expect(sent.examQuotas).toMatchObject([{ id: "hsa-english-grade", enforcement: "REFERENCE" }]);
@@ -179,8 +179,7 @@ describe("Chỉ tiêu Tiếng Anh chờ chuyên gia của mẫu HSA (UNI-1701 R1
     open();
     const apply = (await screen.findAllByRole("button", { name: /Áp dụng phân bổ này/ })).find((button) => !(button as HTMLButtonElement).disabled)!;
     await user.click(apply);
-    await user.click(screen.getByRole("button", { name: /Tổng quan/ }));
-    await user.click(await screen.findByRole("button", { name: "Lưu và chuyển" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ id: string; enforcement: string }> };
     expect(sent.examQuotas).toMatchObject([{ id: "hsa-english-grade", enforcement: "REQUIRED" }]);
@@ -202,7 +201,7 @@ describe("Chỉ tiêu Tiếng Anh chờ chuyên gia của mẫu HSA (UNI-1701 R1
     const view = open();
     await screen.findByText("Có thay đổi chưa lưu");
     expect(screen.queryByRole("group", { name: /Mức của Theo khối lớp/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Lưu" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ matrix: Record<string, unknown> }> }>; examQuotas: Array<{ enforcement: string }> };
     expect(sent.parts[0]!.sections[0]!.matrix).toMatchObject({ gradeEnforcement: "REQUIRED", difficultyEnforcement: "REFERENCE" });

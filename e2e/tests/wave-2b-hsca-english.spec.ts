@@ -14,7 +14,6 @@ import {
   getStructure,
   hscaAudioKey,
   openBlockInUi,
-  openEditorTab,
   expectPublishRefused,
   publishInUi,
   renameFirstBlockAndSaveInUi,
@@ -170,10 +169,9 @@ test("H-SCA Tiếng Anh Nghe: mất tệp nghe báo ATTACHMENT_MISSING và khôn
     expect(missing.length, `không có ATTACHMENT_MISSING: ${JSON.stringify(failed)}`).toBeGreaterThan(0);
     const missingCodes = [...new Set(missing.flatMap((issue) => issue.questionCodes ?? []))];
     expect(missingCodes.length, "ATTACHMENT_MISSING không chỉ rõ câu").toBeGreaterThan(0);
-    // Lỗi chặn nên vẫn ở bước 2; tab Kiểm tra hiện câu và khối có tệp không đọc được.
-    await expect(page).toHaveURL(/\/exams\/[^/]+\/structure/);
+    // Kiểm tra toàn bài chạy tại bước 4: tab Kiểm tra hiện câu và khối có tệp không đọc được.
+    await expect(page).toHaveURL(/\/exams\/[^/]+\/review/);
     expect(failed.status).toBe("INVALID");
-    await openEditorTab(page, "Kiểm tra và xem trước", /\/exams\/[^/]+\/review/);
     await expect(page.getByText(/có tệp đính kèm không đọc được/).first()).toBeVisible({ timeout: SOLVER_TIMEOUT_MS });
 
     // Công bố bị từ chối: hộp thoại "Sẽ công bố 0 / N"; máy chủ trả 422 PATH_NOT_VALID và không tạo phiên bản.

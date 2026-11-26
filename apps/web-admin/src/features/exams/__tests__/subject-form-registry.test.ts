@@ -65,11 +65,17 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(notices).toEqual(["THPTQG:VAN"]);
   });
 
-  it("ẩn khối lớp đúng bảng R-11, cả hai mã Kinh tế - Pháp luật", () => {
+  it("ẩn khối lớp đúng bảng R-11 + UNI-1722/1723/1724 (HSA/QDA Văn, Sử, Địa), cả hai mã Kinh tế - Pháp luật", () => {
     const hidden = TABLE.filter(([kind, subject]) => subjectFormFor(kind, subject)!.hideGrade).map(([kind, subject]) => `${kind}:${subject}`);
     expect(hidden.toSorted()).toEqual(
       [
         "HSA:ANH",
+        "HSA:VAN",
+        "HSA:SU",
+        "HSA:DIA",
+        "QDA:VAN",
+        "QDA:SU",
+        "QDA:DIA",
         ...["SP2E", "SPT", "THPTQG"].flatMap((kind) => ["SU", "DIA", "ECON_LAW", "ANH"].map((subject) => `${kind}:${subject}`)),
         "VSAT:DIA", "VSAT:ANH", "VSAT:VAN",
       ].toSorted(),

@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import {
+  BrandWordmark,
   Button,
   cn,
   EmptyState,
@@ -286,13 +287,7 @@ export function ChangePasswordView({
     <AuthPageStage className={PAGE_CLASS}>
       <div className={CARD_CLASS}>
         <div className="flex items-center gap-3">
-          <span
-            aria-hidden
-            className="flex size-10 items-center justify-center rounded-lg bg-primary-fill font-bold text-on-primary"
-          >
-            {common("logoMark")}
-          </span>
-          <span className="text-h3 font-bold text-primary-900">{common("appName")}</span>
+          <BrandWordmark alt={common("appName")} className="h-9" />
           {openedFromAccountMenu && (
             <a
               href={session.homeUrl}

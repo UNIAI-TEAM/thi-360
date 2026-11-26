@@ -249,8 +249,8 @@ describe("rulesChangedOnCheckPage", () => {
     expect(errors.getByText("LY")).toBeInTheDocument();
     expect(errors.getByText("HOA")).toBeInTheDocument();
     expect(errors.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
-      `${STRUCTURE}?section=sec-phys`,
-      `${STRUCTURE}?section=sec-chem`,
+      `${STRUCTURE}?section=sec-phys&from=review`,
+      `${STRUCTURE}?section=sec-chem&from=review`,
     ]);
 
     expect(server.calls("POST", CHECK)).toHaveLength(0);
@@ -277,8 +277,8 @@ describe("rulesChangedOnCheckPage", () => {
     expect(errors.getByText(/LY: the number of sets must be 1 to 2/)).toBeInTheDocument();
     expect(errors.getByText(/HOA: at least 1 short-answer question is required/)).toBeInTheDocument();
     expect(errors.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
-      `${STRUCTURE}?section=sec-phys`,
-      `${STRUCTURE}?section=sec-chem`,
+      `${STRUCTURE}?section=sec-phys&from=review`,
+      `${STRUCTURE}?section=sec-chem&from=review`,
     ]);
     expect(screen.queryByText(/staleReason|exams\.review/)).not.toBeInTheDocument();
   });

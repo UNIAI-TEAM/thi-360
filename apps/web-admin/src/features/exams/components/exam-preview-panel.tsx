@@ -20,6 +20,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { enumeratePaths, issueRuleHref, issueStructureHref } from "../check";
+import { withFromReview } from "../editor-tabs";
 import { errorCodeOf } from "../errors";
 import { extendPreviewForTrial, trialPageHref } from "../trial/api";
 import { usePreviewMinutesLeft } from "../preview-retention";
@@ -641,7 +642,7 @@ function PreviewFailure({
         <div className="flex flex-wrap items-center gap-3">
           {invalid ? (
             <Button asChild variant="link" size="sm">
-              <Link href={fixHref ?? `/exams/${encodeURIComponent(exam.id)}/structure`}>
+              <Link href={withFromReview(fixHref ?? `/exams/${encodeURIComponent(exam.id)}/structure`)}>
                 {t("failFixLink")}
                 <ArrowRight />
               </Link>
@@ -674,7 +675,8 @@ function PreviewFailure({
 /** Một vấn đề của lần sinh thử; vấn đề nêu quy tắc MAPID có thêm liên kết tới dòng quy tắc ở trang Cấu trúc. */
 export function PreviewIssueItem({ examId, issue, text, content = text }: { examId: string; issue: CheckIssue; text: string; content?: string }) {
   const tMapid = useTranslations("exams.mapidRules.issue");
-  const href = issueRuleHref(examId, issue);
+  const rawHref = issueRuleHref(examId, issue);
+  const href = rawHref ? withFromReview(rawHref) : null;
   return (
     <li className="flex flex-wrap items-baseline gap-x-2">
       <span><ExamContentText text={content} /></span>
