@@ -206,7 +206,6 @@ function ExamEditorHeader({
 
   return (
     <DetailHeader
-      className={ACTIONS_SLOT_HIDE_EMPTY}
       back={{ href: "/exams", label: tCommon("backTo.exams") }}
       linkComponent={Link}
       title={exam.name}

@@ -40,7 +40,10 @@ describe("tab Thông tin bán: vị trí và địa chỉ", () => {
     expect(listing).toHaveAttribute("href", `/exams/${EXAM_ID}/listing`);
     expect(listing).toHaveAttribute("aria-current", "page");
     expect(links.filter((link) => link.getAttribute("aria-current") === "page")).toEqual([listing]);
-    expect(screen.getByRole("link", { name: "Lịch sử phiên bản" })).toHaveAttribute("href", `/exams/${EXAM_ID}/versions`);
+    const versionsLink = screen.getByRole("link", { name: "Lịch sử phiên bản" });
+    expect(versionsLink).toHaveAttribute("href", `/exams/${EXAM_ID}/versions`);
+    // Nút "Lịch sử phiên bản" luôn hiển thị ở đầu trang kể cả khi trang con không dùng portal `ExamEditorActions`.
+    expect(versionsLink.closest("header")?.className ?? "").not.toContain(":empty");
     expect(screen.getByText("nội dung trang con")).toBeInTheDocument();
   });
 
