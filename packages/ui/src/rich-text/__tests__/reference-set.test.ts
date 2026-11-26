@@ -405,8 +405,8 @@ describe("rich-text reference set (RT-1)", () => {
 
   it("exemptionSchema", () => {
     const exemptions = readJson<FormulaExemptionsFile>(EXEMPTIONS_PATH);
-    expect(exemptions).toEqual({ version: 1, rows: [] });
     expect(validateExemptionSchema(exemptions)).toEqual([]);
+    expect(validateExemptionSchema({ version: 1, rows: [] })).toEqual([]);
 
     const baseRow = {
       latex: "x^2",
@@ -419,6 +419,8 @@ describe("rich-text reference set (RT-1)", () => {
       kind: "curriculum",
       approvalRef: "EX-01",
     };
+
+    expect(validateExemptionSchema({ version: 1, rows: [baseRow] })).toEqual([]);
 
     const badPayloads: [string, unknown][] = [
       ["missing reason", { version: 1, rows: [{ ...baseRow, reason: "" }] }],
@@ -441,6 +443,7 @@ describe("rich-text reference set (RT-1)", () => {
   it("exemptionRules", () => {
     const exemptions = readJson<FormulaExemptionsFile>(EXEMPTIONS_PATH);
     const parsedTable = parseApprovalTable(readFileSync(ACCEPTANCE_PATH, "utf8"));
+    expect(parsedTable.errors).toEqual([]);
     expect(validateExemptionRules(exemptions, formulasFile.entries, parsedTable.rows)).toEqual([]);
 
     const curriculumEntry = formulasFile.entries.find(
@@ -703,10 +706,67 @@ describe("rich-text reference set (RT-1)", () => {
     expect(parsed.hasPolicySentence).toBe(true);
     expect(parsed.columns).toEqual([...EXPECTED_APPROVAL_COLUMNS]);
     expect(parsed.errors).toEqual([]);
-    expect(parsed.rows).toEqual([]);
 
     const exemptions = readJson<FormulaExemptionsFile>(EXEMPTIONS_PATH);
     expect(validateExemptionRules(exemptions, formulasFile.entries, parsed.rows)).toEqual([]);
+
+    const emptySection = [
+      "## Miễn trừ công thức (D-8)",
+      "",
+      "Công thức thuộc nhóm chương trình của danh mục (`kind = curriculum`), công thức mẫu có sẵn và công thức không có nhóm chỉ được miễn khi người yêu cầu đồng ý rõ cho đúng công thức đó. Công thức thuộc nhóm cú pháp (`kind = syntax`) được miễn khi dòng của nó ghi đủ lý do và người yêu cầu đã duyệt danh sách (D-8).",
+      "",
+      `| ${EXPECTED_APPROVAL_COLUMNS.join(" | ")} |`,
+      `| ${EXPECTED_APPROVAL_COLUMNS.map(() => "---").join(" | ")} |`,
+    ].join("\n");
+    const parsedEmpty = parseApprovalTable(emptySection);
+    expect(parsedEmpty.errors).toEqual([]);
+    expect(parsedEmpty.rows).toEqual([]);
+    expect(validateExemptionRules({ version: 1, rows: [] }, formulasFile.entries, parsedEmpty.rows)).toEqual([]);
+
+    const curriculumEntry = formulasFile.entries.find(
+      (e) => e.origin === "catalogue" && e.kind === "curriculum" && e.katexRenders,
+    )!;
+    const syntaxEntry = formulasFile.entries.find(
+      (e) => e.origin === "catalogue" && e.kind === "syntax" && e.katexRenders,
+    )!;
+    const escapeCell = (s: string) => s.replace(/\|/g, "\\|");
+    const populatedSection = [
+      emptySection,
+      `| D8-001 | ${curriculumEntry.group} | ${curriculumEntry.kind} | \`${escapeCell(curriculumEntry.latex)}\` | ${curriculumEntry.display} | android | Engine limitation | false | Đồng ý miễn công thức này | M.Trường | 2026-11-27 |`,
+      `| D8-002 | ${syntaxEntry.group} | ${syntaxEntry.kind} | \`${escapeCell(syntaxEntry.latex)}\` | ${syntaxEntry.display} | ios | Rare syntax macro | true | Duyệt danh sách cú pháp | M.Trường | 2026-11-27 |`,
+    ].join("\n");
+    const parsedPopulated = parseApprovalTable(populatedSection);
+    expect(parsedPopulated.errors).toEqual([]);
+    expect(parsedPopulated.rows).toHaveLength(2);
+    const populatedExemptions: FormulaExemptionsFile = {
+      version: 1,
+      rows: [
+        {
+          latex: curriculumEntry.latex,
+          display: curriculumEntry.display,
+          app: "android",
+          reason: "Engine limitation",
+          beyondCurriculum: false,
+          origin: curriculumEntry.origin,
+          group: curriculumEntry.group,
+          kind: curriculumEntry.kind,
+          approvalRef: "D8-001",
+        },
+        {
+          latex: syntaxEntry.latex,
+          display: syntaxEntry.display,
+          app: "ios",
+          reason: "Rare syntax macro",
+          beyondCurriculum: true,
+          origin: syntaxEntry.origin,
+          group: syntaxEntry.group,
+          kind: syntaxEntry.kind,
+          approvalRef: "D8-002",
+        },
+      ],
+    };
+    expect(validateExemptionSchema(populatedExemptions)).toEqual([]);
+    expect(validateExemptionRules(populatedExemptions, formulasFile.entries, parsedPopulated.rows)).toEqual([]);
   });
 
   it("webRendersMatchEntries", () => {
