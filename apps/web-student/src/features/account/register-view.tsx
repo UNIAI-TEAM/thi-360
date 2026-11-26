@@ -6,14 +6,7 @@ import {
   Button,
   Checkbox,
   cn,
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  focusRing,
   FormField,
   Input,
   LiveStatus,
@@ -42,11 +35,9 @@ import {
 import { withCallbackUrl } from "@/features/account/account-links";
 import { cooldownAnnouncement, formatClock, LONG_COOLDOWN_SECONDS, useCooldown } from "@/features/account/cooldown";
 import { AUTH_BRAND_PANEL_CLASS, AuthBrandDecor, AuthPageStage } from "@/features/auth/auth-backdrop";
+import { TERMS_DOCUMENT_VERSION } from "@/features/legal/legal-documents";
 import { ApiStatusError } from "@/lib/api/client";
 import { coarseTextHitArea, touchFieldText } from "@/lib/styles";
-
-/** Ban dieu khoan tam gui cung dang ky (TM 5.1, 15); phai khop phia may chu khi ban chinh thuc co. */
-export const TERMS_VERSION = "2026-11";
 
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._@-]{3,29}$/i;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -244,7 +235,7 @@ export function RegisterView({
         email: values.email.trim(),
         password: values.password,
         acceptTerms: true,
-        termsVersion: TERMS_VERSION,
+        termsVersion: TERMS_DOCUMENT_VERSION,
         ...(callbackUrl ? { callbackUrl } : {}),
       });
       setPendingSession({ registrationId: response.registrationId, email: response.email });
@@ -506,7 +497,28 @@ export function RegisterView({
                       )}
                     />
                     <label htmlFor="register-terms" className="text-body text-text-secondary">
-                      {t("termsLabel")}
+                      {t.rich("termsLabel", {
+                        terms: (chunks) => (
+                          <Link
+                            href="/dieu-khoan-giao-dich-chung"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn("font-medium text-primary-text underline underline-offset-2", focusRing)}
+                          >
+                            {chunks}
+                          </Link>
+                        ),
+                        privacy: (chunks) => (
+                          <Link
+                            href="/chinh-sach-bao-mat-thong-tin"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn("font-medium text-primary-text underline underline-offset-2", focusRing)}
+                          >
+                            {chunks}
+                          </Link>
+                        ),
+                      })}
                     </label>
                   </div>
                   {errors.acceptTerms?.message && (
@@ -514,32 +526,6 @@ export function RegisterView({
                       {fieldError(errors.acceptTerms.message)}
                     </p>
                   )}
-                  <Dialog>
-                    <DialogTrigger
-                      className={cn(
-                        "self-start text-label font-medium text-primary-text underline underline-offset-2",
-                        coarseTextHitArea,
-                      )}
-                    >
-                      {t("termsView")}
-                    </DialogTrigger>
-                    <DialogContent closeLabel={t("termsClose")}>
-                      <DialogHeader>
-                        <DialogTitle>{t("termsTitle")}</DialogTitle>
-                        <DialogDescription>{t("termsDraft")}</DialogDescription>
-                      </DialogHeader>
-                      <div className="rounded-lg border border-border p-4 text-body text-text-secondary">
-                        {t("termsBody")}
-                      </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="secondary">
-                            {t("termsClose")}
-                          </Button>
-                        </DialogClose>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
                 </div>
 
                 <Button type="submit" size="xl" loading={isSubmitting} className="w-full">
