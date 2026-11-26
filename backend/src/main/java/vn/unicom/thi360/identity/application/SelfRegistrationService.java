@@ -281,6 +281,42 @@ public class SelfRegistrationService {
      * đặt phiên cookie {@code HttpOnly} và trả đường dẫn chuyển hướng.
      */
     public String verifyAndRegister(UUID registrationId, String submittedCode, HttpServletResponse response) {
+        RegisteredAccount registered = verifyAndCreateAccount(registrationId, submittedCode);
+        try {
+            return authService.openSessionForRegisteredAccount(
+                    registered.account(),
+                    registered.password(),
+                    registered.callbackUrl(),
+                    registered.preferredLocale(),
+                    response);
+        } catch (RuntimeException ex) {
+            log.atError()
+                    .setCause(ex)
+                    .addKeyValue("event", "register.session_failed")
+                    .addKeyValue("userId", registered.account().getId().toString())
+                    .log("Account registered but opening the session failed; the user must log in");
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+
+    public AuthService.MobileLoginResult verifyAndRegisterMobile(UUID registrationId, String submittedCode) {
+        RegisteredAccount registered = verifyAndCreateAccount(registrationId, submittedCode);
+        try {
+            return authService.openMobileSessionForRegisteredAccount(
+                    registered.account(),
+                    registered.password(),
+                    registered.preferredLocale());
+        } catch (RuntimeException ex) {
+            log.atError()
+                    .setCause(ex)
+                    .addKeyValue("event", "register.mobile_session_failed")
+                    .addKeyValue("userId", registered.account().getId().toString())
+                    .log("Account registered but opening the mobile session failed; the user must log in");
+            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
+        }
+    }
+
+    private RegisteredAccount verifyAndCreateAccount(UUID registrationId, String submittedCode) {
         VerifyStep step = transactionTemplate.execute(status -> {
             PendingRegistration pending = pendingRegistrationRepository.findByIdForUpdate(registrationId).orElse(null);
             Instant now = Instant.now(clock);
@@ -341,7 +377,6 @@ public class SelfRegistrationService {
         try {
             keycloakClient.setPassword(keycloakUserId, verified.password(), false);
         } catch (RuntimeException ex) {
-            // Cả lỗi chính sách mật khẩu của Keycloak lẫn lỗi mạng: user Keycloak chưa có mật khẩu, bỏ cả hai phía.
             userAdminService.rollbackCreatedRegistration(provisionalId, keycloakUserId);
             releaseConsumedCodeQuietly(registrationId);
             throw ex;
@@ -355,20 +390,13 @@ public class SelfRegistrationService {
             throw ex;
         }
 
-        // Tài khoản đã tạo xong mà tạo phiên lỗi thì giữ tài khoản, trả lỗi, người dùng đăng nhập lại.
         UserAccount account = userAccountRepository.findById(keycloakUserId)
                 .orElseThrow(() -> new IllegalStateException("Registered account missing: " + keycloakUserId));
-        try {
-            return authService.openSessionForRegisteredAccount(
-                    account, verified.password(), verified.callbackUrl(), locale, response);
-        } catch (RuntimeException ex) {
-            log.atError()
-                    .setCause(ex)
-                    .addKeyValue("event", "register.session_failed")
-                    .addKeyValue("userId", keycloakUserId.toString())
-                    .log("Account registered but opening the session failed; the user must log in");
-            throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
-        }
+        return new RegisteredAccount(account, verified.password(), locale, verified.callbackUrl());
+    }
+
+    private record RegisteredAccount(
+            UserAccount account, String password, String preferredLocale, String callbackUrl) {
     }
 
     private void releaseConsumedCodeQuietly(UUID registrationId) {

@@ -15,3 +15,14 @@ next-env.d.ts
 .tmp-uniai/
 e2e/playwright-report/
 e2e/test-results/
+
+# Android (apps/android)
+apps/android/.gradle/
+apps/android/local.properties
+apps/android/build/
+apps/android/**/build/
+apps/android/.cxx/
+apps/android/captures/
+apps/android/**/*.iml
+apps/android/**/*_compare.png
+apps/android/**/*_actual.png

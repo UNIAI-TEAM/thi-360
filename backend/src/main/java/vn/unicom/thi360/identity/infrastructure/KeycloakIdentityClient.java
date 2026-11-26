@@ -19,8 +19,10 @@ import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.UserSessionRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,7 @@ import vn.unicom.thi360.shared.api.ExternalServiceException;
 import vn.unicom.thi360.shared.api.FieldError;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.security.KeycloakProperties;
+import vn.unicom.thi360.shared.security.LoginChannel;
 import vn.unicom.thi360.shared.web.AppMessages;
 
 @Component
@@ -49,6 +52,7 @@ public class KeycloakIdentityClient {
     private final RestClient restClient;
     private final AppMessages messages;
     private volatile Keycloak adminClient;
+    private volatile String cachedMobileClientUuid;
 
     public KeycloakIdentityClient(
             KeycloakProperties properties,
@@ -344,6 +348,7 @@ public class KeycloakIdentityClient {
         String targetRealm = properties.realm();
         try {
             appRealm().users().get(userId.toString()).logout();
+            revokeOfflineSessions(userId);
             logExternal("logoutAllSessions", targetRealm, "success", startNanos);
         } catch (NotFoundException ex) {
             logExternal("logoutAllSessions", targetRealm, "not_found_ignored", startNanos);
@@ -351,6 +356,52 @@ public class KeycloakIdentityClient {
             logExternal("logoutAllSessions", targetRealm, "exception", startNanos);
             throw new ExternalServiceException("IDENTITY_PROVIDER_ERROR", null, ex);
         }
+    }
+
+    private void revokeOfflineSessions(UUID userId) {
+        String mobileClientUuid = resolveMobileClientUuid();
+        if (mobileClientUuid == null) {
+            return;
+        }
+        List<UserSessionRepresentation> offlineSessions;
+        try {
+            offlineSessions = appRealm().users().get(userId.toString()).getOfflineSessions(mobileClientUuid);
+        } catch (NotFoundException ex) {
+            // Either the user does not exist or the cached client UUID changed; refresh once before giving up.
+            this.cachedMobileClientUuid = null;
+            String refreshedUuid = resolveMobileClientUuid();
+            if (refreshedUuid == null || refreshedUuid.equals(mobileClientUuid)) {
+                throw ex;
+            }
+            offlineSessions = appRealm().users().get(userId.toString()).getOfflineSessions(refreshedUuid);
+        }
+        if (offlineSessions == null || offlineSessions.isEmpty()) {
+            return;
+        }
+        for (UserSessionRepresentation session : offlineSessions) {
+            if (session.getId() == null || session.getId().isBlank()) {
+                continue;
+            }
+            try {
+                appRealm().deleteSession(session.getId(), true);
+            } catch (NotFoundException ignored) {
+                // Offline session already revoked concurrently.
+            }
+        }
+    }
+
+    private String resolveMobileClientUuid() {
+        String cached = this.cachedMobileClientUuid;
+        if (cached != null) {
+            return cached;
+        }
+        List<ClientRepresentation> clients = appRealm().clients().findByClientId(properties.mobileClientId());
+        if (clients == null || clients.isEmpty()) {
+            return null;
+        }
+        String uuid = clients.getFirst().getId();
+        this.cachedMobileClientUuid = uuid;
+        return uuid;
     }
 
     public Optional<UUID> findUserIdByUsername(String username) {
@@ -406,19 +457,30 @@ public class KeycloakIdentityClient {
     }
 
     public TokenResult passwordGrant(String realm, String username, String password) {
-        ClientCredentials creds = resolveClientCredentials(realm);
+        return passwordGrant(realm, LoginChannel.WEB, username, password);
+    }
+
+    public TokenResult passwordGrant(String realm, LoginChannel channel, String username, String password) {
+        ClientCredentials creds = resolveClientCredentials(realm, channel);
+        String scope = channel == LoginChannel.MOBILE && properties.realm().equals(realm)
+                ? "openid offline_access"
+                : "openid";
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", OAuth2Constants.PASSWORD);
         form.add("client_id", creds.clientId());
         form.add("client_secret", creds.clientSecret());
         form.add("username", username);
         form.add("password", password);
-        form.add("scope", "openid");
+        form.add("scope", scope);
         return executeTokenRequest("passwordGrant", realm, form);
     }
 
     public TokenResult refresh(String realm, String refreshToken) {
-        ClientCredentials creds = resolveClientCredentials(realm);
+        return refresh(realm, LoginChannel.WEB, refreshToken);
+    }
+
+    public TokenResult refresh(String realm, LoginChannel channel, String refreshToken) {
+        ClientCredentials creds = resolveClientCredentials(realm, channel);
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("grant_type", OAuth2Constants.REFRESH_TOKEN);
         form.add("client_id", creds.clientId());
@@ -428,10 +490,14 @@ public class KeycloakIdentityClient {
     }
 
     public void logout(String realm, String refreshToken) {
+        logout(realm, LoginChannel.WEB, refreshToken);
+    }
+
+    public void logout(String realm, LoginChannel channel, String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             return;
         }
-        ClientCredentials creds = resolveClientCredentials(realm);
+        ClientCredentials creds = resolveClientCredentials(realm, channel);
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("client_id", creds.clientId());
         form.add("client_secret", creds.clientSecret());
@@ -549,8 +615,11 @@ public class KeycloakIdentityClient {
         return client;
     }
 
-    private ClientCredentials resolveClientCredentials(String realm) {
+    private ClientCredentials resolveClientCredentials(String realm, LoginChannel channel) {
         if (properties.realm().equals(realm)) {
+            if (channel == LoginChannel.MOBILE) {
+                return new ClientCredentials(properties.mobileClientId(), properties.mobileClientSecret());
+            }
             return new ClientCredentials(properties.clientId(), properties.clientSecret());
         }
         if (properties.platformRealm().equals(realm)) {

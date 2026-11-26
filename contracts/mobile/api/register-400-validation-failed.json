@@ -1,0 +1,52 @@
+{
+  "code": "VALIDATION_FAILED",
+  "message": "Dữ liệu không hợp lệ",
+  "fieldErrors": [
+    {
+      "field": "username",
+      "code": "USERNAME_INVALID",
+      "message": "Tên đăng nhập phải từ 4 đến 30 ký tự"
+    },
+    {
+      "field": "password",
+      "code": "PASSWORD_LENGTH",
+      "message": "Mật khẩu phải từ 8 đến 64 ký tự"
+    },
+    {
+      "field": "password",
+      "code": "PASSWORD_UPPERCASE",
+      "message": "Mật khẩu phải có ít nhất một chữ hoa"
+    },
+    {
+      "field": "password",
+      "code": "PASSWORD_DIGIT",
+      "message": "Mật khẩu phải có ít nhất một chữ số"
+    },
+    {
+      "field": "password",
+      "code": "PASSWORD_SPECIAL",
+      "message": "Mật khẩu phải có ít nhất một ký tự đặc biệt"
+    },
+    {
+      "field": "fullName",
+      "code": "NOTBLANK",
+      "message": "Họ và tên không được để trống"
+    },
+    {
+      "field": "email",
+      "code": "EMAIL_INVALID",
+      "message": "Email không đúng định dạng"
+    },
+    {
+      "field": "acceptTerms",
+      "code": "TERMS_REQUIRED",
+      "message": "Bạn cần chấp nhận điều khoản sử dụng"
+    },
+    {
+      "field": "termsVersion",
+      "code": "NOTBLANK",
+      "message": "Phiên bản điều khoản là bắt buộc"
+    }
+  ],
+  "traceId": "00000000-0000-0000-0000-000000000000"
+}

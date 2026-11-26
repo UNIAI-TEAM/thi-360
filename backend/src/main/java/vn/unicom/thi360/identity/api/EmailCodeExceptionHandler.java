@@ -31,7 +31,7 @@ import vn.unicom.thi360.shared.web.TraceIdFilter;
  *       còn {@link AuthController} giữ nguyên 502 từ {@code GlobalExceptionHandler}).</li>
  * </ul>
  */
-@RestControllerAdvice(assignableTypes = {MeEmailController.class, AuthController.class})
+@RestControllerAdvice(assignableTypes = {MeEmailController.class, AuthController.class, MobileAuthController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class EmailCodeExceptionHandler {
 

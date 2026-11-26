@@ -1,0 +1,8 @@
+{
+  "code": "RATE_LIMITED",
+  "message": "Gửi yêu cầu quá nhanh, vui lòng thử lại sau",
+  "fieldErrors": [],
+  "traceId": "00000000-0000-0000-0000-000000000000",
+  "retryAfter": 60,
+  "remainingAttempts": null
+}

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="account_section_security">Security</string>
+    <string name="account_change_password">Change password</string>
+    <string name="account_biometric_title">Biometric unlock</string>
+    <string name="account_biometric_subtitle">Auto-lock after 5 minutes away</string>
+    <string name="account_biometric_unavailable_no_hardware">This device does not support fingerprint or face unlock.</string>
+    <string name="account_biometric_unavailable_not_enrolled">No fingerprint or face is enrolled in device settings.</string>
+    <string name="account_biometric_unavailable_generic">Fingerprint or face unlock is unavailable on this device.</string>
+    <string name="account_biometric_enable_failed">Could not enable fingerprint or face unlock. Please try again.</string>
+
+    <string name="account_email_verified">Email verified</string>
+    <string name="account_email_unverified">Not verified</string>
+    <string name="account_profile_loading">Loading account details…</string>
+    <string name="account_profile_error">Could not load account details.</string>
+    <string name="account_profile_offline">No internet connection. On-device settings still work.</string>
+    <string name="account_profile_retry">Retry</string>
+
+    <string name="account_logout">Sign out</string>
+    <string name="account_logout_confirm_title">Sign out?</string>
+    <string name="account_logout_confirm_message">You will need to sign in again to continue using Thi 360.</string>
+    <string name="account_logout_confirm_action">Sign out</string>
+    <string name="account_logout_cancel">Cancel</string>
+
+    <string name="account_language_dialog_title">Choose language</string>
+    <string name="account_language_detail_description">Change the display language across the app.</string>
+    <string name="account_theme_detail_description">Your Light or Dark appearance choice is saved on this device.</string>
+
+    <string name="biometric_enable_title">Unlock with fingerprint or face?</string>
+    <string name="biometric_enable_body">Next time you open Thi 360, scan your fingerprint or face instead of entering your password.</string>
+    <string name="biometric_enable_note_1">The app locks automatically after 5 minutes away.</string>
+    <string name="biometric_enable_note_2">If biometric scan fails, enter your password as usual.</string>
+    <string name="biometric_enable_note_3">Turn it on or off anytime in Account.</string>
+    <string name="biometric_enable_confirm">Enable biometric unlock</string>
+    <string name="biometric_enable_later">Not now</string>
+    <string name="biometric_enable_error">Fingerprint or face verification did not complete. Try again or choose Not now.</string>
+
+    <string name="biometric_os_prompt_enable_title">Confirm fingerprint or face</string>
+    <string name="biometric_os_prompt_enable_subtitle">Use your fingerprint or face for quick unlock</string>
+    <string name="biometric_os_prompt_unlock_title">Unlock Thi 360</string>
+    <string name="biometric_os_prompt_unlock_subtitle">Scan your fingerprint or face to continue</string>
+    <string name="biometric_os_prompt_cancel">Cancel</string>
+
+    <string name="lock_body">The app is locked. Scan your fingerprint or face to continue.</string>
+    <string name="lock_action_unlock">Unlock</string>
+    <string name="lock_action_unlocking">Unlocking…</string>
+    <string name="lock_action_password">Enter password</string>
+    <string name="lock_action_other_account">Sign in with another account</string>
+    <string name="lock_fallback_back">Back to lock screen</string>
+    <string name="lock_error_failed">Could not recognize your fingerprint or face. Try again or enter your password.</string>
+    <string name="lock_error_cancelled">Biometric verification was cancelled. Try again or enter your password.</string>
+    <string name="lock_error_lockout">Fingerprint or face unlock is temporarily locked. Enter your password to continue.</string>
+    <string name="lock_error_key_invalidated">Biometrics on this device changed. Enter your password to continue and re-enable it in Account.</string>
+</resources>

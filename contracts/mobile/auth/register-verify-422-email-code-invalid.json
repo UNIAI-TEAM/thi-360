@@ -1,0 +1,8 @@
+{
+  "code": "EMAIL_CODE_INVALID",
+  "message": "Mã xác minh chưa đúng",
+  "fieldErrors": [],
+  "traceId": "00000000-0000-0000-0000-000000000000",
+  "retryAfter": null,
+  "remainingAttempts": 4
+}

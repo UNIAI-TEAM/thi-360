@@ -1,0 +1,168 @@
+name: iOS
+
+on:
+  push:
+    branches: [develop, integration/app-hoc-vien]
+    paths: ["apps/ios/**", "contracts/mobile/**", ".github/workflows/ios.yml"]
+  pull_request:
+    branches: [develop, integration/app-hoc-vien]
+    paths: ["apps/ios/**", "contracts/mobile/**", ".github/workflows/ios.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  demo-verify:
+    runs-on: macos-26
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode and Swift versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Cache SwiftPM packages
+        uses: actions/cache@v4
+        with:
+          path: apps/ios/.spm-cache
+          key: ${{ runner.os }}-spm-${{ hashFiles('apps/ios/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Select available iOS Simulator
+        id: sim
+        run: |
+          SIM_ID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)["devices"]
+          candidates = []
+          for runtime, devices in data.items():
+              if "SimRuntime.iOS-" not in runtime:
+                  continue
+              for d in devices:
+                  if d.get("isAvailable") and d.get("name", "").startswith("iPhone"):
+                      candidates.append((runtime, d["name"], d["udid"]))
+          preferred = ["iPhone 17", "iPhone 16", "iPhone 16 Pro", "iPhone 15"]
+          for name in preferred:
+              matches = [c for c in candidates if c[1] == name]
+              if matches:
+                  print(sorted(matches, reverse=True)[0][2])
+                  sys.exit(0)
+          if not candidates:
+              sys.exit("No available iPhone simulator found")
+          print(sorted(candidates, reverse=True)[0][2])
+          ')
+          echo "udid=$SIM_ID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$SIM_ID" || true
+
+      - name: Build Thi360Demo (simulator)
+        run: |
+          xcodebuild -project Thi360.xcodeproj \
+            -scheme Thi360Demo \
+            -destination 'generic/platform=iOS Simulator' \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -skipPackagePluginValidation \
+            build
+
+      - name: Run Thi360Demo ATS, config, entitlements, and log redaction unit tests
+        run: |
+          xcodebuild -project Thi360.xcodeproj \
+            -scheme Thi360Demo \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -skipPackagePluginValidation \
+            test \
+            -only-testing:Thi360Tests/BundleInfoTests \
+            -only-testing:Thi360Tests/TransportSecurityTests \
+            -only-testing:Thi360Tests/EnvironmentConfigTests \
+            -only-testing:Thi360Tests/LogRedactionTests \
+            -only-testing:Thi360Tests/EntitlementsTests \
+            -only-testing:Thi360Tests/ResetLinkRoutingTests \
+            -only-testing:Thi360Tests/ResetTokenHandlingTests \
+            -only-testing:Thi360Tests/RecoveryLogRedactionTests \
+            -only-testing:Thi360Tests/AppearanceFallbackTests \
+            -only-testing:Thi360Tests/BiometricInvalidationStateTests
+
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode and Swift versions
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Cache SwiftPM packages
+        uses: actions/cache@v4
+        with:
+          path: apps/ios/.spm-cache
+          key: ${{ runner.os }}-spm-${{ hashFiles('apps/ios/project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Install XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Select available iOS Simulator
+        id: sim
+        run: |
+          SIM_ID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)["devices"]
+          candidates = []
+          for runtime, devices in data.items():
+              if "SimRuntime.iOS-" not in runtime:
+                  continue
+              for d in devices:
+                  if d.get("isAvailable") and d.get("name", "").startswith("iPhone"):
+                      candidates.append((runtime, d["name"], d["udid"]))
+          preferred = ["iPhone 17", "iPhone 16", "iPhone 16 Pro", "iPhone 15"]
+          for name in preferred:
+              matches = [c for c in candidates if c[1] == name]
+              if matches:
+                  print(sorted(matches, reverse=True)[0][2])
+                  sys.exit(0)
+          if not candidates:
+              sys.exit("No available iPhone simulator found")
+          print(sorted(candidates, reverse=True)[0][2])
+          ')
+          echo "udid=$SIM_ID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$SIM_ID" || true
+
+      - name: Run Thi360Dev unit and UI tests
+        run: |
+          xcodebuild -project Thi360.xcodeproj \
+            -scheme Thi360Dev \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -clonedSourcePackagesDirPath .spm-cache \
+            -skipPackagePluginValidation \
+            test \
+            -skip-testing:Thi360UITests/SmokeAgainstBackendUITests \
+            -skip-testing:Thi360UITests/DemoHostReachabilityUITests

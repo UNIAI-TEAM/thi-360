@@ -1,5 +1,7 @@
 packages:
   - "apps/*"
+  - "!apps/android"
+  - "!apps/ios"
   - "packages/*"
   - "e2e"
 

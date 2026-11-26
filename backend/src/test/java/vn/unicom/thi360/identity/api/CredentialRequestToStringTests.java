@@ -94,4 +94,42 @@ class CredentialRequestToStringTests {
                 .contains("token=null")
                 .contains("newPassword=null");
     }
+
+    @Test
+    void mobileAuthRequestsAndResponse_toStringRedactSecretsAndTokens() {
+        String password = "Mob1leS3cret!99";
+        MobileLoginRequest login = new MobileLoginRequest("student.01", password);
+        assertThat(login.toString())
+                .doesNotContain(password)
+                .contains("password=[REDACTED]")
+                .contains("identifier=student.01");
+        assertThat(new MobileLoginRequest("student.01", null).toString()).contains("password=null");
+
+        String refreshToken = "eyJhbGciOiJSUzI1NiJ9.secret-refresh-token";
+        MobileRefreshRequest refresh = new MobileRefreshRequest(refreshToken);
+        assertThat(refresh.toString())
+                .doesNotContain(refreshToken)
+                .contains("refreshToken=[REDACTED]");
+        assertThat(new MobileRefreshRequest(null).toString()).contains("refreshToken=null");
+
+        MobileLogoutRequest logout = new MobileLogoutRequest(refreshToken);
+        assertThat(logout.toString())
+                .doesNotContain(refreshToken)
+                .contains("refreshToken=[REDACTED]");
+        assertThat(new MobileLogoutRequest(null).toString()).contains("refreshToken=null");
+
+        String accessToken = "eyJhbGciOiJSUzI1NiJ9.secret-access-token";
+        MobileTokenResponse response = new MobileTokenResponse(accessToken, refreshToken, 300, 604800, false);
+        assertThat(response.toString())
+                .doesNotContain(accessToken)
+                .doesNotContain(refreshToken)
+                .contains("accessToken=[REDACTED]")
+                .contains("refreshToken=[REDACTED]");
+        assertThat(new MobileTokenResponse(null, null, 300, 604800, true).toString())
+                .contains("accessToken=null")
+                .contains("refreshToken=null");
+
+        RegisterVerifyRequest verify = new RegisterVerifyRequest(UUID.randomUUID(), "928374");
+        assertThat(verify.toString()).doesNotContain("928374").contains("code=[REDACTED]");
+    }
 }

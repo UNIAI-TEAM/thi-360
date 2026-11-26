@@ -1,0 +1,92 @@
+name: Android
+
+on:
+  push:
+    branches: [develop, "integration/**"]
+    paths:
+      - "apps/android/**"
+      - "contracts/mobile/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    branches: [develop, "integration/**"]
+    paths:
+      - "apps/android/**"
+      - "contracts/mobile/**"
+      - ".github/workflows/android.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Generate OpenAPI Kotlin client
+        run: ./gradlew :app:generateMobileOpenApiClient
+      - name: Assemble dev and demo debug APKs
+        run: ./gradlew :app:assembleDevDebug :app:assembleDemoDebug
+      - name: Run JVM unit and UI tests (dev and demo)
+        run: ./gradlew :app:testDevDebugUnitTest :app:testDemoDebugUnitTest
+      - name: Verify Roborazzi screenshots
+        run: ./gradlew :app:verifyRoborazziDevDebug
+      - name: Run Android Lint
+        run: ./gradlew :app:lintDevDebug
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-verify-diagnostics
+          path: |
+            apps/android/app/build/reports/lint-results-devDebug.html
+            apps/android/app/build/reports/roborazzi/
+            apps/android/app/src/test/snapshots/*_compare.png
+          if-no-files-found: ignore
+
+  emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM group permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run instrumented tests on Pixel 7 API 34 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          script: cd apps/android && ./gradlew :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.notPackage=vn.unicom.thi360.smoke
+      - name: Print emulator test failure details
+        if: failure()
+        run: |
+          find apps/android/app/build/outputs/androidTest-results -name '*.xml' -print -exec cat {} + || true
+      - name: Upload emulator failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-emulator-diagnostics
+          path: |
+            apps/android/app/build/reports/androidTests/
+            apps/android/app/build/outputs/androidTest-results/
+          if-no-files-found: ignore
