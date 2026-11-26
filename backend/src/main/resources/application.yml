@@ -182,7 +182,6 @@ thi360:
   exam:
     structure:
       max-topic-quotas: ${THI360_EXAM_MAX_TOPIC_QUOTAS:8}
-      max-mapid-rules: ${THI360_EXAM_MAX_MAPID_RULES:20}
     listing:
       # Giá bán thấp nhất khi công bố bài thi; cùng biến với mức tối thiểu của VNPAY (TM E26).
       min-price-vnd: ${THI360_VNPAY_MIN_AMOUNT:10000}

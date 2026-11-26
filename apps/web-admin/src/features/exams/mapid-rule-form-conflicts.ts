@@ -474,3 +474,89 @@ export function checkMapidRuleConflicts({
 
   return { kind: "OK" };
 }
+
+function ruleDemand(section: ExamSection, rule: MapidRule): number {
+  if (rule.type === "COUNT") return ruleCount(section, rule);
+  if (rule.type === "ONLY_IN_GROUP" && (rule.count != null || rule.percent != null)) return ruleCount(section, rule);
+  if (rule.type === "PRESENT") return 1;
+  return 0;
+}
+
+type AllocatedScopeNode = { groupId: string | null; nodeIds: readonly string[]; demand: number };
+
+function isTighterParent(
+  candidate: AllocatedScopeNode,
+  current: AllocatedScopeNode,
+  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
+): boolean {
+  const narrowerTopic =
+    nodesCover(current.nodeIds, candidate.nodeIds, knowledgeIndex) &&
+    !nodesCover(candidate.nodeIds, current.nodeIds, knowledgeIndex);
+  if (narrowerTopic) return true;
+  return (
+    nodesEquivalent(current.nodeIds, candidate.nodeIds, knowledgeIndex) &&
+    candidate.groupId !== null &&
+    current.groupId === null
+  );
+}
+
+function tightestCoveringParent(
+  childIndex: number,
+  nodes: readonly AllocatedScopeNode[],
+  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
+): number {
+  const child = nodes[childIndex]!;
+  let best = -1;
+  for (let j = 0; j < nodes.length; j += 1) {
+    if (j === childIndex) continue;
+    const candidate = nodes[j]!;
+    if (candidate.groupId !== null && candidate.groupId !== child.groupId) continue;
+    if (!nodesCover(candidate.nodeIds, child.nodeIds, knowledgeIndex)) continue;
+    if (best === -1 || isTighterParent(candidate, nodes[best]!, knowledgeIndex)) best = j;
+  }
+  return best;
+}
+
+/**
+ * Số câu các quy tắc MAPID của một môn chiếm (uniworkos UNI-1719; trước chỉ dùng cho Sử/Địa HSA).
+ * Một câu chỉ lấp một chỗ trong cùng phạm vi nên các mức tối thiểu cộng dồn; quy tắc trùng chủ đề trong cùng phạm vi lấy
+ * mức lớn nhất, quy tắc con nằm trong quy tắc rộng hơn tính `max(cha, tổng con)`.
+ */
+export function allocatedRuleQuestions(
+  section: ExamSection,
+  rules: readonly MapidRule[],
+  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
+): number {
+  const blockIds = new Set(section.blocks.map((block) => block.id));
+  const nodes: AllocatedScopeNode[] = [];
+  let unkeyedDemand = 0;
+
+  for (const rule of rules) {
+    if (rule.groupId && !blockIds.has(rule.groupId)) continue;
+    const demand = ruleDemand(section, rule);
+    if (demand <= 0) continue;
+    if (rule.nodeIds.length === 0) {
+      unkeyedDemand += demand;
+      continue;
+    }
+    const groupId = rule.groupId ?? null;
+    const existing = nodes.find(
+      (item) => item.groupId === groupId && nodesEquivalent(item.nodeIds, rule.nodeIds, knowledgeIndex),
+    );
+    if (existing) existing.demand = Math.max(existing.demand, demand);
+    else nodes.push({ groupId, nodeIds: rule.nodeIds, demand });
+  }
+
+  const parentOf = nodes.map((_, idx) => tightestCoveringParent(idx, nodes, knowledgeIndex));
+  const childrenOf: number[][] = Array.from({ length: nodes.length }, () => []);
+  parentOf.forEach((parent, idx) => {
+    if (parent !== -1) childrenOf[parent]!.push(idx);
+  });
+
+  const effective = (idx: number): number => {
+    const childrenSum = childrenOf[idx]!.reduce((sum, childIdx) => sum + effective(childIdx), 0);
+    return Math.max(nodes[idx]!.demand, childrenSum);
+  };
+
+  return unkeyedDemand + nodes.reduce((sum, _, idx) => (parentOf[idx] === -1 ? sum + effective(idx) : sum), 0);
+}

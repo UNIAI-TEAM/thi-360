@@ -13,7 +13,6 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import vn.unicom.thi360.questionbank.spi.QuestionType;
-import vn.unicom.thi360.shared.api.BusinessRuleException;
 
 class MapidRuleValidatorTest {
     private static final UUID NODE = UUID.randomUUID();
@@ -133,23 +132,15 @@ class MapidRuleValidatorTest {
     }
 
     @Test
-    void limitsRulesPerSectionAndIsConfigurable() {
-        List<MapidRule> rules = IntStream.range(0, 21)
+    void acceptsAnyNumberOfRulesPerSection() {
+        // uniworkos UNI-1718 (UNI-2822): the former limit of 20 rules per section is gone.
+        List<MapidRule> rules = IntStream.range(0, 60)
                 .mapToObj(i -> rule("r" + i, MapidRuleType.PRESENT, null, null, null, null)).toList();
-        var document = document(MapidMode.MATRIX, rules);
-        assertThatThrownBy(() -> ExamStructureValidator.validate(document))
-                .isInstanceOfSatisfying(ExamStructureInvalidException.class, ex -> {
-                    assertThat(ex.getCode()).isEqualTo("EXAM_STRUCTURE_INVALID");
-                    assertThat(ex.details()).extracting(ExamStructureInvalidException.Detail::field)
-                            .containsExactly("sections.mapidRules");
-                    assertThat(ex.details()).extracting(ExamStructureInvalidException.Detail::code)
-                            .containsExactly("MAX_MAPID_RULES");
-                });
-        assertThatCode(() -> ExamStructureValidator.validate(document, ExamStructureValidator.DEFAULT_MAX_TOPIC_QUOTAS, 21))
+        assertThatCode(() -> ExamStructureValidator.validate(document(MapidMode.MATRIX, rules)))
                 .doesNotThrowAnyException();
-        assertThatThrownBy(() -> ExamStructureValidator.validate(document(MapidMode.MATRIX, rules.subList(0, 3)),
-                ExamStructureValidator.DEFAULT_MAX_TOPIC_QUOTAS, 2))
-                .isInstanceOf(BusinessRuleException.class);
+        assertThatCode(() -> ExamStructureValidator.validate(document(MapidMode.MATRIX, rules),
+                ExamStructureValidator.DEFAULT_MAX_TOPIC_QUOTAS))
+                .doesNotThrowAnyException();
     }
 
     @Test

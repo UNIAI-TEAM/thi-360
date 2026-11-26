@@ -146,10 +146,12 @@ describe("Chuyển dữ liệu cũ sang quy tắc (AC-10)", () => {
     }
   });
 
-  it("quá 20 quy tắc thì giữ nguyên kiểu cũ", () => {
+  it("uniworkos UNI-1718: nhiều hơn 20 quy tắc vẫn chuyển sang kiểu mới vì không còn giới hạn", () => {
     const many = Array.from({ length: 8 }, (_, index) => quota({ id: `m${index}` }));
     const legacy = section({ knowledgeScope: { nodeIds: ["n"] }, topicQuotas: many, blocks: [block({ id: "b1", topicQuotas: many }), block({ id: "b2", topicQuotas: many })] });
-    expect(convertLegacySection(legacy)).toBe(legacy);
+    const converted = convertLegacySection(legacy);
+    expect(converted).not.toBe(legacy);
+    expect(converted.mapidRules!.length).toBeGreaterThan(20);
   });
 
   it("quy tắc đọc từ máy chủ và ghi lại giữ đủ trường (hai chiều)", () => {

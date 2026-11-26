@@ -502,8 +502,7 @@ public class ExamService {
             if (cutFromSubject) {
                 doc = selectSubjectPart(doc, scopeChoice.partCode(), template);
             }
-            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
-                    structureProperties.maxMapidRules());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
             templateCode = template.getCode();
         } else {
             doc = emptyOverviewStructure(request.overview(), scopeChoice.subjectCode());
@@ -530,12 +529,10 @@ public class ExamService {
                                 row.subjectCode(), row.questionCount(), null, row.maxPoints())).toList();
             }
             doc = ExamOverview.apply(doc, rows);
-            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
-                    structureProperties.maxMapidRules());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         }
         if (template == null) {
-            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
-                    structureProperties.maxMapidRules());
+            ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
             validateStructureReferences(doc);
         }
 
@@ -795,8 +792,7 @@ public class ExamService {
                         : new ExamStructureDocument(List.of());
                 if (template != null && "REVIEW".equals(mode)) doc = reviewSubject(doc, choice.subjectCode());
                 if (cutFromSubject) doc = selectSubjectPart(doc, choice.partCode(), template);
-                ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
-                        structureProperties.maxMapidRules());
+                ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
                 String timing = template != null && template.getTiming() != null
                         ? template.getTiming() : profile.getTiming();
                 Integer duration = request.durationMinutes() != null ? request.durationMinutes()
@@ -906,8 +902,7 @@ public class ExamService {
         requireRevision(request.expectedRevision(), exam.getRevision());
         ExamStructure stored = structureRepository.findById(examId).orElse(null);
         ExamStructureDocument doc = ExamOverview.apply(workingDocument(examId), request.overview());
-        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
-                structureProperties.maxMapidRules());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         writeStructure(exam, doc, stored != null && stored.isEdited(), actorId(), Instant.now(clock));
         auditRecorder.record(AuditEvent.builder("EXAM", "EXAM.OVERVIEW_UPDATE")
                 .target("EXAM", exam.getId().toString(), exam.getCode())
@@ -997,8 +992,7 @@ public class ExamService {
                 doc = ExamOverview.applyChanges(doc, ExamOverview.presentIn(doc, changes));
             }
         }
-        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
-                structureProperties.maxMapidRules());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         String previousMode = exam.getBuildMode();
         boolean modeChanged = !Objects.equals(previousMode, template.getBuildMode());
         ExamKindProfile crossingProfile = modeChanged
@@ -1123,8 +1117,7 @@ public class ExamService {
                 : codec().read(template.getStructure());
         ExamStructureDocument doc = ExamStructureOps.restoreTemplateOwned(incoming, storedDoc,
                 templateDoc);
-        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas(),
-                structureProperties.maxMapidRules());
+        ExamStructureValidator.validate(doc, structureProperties.maxTopicQuotas());
         rejectMapidOutsideHsa(exam, doc);
         validateStructureReferences(doc);
         List<String> changedPartIds = changedPartIds(storedDoc, doc);

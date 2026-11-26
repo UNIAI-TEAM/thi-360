@@ -22,7 +22,7 @@ import { KnowledgePickerDialog } from "@/features/content/components/knowledge-p
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
 import { countFromPercent } from "../allocation";
-import { checkMapidRuleConflicts } from "../mapid-rule-form-conflicts";
+import { allocatedRuleQuestions, checkMapidRuleConflicts } from "../mapid-rule-form-conflicts";
 import {
   emptyRuleForm,
   formFromRule,
@@ -232,6 +232,16 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
       section: view,
       knowledgeIndex,
     });
+  }, [canEvaluateCrossRow, form, view, knowledgeIndex]);
+
+  // uniworkos UNI-1719: cảnh báo (không chặn lưu) khi các quy tắc của môn cần nhiều câu hơn số câu đã chọn ở cấu trúc.
+  const overTotal = useMemo(() => {
+    const total = ruleUnits(view, { groupId: null });
+    if (!canEvaluateCrossRow || total == null || total <= 0) return null;
+    const candidate = ruleFromForm(form, view);
+    const others = (view.mapidRules ?? []).filter((item) => item.id !== candidate.id);
+    const allocated = allocatedRuleQuestions(view, [...others, candidate], knowledgeIndex);
+    return allocated > total ? { allocated, total, over: allocated - total } : null;
   }, [canEvaluateCrossRow, form, view, knowledgeIndex]);
 
   const capacityHandledByField =
@@ -597,6 +607,17 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
               <ExamContentText text={summaryText} />
             </p>
           </div>
+
+          {overTotal && (
+            <div
+              data-testid="mapid-rule-over-total"
+              role="note"
+              className="flex min-w-0 max-w-full items-start gap-2 rounded-md border border-warning/40 bg-warning-bg px-3 py-2.5 text-body text-text"
+            >
+              <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+              <p className="min-w-0 flex-1 wrap-anywhere">{t("overTotal", overTotal)}</p>
+            </div>
+          )}
 
           {showCrossCheck && (
             <div

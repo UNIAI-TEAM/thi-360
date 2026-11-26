@@ -15,9 +15,6 @@ import type {
   TopicQuota,
 } from "./types";
 
-/** Số quy tắc tối đa của một môn (Q5); khớp `ExamStructureValidator.DEFAULT_MAX_MAPID_RULES`. */
-export const MAX_MAPID_RULES = 20;
-
 const MATRIX_SUBJECT_CODES: Readonly<Record<string, true>> = { TOAN: true, LY: true, HOA: true, SINH: true, SU: true, DIA: true };
 
 export function usesMapidMatrix(subjectCode: string): boolean {
@@ -101,7 +98,7 @@ export function convertLegacySection(section: ExamSection): ExamSection {
     }
     (block.topicQuotas ?? []).forEach((quota, index) => rules.push(quotaRule(quota, unique(`legacy-${quota.id || `${block.id}-q${index + 1}`}`), block.id)));
   }
-  if (rules.length === 0 || rules.length > MAX_MAPID_RULES) return section;
+  if (rules.length === 0) return section;
 
   const converted: ExamSection = {
     ...section,

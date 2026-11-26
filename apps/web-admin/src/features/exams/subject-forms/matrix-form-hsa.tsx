@@ -4,15 +4,15 @@ import { Button, Chip, cn, focusRing } from "@thi360/ui";
 import { Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
-import { indexKnowledge, type KnowledgeIndexEntry } from "@/features/content/knowledge-tree";
+import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference } from "@/features/content/types";
 import { BlockTagPicker } from "../components/block-tag-picker";
 import { KnowledgeScopeField, MapidModeField } from "../components/knowledge-scope-field";
 import { MapidRulesTable, useMapidRuleText } from "../components/mapid-rules-table";
 import { TopicQuotaTable } from "../components/topic-quota-table";
-import { nodesCover, nodesEquivalent } from "../mapid-rule-form-conflicts";
-import { deletedGroupRules, groupEffectiveRules, mapidViewMode, ruleCount } from "../mapid-rules";
-import type { ExamSection, KnowledgeScope, MapidRule, QuestionBlock } from "../types";
+import { allocatedRuleQuestions } from "../mapid-rule-form-conflicts";
+import { deletedGroupRules, groupEffectiveRules, mapidViewMode } from "../mapid-rules";
+import type { ExamSection, KnowledgeScope, QuestionBlock } from "../types";
 import type { MatrixBlockProps, MatrixKindSlotOptions } from "./matrix-block-props";
 import { roleBlocks, structureOf } from "./matrix-form-model";
 import { MATRIX_MAPID_RULES_FIELD } from "./navigation";
@@ -25,86 +25,6 @@ export function hsaMatrixSlotOptions(section: ExamSection): MatrixKindSlotOption
   return isHsaStrandSubject(section.subjectCode)
     ? { placement: "before-structure", structureVariant: "compact" }
     : { placement: "after-structure", structureVariant: "default" };
-}
-
-function ruleDemand(section: ExamSection, rule: MapidRule): number {
-  if (rule.type === "COUNT") return ruleCount(section, rule);
-  if (rule.type === "ONLY_IN_GROUP" && (rule.count != null || rule.percent != null)) return ruleCount(section, rule);
-  if (rule.type === "PRESENT") return 1;
-  return 0;
-}
-
-type AllocatedScopeNode = { groupId: string | null; nodeIds: readonly string[]; demand: number };
-
-function isTighterParent(
-  candidate: AllocatedScopeNode,
-  current: AllocatedScopeNode,
-  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
-): boolean {
-  const narrowerTopic =
-    nodesCover(current.nodeIds, candidate.nodeIds, knowledgeIndex) &&
-    !nodesCover(candidate.nodeIds, current.nodeIds, knowledgeIndex);
-  if (narrowerTopic) return true;
-  return (
-    nodesEquivalent(current.nodeIds, candidate.nodeIds, knowledgeIndex) &&
-    candidate.groupId !== null &&
-    current.groupId === null
-  );
-}
-
-function tightestCoveringParent(
-  childIndex: number,
-  nodes: readonly AllocatedScopeNode[],
-  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
-): number {
-  const child = nodes[childIndex]!;
-  let best = -1;
-  for (let j = 0; j < nodes.length; j += 1) {
-    if (j === childIndex) continue;
-    const candidate = nodes[j]!;
-    if (candidate.groupId !== null && candidate.groupId !== child.groupId) continue;
-    if (!nodesCover(candidate.nodeIds, child.nodeIds, knowledgeIndex)) continue;
-    if (best === -1 || isTighterParent(candidate, nodes[best]!, knowledgeIndex)) best = j;
-  }
-  return best;
-}
-
-function hsaAllocatedRuleQuestions(
-  section: ExamSection,
-  knowledgeIndex: ReadonlyMap<string, KnowledgeIndexEntry>,
-): number {
-  const blockIds = new Set(section.blocks.map((block) => block.id));
-  const nodes: AllocatedScopeNode[] = [];
-  let unkeyedDemand = 0;
-
-  for (const rule of section.mapidRules ?? []) {
-    if (rule.groupId && !blockIds.has(rule.groupId)) continue;
-    const demand = ruleDemand(section, rule);
-    if (demand <= 0) continue;
-    if (rule.nodeIds.length === 0) {
-      unkeyedDemand += demand;
-      continue;
-    }
-    const groupId = rule.groupId ?? null;
-    const existing = nodes.find(
-      (item) => item.groupId === groupId && nodesEquivalent(item.nodeIds, rule.nodeIds, knowledgeIndex),
-    );
-    if (existing) existing.demand = Math.max(existing.demand, demand);
-    else nodes.push({ groupId, nodeIds: rule.nodeIds, demand });
-  }
-
-  const parentOf = nodes.map((_, idx) => tightestCoveringParent(idx, nodes, knowledgeIndex));
-  const childrenOf: number[][] = Array.from({ length: nodes.length }, () => []);
-  parentOf.forEach((parent, idx) => {
-    if (parent !== -1) childrenOf[parent]!.push(idx);
-  });
-
-  const effective = (idx: number): number => {
-    const childrenSum = childrenOf[idx]!.reduce((sum, childIdx) => sum + effective(childIdx), 0);
-    return Math.max(nodes[idx]!.demand, childrenSum);
-  };
-
-  return unkeyedDemand + nodes.reduce((sum, _, idx) => (parentOf[idx] === -1 ? sum + effective(idx) : sum), 0);
 }
 
 export function HsaRoleScopeFooter({ section, block, reference }: { section: ExamSection; block: QuestionBlock; reference: ContentReference }) {
@@ -232,7 +152,7 @@ export function MatrixFormHsa({ section, kindCode, subjectName, total, axes, lab
   const setBlock = roleBlocks(section).set;
   const knowledgeIndex = useMemo(() => indexKnowledge(reference.knowledgeTree), [reference.knowledgeTree]);
   const subjectTotal = total ?? structureOf(section).total;
-  const allocated = hsaAllocatedRuleQuestions(section, knowledgeIndex);
+  const allocated = allocatedRuleQuestions(section, section.mapidRules ?? [], knowledgeIndex);
   const over = allocated - subjectTotal;
 
   const mapidContent =

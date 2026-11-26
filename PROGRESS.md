@@ -2,6 +2,21 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### Quy tắc MAPID: bỏ giới hạn 20 quy tắc, cảnh báo khi tổng số câu vượt cấu trúc (2026-11-26, `UNI-2822`)
+
+- **Nguồn:** hai task BA giao trên uniworkos (sub-task UNI-1695 bên uniworkos): UNI-1718, UNI-1719.
+- **UNI-1718, bỏ giới hạn:**
+  - Web quản trị: bỏ `MAX_MAPID_RULES`; bộ đếm chỉ còn "N quy tắc"; nút "Thêm quy tắc" không còn khóa. Bài HSA cũ có hơn 20 chỉ tiêu cũng được chuyển sang quy tắc.
+  - Backend: `ExamStructureValidator` bỏ kiểm `MAX_MAPID_RULES` và tham số `maxMapidRules`; `ExamStructureProperties` bỏ `maxMapidRules`; `application.yml` bỏ `THI360_EXAM_MAX_MAPID_RULES`.
+- **UNI-1719, cảnh báo:**
+  - Hộp thêm/sửa quy tắc hiện cảnh báo, không chặn lưu, khi các quy tắc của môn cần nhiều câu hơn số câu của môn ở cấu trúc.
+  - Phép tính dùng lại cách đếm của Sử/Địa HSA, chuyển thành `allocatedRuleQuestions` trong `mapid-rule-form-conflicts.ts`: mức tối thiểu trong cùng phạm vi cộng dồn; quy tắc trùng chủ đề lấy mức lớn nhất; quy tắc con nằm trong quy tắc rộng hơn tính `max(cha, tổng con)`. Khi sửa thì không tính trùng chính quy tắc đang sửa.
+- **Đặc tả:** `docs/specs/2026-11-19-form-theo-mon.md` ghi theo.
+- **Kiểm chứng:**
+  - Backend: `MapidRule*Test`, `ExamStructure*Test` qua 82/82.
+  - Web quản trị: test MAPID và form HSA 186 test qua (gồm test mới: 25 quy tắc vẫn thêm được; 50 câu không cảnh báo, 55 câu cảnh báo và vẫn lưu được; sửa không tính trùng; quy tắc con không bị cộng hai lần).
+- **Tiếp theo:** PR vào `develop`, CI, merge, deploy demo, chuyển hai task uniworkos sang In review.
+
 ### Màn khuyến mãi quản trị: gộp một danh sách, cảnh báo thay đổi chưa lưu, bỏ trường trạng thái khi tạo (2026-11-26, `UNI-2819`)
 
 - **Nguồn:** ba bug BA báo trên uniworkos (sub-task của PBI-08 `UNI-1637` bên uniworkos): UNI-1713, UNI-1714, UNI-1715.

@@ -222,6 +222,56 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     expect(latest.rules[0]).toMatchObject({ type: "COUNT", groupId: null, comparator: "EXACT", count: 3 });
   });
 
+  it("uniworkos UNI-1719: cảnh báo không chặn khi tổng số câu các quy tắc vượt số câu của môn", async () => {
+    const u = userEvent.setup();
+    const initialRules: MapidRule[] = [
+      { id: "r-a", type: "COUNT", groupId: null, nodeIds: ["kn-0D2-1-1"], comparator: "EXACT", count: 20 },
+      { id: "r-b", type: "COUNT", groupId: null, nodeIds: ["kn-0D2-1-2"], comparator: "EXACT", count: 25 },
+    ];
+    const latest = renderTable(makeSection({ mapidRules: initialRules }));
+
+    // 20 + 25 + 5 = 50 = số câu của môn: không cảnh báo.
+    let dialog = await openAdd(u);
+    await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
+    await pickNode(u, "0D2-2");
+    await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Bằng" }));
+    await u.clear(within(dialog).getByTestId("mapid-rule-count"));
+    await u.type(within(dialog).getByTestId("mapid-rule-count"), "5");
+    expect(within(dialog).queryByTestId("mapid-rule-over-total")).not.toBeInTheDocument();
+
+    // 20 + 25 + 10 = 55 > 50: cảnh báo, vẫn lưu được.
+    await u.clear(within(dialog).getByTestId("mapid-rule-count"));
+    await u.type(within(dialog).getByTestId("mapid-rule-count"), "10");
+    const warning = within(dialog).getByTestId("mapid-rule-over-total");
+    expect(warning).toHaveAttribute("role", "note");
+    expect(warning).toHaveTextContent(
+      "Các quy tắc của môn sẽ cần 55 câu, nhiều hơn 5 câu so với 50 câu đã chọn ở cấu trúc. Vẫn lưu được, nhưng đề có thể không ghép đủ các quy tắc.",
+    );
+    expect(within(dialog).getByTestId("mapid-rule-save")).toBeEnabled();
+    await u.click(within(dialog).getByTestId("mapid-rule-save"));
+    expect(latest.rules).toHaveLength(3);
+
+    // Sửa quy tắc 25 câu: đang 55 nên vẫn cảnh báo; hạ xuống 15 thì 20 + 15 + 10 = 45, không tính trùng chính nó.
+    await u.click(screen.getByRole("button", { name: /^Sửa quy tắc: .*Sự biến thiên/ }));
+    dialog = dialogOf();
+    expect(within(dialog).getByTestId("mapid-rule-over-total")).toHaveTextContent("55 câu");
+    await u.clear(within(dialog).getByTestId("mapid-rule-count"));
+    await u.type(within(dialog).getByTestId("mapid-rule-count"), "15");
+    expect(within(dialog).queryByTestId("mapid-rule-over-total")).not.toBeInTheDocument();
+  });
+
+  it("uniworkos UNI-1719: quy tắc con nằm trong quy tắc rộng hơn không bị cộng hai lần", async () => {
+    const u = userEvent.setup();
+    renderTable(makeSection({ mapidRules: [{ id: "r-parent", type: "COUNT", groupId: null, nodeIds: ["kn-0D2-1"], comparator: "EXACT", count: 45 }] }));
+
+    const dialog = await openAdd(u);
+    await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
+    await pickNode(u, "0D2-1-1");
+    await u.clear(within(dialog).getByTestId("mapid-rule-count"));
+    await u.type(within(dialog).getByTestId("mapid-rule-count"), "10");
+    expect(within(dialog).queryByTestId("mapid-rule-over-total")).not.toBeInTheDocument();
+  });
+
   it("AC-1707-7: Subject EXACT 3 + single Group EXACT 2 allowed; Group sum > Subject EXACT blocks with open buttons", async () => {
     const u = userEvent.setup();
     const initialRules: MapidRule[] = [
