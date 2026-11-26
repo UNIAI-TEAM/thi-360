@@ -3,7 +3,7 @@
 import { cn, focusRing } from "@thi360/ui";
 import { Check, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type KeyboardEvent, useRef } from "react";
+import { type KeyboardEvent, useEffect, useRef } from "react";
 import type { AttemptPartStateView } from "./mappers";
 
 export interface PartNavigationProps {
@@ -51,6 +51,18 @@ export function PartNavigation({
 }: PartNavigationProps) {
   const t = useTranslations("attempt.parts");
   const tabRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const stripRef = useRef<HTMLElement | null>(null);
+
+  // Dải phần cuộn ngang không hiện thanh cuộn (UNI-2826): tự đưa phần đang làm vào tầm nhìn khi đổi phần.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const current = strip?.querySelector<HTMLElement>('[aria-selected="true"], [aria-current="step"]');
+    if (!strip || !current) return;
+    const left = current.offsetLeft - strip.offsetLeft;
+    const right = left + current.offsetWidth;
+    if (left < strip.scrollLeft) strip.scrollLeft = left;
+    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth;
+  }, [currentPartOrd]);
   const isFree = navigationMode === "FREE";
   const sortedParts = [...parts].sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0));
 
@@ -86,9 +98,12 @@ export function PartNavigation({
   if (isFree) {
     return (
       <div
+        ref={(el) => {
+          stripRef.current = el;
+        }}
         role="tablist"
         aria-label={t("navLabel")}
-        className="flex items-center gap-1.5 overflow-x-auto py-0.5"
+        className="flex items-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {sortedParts.map((part, index) => {
           const ord = part.ord ?? index + 1;
@@ -140,7 +155,13 @@ export function PartNavigation({
   }
 
   return (
-    <nav aria-label={t("navLabel")} className="overflow-x-auto py-0.5">
+    <nav
+      ref={(el) => {
+        stripRef.current = el;
+      }}
+      aria-label={t("navLabel")}
+      className="overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       <ol className="flex items-center gap-1.5">
         {sortedParts.map((part, index) => {
           const ord = part.ord ?? index + 1;

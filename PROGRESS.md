@@ -2,6 +2,17 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### Màn làm bài: đầu trang gọn, ổn định, thanh danh sách câu luôn thấy trên màn hẹp (2026-11-26, `UNI-2826`)
+
+- **Yêu cầu:** M.Trường thấy đầu trang `AttemptPlayer` (sau UNI-2813) xấu ở cả màn to và nhỏ: thu gọn vẫn 3 hàng, hàng nút lúc 2 lúc 3 hàng, màn hẹp phải kéo lên đầu mới mở được danh sách câu.
+- **Đã làm:**
+  - Hàng điều khiển không xuống dòng (đồng hồ, trạng thái lưu, Hoàn thành phần / Nộp bài, nút thu gọn). Dưới 640px hàng này đứng đầu; trạng thái lưu chỉ còn biểu tượng.
+  - Thu gọn còn đúng hàng điều khiển; mở thêm tên bài và dải phần thi (ẩn thanh cuộn, tự cuộn tới phần đang làm).
+  - Dưới 1024px thanh "đã trả lời · danh sách câu" gắn vào đầu trang dính (portal), luôn thấy khi cuộn.
+  - DESIGN.md 5.16 ghi quy tắc.
+- **Kiểm chứng:** web-student typecheck, lint sạch; vitest 73 file, 558 test qua. Kiểm bố cục thật bằng trang thử tạm ở máy (không commit): ở 360px hàng điều khiển vừa 328px không tràn; chiều cao đầu trang chỉ đổi theo khoảng bề rộng (dưới 640: 102/172px, 640–1023: 102/146px, từ 1024: 53/97px, thu gọn/mở).
+- **Tiếp theo:** chờ CI, merge, deploy demo, kiểm trên demo với một lượt thi thật.
+
 ### Đồng bộ đầu trang các màn chi tiết web quản trị (2026-11-26, `UNI-2825`)
 
 - **Yêu cầu:** M.Trường thấy mỗi cụm menu dựng đầu trang màn chi tiết một kiểu (nút quay lại chỗ phải, chỗ trái, chỗ trong thẻ). Đã chốt: đầu trang không đặt trong thẻ; hàng nút làm giống màn chi tiết khuyến mãi (Xóa là nút đỏ đứng cuối).
@@ -11,7 +22,7 @@
   - Mục cuối breadcrumb mới cho bài thi (mã), câu hỏi và trang sửa câu hỏi (mã), tài khoản (họ tên).
   - DESIGN.md mục 5.8 ghi quy tắc đầu trang màn chi tiết.
 - **Kiểm chứng:** web quản trị typecheck, lint sạch; toàn bộ vitest qua (một test câu hỏi đã sửa sau lượt chạy đầu); kit UI 5/5. e2e `users.spec.ts`, `promotions.spec.ts` sửa theo nhãn mới, chạy trên CI.
-- **Tiếp theo:** chờ CI, merge, deploy demo, kiểm trên trình duyệt (sáng/tối, vi/en).
+- **Đã xong:** PR #223 merge vào develop `3549748a`, demo đã deploy. Kiểm trên demo 9 màn chi tiết (tài khoản sáng/vi, lớp học tối/en). Chưa kiểm màn chấm tự luận vì demo không có câu chờ chấm.
 
 ### Quy tắc MAPID "ngân sách lồng nhau" (2026-11-26, `UNI-2824`)
 

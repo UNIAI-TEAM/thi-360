@@ -428,6 +428,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
   const [currentLeafItemId, setCurrentLeafItemId] = useState<string | null>(null);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(0);
+  const [questionBarSlot, setQuestionBarSlot] = useState<HTMLDivElement | null>(null);
   const [answersByItem, setAnswersByItem] = useState<Record<string, ApiAnswerValue | null>>({});
   const [flagsByItem, setFlagsByItem] = useState<Record<string, boolean>>({});
   const [audioSnapshotsByAsset, setAudioSnapshotsByAsset] = useState<
@@ -2191,168 +2192,191 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
       className="flex min-h-dvh flex-col bg-page text-text"
     >
       <header ref={headerRef} className="sticky top-0 z-20 border-b border-border bg-surface">
-        <div className="mx-auto flex w-full flex-wrap items-center justify-between gap-2 px-4 py-2 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
+        {/*
+          Đầu trang ổn định (UNI-2826): hàng điều khiển không bao giờ xuống dòng. Dưới `sm` hàng điều khiển đứng đầu, rộng
+          hết hàng; từ `sm` tên bài (hoặc chip phần khi thu gọn) bên trái, điều khiển bên phải. Thu gọn chỉ còn hàng này.
+        */}
+        <div className="mx-auto flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2 min-[1440px]:max-w-[1464px] min-[1440px]:px-6">
           {isHeaderCollapsed ? (
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              {activePartChipLabel ? (
+            activePartChipLabel ? (
+              <div className="order-1 hidden min-w-0 flex-1 sm:flex">
                 <span
                   data-testid="attempt-active-part-chip"
-                  className="inline-flex max-w-[200px] items-center gap-1.5 truncate rounded-lg border border-primary-600 bg-primary-50 px-2.5 py-1 text-caption font-semibold text-primary-800 sm:max-w-xs"
+                  className="inline-flex min-w-0 max-w-full items-center rounded-lg border border-primary-600 bg-primary-50 px-2.5 py-1 text-caption font-semibold text-primary-800"
                 >
                   <span className="truncate" data-exam-content="">
                     {activePartChipLabel}
                   </span>
                 </span>
-              ) : null}
-            </div>
+              </div>
+            ) : (
+              <div className="order-1 hidden min-w-0 flex-1 sm:block" />
+            )
           ) : (
-            <div className="w-full min-w-0 space-y-1 md:w-auto md:flex-1">
+            <div className="order-2 w-full min-w-0 sm:order-1 sm:w-auto sm:flex-1">
               {attemptState.examName ? (
-                <h1
-                  className="line-clamp-1 text-label font-bold text-text sm:text-body"
-                  data-exam-content=""
-                >
+                <h1 className="truncate text-label font-bold text-text sm:text-body" data-exam-content="">
                   {attemptState.examName}
                 </h1>
               ) : null}
-              <PartNavigation
-                parts={parts}
-                currentPartOrd={activePart?.ord ?? null}
-                navigationMode={attemptState.navigationMode ?? "SEQUENTIAL"}
-                choiceMap={choiceTitleMap}
-                disabled={isSessionLocked}
-                onSelectPart={(ord) => {
-                  setSelectedPartOrd(ord);
-                  setUnitIndex(0);
-                  setCurrentLeafItemId(null);
-                  const targetPart = parts.find((p) => p.ord === ord);
-                  const targetUnits = targetPart
-                    ? buildSegmentedQuestionUnits(
-                        targetPart.items,
-                        attemptId,
-                        targetPart.displaySegments,
-                      )
-                    : [];
-                  const targetItemId = targetUnits[0]?.leafItems[0]?.itemId ?? targetUnits[0]?.id;
-                  if (targetPart?.partId && targetItemId) {
-                    const hadDirtyItems = (saveQueueRef.current?.getDirtyItemIds().length ?? 0) > 0;
-                    saveQueueRef.current?.setPosition(
-                      { partId: targetPart.partId, itemId: targetItemId },
-                      true,
-                    );
-                    if (!hadDirtyItems) {
-                      void saveQueueRef.current?.flushNow();
-                    }
-                  } else if (saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
-                    void saveQueueRef.current.flushNow();
-                  }
-                }}
-              />
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            {remainingMs !== null && durationParts ? (
-              <div
-                role="timer"
-                aria-label={
-                  durationParts.hours > 0
-                    ? t("timer.ariaLabel", {
-                        label: timerLabel,
-                        hours: durationParts.hours,
-                        minutes: durationParts.minutes,
-                        seconds: durationParts.seconds,
-                      })
-                    : t("timer.ariaLabelShort", {
-                        label: timerLabel,
-                        minutes: durationParts.minutes,
-                        seconds: durationParts.seconds,
-                      })
-                }
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-label font-semibold tabular-nums",
-                  isTimerUrgent
-                    ? "border-danger bg-danger-bg text-danger"
-                    : "border-border bg-subtle text-text",
-                )}
-              >
-                <Clock className="size-4 shrink-0" aria-hidden="true" />
-                <span>{formatClockDuration(remainingMs)}</span>
-              </div>
-            ) : null}
+          <div className="order-1 flex w-full min-w-0 items-center justify-between gap-2 sm:order-2 sm:w-auto sm:shrink-0 sm:justify-end">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                {remainingMs !== null && durationParts ? (
+                  <div
+                    role="timer"
+                    aria-label={
+                      durationParts.hours > 0
+                        ? t("timer.ariaLabel", {
+                            label: timerLabel,
+                            hours: durationParts.hours,
+                            minutes: durationParts.minutes,
+                            seconds: durationParts.seconds,
+                          })
+                        : t("timer.ariaLabelShort", {
+                            label: timerLabel,
+                            minutes: durationParts.minutes,
+                            seconds: durationParts.seconds,
+                          })
+                    }
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-label font-semibold tabular-nums sm:gap-1.5 sm:px-2.5",
+                      isTimerUrgent
+                        ? "border-danger bg-danger-bg text-danger"
+                        : "border-border bg-subtle text-text",
+                    )}
+                  >
+                    <Clock className="size-4 shrink-0" aria-hidden="true" />
+                    <span>{formatClockDuration(remainingMs)}</span>
+                  </div>
+                ) : null}
 
-            <div
-              role="status"
-              aria-live="polite"
-              className={cn(
-                "rounded-lg border px-2.5 py-1 text-caption font-medium",
-                saveStatus.state === "saved"
-                  ? "border-border bg-subtle text-text-muted"
-                  : saveStatus.state === "saving"
-                    ? "border-primary-200 bg-primary-50 text-primary-800"
-                    : "border-warning bg-warning-bg text-warning",
-              )}
-            >
-              {saveStatusText}
+                <div
+                  role="status"
+                  aria-live="polite"
+                  title={saveStatusText}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg border px-1.5 py-1 text-caption font-medium whitespace-nowrap sm:px-2.5",
+                    saveStatus.state === "saved"
+                      ? "border-border bg-subtle text-text-muted"
+                      : saveStatus.state === "saving"
+                        ? "border-primary-200 bg-primary-50 text-primary-800"
+                        : "border-warning bg-warning-bg text-warning",
+                  )}
+                >
+                  {saveStatus.state === "saved" ? (
+                    <CheckCircle2 className="size-4 shrink-0 sm:hidden" aria-hidden="true" />
+                  ) : saveStatus.state === "saving" ? (
+                    <LoaderCircle className="size-4 shrink-0 animate-spin motion-reduce:animate-none sm:hidden" aria-hidden="true" />
+                  ) : (
+                    <AlertCircle className="size-4 shrink-0 sm:hidden" aria-hidden="true" />
+                  )}
+                  <span className="max-sm:sr-only">{saveStatusText}</span>
+                </div>
             </div>
 
-            {canFinishPart ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="pointer-coarse:min-h-11"
-                disabled={isReadOnly || isSessionClaimPending}
-                onClick={() => {
-                  setFinishDialogStatus("idle");
-                  setFinishDialogOpen(true);
-                }}
-              >
-                {t("header.finishPart")}
-              </Button>
-            ) : null}
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                {canFinishPart ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="pointer-coarse:min-h-11 max-sm:px-3"
+                    disabled={isReadOnly || isSessionClaimPending}
+                    onClick={() => {
+                      setFinishDialogStatus("idle");
+                      setFinishDialogOpen(true);
+                    }}
+                  >
+                    {t("header.finishPart")}
+                  </Button>
+                ) : null}
 
-            {canSubmitAttempt ? (
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                className="pointer-coarse:min-h-11"
-                disabled={
-                  isSecondaryTab ||
-                  isEvicted ||
-                  isSessionClaimPending ||
-                  sessionSnap.status === "takeover_required"
-                }
-                onClick={() => {
-                  setSubmitDialogStatus("idle");
-                  setSubmitDialogOpen(true);
-                }}
-              >
-                {t("header.submit")}
-              </Button>
-            ) : null}
+                {canSubmitAttempt ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    className="pointer-coarse:min-h-11 max-sm:px-3"
+                    disabled={
+                      isSecondaryTab ||
+                      isEvicted ||
+                      isSessionClaimPending ||
+                      sessionSnap.status === "takeover_required"
+                    }
+                    onClick={() => {
+                      setSubmitDialogStatus("idle");
+                      setSubmitDialogOpen(true);
+                    }}
+                  >
+                    {t("header.submit")}
+                  </Button>
+                ) : null}
 
-            <button
-              type="button"
-              data-testid="attempt-header-collapse"
-              aria-expanded={!isHeaderCollapsed}
-              aria-label={t(isHeaderCollapsed ? "header.expandHeader" : "header.collapseHeader")}
-              title={t(isHeaderCollapsed ? "header.expandHeader" : "header.collapseHeader")}
-              onClick={() => setIsHeaderCollapsed((prev) => !prev)}
-              className={cn(
-                "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-subtle text-text-secondary transition-colors hover:border-border-strong hover:bg-surface hover:text-text pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-                focusRing,
-              )}
-            >
-              {isHeaderCollapsed ? (
-                <ChevronDown className="size-4" aria-hidden="true" />
-              ) : (
-                <ChevronUp className="size-4" aria-hidden="true" />
-              )}
-            </button>
+                <button
+                  type="button"
+                  data-testid="attempt-header-collapse"
+                  aria-expanded={!isHeaderCollapsed}
+                  aria-label={t(isHeaderCollapsed ? "header.expandHeader" : "header.collapseHeader")}
+                  title={t(isHeaderCollapsed ? "header.expandHeader" : "header.collapseHeader")}
+                  onClick={() => setIsHeaderCollapsed((prev) => !prev)}
+                  className={cn(
+                    "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-subtle text-text-secondary transition-colors hover:border-border-strong hover:bg-surface hover:text-text pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+                    focusRing,
+                  )}
+                >
+                  {isHeaderCollapsed ? (
+                    <ChevronDown className="size-4" aria-hidden="true" />
+                  ) : (
+                    <ChevronUp className="size-4" aria-hidden="true" />
+                  )}
+                </button>
+            </div>
           </div>
+
+          {!isHeaderCollapsed ? (
+            <div className="order-3 w-full min-w-0">
+            <PartNavigation
+              parts={parts}
+              currentPartOrd={activePart?.ord ?? null}
+              navigationMode={attemptState.navigationMode ?? "SEQUENTIAL"}
+              choiceMap={choiceTitleMap}
+              disabled={isSessionLocked}
+              onSelectPart={(ord) => {
+                setSelectedPartOrd(ord);
+                setUnitIndex(0);
+                setCurrentLeafItemId(null);
+                const targetPart = parts.find((p) => p.ord === ord);
+                const targetUnits = targetPart
+                  ? buildSegmentedQuestionUnits(
+                      targetPart.items,
+                      attemptId,
+                      targetPart.displaySegments,
+                    )
+                  : [];
+                const targetItemId = targetUnits[0]?.leafItems[0]?.itemId ?? targetUnits[0]?.id;
+                if (targetPart?.partId && targetItemId) {
+                  const hadDirtyItems = (saveQueueRef.current?.getDirtyItemIds().length ?? 0) > 0;
+                  saveQueueRef.current?.setPosition(
+                    { partId: targetPart.partId, itemId: targetItemId },
+                    true,
+                  );
+                  if (!hadDirtyItems) {
+                    void saveQueueRef.current?.flushNow();
+                  }
+                } else if (saveQueueRef.current && saveQueueRef.current.getDirtyItemIds().length > 0) {
+                  void saveQueueRef.current.flushNow();
+                }
+              }}
+            />
+            </div>
+          ) : null}
         </div>
+
+        {/* Dưới `lg`: thanh "đã trả lời · danh sách câu" của QuestionNav gắn vào đây để luôn thấy khi cuộn. */}
+        <div ref={setQuestionBarSlot} data-attempt-question-bar-slot="" className="border-t border-border empty:hidden lg:hidden" />
 
         {!saveStatus.isOnline ? (
           <div
@@ -2403,6 +2427,7 @@ export function AttemptPlayer({ attemptId, userId, deps = EMPTY_DEPS }: AttemptP
             totalDisplayItems={navItems.length}
             onSelectUnit={(nextUnitIdx) => setUnitIndex(nextUnitIdx)}
             onSelectItem={handleSelectNavItem}
+            controlsBarContainer={questionBarSlot}
             footer={<p className="text-caption text-text-muted">{t("player.shortcutHint")}</p>}
           >
             <fieldset
