@@ -165,8 +165,6 @@ export function ReconciliationReportCard() {
             </div>
           ))}
         </dl>
-
-        <p className="text-xs text-text-muted">{t("triggerHint")}</p>
       </div>
     </Card>
   );

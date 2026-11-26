@@ -36,6 +36,25 @@
   - Web quản trị: test MAPID và form HSA 186 test qua (gồm test mới: 25 quy tắc vẫn thêm được; 50 câu không cảnh báo, 55 câu cảnh báo và vẫn lưu được; sửa không tính trùng; quy tắc con không bị cộng hai lần).
 - **Tiếp theo:** PR vào `develop`, CI, merge, deploy demo, chuyển hai task uniworkos sang In review.
 
+### Màn Đơn hàng quản trị: bộ lọc mặc định thu gọn, bỏ dòng ghi chú báo cáo đối soát (2026-11-26, `UNI-2821`)
+
+- **Nguồn:** bug BA báo trên uniworkos UNI-1717 (sub-task PBI-08 bên uniworkos), có ảnh chụp màn `/orders`.
+- **Đã sửa (web quản trị):**
+  - Ô "Tìm đơn hàng" luôn hiện; Từ ngày, Đến ngày, Bài thi, Thanh toán, Hoàn tiền, Hình thức thu thu gọn sau nút "Bộ lọc" (`aria-expanded`, đếm số bộ lọc đang áp dụng), mở sẵn khi URL đã có bộ lọc. Cùng mẫu với "Bộ lọc khác" của Ngân hàng câu hỏi.
+  - Bỏ dòng "Báo cáo được tạo tự động bởi tác vụ đối soát cuối ngày." khi đã có báo cáo; giữ ở trạng thái chưa có báo cáo vì đó là lời giải thích vì sao thẻ trống.
+  - Đặc tả mục 9.1 ghi theo.
+- **Kiểm chứng:** `vitest run src/features/orders` 59/59 (thêm test thu gọn mặc định, mở sẵn theo URL, không còn dòng ghi chú; test cũ mở bộ lọc trước khi chọn).
+- **Tiếp theo:** PR vào `develop`, CI, merge, deploy demo, chuyển task uniworkos sang In review.
+
+### Khuyến mãi tự động giảm hết giá thì sản phẩm miễn phí, không cảnh báo giá sàn (2026-11-26, `UNI-2817`)
+
+- **Vấn đề:** khuyến mãi tự động "trừ 100%" bị kẹp lên 10.000 đồng (E26) và màn quản trị hiện 44 cảnh báo chạm giá sàn.
+- **Quyết định của M.Trường (2026-11-26):** khuyến mãi tự động giảm hết giá thì sản phẩm thành miễn phí (0 đồng, cấp quyền ngay, không qua VNPAY, không cảnh báo). Giá còn lại từ 1 tới 9.999 đồng vẫn bị nâng lên 10.000 đồng và vẫn cảnh báo. Đã ghi vào đặc tả `docs/specs/2026-11-16-thuong-mai-pbi-05-09.md` (E7, E26, bước 5 của cách tính giá).
+- **Sửa:** `PricingEngine.evaluateAuto` không kẹp khi mức giảm bằng hoặc vượt giá niêm yết. `PromotionCapWarningService` và luồng đơn 0 đồng (`paymentMethod = FREE`) dùng lại kết quả này nên không phải sửa thêm.
+- **Kiểm chứng:**
+  - Unit test `PriceCalculatorTest.autoPromotionDiscountingWholePriceMakesItFree` chạy đỏ trước khi sửa (nhận 10.000, chờ 0), xanh sau khi sửa. Nhóm test pricing, promotion, order đều qua.
+  - Thêm IT `PromotionAdminDataIT.autoPromotionRemovingWholePriceHasNoCapWarning` và `FreeOrderIT.autoPromotionRemovingWholePriceCreatesFreeOrderWithoutPayment`. Hai IT này cần Docker nên chạy trên CI.
+- **Tiếp theo:** PR vào `develop`, chờ CI, merge, deploy demo, kiểm khuyến mãi "trừ 100%" trên demo không còn cảnh báo.
 ### Màn khuyến mãi quản trị: gộp một danh sách, cảnh báo thay đổi chưa lưu, bỏ trường trạng thái khi tạo (2026-11-26, `UNI-2819`)
 
 - **Nguồn:** ba bug BA báo trên uniworkos (sub-task của PBI-08 `UNI-1637` bên uniworkos): UNI-1713, UNI-1714, UNI-1715.

@@ -74,15 +74,20 @@ public final class PricingEngine {
         return Math.max(0L, Math.min(basePrice, discount));
     }
 
-    /** Evaluates one automatic promotion with the E26 minimum-amount floor clamp. */
+    /**
+     * Evaluates one automatic promotion with the E26 minimum-amount floor clamp. A promotion that removes the whole
+     * price makes the product free (0 VND, no payment) and is not clamped (UNI-2817, M.Trường 2026-11-26); a price
+     * left strictly between 0 and the minimum is still raised to the minimum.
+     */
     public static AutoEvaluation evaluateAuto(long listPrice, AutoCandidate candidate, long minAmount) {
         long safeList = Math.max(0L, listPrice);
         long rawDiscount = computeRawDiscount(safeList, candidate.discountType(), candidate.discountValue(),
                 candidate.maxDiscountVnd());
         long floor = minAmount > 0 ? Math.min(safeList, minAmount) : 0L;
         long rawAfter = Math.max(0L, safeList - rawDiscount);
-        boolean floored = minAmount > 0 && rawDiscount > 0 && rawAfter < floor;
-        long promoPrice = Math.max(rawAfter, floor);
+        boolean free = rawDiscount > 0 && rawAfter == 0L;
+        boolean floored = minAmount > 0 && rawDiscount > 0 && !free && rawAfter < floor;
+        long promoPrice = free ? 0L : Math.max(rawAfter, floor);
         long effectiveDiscount = Math.max(0L, safeList - promoPrice);
         return new AutoEvaluation(candidate, promoPrice, effectiveDiscount, floored);
     }

@@ -171,6 +171,24 @@ class PromotionAdminDataIT extends PromotionIntegrationTest {
     }
 
     @Test
+    void autoPromotionRemovingWholePriceHasNoCapWarning() throws Exception {
+        // UNI-2817: 100% auto makes the exam free (0 VND), so it is not "clamped to the floor"
+        String tag = shortToken();
+        UUID freeExam = insertOnSaleExam("Free Exam " + tag, 49_000L);
+        UUID promoId = trackPromotion(Ids.newId());
+        Instant now = Instant.now();
+        promotionRepository.saveAndFlush(Promotion.auto(
+                promoId, "Free Auto " + tag, null, DiscountType.PERCENT, 100L, null,
+                now.minus(1, ChronoUnit.HOURS), now.plus(1, ChronoUnit.DAYS), null,
+                PromotionScope.EXAM, PromotionStatus.ACTIVE, now, null, null));
+        scopeItemRepository.saveAndFlush(PromotionScopeItem.forExam(Ids.newId(), promoId, freeExam));
+
+        mockMvc.perform(get(BASE + "/" + promoId).with(asUser(Permissions.PROMOTION_VIEW)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.capWarnings").isEmpty());
+    }
+
+    @Test
     void noFloorNoWarning() {
         String tag = shortToken();
         UUID examA = insertOnSaleExam("NoFloor Exam " + tag, 10_000L);

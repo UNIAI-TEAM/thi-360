@@ -1,6 +1,17 @@
 "use client";
 
-import { AlertCircle, Eye, ReceiptText, RefreshCw, RotateCcw, Search, Users } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  ReceiptText,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -183,6 +194,7 @@ export function OrderListView() {
   const fromId = useId();
   const toId = useId();
   const examFilterId = useId();
+  const advancedFiltersId = useId();
   const paymentStatusId = useId();
   const refundStatusId = useId();
   const paymentMethodId = useId();
@@ -324,6 +336,17 @@ export function OrderListView() {
       params.paymentMethod !== "ALL" ||
       params.attention,
   );
+
+  // Bộ lọc ngoài ô tìm kiếm mặc định thu gọn; mở sẵn khi URL đã có bộ lọc (uniworkos UNI-1717).
+  const advancedFilterCount = [
+    params.fromDate,
+    params.toDate,
+    params.examId,
+    params.paymentStatus !== "ALL",
+    params.refundStatus !== "ALL",
+    params.paymentMethod !== "ALL",
+  ].filter(Boolean).length;
+  const [filtersOpen, setFiltersOpen] = useState(advancedFilterCount > 0);
 
   const handleResetFilters = () => {
     setSearchDraft(null);
@@ -536,13 +559,13 @@ export function OrderListView() {
 
       <Card className="@container p-4">
         <form
-          className="grid grid-cols-1 items-end gap-3 @sm:grid-cols-2 @3xl:grid-cols-4"
+          className="flex flex-col gap-3"
           onSubmit={(event) => {
             event.preventDefault();
             updateUrlParams({ q: searchInput.trim(), page: 0 });
           }}
         >
-          <div className="col-span-full flex flex-col gap-1 @3xl:col-span-2">
+          <div className="flex flex-col gap-1">
             <label htmlFor={searchId} className="text-field-label font-medium text-text-secondary">
               {t("filters.searchLabel")}
             </label>
@@ -563,6 +586,29 @@ export function OrderListView() {
                   className="pl-9"
                 />
               </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="shrink-0"
+                aria-expanded={filtersOpen}
+                aria-controls={advancedFiltersId}
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
+                <span>{t("filters.more")}</span>
+                {advancedFilterCount > 0 && (
+                  <span className="rounded-full bg-primary-fill px-1.5 text-caption font-semibold text-on-primary tabular-nums">
+                    <span aria-hidden>{advancedFilterCount}</span>
+                    <span className="sr-only">{t("filters.moreCount", { count: advancedFilterCount })}</span>
+                  </span>
+                )}
+                {filtersOpen ? (
+                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                )}
+              </Button>
               {hasActiveFilters ? (
                 <Button
                   type="button"
@@ -577,6 +623,12 @@ export function OrderListView() {
               ) : null}
             </div>
           </div>
+
+          <div
+            id={advancedFiltersId}
+            hidden={!filtersOpen}
+            className="grid grid-cols-1 items-end gap-3 border-t border-border pt-3 @sm:grid-cols-2 @3xl:grid-cols-4"
+          >
 
           <div className="flex min-w-0 flex-col gap-1">
             <label htmlFor={fromId} className="text-field-label font-medium text-text-secondary">
@@ -664,6 +716,7 @@ export function OrderListView() {
                 updateUrlParams({ paymentMethod: value as OrdersListQueryParams["paymentMethod"], page: 0 })
               }
             />
+          </div>
           </div>
         </form>
       </Card>
