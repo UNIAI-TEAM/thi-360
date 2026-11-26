@@ -13,6 +13,17 @@
 - **Kiểm chứng:** `vitest run src/features/promotions` 63/63; test chặn rời trang của màn đề thi vẫn qua; `typecheck`, `lint` sạch.
 - **Chưa làm:** nút Back của trình duyệt (popstate) chưa chặn được trong App Router; chỉ chặn liên kết trong trang và đóng/tải lại tab.
 - **Tiếp theo:** PR vào `develop`, CI, merge, deploy demo, chuyển ba task uniworkos sang In review.
+### App học viên native: merge, deploy demo và sửa proxy Bearer (2026-11-26, `UNI-2785`, `UNI-2816`)
+
+- **Merge:** PR #216 (`integration/app-hoc-vien` → `develop`) merge commit `872db171`, sau khi gộp `develop` (#201, #203) vào nhánh. CI xanh; shard E2E 1 đỏ lần đầu do runner không tải được Maven, chạy lại đạt.
+- **Demo `https://thi360.zone17.click` chạy `872db171`:**
+  - Keycloak demo có client `thi360-mobile`; realm `thi-360` đặt phiên offline không dùng 7 ngày, tối đa 30 ngày; phiên web giữ 8 giờ.
+  - nginx chuyển `/.well-known/(assetlinks.json|apple-app-site-association)` và `/mobile/` tới web học viên.
+  - Đã đặt `THI360_ANDROID_PACKAGE`, `THI360_ANDROID_CERT_SHA256` (kho khóa debug dùng chung), `THI360_KC_MOBILE_CLIENT_ID/SECRET`. `THI360_IOS_APP_ID` còn trống, chờ Apple Team ID.
+  - Kiểm bằng API: `mobile/login` 200 (offline token, `refreshExpiresIn=604800`), `mobile/refresh` 200, `mobile/logout` 204, refresh sau logout 401 `SESSION_REVOKED`, tài khoản `MANAGE` 403 `APP_STUDENT_ONLY`.
+  - Emulator Android `Pixel_7_API_36`, bản `demo`: `pm get-app-links` báo `thi360.zone17.click: verified`; link `/reset-password?token=…` mở thẳng màn "Đặt mật khẩu mới"; đăng nhập `student01`, tab Tài khoản hiện đúng hồ sơ, đăng xuất được.
+- **Lỗi tìm thấy (`UNI-2816`):** proxy `/api` của web (`packages/web-kit/src/proxy.ts`) không chuyển tiếp `Authorization`, nên app gọi API cần đăng nhập qua tên miền web bị 401. Bản sửa: tùy chọn `forwardBearerAuthorization` của `createProxyHandlers` (mặc định tắt), chỉ web học viên bật; khi bật, proxy chuyển tiếp `Authorization` đúng dạng `Bearer <token>` và request có Bearer không tự làm mới phiên bằng cookie. Web admin giữ nguyên không chuyển tiếp `Authorization` (test sẵn có của web admin khẳng định điều này). Test: `@thi360/web-kit` 68/68, route proxy của web học viên 7/7, của web admin 39/39; typecheck và lint sạch ở cả ba gói. Demo đang chặn tạm bằng quy tắc nginx (request `/api/` có Bearer đi thẳng backend); gỡ quy tắc này sau khi bản sửa lên demo.
+- **Còn lại:** Apple Team ID cho Universal Links iOS; kiểm trên máy thật (sinh trắc học, Keystore/Keychain, máy gập, gỡ và cài lại, TalkBack/VoiceOver) theo mục 6 của `docs/acceptance/app-hoc-vien.md`.
 
 ### Hoàn tất đợt chạy App học viên native Android/iOS — Sóng 1–5 nghiệm thu xong (2026-11-26, `UNI-2785` / `UNI-2809`)
 
