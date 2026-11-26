@@ -78,6 +78,7 @@ import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
 import vn.unicom.thi360.shared.ids.Ids;
+import vn.unicom.thi360.shared.security.LoginChannel;
 import vn.unicom.thi360.shared.web.AppMessages;
 
 /**
@@ -193,7 +194,9 @@ public class OrderService {
     public CreateOrderResponse createOrder(
             String idempotencyKey,
             CreateOrderRequest request,
-            String clientIp) {
+            String clientIp,
+            LoginChannel channel) {
+        Objects.requireNonNull(channel, "channel must not be null");
         UUID userId = learnerGate.requireLearner();
         if (!userId.equals(request.expectedAccountId())) {
             throw new ConflictException("ACCOUNT_CHANGED", messages.get("ACCOUNT_CHANGED"));
@@ -209,7 +212,7 @@ public class OrderService {
                     request,
                     CreateOrderOutcome.class,
                     () -> {
-                        CreateOrderOutcome created = createOrderInTx(userId, request, normalizedIp);
+                        CreateOrderOutcome created = createOrderInTx(userId, request, normalizedIp, channel);
                         freshlyCreated.set(true);
                         return created;
                     });
@@ -254,7 +257,8 @@ public class OrderService {
         });
     }
 
-    public PayOrderResponse payOrder(String code, String idempotencyKey, String clientIp) {
+    public PayOrderResponse payOrder(String code, String idempotencyKey, String clientIp, LoginChannel channel) {
+        Objects.requireNonNull(channel, "channel must not be null");
         UUID userId = learnerGate.requireLearner();
         String normalizedCode = normalizeOrderCode(code);
         String normalizedIp = normalizeIp(clientIp);
@@ -265,9 +269,9 @@ public class OrderService {
                     normalizedCode,
                     Map.of("code", normalizedCode),
                     PayOrderResponse.class,
-                    () -> payOrderInTx(userId, normalizedCode, normalizedIp));
+                    () -> payOrderInTx(userId, normalizedCode, normalizedIp, channel));
         }
-        return txTemplate.execute(status -> payOrderInTx(userId, normalizedCode, normalizedIp));
+        return txTemplate.execute(status -> payOrderInTx(userId, normalizedCode, normalizedIp, channel));
     }
 
     public OrderDetail cancelOrder(String code, String idempotencyKey) {
@@ -285,7 +289,8 @@ public class OrderService {
         return txTemplate.execute(status -> cancelOrderInTx(userId, normalizedCode));
     }
 
-    private CreateOrderOutcome createOrderInTx(UUID userId, CreateOrderRequest request, String clientIp) {
+    private CreateOrderOutcome createOrderInTx(
+            UUID userId, CreateOrderRequest request, String clientIp, LoginChannel channel) {
         Instant now = clock.instant();
         StoredProduct stored = requireOnSaleProduct(
                 storefrontLockRepository.lockByNormalizedCode(StorefrontSearchText.normalize(request.code()))
@@ -311,7 +316,7 @@ public class OrderService {
 
         if (existingPending != null && canReusePendingOrder(existingPending, stored, calc, discounts, now)) {
             Payment payment = createNextPayment(existingPending, clientIp, now);
-            String paymentUrl = buildPaymentUrl(existingPending, payment, resolveUserLocale(userId), clientIp, now);
+            String paymentUrl = buildPaymentUrl(existingPending, payment, resolveUserLocale(userId), clientIp, channel);
             orderHistoryRepository.save(new OrderHistory(
                     Ids.newId(),
                     existingPending.getId(),
@@ -577,12 +582,12 @@ public class OrderService {
         }
 
         Payment payment = createNextPayment(newOrder, clientIp, now);
-        String paymentUrl = buildPaymentUrl(newOrder, payment, resolveUserLocale(userId), clientIp, now);
+        String paymentUrl = buildPaymentUrl(newOrder, payment, resolveUserLocale(userId), clientIp, channel);
         OrderDetail detail = buildOrderDetail(newOrder);
         return new CreateOrderOutcome(newOrderId, false, new CreateOrderResponse(detail, "REDIRECT", paymentUrl));
     }
 
-    private PayOrderResponse payOrderInTx(UUID userId, String normalizedCode, String clientIp) {
+    private PayOrderResponse payOrderInTx(UUID userId, String normalizedCode, String clientIp, LoginChannel channel) {
         Instant now = clock.instant();
         PurchaseOrder order = purchaseOrderRepository.lockByCode(normalizedCode).orElse(null);
         if (order == null || !order.getUserId().equals(userId)) {
@@ -600,7 +605,7 @@ public class OrderService {
 
         // TM 8.3: Không tính lại giá và không kiểm tra lại hạn khuyến mãi trên đơn đã chốt.
         Payment payment = createNextPayment(order, clientIp, now);
-        String paymentUrl = buildPaymentUrl(order, payment, resolveUserLocale(userId), clientIp, now);
+        String paymentUrl = buildPaymentUrl(order, payment, resolveUserLocale(userId), clientIp, channel);
         orderHistoryRepository.save(new OrderHistory(
                 Ids.newId(),
                 order.getId(),
@@ -672,14 +677,14 @@ public class OrderService {
     }
 
     private String buildPaymentUrl(
-            PurchaseOrder order, Payment payment, String locale, String clientIp, Instant now) {
+            PurchaseOrder order, Payment payment, String locale, String clientIp, LoginChannel channel) {
         return vnpayGateway.pay(new PayRequest(
                 payment.getTxnRef(),
                 order.getCode(),
                 payment.getAmountVnd(),
                 "Thanh toan don " + order.getCode(),
                 locale,
-                webUrl + "/checkout/result",
+                webUrl + PaymentReturnPath.of(channel),
                 clientIp,
                 payment.getVnpCreateDate(),
                 payment.getVnpExpireDate()));

@@ -43,6 +43,7 @@ import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.identity.spi.UserDirectory.MailContact;
 import vn.unicom.thi360.shared.api.BusinessRuleException;
 import vn.unicom.thi360.shared.idempotency.IdempotentCommand;
+import vn.unicom.thi360.shared.security.LoginChannel;
 import vn.unicom.thi360.shared.web.AppMessages;
 
 /**
@@ -120,7 +121,11 @@ class OrderCodeGeneratorAndLocaleTest {
                 "http://localhost:3000");
 
         // R1-29/30: nextSeq = 100 -> BusinessRuleException("PAYMENT_ATTEMPTS_EXCEEDED").
-        assertThatThrownBy(() -> service.payOrder(orderCode, null, "127.0.0.1"))
+        assertThatThrownBy(() -> service.payOrder(orderCode, null, "127.0.0.1", LoginChannel.WEB))
+                .isInstanceOf(BusinessRuleException.class)
+                .extracting(ex -> ((BusinessRuleException) ex).getCode())
+                .isEqualTo("PAYMENT_ATTEMPTS_EXCEEDED");
+        assertThatThrownBy(() -> service.payOrder(orderCode, null, "127.0.0.1", LoginChannel.MOBILE))
                 .isInstanceOf(BusinessRuleException.class)
                 .extracting(ex -> ((BusinessRuleException) ex).getCode())
                 .isEqualTo("PAYMENT_ATTEMPTS_EXCEEDED");
@@ -131,21 +136,24 @@ class OrderCodeGeneratorAndLocaleTest {
         when(userDirectory.findMailContact(userId)).thenReturn(Optional.of(
                 new MailContact(userId, "Hoc Vien", "hv@test.local", true, "vi")));
 
-        service.payOrder(orderCode, null, "127.0.0.1");
+        service.payOrder(orderCode, null, "127.0.0.1", LoginChannel.WEB);
         ArgumentCaptor<PayRequest> reqCaptor = ArgumentCaptor.forClass(PayRequest.class);
         verify(vnpayGateway).pay(reqCaptor.capture());
         assertThat(reqCaptor.getValue().locale()).isEqualTo("vn");
+        assertThat(reqCaptor.getValue().returnUrl()).isEqualTo("http://localhost:3000/checkout/result");
 
         when(userDirectory.findMailContact(userId)).thenReturn(Optional.of(
                 new MailContact(userId, "Hoc Vien", "hv@test.local", true, null)));
-        service.payOrder(orderCode, null, "127.0.0.1");
+        service.payOrder(orderCode, null, "127.0.0.1", LoginChannel.MOBILE);
         verify(vnpayGateway, org.mockito.Mockito.times(2)).pay(reqCaptor.capture());
         assertThat(reqCaptor.getValue().locale()).isEqualTo("vn");
+        assertThat(reqCaptor.getValue().returnUrl()).isEqualTo("http://localhost:3000/checkout/result/app");
 
         when(userDirectory.findMailContact(userId)).thenReturn(Optional.of(
                 new MailContact(userId, "Hoc Vien", "hv@test.local", true, "EN")));
-        service.payOrder(orderCode, null, "127.0.0.1");
+        service.payOrder(orderCode, null, "127.0.0.1", LoginChannel.WEB);
         verify(vnpayGateway, org.mockito.Mockito.times(3)).pay(reqCaptor.capture());
         assertThat(reqCaptor.getValue().locale()).isEqualTo("en");
+        assertThat(reqCaptor.getValue().returnUrl()).isEqualTo("http://localhost:3000/checkout/result");
     }
 }

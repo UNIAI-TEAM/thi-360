@@ -30,6 +30,7 @@ import vn.unicom.thi360.commerce.order.application.OrderService.PayOrderResponse
 import vn.unicom.thi360.shared.api.PageQuery;
 import vn.unicom.thi360.shared.api.PageResponse;
 import vn.unicom.thi360.shared.security.ClientIpResolver;
+import vn.unicom.thi360.shared.security.CurrentUserProvider;
 
 /**
  * API đơn hàng của học viên (TM 8.3, E22). Mọi endpoint đòi hỏi phiên hợp lệ của tài khoản {@code ACTIVE}
@@ -45,10 +46,15 @@ public class OrderController {
 
     private final OrderService orderService;
     private final ClientIpResolver clientIpResolver;
+    private final CurrentUserProvider currentUserProvider;
 
-    public OrderController(OrderService orderService, ClientIpResolver clientIpResolver) {
+    public OrderController(
+            OrderService orderService,
+            ClientIpResolver clientIpResolver,
+            CurrentUserProvider currentUserProvider) {
         this.orderService = Objects.requireNonNull(orderService);
         this.clientIpResolver = Objects.requireNonNull(clientIpResolver);
+        this.currentUserProvider = Objects.requireNonNull(currentUserProvider);
     }
 
     @Operation(operationId = "createMyOrder", summary = "Tạo đơn mua bài thi (hoặc dùng lại/thay thế đơn chờ)")
@@ -64,7 +70,11 @@ public class OrderController {
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody CreateOrderRequest request,
             HttpServletRequest httpRequest) {
-        return orderService.createOrder(idempotencyKey, request, clientIpResolver.resolve(httpRequest));
+        return orderService.createOrder(
+                idempotencyKey,
+                request,
+                clientIpResolver.resolve(httpRequest),
+                currentUserProvider.requireLoginChannel());
     }
 
     @Operation(operationId = "listMyOrders", summary = "Danh sách đơn hàng của học viên đang đăng nhập")
@@ -98,7 +108,11 @@ public class OrderController {
             @PathVariable String code,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             HttpServletRequest httpRequest) {
-        return orderService.payOrder(code, idempotencyKey, clientIpResolver.resolve(httpRequest));
+        return orderService.payOrder(
+                code,
+                idempotencyKey,
+                clientIpResolver.resolve(httpRequest),
+                currentUserProvider.requireLoginChannel());
     }
 
     @Operation(operationId = "cancelMyOrder", summary = "Hủy đơn hàng đang chờ và trả lượt voucher")
