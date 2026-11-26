@@ -163,7 +163,17 @@ describe("web-student proxy.ts", () => {
       return `${CTX_COOKIE_NAME}=${token}`;
     }
 
-    it.each(["/", "/exams/HSA-FULL-01", "/exams/QDA-S-TOAN-004", "/forgot-password", "/reset-password", "/checkout/result"])(
+    it.each([
+      "/",
+      "/exams/HSA-FULL-01",
+      "/exams/QDA-S-TOAN-004",
+      "/forgot-password",
+      "/reset-password",
+      "/checkout/result",
+      "/checkout/result/app",
+      "/dieu-khoan-giao-dich-chung",
+      "/chinh-sach-bao-mat-thong-tin",
+    ])(
       "khách mở %s đi tiếp, không sang /login",
       async (path) => {
         const response = await proxy(new NextRequest(`http://localhost:3000${path}`));
@@ -228,6 +238,10 @@ describe("web-student proxy.ts", () => {
       "/mobile/appearance-tokens.json?v=1",
       "/.well-known/assetlinks.json",
       "/.well-known/apple-app-site-association",
+      "/checkout/result/app",
+      "/checkout/result/app?vnp_TxnRef=1&vnp_ResponseCode=00",
+      "/dieu-khoan-giao-dich-chung",
+      "/chinh-sach-bao-mat-thong-tin",
     ])("cho phép truy cập %s không cần đăng nhập và không gọi backend refresh dù có thi360_rt", async (path) => {
       const fetchSpy = vi.spyOn(globalThis, "fetch");
       const response = await proxy(

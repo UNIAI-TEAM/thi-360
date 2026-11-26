@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { PublicShell } from "@/components/public-shell";
-import { PrivacyPolicyView } from "@/features/legal/privacy-policy-view";
-import { resolveSiteBase } from "@/lib/site-url";
+import { LegalDocumentPage } from "@/features/legal/legal-document-page";
+import { getLegalDocument } from "@/features/legal/legal-documents";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("legal.privacy");
@@ -10,10 +10,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PrivacyPolicyPage() {
-  const site = await resolveSiteBase();
+  const [locale, t] = await Promise.all([getLocale(), getTranslations("legal.privacy")]);
+  const doc = getLegalDocument("privacy", locale);
   return (
     <PublicShell>
-      <PrivacyPolicyView site={site} />
+      <LegalDocumentPage doc={doc} breadcrumbTitle={t("title")} />
     </PublicShell>
   );
 }

@@ -64,7 +64,7 @@ describe("GET /.well-known/assetlinks.json", () => {
 });
 
 describe("GET /.well-known/apple-app-site-association", () => {
-  it("trả đúng appIDs và chỉ khai đường dẫn /reset-password khi đặt THI360_IOS_APP_ID", async () => {
+  it("trả đúng appIDs, hai đường dẫn /reset-password và /checkout/result/app, cùng webcredentials khi đặt THI360_IOS_APP_ID", async () => {
     vi.stubEnv("THI360_IOS_APP_ID", "  TEAM123456.vn.unicom.thi360  ");
 
     const response = getAppleAppSiteAssociation();
@@ -77,9 +77,12 @@ describe("GET /.well-known/apple-app-site-association", () => {
         details: [
           {
             appIDs: ["TEAM123456.vn.unicom.thi360"],
-            components: [{ "/": "/reset-password" }],
+            components: [{ "/": "/reset-password" }, { "/": "/checkout/result/app" }],
           },
         ],
+      },
+      webcredentials: {
+        apps: ["TEAM123456.vn.unicom.thi360"],
       },
     });
   });
@@ -87,7 +90,7 @@ describe("GET /.well-known/apple-app-site-association", () => {
   it.each([
     ["biến rỗng", ""],
     ["biến chỉ có khoảng trắng", "   "],
-  ])("trả 200 details rỗng khi %s", async (_label, appId) => {
+  ])("trả 200 details rỗng và không có webcredentials khi %s", async (_label, appId) => {
     vi.stubEnv("THI360_IOS_APP_ID", appId);
 
     const response = getAppleAppSiteAssociation();
@@ -95,6 +98,8 @@ describe("GET /.well-known/apple-app-site-association", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/json");
     expect(response.headers.get("cache-control")).toBe("no-cache");
-    expect(await response.json()).toEqual({ applinks: { details: [] } });
+    const body = (await response.json()) as Record<string, unknown>;
+    expect(body).toEqual({ applinks: { details: [] } });
+    expect("webcredentials" in body).toBe(false);
   });
 });

@@ -1,0 +1,22 @@
+{
+  "light": {
+    "success": "#047857",
+    "successBg": "#ecfdf5",
+    "warning": "#b45309",
+    "warningBg": "#fffbeb",
+    "info": "#0e7490",
+    "infoBg": "#ecfeff",
+    "dangerSolid": "#dc2626",
+    "onDanger": "#ffffff"
+  },
+  "dark": {
+    "success": "#34d399",
+    "successBg": "#0f2a21",
+    "warning": "#fbbf24",
+    "warningBg": "#2b2210",
+    "info": "#22d3ee",
+    "infoBg": "#0f2a30",
+    "dangerSolid": "#dc2626",
+    "onDanger": "#ffffff"
+  }
+}

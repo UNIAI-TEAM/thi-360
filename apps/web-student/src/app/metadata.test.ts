@@ -30,6 +30,13 @@ describe("web-student tiêu đề trang", () => {
     expect((await (await import("./account/orders/[code]/page")).generateMetadata()).title).toBe("Chi tiết đơn hàng");
     expect((await (await import("./checkout/[code]/page")).generateMetadata()).title).toBe("Xác nhận mua");
     expect((await (await import("./checkout/result/page")).generateMetadata()).title).toBe("Kết quả thanh toán");
+    expect((await (await import("./checkout/result/app/page")).generateMetadata()).title).toBe("Kết quả thanh toán");
+    expect((await (await import("./dieu-khoan-giao-dich-chung/page")).generateMetadata()).title).toBe(
+      "Điều kiện giao dịch chung",
+    );
+    expect((await (await import("./chinh-sach-bao-mat-thong-tin/page")).generateMetadata()).title).toBe(
+      "Chính sách bảo mật thông tin",
+    );
     expect((await (await import("./forbidden/page")).generateMetadata()).title).toBe(
       "Bạn không có quyền vào trang này",
     );
@@ -46,6 +53,13 @@ describe("web-student tiêu đề trang", () => {
       expect((await (await import("./account/orders/[code]/page")).generateMetadata()).title).toBe("Order details");
       expect((await (await import("./checkout/[code]/page")).generateMetadata()).title).toBe("Confirm purchase");
       expect((await (await import("./checkout/result/page")).generateMetadata()).title).toBe("Payment result");
+      expect((await (await import("./checkout/result/app/page")).generateMetadata()).title).toBe("Payment result");
+      expect((await (await import("./dieu-khoan-giao-dich-chung/page")).generateMetadata()).title).toBe(
+        "General transaction terms",
+      );
+      expect((await (await import("./chinh-sach-bao-mat-thong-tin/page")).generateMetadata()).title).toBe(
+        "Information privacy policy",
+      );
       expect((await (await import("./not-found")).generateMetadata()).title).toBe(
         `${enMessages.notFound.title} · Thi360`,
       );

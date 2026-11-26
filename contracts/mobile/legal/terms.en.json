@@ -1,0 +1,293 @@
+{
+  "id": "terms",
+  "locale": "en",
+  "version": "2026-11-26",
+  "status": "published",
+  "contentHash": "35b01c33ebda5b9db749458ac99e49b1373bdfc1563cfe5956fe09d3284feddd",
+  "effectiveDate": "2026-11-26",
+  "title": "General Transaction Terms of Thi360",
+  "note": "This English version is a translation. If it differs from the Vietnamese version, the Vietnamese version prevails.",
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "These General Transaction Terms apply to everyone who accesses, registers an account, and purchases exams on Thi360 (hereinafter referred to as \"Customer\") via the website thi360.vn and the Thi360 app on Android and iOS. Thi360 is operated by HSA Education Investment and Development Joint Stock Company (hereinafter referred to as \"Thi360\")."
+    },
+    {
+      "type": "paragraph",
+      "text": "By registering an account or paying for an order, the Customer confirms that they have read and agree to the terms below."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "1. Service provision"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.1. Scope of services"
+    },
+    {
+      "type": "paragraph",
+      "text": "Thi360 provides online exam practice services, including:"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "practice exams structured after official examinations (such as aptitude tests, thinking skills assessments, and high school graduation exams), sold individually or in bundles;",
+        "taking exams on the website and app with timers and automatic answer saving;",
+        "scoring, section and subject results, and review of submissions, answer keys, and solutions according to each exam's benefits;",
+        "attempt history and technical support during use."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.2. Service standards"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "The question count, duration, structure, attempt allowance, and result review level of each exam are published on the exam detail page prior to purchase. Thi360 delivers the exact content published at the time the Customer completes payment.",
+        "Exams on Thi360 are practice exams. Scores are for study reference only, are not official examination results, and do not replace announcements from examination authorities."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.3. Service usage process"
+    },
+    {
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "The Customer registers an account and verifies their email address.",
+        "The Customer selects an exam or bundle and reviews its details, price, and benefits.",
+        "The Customer confirms the purchase and pays through the VNPAY gateway.",
+        "Once the payment gateway confirms a successful transaction, Thi360 grants the exam to the \"My exams\" section of the account.",
+        "The Customer starts an attempt, completes the exam, and submits within the allotted time.",
+        "The Customer views results, reviews answers according to the exam's benefits, and receives technical support when needed."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.4. Pricing and payment"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Selling prices published on the detail page and purchase confirmation screen already include taxes and fees. Thi360 does not collect any additional amount beyond the total shown on the purchase confirmation screen.",
+        "Online payment is processed via the VNPAY gateway. Thi360 does not receive or store Customers' card or bank account details.",
+        "Discount codes (vouchers) apply according to each code's conditions. Each order is paid in a single transaction for the full order amount.",
+        "Unpaid orders expire automatically after the hold period shown on the order details screen."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.5. Conditions of use"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Customers must be at least 15 years old. Customers under 15 years old require consent from a parent or legal guardian.",
+        "Each account is for one individual only. An exam attempt may be open on only one device at a time.",
+        "Service may be interrupted during maintenance, technical incidents, or force majeure events. Thi360 gives advance notice for scheduled maintenance."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "2. Access grant policy"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Exams are granted immediately after the payment gateway confirms a successful transaction.",
+        "If payment has been completed but the exam has not appeared yet, the order shows \"Checking\". Thi360 completes granting access within 48 business hours (08:00–17:30, Monday to Friday, excluding public holidays) from receipt of valid payment. The Customer does not need to pay again.",
+        "The Customer checks the granted exam and reports any discrepancy (if any) via support email with the order code.",
+        "Each attempt has an expiration period (if applicable) shown on the exam card in \"My exams\". Once an attempt has started, it counts as used even if the Customer does not submit."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "3. Service warranty policy"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Thi360 receives technical support requests via email and hotline and responds within 24 business hours (08:00–17:30, Monday to Friday).",
+        "When an attempt is affected by a Thi360 system error (unable to take the exam, lost answers, unable to score), Thi360 grants one replacement attempt for that same exam.",
+        "When an exam contains content errors, Thi360 corrects the content and regrades affected attempts; the regraded score replaces the previous score.",
+        "When service is interrupted for 48 hours or more due to an error by Thi360, the validity period of remaining active attempts is extended by the corresponding downtime."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "4. Transfer policy"
+    },
+    {
+      "type": "paragraph",
+      "text": "Accounts and purchased exams belong personally to the Customer and may not be transferred, rented, lent, or shared. Thi360 reserves the right to lock the account and terminate service without refund upon detecting a violation."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "5. Exam exchange policy"
+    },
+    {
+      "type": "paragraph",
+      "text": "Purchased exams and bundles cannot be exchanged for other exams. In case of an accidental purchase, the Customer may submit a request via support email within 7 days from the date access was granted; Thi360 considers exchanging it for an exam of the same value if no attempt from that order has started."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "6. Refund policy"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "a. Cases eligible for refund consideration"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Case",
+        "Condition",
+        "Refund level"
+      ],
+      "rows": [
+        [
+          "Payment completed but exam was not granted due to a technical error",
+          "Error confirmed by Thi360, lasting more than 72 hours, with no attempt from the order started",
+          "100%"
+        ],
+        [
+          "Thi360 discontinues a sold exam or materially changes its content without notice",
+          "Request submitted within 7 days of the change, for unused attempts",
+          "100% of unused portion"
+        ],
+        [
+          "Transaction charged multiple times for the same order",
+          "Confirmed by the payment gateway",
+          "100% of the overcharged amount"
+        ],
+        [
+          "Payment recorded after the Customer self-deleted their account",
+          "Exam is not granted; Thi360 proactively issues a refund",
+          "100%"
+        ]
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "b. Non-refundable cases"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "At least one attempt from the order has been started.",
+        "Personal reasons: no longer needed, accidental purchase past the deadline in section 5, or inability to schedule time.",
+        "Dissatisfaction with exam results.",
+        "Orders using a discount code, promotional program, or discounted bundle, except the cases listed in section a.",
+        "Accounts that were gifted, transferred, or in violation of these terms.",
+        "Customer self-deletes their account: unused attempts are lost with the account and are not refunded.",
+        "Issues caused by the Customer's device, internet connection, or actions."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "c. Process"
+    },
+    {
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "The Customer submits a request via support email within 7 days of the incident, including the order code, username, and description.",
+        "Thi360 responds within 3 business days.",
+        "If approved, the refund is returned within 7 business days to the original payment method. Payment gateway service fees (if any) are non-refundable."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "7. Rights and obligations"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "a. Of Thi360"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Deliver the service in accordance with the published content and validity period.",
+        "Support Customers during use and announce service changes.",
+        "Protect Customer information in accordance with the Information Privacy Policy."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "b. Of the Customer"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Provide accurate registration information and update it when changes occur.",
+        "Keep their password confidential and take responsibility for actions performed using their account.",
+        "Do not copy, capture, record, or distribute exam papers, answer keys, or solutions in any form; do not use automated tools to access the service; do not interfere with the system.",
+        "Do not share accounts; do not use abusive language toward support staff."
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "All content on Thi360 (exam papers, answer keys, solutions, interface) is the intellectual property of Thi360 or its licensors. Customers may use it solely for personal study."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "8. General provisions"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Thi360 reserves the right to suspend or terminate service without refund for accounts that violate these terms.",
+        "Thi360 may amend these terms. Amended versions are published on thi360.vn and in the app with an effective date; continued use of the service after that date constitutes acceptance of the amended terms.",
+        "Disputes are first resolved through negotiation. If negotiation fails, disputes are brought before competent authorities in Vietnam under applicable law."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "9. Contact information"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Operator: HSA Education Investment and Development Joint Stock Company",
+        "Tax ID: 0109600534, issued on 16/04/2021 by the Hanoi Department of Planning and Investment",
+        "Hanoi Office: No. 11B, Alley 3/29, Lane 3, Pham Tuan Tai Street, Nghia Do Ward, Hanoi",
+        "Ho Chi Minh City Office: 2/26 Nguyen The Truyen Street, Tan Son Nhi Ward, Tan Phu District, Ho Chi Minh City",
+        "Technical support: 0974187313",
+        "Email: hsaeducation.jsc@gmail.com",
+        "Website: thi360.vn"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,205 @@
+{
+  "id": "privacy",
+  "locale": "en",
+  "version": "2026-11-26",
+  "status": "published",
+  "contentHash": "9581517d7d77cfa9d2e6d838a8270bfd0269fef3ef3013398dc0e961e1cb766c",
+  "effectiveDate": "2026-11-26",
+  "title": "Information Privacy Policy of Thi360",
+  "note": "This English version is a translation. If it differs from the Vietnamese version, the Vietnamese version prevails.",
+  "blocks": [
+    {
+      "type": "paragraph",
+      "text": "This policy explains what information Thi360 collects from users of the website thi360.vn and the Thi360 app (Android, iOS), how it is used, how long it is retained, who may access it, and what rights users have. Thi360 is operated by HSA Education Investment and Development Joint Stock Company."
+    },
+    {
+      "type": "paragraph",
+      "text": "Thi360 does not sell or trade users' personal information to third parties for commercial purposes."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "1. Purpose and scope of collection"
+    },
+    {
+      "type": "paragraph",
+      "text": "Thi360 collects the following information:"
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Category",
+        "Information",
+        "Collected when"
+      ],
+      "rows": [
+        [
+          "Account",
+          "Username, full name, email, phone number (optional), profile photo (optional)",
+          "Registering an account, updating profile"
+        ],
+        [
+          "Sign-in",
+          "Password (stored in hashed form; unreadable by Thi360), sign-in timestamps, sign-in sessions",
+          "Signing in, changing password"
+        ],
+        [
+          "Orders and payments",
+          "Purchased exams, order code, amount, applied discount codes, transaction status and reference returned by VNPAY",
+          "Purchasing an exam"
+        ],
+        [
+          "Exam submissions",
+          "Attempts, answers, essay responses, exam duration, audio playback count, scores and grading feedback",
+          "Taking an exam"
+        ],
+        [
+          "Technical",
+          "IP address, device type, operating system, app version, language, error logs",
+          "Using the website and app"
+        ],
+        [
+          "Support",
+          "Communications with the support team via email or phone",
+          "Contacting support"
+        ]
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Thi360 does not collect or store card numbers, bank accounts, or payment passwords. Customers enter those details directly on the VNPAY gateway page."
+    },
+    {
+      "type": "paragraph",
+      "text": "Specifically for the app:"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "The camera and photo library are used only when the user chooses to set a profile photo. The app uploads only the photo selected by the user.",
+        "Fingerprint and face unlock are processed by the device operating system. The app receives only a success or failure result and never receives or stores biometric data.",
+        "The app stores locally on the device: sign-in session (encrypted), answer drafts for in-progress attempts, and language and theme preferences. This data is excluded from device backups and is deleted upon sign-out or uninstalling the app.",
+        "The app does not track location, does not read contacts or messages, and does not use user data for advertising."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "2. Scope of information use"
+    },
+    {
+      "type": "paragraph",
+      "text": "Information is used to:"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "create and manage accounts, verify email addresses, and recover passwords;",
+        "process orders, payments, and exam grants, and resolve transaction complaints;",
+        "conduct exam attempts, save answers, score exams, and display results and history;",
+        "provide technical support and send notifications about accounts, orders, and service changes;",
+        "detect fraud, protect system security, and improve exam and service quality (in aggregated form not tied to personal identity);",
+        "send product information when the user has consented to receive it."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "3. Retention period"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Account information and exam submissions are retained for as long as the account exists.",
+        "When a user self-deletes their account in the app or on the website, the account is closed immediately and full name, email, phone number, and profile photo are removed immediately from the account profile; exam submissions are retained without personal identifiers. System audit logs (which may retain username and email in past entries) are kept for system security and dispute resolution; emails sent to the user are retained for 30 days. Deletion cannot be undone.",
+        "When a user requests account deletion via email or phone, Thi360 completes it within 30 days after verifying the request.",
+        "Order, payment, and invoice records are retained for the period required by accounting and tax laws, including after account deletion.",
+        "Technical logs are retained for as long as needed for operations and security."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "4. Persons or organizations with access to information"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Authorized personnel of HSA Education Investment and Development Joint Stock Company, within the scope of their duties.",
+        "Contracted service providers working for Thi360, receiving only the data required for their work: VNPAY payment gateway (transaction details), server and storage infrastructure providers, email delivery providers, and technical development and operations providers.",
+        "Competent state authorities when requested in accordance with applicable law."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "5. Entity collecting and managing information"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "HSA Education Investment and Development Joint Stock Company",
+        "Tax ID: 0109600534",
+        "Hanoi Office: No. 11B, Alley 3/29, Lane 3, Pham Tuan Tai Street, Nghia Do Ward, Hanoi",
+        "Ho Chi Minh City Office: 2/26 Nguyen The Truyen Street, Tan Son Nhi Ward, Tan Phu District, Ho Chi Minh City",
+        "Phone: 0968964334",
+        "Email: hsaeducation.jsc@gmail.com",
+        "Website: thi360.vn"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "6. User rights regarding their information"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "View and edit full name, phone number, profile photo, and email in the Profile section of the website and app.",
+        "Change password in the Account section.",
+        "Self-delete account: in the app, go to Account and choose \"Delete account\"; on the website, open thi360.vn/account/delete. Users confirm with their password. Accounts with an in-progress attempt or an order being checked must finish them first.",
+        "Request a copy of personal data, request deletion of the account and personal data instead of self-deletion, or withdraw consent to product updates by emailing hsaeducation.jsc@gmail.com from the registered email address or calling 0968964334. Thi360 responds within 3 business days.",
+        "Users under 15 years old require parent or legal guardian consent when registering; a parent or legal guardian may exercise the rights above on their behalf."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "7. Information protection"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Data transmitted between devices and servers is encrypted (HTTPS).",
+        "Passwords are stored in hashed form; app sign-in sessions are stored in the operating system's secure storage.",
+        "Staff data access is role-based and logged.",
+        "In the event of a personal data breach, Thi360 notifies affected users and competent authorities in accordance with applicable law."
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "8. Complaint reception and resolution mechanism"
+    },
+    {
+      "type": "paragraph",
+      "text": "Users may submit complaints about misuse of personal information by calling 0968964334 or emailing hsaeducation.jsc@gmail.com. Thi360 receives, verifies, and responds within 7 business days. Thi360 commits to using information solely to provide and improve services, resolve disputes, and comply with requests from competent authorities under applicable law."
+    },
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "9. Policy changes"
+    },
+    {
+      "type": "paragraph",
+      "text": "Thi360 may update this policy. Updated versions are published on thi360.vn and in the app with an effective date."
+    }
+  ]
+}
