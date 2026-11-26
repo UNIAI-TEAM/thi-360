@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, EmptyState, PageHeader, Skeleton } from "@thi360/ui";
-import { AlertTriangle, ArrowLeft, Ban, CircleAlert, Upload, WifiOff } from "lucide-react";
+import { Button, DetailHeader, EmptyState, Skeleton } from "@thi360/ui";
+import { AlertTriangle, Ban, CircleAlert, Upload, WifiOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useId, useState } from "react";
@@ -21,23 +21,18 @@ import { BundleStatusBadges } from "./bundle-status-chips";
 
 export function BundleCreatePage() {
   const t = useTranslations("bundles");
+  const tCommon = useTranslations("common");
   const { can } = usePermissions();
   const formId = useId();
   useSetBreadcrumbLeaf(t("create.title"));
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
+      <DetailHeader
+        back={{ href: "/bundles", label: tCommon("backTo.bundles") }}
+        linkComponent={Link}
         title={t("create.title")}
         description={t("create.description")}
-        actions={
-          <Button variant="secondary" asChild>
-            <Link href="/bundles">
-              <ArrowLeft />
-              <span>{t("actions.backToList")}</span>
-            </Link>
-          </Button>
-        }
       />
 
       <BundleForm
@@ -51,6 +46,7 @@ export function BundleCreatePage() {
 
 export function BundleEditPage({ bundleId }: { bundleId: string }) {
   const t = useTranslations("bundles");
+  const tCommon = useTranslations("common");
   const tErrors = useTranslations("bundles.errors");
   const { can } = usePermissions();
   const canModify = can("EXAM.MODIFY");
@@ -170,30 +166,27 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
-          <div className="min-w-0 max-w-full">
-            <h1 className="text-page-title font-bold wrap-break-word text-text">
-              <span data-exam-content>{detail.name}</span>
-            </h1>
-            <p className="mt-1 text-body wrap-break-word text-text-muted">
-              <span data-exam-content className="font-mono">
-                {detail.code}
-              </span>
-            </p>
-          </div>
-          <div
-            data-slot="page-actions"
-            className="flex max-w-full flex-col items-start gap-1.5 sm:items-end"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" asChild>
-                <Link href="/bundles">
-                  <ArrowLeft />
-                  <span>{t("actions.backToList")}</span>
-                </Link>
-              </Button>
-              {canPublish && detail.status === "PUBLISHED" && (
+      <DetailHeader
+        back={{ href: "/bundles", label: tCommon("backTo.bundles") }}
+        linkComponent={Link}
+        title={<span data-exam-content>{detail.name}</span>}
+        chips={
+          <BundleStatusBadges
+            status={detail.status}
+            saleState={detail.saleState}
+            hasUnpublishedChanges={detail.hasUnpublishedChanges}
+          />
+        }
+        description={
+          <span data-exam-content className="font-mono">
+            {detail.code}
+          </span>
+        }
+        actions={
+          canPublish &&
+          detail.status !== "DISCONTINUED" && (
+            <>
+              {detail.status === "PUBLISHED" && (
                 <Button
                   type="button"
                   variant="secondary"
@@ -203,35 +196,29 @@ export function BundleEditPage({ bundleId }: { bundleId: string }) {
                   <span>{t("actions.discontinue")}</span>
                 </Button>
               )}
-              {canPublish && detail.status !== "DISCONTINUED" && (
-                <Button
-                  type="button"
-                  disabled={isFormDirty}
-                  aria-describedby={isFormDirty ? publishBlockedReasonId : undefined}
-                  onClick={() => setPublishOpen(true)}
-                >
-                  <Upload />
-                  <span>
-                    {detail.status === "PUBLISHED"
-                      ? t("actions.republish")
-                      : t("actions.publish")}
-                  </span>
-                </Button>
-              )}
-            </div>
-            {isFormDirty && canPublish && detail.status !== "DISCONTINUED" && (
-              <p id={publishBlockedReasonId} className="text-caption font-medium text-warning">
-                {t("actions.saveBeforePublish")}
-              </p>
-            )}
-          </div>
-        </header>
-        <BundleStatusBadges
-          status={detail.status}
-          saleState={detail.saleState}
-          hasUnpublishedChanges={detail.hasUnpublishedChanges}
-        />
-      </div>
+              <Button
+                type="button"
+                disabled={isFormDirty}
+                aria-describedby={isFormDirty ? publishBlockedReasonId : undefined}
+                onClick={() => setPublishOpen(true)}
+              >
+                <Upload />
+                <span>
+                  {detail.status === "PUBLISHED"
+                    ? t("actions.republish")
+                    : t("actions.publish")}
+                </span>
+              </Button>
+            </>
+          )
+        }
+      >
+        {isFormDirty && canPublish && detail.status !== "DISCONTINUED" && (
+          <p id={publishBlockedReasonId} className="text-caption font-medium text-warning">
+            {t("actions.saveBeforePublish")}
+          </p>
+        )}
+      </DetailHeader>
 
       {conflictState === "reloaded" && (
         <div

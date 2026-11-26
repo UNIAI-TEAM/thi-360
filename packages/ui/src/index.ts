@@ -53,6 +53,7 @@ export {
 export { IconButton, type IconButtonProps } from "./components/icon-button";
 export { Input, type InputProps } from "./components/input";
 export { Label, type LabelProps } from "./components/label";
+export { DetailHeader, type DetailHeaderProps } from "./components/detail-header";
 export { PageHeader, type PageHeaderProps } from "./components/page-header";
 export {
   Pagination,

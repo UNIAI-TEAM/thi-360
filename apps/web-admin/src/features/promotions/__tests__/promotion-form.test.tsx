@@ -13,7 +13,7 @@ import { resetIdempotencyKeys } from "@/features/content/idempotency";
 import { fail, fakeApi, ok, withRealApi } from "@/test/fake-api";
 
 import { PromotionForm } from "../components/promotion-form";
-import { PromotionEditPage } from "../components/promotion-form-page";
+import { PromotionCreatePage, PromotionEditPage } from "../components/promotion-form-page";
 import { ExamKindPicker } from "../components/promotion-target-pickers";
 import {
   CLASS_ID_1,
@@ -451,11 +451,13 @@ describe("PromotionForm & PromotionEditPage (AC-2, AC-3, AC-4, AC-9, AC-10)", ()
     const user = userEvent.setup();
     renderWithPermissions(<PromotionEditPage promotionId={PROMO_ID_1} />);
 
-    // R1-17: nút quay lại ở header trang sửa trỏ về trang chi tiết
-    expect(await screen.findByRole("link", { name: "Quay lại chi tiết" })).toHaveAttribute(
-      "href",
-      `/promotions/${PROMO_ID_1}`,
-    );
+    // R1-17, UNI-2825: lối quay lại ở đầu trang sửa nằm trên tiêu đề và trỏ về trang chi tiết
+    const backToDetail = await screen.findByRole("link", { name: "Chi tiết khuyến mãi" });
+    expect(backToDetail).toHaveAttribute("href", `/promotions/${PROMO_ID_1}`);
+    const editHeading = screen.getByRole("heading", { level: 1 });
+    expect(editHeading.closest('[data-slot="detail-header"]')).toContainElement(backToDetail);
+    expect(backToDetail.compareDocumentPosition(editHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(editHeading).toHaveTextContent("Welcome K12 Voucher");
 
     const nameInput = screen.getByLabelText(/Tên khuyến mãi/);
     await user.clear(nameInput);
@@ -736,5 +738,19 @@ describe("PromotionForm: trường Trạng thái và cảnh báo rời trang (un
     expect(await screen.findByText("Rời trang khi chưa lưu?")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Rời trang" }));
     expect(mockPush).toHaveBeenCalledWith(`/promotions/${PROMO_ID_1}`);
+  });
+});
+
+describe("Đầu trang tạo và sửa khuyến mãi (UNI-2825)", () => {
+  it("trang tạo: lối Danh sách khuyến mãi về /promotions nằm trên tiêu đề, đầu trang là DetailHeader", () => {
+    renderWithPermissions(<PromotionCreatePage />);
+
+    const heading = screen.getByRole("heading", { level: 1, name: "Tạo khuyến mãi" });
+    const header = heading.closest('[data-slot="detail-header"]');
+    expect(header).not.toBeNull();
+    const back = within(header as HTMLElement).getByRole("link", { name: "Danh sách khuyến mãi" });
+    expect(back).toHaveAttribute("href", "/promotions");
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Quay lại danh sách" })).not.toBeInTheDocument();
   });
 });

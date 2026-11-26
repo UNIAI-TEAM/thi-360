@@ -1505,6 +1505,19 @@
   },
   "common": {
     "backHome": "Về trang chủ",
+    "backTo": {
+      "attempts": "Danh sách lượt thi",
+      "bundles": "Danh sách bộ đề",
+      "classes": "Danh sách lớp học",
+      "exams": "Danh sách bài thi",
+      "grading": "Danh sách chấm tự luận",
+      "orders": "Danh sách đơn hàng",
+      "promotions": "Danh sách khuyến mãi",
+      "questions": "Ngân hàng câu hỏi",
+      "users": "Danh sách tài khoản",
+      "promotionDetail": "Chi tiết khuyến mãi",
+      "questionDetail": "Chi tiết câu hỏi"
+    },
     "closeToast": "Đóng thông báo",
     "loading": "Đang tải",
     "notificationsLabel": "Thông báo",

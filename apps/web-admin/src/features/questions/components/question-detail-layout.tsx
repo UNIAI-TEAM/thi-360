@@ -1,7 +1,19 @@
 "use client";
 
-import { Badge, Button, Card, Chip, EmptyState, NavTab, NavTabs, notify, Skeleton, StatusChip } from "@thi360/ui";
-import { ArrowLeft, Ban, CircleCheckBig, Copy, Pencil, TriangleAlert } from "lucide-react";
+import {
+  Badge,
+  Button,
+  Card,
+  Chip,
+  DetailHeader,
+  EmptyState,
+  NavTab,
+  NavTabs,
+  notify,
+  Skeleton,
+  StatusChip,
+} from "@thi360/ui";
+import { Ban, CircleCheckBig, Copy, Pencil, TriangleAlert } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -9,6 +21,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useContentReference, useReferenceLookup } from "@/features/content/queries";
 import { QUESTION_STATUS_TONE } from "@/features/content/status";
+import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { QUESTIONS_QUERY_KEYS, toQuestionSummary } from "../api";
 import { useDuplicateQuestion } from "../editor-queries";
@@ -36,9 +49,9 @@ export function questionEditHref(questionId: string): string {
 }
 
 /**
- * Khung chung của `/questions/[id]`, `/usage`, `/versions` (canvas `CauHoi*ChiTiet`, `CauHoiPhienBan`): thẻ tiêu đề
- * (mã, dạng, trạng thái theo UniNote mục 9 kèm phiên bản, môn · khối · mức độ), thao tác Sửa, Nhân bản, Chuyển sang
- * Sẵn sàng / Ngừng sử dụng, dải dữ liệu mẫu và thanh NavTabs. Trang con đọc câu bằng `useQuestion(id)` (cùng khóa).
+ * Khung chung của `/questions/[id]`, `/usage`, `/versions` (canvas `CauHoi*ChiTiet`, `CauHoiPhienBan`): đầu trang
+ * chi tiết `DetailHeader` trên nền trang (mã, dạng, trạng thái theo UniNote mục 9 kèm phiên bản, môn · khối · mức độ),
+ * thao tác Sửa, Nhân bản, Chuyển sang Sẵn sàng / Ngừng sử dụng, rồi thanh NavTabs. Trang con đọc câu bằng `useQuestion(id)` (cùng khóa).
  * Bản vẽ vẽ ba tab là `role="tablist"`, nhưng đây là ba trang riêng nên dùng tab điều hướng.
  */
 export function QuestionDetailLayout({ questionId, children }: { questionId: string; children: ReactNode }) {
@@ -113,9 +126,11 @@ function hasEssay(question: QuestionDetail): boolean {
 
 function QuestionDetailHeader({ question }: { question: QuestionDetail }) {
   const t = useTranslations("questions.detail");
+  const tCommon = useTranslations("common");
   const tType = useTranslations("content.questionType");
   const tStatus = useTranslations("content.questionStatus");
   const router = useRouter();
+  useSetBreadcrumbLeaf(question.code);
   const referenceQuery = useContentReference();
   const lookup = useReferenceLookup(referenceQuery.data);
   const duplicate = useDuplicateQuestion();
@@ -126,18 +141,13 @@ function QuestionDetailHeader({ question }: { question: QuestionDetail }) {
   const refresh = () => void queryClient.invalidateQueries({ queryKey: QUESTIONS_QUERY_KEYS.detail(question.id) });
 
   return (
-    <Card padding="none" className="flex flex-col gap-4 p-4 sm:p-5">
-      <Link
-        href="/questions"
-        className="inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        {t("backToList")}
-      </Link>
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="flex min-w-0 flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="text-page-title font-bold wrap-anywhere text-text">{t("heading", { code: question.code })}</h1>
+    <>
+      <DetailHeader
+        back={{ href: "/questions", label: tCommon("backTo.questions") }}
+        linkComponent={Link}
+        title={t("heading", { code: question.code })}
+        chips={
+          <>
             <Chip variant="tag" className="h-6">
               {tType(question.type)}
             </Chip>
@@ -145,50 +155,52 @@ function QuestionDetailHeader({ question }: { question: QuestionDetail }) {
             <StatusChip tone={QUESTION_STATUS_TONE[question.status]}>
               {t("statusVersion", { status: tStatus(question.status), version: question.version })}
             </StatusChip>
-          </div>
-          <p className="text-body text-text-muted">
-            {[lookup.subject(question.subjectCode), lookup.grade(question.gradeCode), lookup.difficulty(question.difficultyCode)].join(
-              " · ",
+          </>
+        }
+        description={[
+          lookup.subject(question.subjectCode),
+          lookup.grade(question.gradeCode),
+          lookup.difficulty(question.difficultyCode),
+        ].join(" · ")}
+        actions={
+          <>
+            <Button asChild variant="secondary">
+              <Link href={questionEditHref(question.id)}>
+                <Pencil aria-hidden />
+                {t("actions.edit")}
+              </Link>
+            </Button>
+            <Button
+              variant="secondary"
+              loading={duplicate.isPending}
+              onClick={() =>
+                duplicate.mutate(question.id, {
+                  onSuccess: (copy) => {
+                    notify.success(t("actions.duplicated", { code: copy.code, source: question.code }));
+                    router.push(questionEditHref(copy.id));
+                  },
+                  onError: () => notify.error(t("actions.duplicateFailed")),
+                })
+              }
+            >
+              <Copy aria-hidden />
+              {t("actions.duplicate")}
+            </Button>
+            {question.status === "DRAFT" && (
+              <Button onClick={() => setDialog("ready")}>
+                <CircleCheckBig aria-hidden />
+                {t("actions.markReady")}
+              </Button>
             )}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline">
-            <Link href={questionEditHref(question.id)}>
-              <Pencil aria-hidden />
-              {t("actions.edit")}
-            </Link>
-          </Button>
-          <Button
-            variant="secondary"
-            loading={duplicate.isPending}
-            onClick={() =>
-              duplicate.mutate(question.id, {
-                onSuccess: (copy) => {
-                  notify.success(t("actions.duplicated", { code: copy.code, source: question.code }));
-                  router.push(questionEditHref(copy.id));
-                },
-                onError: () => notify.error(t("actions.duplicateFailed")),
-              })
-            }
-          >
-            <Copy aria-hidden />
-            {t("actions.duplicate")}
-          </Button>
-          {question.status === "DRAFT" && (
-            <Button onClick={() => setDialog("ready")}>
-              <CircleCheckBig aria-hidden />
-              {t("actions.markReady")}
-            </Button>
-          )}
-          {question.status === "READY" && (
-            <Button variant="secondary" className="text-danger" onClick={() => setDialog("retire")}>
-              <Ban aria-hidden />
-              {t("actions.retire")}
-            </Button>
-          )}
-        </div>
-      </div>
+            {question.status === "READY" && (
+              <Button variant="secondary" className="text-danger" onClick={() => setDialog("retire")}>
+                <Ban aria-hidden />
+                {t("actions.retire")}
+              </Button>
+            )}
+          </>
+        }
+      />
       <MarkReadyDialog
         question={summary}
         open={dialog === "ready"}
@@ -201,6 +213,6 @@ function QuestionDetailHeader({ question }: { question: QuestionDetail }) {
         onOpenChange={(open) => setDialog(open ? "retire" : null)}
         onDone={refresh}
       />
-    </Card>
+    </>
   );
 }

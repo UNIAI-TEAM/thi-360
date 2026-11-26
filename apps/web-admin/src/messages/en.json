@@ -1505,6 +1505,19 @@
   },
   "common": {
     "backHome": "Back to home",
+    "backTo": {
+      "attempts": "Attempt list",
+      "bundles": "Bundle list",
+      "classes": "Class list",
+      "exams": "Exam list",
+      "grading": "Grading list",
+      "orders": "Order list",
+      "promotions": "Promotion list",
+      "questions": "Question bank",
+      "users": "Account list",
+      "promotionDetail": "Promotion details",
+      "questionDetail": "Question details"
+    },
     "closeToast": "Close toast",
     "loading": "Loading",
     "notificationsLabel": "Notifications",

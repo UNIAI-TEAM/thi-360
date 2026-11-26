@@ -241,6 +241,29 @@ describe("ClassDetailView", () => {
     expect(screen.queryByText(/Lịch sử thành viên/i)).not.toBeInTheDocument();
   });
 
+  it("đầu trang chi tiết dùng chung (UNI-2825): lối về danh sách lớp nằm trên tiêu đề, không đặt trong thẻ, nút Xóa cuối hàng", async () => {
+    renderDetail(makeDeps());
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "Lớp A" });
+    const header = heading.closest("header")!;
+    expect(header).toHaveAttribute("data-slot", "detail-header");
+    expect(header.closest(".bg-surface")).toBeNull();
+    expect(screen.queryByText("Quay lại danh sách")).not.toBeInTheDocument();
+
+    const back = within(header).getByRole("link", { name: "Danh sách lớp học" });
+    expect(back).toHaveAttribute("href", "/classes");
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    expect(within(header).getByText("Hoạt động")).toBeInTheDocument();
+    const actions = header.querySelector("[data-slot='page-actions']")!;
+    expect(within(actions as HTMLElement).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Sửa thông tin",
+      "Ngừng sử dụng",
+      "Thêm học viên",
+      "Xóa lớp",
+    ]);
+  });
+
   it("tiêu đề tab mang mã lớp đang xem (C-20)", async () => {
     document.title = "Chi tiết lớp học · Thi 360";
     renderDetail(makeDeps());
@@ -864,7 +887,7 @@ describe("ClassDetailView", () => {
 
     expect(await screen.findByRole("heading", { name: "Class A" })).toBeInTheDocument();
     expect(screen.getByText("Add students")).toBeInTheDocument();
-    expect(screen.getByText("Back to classes")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Class list" })).toHaveAttribute("href", "/classes");
     // Không có chuỗi UI tiếng Việt nào (fixture dữ liệu lớp/học viên không tính)
     const bodyText = document.body.textContent ?? "";
     for (const viText of [

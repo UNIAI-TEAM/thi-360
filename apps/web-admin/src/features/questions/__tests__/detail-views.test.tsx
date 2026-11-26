@@ -45,12 +45,26 @@ describe("chi tiết câu hỏi", () => {
         <QuestionDetailContent questionId="q-0003" />
       </QuestionDetailLayout>,
     );
-    expect(await screen.findByRole("heading", { level: 1, name: "Question CH-000003" })).toBeInTheDocument();
+    const heading = await screen.findByRole("heading", { level: 1, name: "Question CH-000003" });
     expect(screen.getByText(/· v2$/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Edit/ })).toHaveAttribute("href", "/questions/q-0003/edit");
     expect(screen.getByRole("button", { name: /Duplicate/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Retire/ })).toBeInTheDocument();
+
+    // Đầu trang chi tiết (UNI-2825): trên nền trang, lối quay lại ở trên tiêu đề, chip trạng thái cạnh tiêu đề.
+    const header = heading.closest('[data-slot="detail-header"]') as HTMLElement;
+    expect(header).not.toBeNull();
+    expect(header.parentElement!.closest(".shadow-xs")).toBeNull();
+    const backLink = within(header).getByRole("link", { name: "Question bank" });
+    expect(backLink).toHaveAttribute("href", "/questions");
+    expect(backLink.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(heading.parentElement!).getByText(/· v2$/)).toBeInTheDocument();
+    const actions = header.querySelector('[data-slot="page-actions"]') as HTMLElement;
+    expect(within(actions).getByRole("link", { name: /Edit/ })).toBeInTheDocument();
+    expect(within(actions).getByRole("button", { name: /Retire/ })).toBeInTheDocument();
+
     const tabs = screen.getByRole("navigation", { name: "Question details" });
+    expect(header.contains(tabs)).toBe(false);
     expect(within(tabs).getByRole("link", { name: "Content" })).toHaveAttribute("aria-current", "page");
     expect(within(tabs).getByRole("link", { name: /Version history/ })).toHaveAttribute("href", "/questions/q-0003/versions");
     expect(await screen.findByRole("heading", { name: "Question and answers" })).toBeInTheDocument();

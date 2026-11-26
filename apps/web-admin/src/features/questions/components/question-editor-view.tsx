@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, EmptyState, PageHeader, Skeleton } from "@thi360/ui";
+import { Button, Card, DetailHeader, EmptyState, Skeleton } from "@thi360/ui";
 import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -20,11 +20,14 @@ export function QuestionEditorView(props: QuestionEditorViewProps) {
 
 function CreateView({ type }: { type: QuestionType }) {
   const t = useTranslations("questions.editor");
+  const tCommon = useTranslations("common");
+  const back = { href: "/questions", label: tCommon("backTo.questions") };
   const referenceQuery = useContentReference();
-  if (referenceQuery.isPending) return <EditorSkeleton title={t("createTitle")} />;
+  if (referenceQuery.isPending) return <EditorSkeleton back={back} title={t("createTitle")} />;
   if (referenceQuery.isError) {
     return (
       <EditorError
+        back={back}
         title={t("createTitle")}
         heading={t("loadErrorTitle")}
         description={t("loadErrorDescription")}
@@ -38,12 +41,15 @@ function CreateView({ type }: { type: QuestionType }) {
 function EditView({ questionId }: { questionId: string }) {
   const [reloadToken, setReloadToken] = useState(0);
   const t = useTranslations("questions.editor");
+  const tCommon = useTranslations("common");
+  const back = { href: `/questions/${questionId}`, label: tCommon("backTo.questionDetail") };
   const questionQuery = useQuestion(questionId);
   const referenceQuery = useContentReference();
-  if (questionQuery.isPending || referenceQuery.isPending) return <EditorSkeleton title={t("editTitle")} />;
+  if (questionQuery.isPending || referenceQuery.isPending) return <EditorSkeleton back={back} title={t("editTitle")} />;
   if (questionQuery.isError && getErrorStatus(questionQuery.error) === 404) {
     return (
       <EditorError
+        back={{ href: "/questions", label: tCommon("backTo.questions") }}
         title={t("editTitle")}
         heading={t("notFoundTitle")}
         description={t("notFoundDescription")}
@@ -55,6 +61,7 @@ function EditView({ questionId }: { questionId: string }) {
   if (questionQuery.isError || referenceQuery.isError) {
     return (
       <EditorError
+        back={back}
         title={t("editTitle")}
         heading={t("loadErrorTitle")}
         description={t("loadErrorDescription")}
@@ -81,11 +88,11 @@ function EditView({ questionId }: { questionId: string }) {
   );
 }
 
-function EditorSkeleton({ title }: { title: string }) {
+function EditorSkeleton({ title, back }: { title: string; back: { href: string; label: string } }) {
   const t = useTranslations("questions.editor");
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title={title} />
+      <DetailHeader back={back} linkComponent={Link} title={title} />
       <div className="flex flex-col gap-4" aria-busy="true" aria-label={t("loading")}>
         <Skeleton className="h-40" />
         <Skeleton className="h-36" />
@@ -96,6 +103,7 @@ function EditorSkeleton({ title }: { title: string }) {
 }
 
 function EditorError({
+  back,
   title,
   heading,
   description,
@@ -103,6 +111,7 @@ function EditorError({
   backHref,
   backLabel,
 }: {
+  back: { href: string; label: string };
   title: string;
   heading: string;
   description: string;
@@ -113,7 +122,7 @@ function EditorError({
   const t = useTranslations("questions.editor");
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title={title} />
+      <DetailHeader back={back} linkComponent={Link} title={title} />
       <Card>
         <EmptyState
           icon={<TriangleAlert />}

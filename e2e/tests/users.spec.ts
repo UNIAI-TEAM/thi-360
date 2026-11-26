@@ -109,7 +109,7 @@ test.describe("Quản lý tài khoản (UNI-2546)", () => {
     await expect(page.getByText("Đã xóa", { exact: true }).first()).toBeVisible();
 
     // 6. Tạo lại cùng tên đăng nhập
-    await page.getByRole("link", { name: /Quay lại danh sách/ }).click();
+    await page.getByRole("link", { name: "Danh sách tài khoản", exact: true }).click();
     await expect(page).toHaveURL(`${ADMIN_URL}/users`);
 
     await page.getByRole("button", { name: "Tạo tài khoản" }).click();

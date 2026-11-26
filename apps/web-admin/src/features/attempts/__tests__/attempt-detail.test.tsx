@@ -93,10 +93,23 @@ describe("AttemptDetailView", () => {
 
     renderAttemptsUi(<AttemptDetailView attemptId={ATTEMPT_1_ID} />);
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" })).toBeInTheDocument();
+    const heading = await screen.findByRole("heading", { level: 1, name: "Lượt 7C1E4B9A" });
     expect(screen.getByText("nguyenminhanh")).toBeInTheDocument();
-    const examNameEl = screen.getByText("Đề thi thử ĐGNL HSA số 3");
-    expect(examNameEl.closest("[data-exam-content]")).not.toBeNull();
+    // Tên đề hiện ở dòng phụ của đầu trang và ở thẻ thông tin lượt, cả hai đều đánh dấu nội dung đề.
+    const examNameEls = screen.getAllByText("Đề thi thử ĐGNL HSA số 3");
+    expect(examNameEls).toHaveLength(2);
+    for (const el of examNameEls) expect(el.closest("[data-exam-content]")).not.toBeNull();
+
+    // Đầu trang chi tiết (UNI-2825): lối quay lại ở trên tiêu đề, chip trạng thái cạnh tiêu đề, dòng phụ tên đề · tài khoản.
+    const header = heading.closest('[data-slot="detail-header"]') as HTMLElement;
+    expect(header).not.toBeNull();
+    expect(header.parentElement!.closest(".shadow-xs")).toBeNull();
+    const backLink = within(header).getByRole("link", { name: "Danh sách lượt thi" });
+    expect(backLink).toHaveAttribute("href", "/attempts");
+    expect(backLink.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const titleRow = heading.parentElement!;
+    expect(within(titleRow).getByText("Đang làm")).toBeInTheDocument();
+    expect(header).toHaveTextContent("Đề thi thử ĐGNL HSA số 3 · nguyenminhanh");
 
     // Các phần và hạn
     const partsTable = screen.getByRole("table", { name: "Các phần của lượt 7C1E4B9A" });

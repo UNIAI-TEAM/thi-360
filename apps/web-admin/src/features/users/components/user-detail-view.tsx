@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
+  DetailHeader,
   EmptyState,
   FormField,
   Input,
@@ -24,9 +25,9 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
+import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { getErrorStatus } from "@/lib/api/query-client";
 import {
   defaultUsersApiDeps,
@@ -130,6 +131,8 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
     queryKey: USERS_QUERY_KEYS.detail(userId),
     queryFn: () => deps.getUser(userId),
   });
+  // Mục cuối breadcrumb: họ tên của tài khoản (tên đăng nhập khi họ tên trống).
+  useSetBreadcrumbLeaf(detailQuery.data?.fullName || detailQuery.data?.username);
 
   // Mỗi tài khoản một tiêu đề trang riêng ("<tên đăng nhập> · Tài khoản · Thi 360"); tiêu đề chung của route chỉ
   // dùng tới khi dữ liệu về. Trang kế tiếp tự đặt lại tiêu đề của nó khi điều hướng.
@@ -203,44 +206,37 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
 
   return (
     <div className="@container flex flex-col gap-5">
-      <div>
-        <Button asChild variant="link" size="sm">
-          <Link href="/users">
-            <ArrowLeft />
-            <span>{t("detail.backToList")}</span>
-          </Link>
-        </Button>
-      </div>
-
-      <Card className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3.5">
-          <div
-            aria-hidden
-            className="grid size-13 shrink-0 place-items-center rounded-full bg-primary-50 text-title font-bold text-primary-text"
-          >
-            {initialsOf(user.fullName, user.username)}
-          </div>
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-page-title font-bold break-words text-text">{user.fullName}</h1>
-              <StatusChip tone={displayStatus.tone}>
-                {t(`statuses.${displayStatus.status}`)}
-              </StatusChip>
-            </div>
-            <p className="text-body break-words text-text-secondary tabular-nums">
-              {user.lastLoginAt
-                ? t("detail.subtitle", {
-                    ...subtitleValues,
-                    lastLogin: formatUserDateTime(user.lastLoginAt),
-                  })
-                : t("detail.subtitleNeverLoggedIn", subtitleValues)}
-            </p>
-          </div>
-        </div>
-
-        {!isDeleted && (
-          <Can permission="USER.MODIFY">
-            <div className="flex flex-wrap items-center gap-2">
+      <DetailHeader
+        back={{ href: "/users", label: common("backTo.users") }}
+        linkComponent={Link}
+        // Ảnh chữ viết tắt nằm trong h1 nhưng `aria-hidden`: tên truy cập của tiêu đề vẫn là họ tên đầy đủ.
+        titleProps={{ className: "flex items-center gap-3.5" }}
+        title={
+          <>
+            <span
+              aria-hidden
+              className="grid size-13 shrink-0 place-items-center rounded-full bg-primary-50 text-title font-bold text-primary-text"
+            >
+              {initialsOf(user.fullName, user.username)}
+            </span>
+            <span className="min-w-0">{user.fullName}</span>
+          </>
+        }
+        chips={<StatusChip tone={displayStatus.tone}>{t(`statuses.${displayStatus.status}`)}</StatusChip>}
+        description={
+          <span className="tabular-nums">
+            {user.lastLoginAt
+              ? t("detail.subtitle", {
+                  ...subtitleValues,
+                  lastLogin: formatUserDateTime(user.lastLoginAt),
+                })
+              : t("detail.subtitleNeverLoggedIn", subtitleValues)}
+          </span>
+        }
+        actions={
+          !isDeleted &&
+          can("USER.MODIFY") && (
+            <>
               <Button
                 type="button"
                 variant="secondary"
@@ -284,10 +280,10 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
               >
                 {t("actions.delete")}
               </Button>
-            </div>
-          </Can>
-        )}
-      </Card>
+            </>
+          )
+        }
+      />
 
       {isDeleted && (
         <div

@@ -1,19 +1,30 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Button, notify, PageHeader } from "@thi360/ui";
+import { Button, DetailHeader, notify } from "@thi360/ui";
 import { Download } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import type { BulkImportApiDeps } from "../api";
 import { resolveImportApiErrorMessage } from "../utils";
 
 export interface BulkImportHeaderProps {
   deps: BulkImportApiDeps;
+  /**
+   * Tiêu đề riêng của trang (trang đợt cấp dùng tên tệp đã tải lên). Bỏ trống thì dùng tiêu đề chung
+   * "Cấp tài khoản hàng loạt".
+   */
+  title?: string | null;
 }
 
-export function BulkImportHeader({ deps }: BulkImportHeaderProps) {
+/**
+ * Đầu trang của bước tải lên (`/users/bulk-import`) và trang đợt cấp (`/users/bulk-import/[id]`): cả hai mở từ danh
+ * sách tài khoản nên lối quay lại về `/users` (DESIGN.md mục 5.8, `UNI-2825`).
+ */
+export function BulkImportHeader({ deps, title }: BulkImportHeaderProps) {
   const t = useTranslations("bulkImport");
+  const tCommon = useTranslations("common");
   useSetBreadcrumbLeaf(t("breadcrumb"));
 
   const downloadTemplateMutation = useMutation({
@@ -33,8 +44,10 @@ export function BulkImportHeader({ deps }: BulkImportHeaderProps) {
   });
 
   return (
-    <PageHeader
-      title={t("title")}
+    <DetailHeader
+      back={{ href: "/users", label: tCommon("backTo.users") }}
+      linkComponent={Link}
+      title={title || t("title")}
       description={t("description")}
       actions={
         <Button

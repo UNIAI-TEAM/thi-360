@@ -1,7 +1,7 @@
 "use client";
 
-import { Button, EmptyState, PageHeader, Skeleton } from "@thi360/ui";
-import { AlertTriangle, ArrowLeft, WifiOff } from "lucide-react";
+import { Button, DetailHeader, EmptyState, Skeleton } from "@thi360/ui";
+import { AlertTriangle, WifiOff } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -16,6 +16,7 @@ import { PromotionForm } from "./promotion-form";
 
 export function PromotionCreatePage() {
   const t = useTranslations("promotions");
+  const tCommon = useTranslations("common");
   const searchParams = useSearchParams();
   const initialKind = searchParams.get("kind") === "VOUCHER" ? "VOUCHER" : "AUTO";
 
@@ -23,17 +24,11 @@ export function PromotionCreatePage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
+      <DetailHeader
+        back={{ href: "/promotions", label: tCommon("backTo.promotions") }}
+        linkComponent={Link}
         title={t("create.title")}
         description={t("create.description")}
-        actions={
-          <Button variant="secondary" asChild>
-            <Link href="/promotions">
-              <ArrowLeft />
-              <span>{t("actions.backToList")}</span>
-            </Link>
-          </Button>
-        }
       />
 
       <PromotionForm mode="create" initialKind={initialKind} />
@@ -43,6 +38,7 @@ export function PromotionCreatePage() {
 
 export function PromotionEditPage({ promotionId }: { promotionId: string }) {
   const t = useTranslations("promotions");
+  const tCommon = useTranslations("common");
   const tErrors = useTranslations("promotions.errors");
   const query = usePromotionDetailQuery(promotionId);
   const [conflictReason, setConflictReason] = useState<"version" | "in_use" | null>(null);
@@ -149,17 +145,17 @@ export function PromotionEditPage({ promotionId }: { promotionId: string }) {
 
   return (
     <div className="@container flex flex-col gap-5">
-      <PageHeader
-        title={t("edit.title")}
-        description={t("edit.description")}
-        actions={
-          <Button variant="secondary" asChild>
-            <Link href={`/promotions/${detail.id}`}>
-              <ArrowLeft />
-              <span>{t("actions.backToDetail")}</span>
-            </Link>
-          </Button>
-        }
+      <DetailHeader
+        back={{ href: `/promotions/${detail.id}`, label: tCommon("backTo.promotionDetail") }}
+        linkComponent={Link}
+        title={detail.name}
+        titleProps={{ "data-exam-content": "" }}
+        description={[
+          t("edit.title"),
+          detail.kind === "VOUCHER" && detail.code
+            ? t("detail.subtitleVoucher", { code: detail.code })
+            : t("detail.subtitleAuto"),
+        ].join(" · ")}
       />
 
       <PromotionForm

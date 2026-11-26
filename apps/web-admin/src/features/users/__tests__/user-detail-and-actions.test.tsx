@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionProvider } from "@/features/session/session-provider";
+import { BreadcrumbLeafProvider, useBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import type { Session } from "@/features/session/types";
 import { TEST_ADMIN_SESSION } from "@/test/fixtures";
 import en from "@/messages/en.json";
@@ -760,12 +761,58 @@ describe("Trang chi tiết: tiêu đề riêng, tab trong URL, dòng chưa đăn
   });
 });
 
+describe("Trang chi tiết tài khoản: đầu trang dùng chung (UNI-2825)", () => {
+  it("lối về danh sách tài khoản nằm trên tiêu đề, đầu trang không đặt trong thẻ, nút Xóa cuối hàng", async () => {
+    renderDetail(makeDeps());
+
+    const heading = await screen.findByRole("heading", { level: 1, name: BASE_USER.fullName });
+    const header = heading.closest("header")!;
+    expect(header).toHaveAttribute("data-slot", "detail-header");
+    expect(header.closest(".bg-surface")).toBeNull();
+    expect(screen.queryByText("Quay lại danh sách")).not.toBeInTheDocument();
+
+    const back = within(header).getByRole("link", { name: "Danh sách tài khoản" });
+    expect(back).toHaveAttribute("href", "/users");
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // Ảnh chữ viết tắt ẩn với trình đọc màn hình: tên của h1 chỉ là họ tên.
+    expect(heading.querySelector("[aria-hidden]")).toHaveTextContent("HV");
+    expect(within(header).getByText("Hoạt động")).toBeInTheDocument();
+    const actions = header.querySelector<HTMLElement>("[data-slot='page-actions']")!;
+    expect(within(actions).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Đặt lại mật khẩu",
+      "Ngừng hoạt động",
+      "Xóa",
+    ]);
+
+    // Thanh tab nằm dưới đầu trang, không nằm trong đầu trang.
+    const tabList = screen.getByRole("tablist");
+    expect(header.contains(tabList)).toBe(false);
+  });
+
+  it("breadcrumb mục cuối là họ tên của tài khoản", async () => {
+    function LeafProbe() {
+      return <output data-testid="breadcrumb-leaf">{useBreadcrumbLeaf()}</output>;
+    }
+    renderWithProviders(
+      <BreadcrumbLeafProvider>
+        <LeafProbe />
+        <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+          <UserDetailView userId={BASE_USER.id} deps={makeDeps()} />
+        </SessionProvider>
+      </BreadcrumbLeafProvider>,
+    );
+    await screen.findByRole("heading", { level: 1, name: BASE_USER.fullName });
+    await waitFor(() => expect(screen.getByTestId("breadcrumb-leaf")).toHaveTextContent(BASE_USER.fullName));
+  });
+});
+
 describe("Trang chi tiết tài khoản dùng được từ 360px (UNI-2586)", () => {
   it("bố cục chia theo bề rộng vùng chứa: hai thẻ từ @2xl, danh sách thông tin hai cột theo bề rộng thẻ", async () => {
     renderDetail(makeDeps());
     const heading = await screen.findByRole("heading", { name: BASE_USER.fullName });
     // Tên dài xuống dòng trong khối tên, không đẩy nút thao tác ra ngoài thẻ.
-    expect(heading).toHaveClass("break-words");
+    expect(heading).toHaveClass("wrap-break-word");
     expect(heading.parentElement!.parentElement).toHaveClass("min-w-0");
 
     const codeTerm = screen.getByText("Mã tài khoản");

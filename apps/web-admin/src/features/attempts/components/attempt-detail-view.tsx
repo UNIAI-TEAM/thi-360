@@ -5,8 +5,8 @@ import {
   Button,
   Card,
   cn,
+  DetailHeader,
   EmptyState,
-  focusRing,
   ListCard,
   ListCardTag,
   LiveStatus,
@@ -22,7 +22,6 @@ import {
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
   Flag,
   PlusCircle,
@@ -114,8 +113,7 @@ export function AttemptDetailView({ attemptId, deps }: AttemptDetailViewProps) {
   if (isOffline) {
     return (
       <div className="flex flex-col gap-5">
-        <BackLink label={t("backToList")} />
-        <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
+        <StateHeader title={t("title")} />
         <Card>
           <EmptyState
             icon={<WifiOff />}
@@ -147,8 +145,7 @@ export function AttemptDetailView({ attemptId, deps }: AttemptDetailViewProps) {
     const notFound = getErrorStatus(detailQuery.error) === 404;
     return (
       <div className="flex flex-col gap-5">
-        <BackLink label={t("backToList")} />
-        <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
+        <StateHeader title={t("title")} />
         <Card>
           <EmptyState
             icon={<TriangleAlert />}
@@ -198,18 +195,11 @@ export function AttemptDetailView({ attemptId, deps }: AttemptDetailViewProps) {
   );
 }
 
-function BackLink({ label }: { label: string }) {
+/** Đầu trang của trạng thái mất mạng / lỗi: lối quay lại và tiêu đề chung, chưa có dữ liệu lượt. */
+function StateHeader({ title }: { title: string }) {
+  const tCommon = useTranslations("common");
   return (
-    <Link
-      href="/attempts"
-      className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text pointer-coarse:min-h-11",
-        focusRing,
-      )}
-    >
-      <ArrowLeft aria-hidden className="size-4" />
-      {label}
-    </Link>
+    <DetailHeader back={{ href: "/attempts", label: tCommon("backTo.attempts") }} linkComponent={Link} title={title} />
   );
 }
 
@@ -225,6 +215,7 @@ function AttemptDetailContent({
   announce: (msg: string) => void;
 }) {
   const t = useTranslations("attempts");
+  const tCommon = useTranslations("common");
   const tContent = useTranslations("content.questionType");
   const format = useFormatter();
   const uiLocale = normalizeUiLocale(useLocale());
@@ -260,26 +251,34 @@ function AttemptDetailContent({
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <BackLink label={t("detail.backToList")} />
-        <h1 className="text-page-title font-bold tracking-tight text-text">
-          {t("detail.heading", { code: attemptCode })}
-        </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusChip tone={ATTEMPT_STATE_TONE[state]}>{t(`status.${state}`)}</StatusChip>
-          {attempt.faultFlag && (
-            <StatusChip tone="warning">
-              {attempt.compensated ? t("list.faultCompensated") : t("list.faultFlag")}
-            </StatusChip>
-          )}
-          {attempt.regrading && (
-            <StatusChip tone="info">{t("list.regrading")}</StatusChip>
-          )}
-          {kindLabel && <ListCardTag>{kindLabel}</ListCardTag>}
-          {scopeLabel && <ListCardTag>{scopeLabel}</ListCardTag>}
-          {attempt.partCode && <ListCardTag>{attempt.partCode}</ListCardTag>}
-        </div>
-      </div>
+      <DetailHeader
+        back={{ href: "/attempts", label: tCommon("backTo.attempts") }}
+        linkComponent={Link}
+        title={t("detail.heading", { code: attemptCode })}
+        chips={
+          <>
+            <StatusChip tone={ATTEMPT_STATE_TONE[state]}>{t(`status.${state}`)}</StatusChip>
+            {attempt.faultFlag && (
+              <StatusChip tone="warning">
+                {attempt.compensated ? t("list.faultCompensated") : t("list.faultFlag")}
+              </StatusChip>
+            )}
+            {attempt.regrading && <StatusChip tone="info">{t("list.regrading")}</StatusChip>}
+            {kindLabel && <ListCardTag>{kindLabel}</ListCardTag>}
+            {scopeLabel && <ListCardTag>{scopeLabel}</ListCardTag>}
+            {attempt.partCode && <ListCardTag>{attempt.partCode}</ListCardTag>}
+          </>
+        }
+        description={
+          (attempt.examName || attempt.username) && (
+            <>
+              {attempt.examName && <span data-exam-content>{attempt.examName}</span>}
+              {attempt.examName && attempt.username && " · "}
+              {attempt.username}
+            </>
+          )
+        }
+      />
 
       {attempt.state === "GRADING_ERROR" && (
         <div

@@ -5,6 +5,7 @@ import {
   Card,
   Chip,
   ConfirmDialog,
+  DetailHeader,
   EmptyState,
   LiveStatus,
   Skeleton,
@@ -12,7 +13,6 @@ import {
 } from "@thi360/ui";
 import {
   AlertTriangle,
-  ArrowLeft,
   Lock,
   PauseCircle,
   Pencil,
@@ -51,8 +51,9 @@ import { PromotionStatusChip } from "./promotion-status-chip";
 type ActiveDetailDialog = "stop" | "resume" | "delete" | null;
 
 export function PromotionDetailView({ promotionId }: { promotionId: string }) {
-  const t = useTranslations("promotions");
   const tErrors = useTranslations("promotions.errors");
+  const t = useTranslations("promotions");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const uiLocale = normalizeUiLocale(locale);
   const router = useRouter();
@@ -349,77 +350,66 @@ export function PromotionDetailView({ promotionId }: { promotionId: string }) {
     <div className="@container flex flex-col gap-5">
       <LiveStatus message={liveMessage} />
 
-      <div className="flex flex-col gap-3">
-        <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4">
-          <div className="min-w-0 max-w-full">
-            <h1 data-exam-content className="text-page-title font-bold wrap-break-word text-text">
-              {detail.name}
-            </h1>
-            <p className="mt-1 text-body wrap-break-word text-text-muted">
-              {detail.kind === "VOUCHER" && detail.code
-                ? t("detail.subtitleVoucher", { code: detail.code })
-                : t("detail.subtitleAuto")}
-            </p>
-          </div>
-          <div data-slot="page-actions" className="flex max-w-full flex-wrap items-center gap-3">
-            <Button variant="secondary" asChild>
-              <Link href="/promotions">
-                <ArrowLeft />
-                <span>{t("actions.backToList")}</span>
-              </Link>
-            </Button>
-
-            {canModify && (
-              <>
-                <Button variant="secondary" asChild>
-                  <Link href={`/promotions/${detail.id}/edit`}>
-                    <Pencil />
-                    <span>{t("actions.edit")}</span>
-                  </Link>
-                </Button>
-
-                {canToggleStatus && (
-                  <Button
-                    variant="secondary"
-                    onClick={() => openDialog(isStopped ? "resume" : "stop")}
-                  >
-                    {isStopped ? <PlayCircle /> : <PauseCircle />}
-                    <span>{isStopped ? t("actions.resume") : t("actions.stop")}</span>
-                  </Button>
-                )}
-
-                <Button
-                  variant="danger"
-                  disabled={!canDelete}
-                  aria-describedby={!canDelete ? deleteReasonId : undefined}
-                  onClick={() => {
-                    if (canDelete) openDialog("delete");
-                  }}
-                >
-                  <Trash2 />
-                  <span>{t("actions.delete")}</span>
-                </Button>
-              </>
-            )}
-          </div>
-        </header>
-
-        <div className="flex flex-wrap items-center gap-2 text-caption text-text-muted">
-          <PromotionStatusChip status={detail.status} state={detail.state} />
-          <Chip variant="tag">{t(`kinds.${detail.kind}`)}</Chip>
-          <Chip variant="tag">{t("detail.revision", { revision: detail.revision })}</Chip>
-          <span>
+      <DetailHeader
+        back={{ href: "/promotions", label: tCommon("backTo.promotions") }}
+        linkComponent={Link}
+        title={detail.name}
+        titleProps={{ "data-exam-content": "" }}
+        chips={
+          <>
+            <PromotionStatusChip status={detail.status} state={detail.state} />
+            <Chip variant="tag">{t(`kinds.${detail.kind}`)}</Chip>
+            <Chip variant="tag">{t("detail.revision", { revision: detail.revision })}</Chip>
+          </>
+        }
+        description={
+          <>
+            {detail.kind === "VOUCHER" && detail.code
+              ? t("detail.subtitleVoucher", { code: detail.code })
+              : t("detail.subtitleAuto")}
+            {" · "}
             {t("detail.updatedAt")}: {formatPromotionDateTime(detail.updatedAt, locale)}
-          </span>
-        </div>
+          </>
+        }
+        actions={
+          canModify && (
+            <>
+              <Button variant="secondary" asChild>
+                <Link href={`/promotions/${detail.id}/edit`}>
+                  <Pencil />
+                  <span>{t("actions.edit")}</span>
+                </Link>
+              </Button>
 
+              {canToggleStatus && (
+                <Button variant="secondary" onClick={() => openDialog(isStopped ? "resume" : "stop")}>
+                  {isStopped ? <PlayCircle /> : <PauseCircle />}
+                  <span>{isStopped ? t("actions.resume") : t("actions.stop")}</span>
+                </Button>
+              )}
+
+              <Button
+                variant="danger"
+                disabled={!canDelete}
+                aria-describedby={!canDelete ? deleteReasonId : undefined}
+                onClick={() => {
+                  if (canDelete) openDialog("delete");
+                }}
+              >
+                <Trash2 />
+                <span>{t("actions.delete")}</span>
+              </Button>
+            </>
+          )
+        }
+      >
         {canModify && !canDelete && (
           <p id={deleteReasonId} className="flex items-center gap-1.5 text-caption text-text-secondary">
             <Lock aria-hidden className="size-3.5 shrink-0 text-text-muted" />
             <span>{t("actions.deleteDisabledUsed")}</span>
           </p>
         )}
-      </div>
+      </DetailHeader>
 
       {renderedConflictAlert && (
         <div
