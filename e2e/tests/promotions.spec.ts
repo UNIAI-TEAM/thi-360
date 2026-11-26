@@ -106,7 +106,7 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
       await expect(page.getByText(generatedCode).first()).toBeVisible();
 
       // Quay lai danh sach, loc Ma uu dai -> voucher vua tao xuat hien
-      await page.getByRole("link", { name: "Quay lại danh sách" }).click();
+      await page.getByRole("link", { name: "Danh sách khuyến mãi" }).click();
       await page.getByRole("radio", { name: "Mã ưu đãi" }).click();
       await expect(page.getByRole("link", { name: `${TAG}-VOUCHER` })).toBeVisible();
     } finally {
@@ -373,11 +373,12 @@ test.describe("FA-2: ảnh màn hình khuyến mãi (ma trận 2 khổ x 2 nền
 
         // 4. Edit
         await page.goto(`${ADMIN_URL}/promotions/${promoId}/edit`);
+        await expect(page.getByRole("heading", { level: 1, name: `${TAG}-MATRIX` })).toBeVisible();
         await expect(
-          page.getByRole("heading", {
-            name: cell.lang === "vi" ? "Chỉnh sửa khuyến mãi" : "Edit promotion",
+          page.getByRole("link", {
+            name: cell.lang === "vi" ? "Chi tiết khuyến mãi" : "Promotion details",
           }),
-        ).toBeVisible();
+        ).toHaveAttribute("href", `/promotions/${promoId}`);
         await expect(page.getByLabel(/Tên khuyến mãi|Promotion name/)).toHaveValue(`${TAG}-MATRIX`);
         await expectMatrixClean(page, "promotions-edit", cell);
       } finally {

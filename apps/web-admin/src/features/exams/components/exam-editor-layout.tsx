@@ -1,11 +1,12 @@
 "use client";
 
-import { Button, Card, cn, EmptyState, NavTab, NavTabs, Skeleton, StatusChip } from "@thi360/ui";
+import { Button, Card, cn, DetailHeader, EmptyState, NavTab, NavTabs, Skeleton, StatusChip } from "@thi360/ui";
 import { ArrowLeft, Lock, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { EXAM_EDITOR_TABS, examTabFromPathname, examTabHref } from "../editor-tabs";
 import { useExam, useExamStructure } from "../queries";
@@ -17,6 +18,16 @@ import { draftTotals } from "./exam-structure-draft";
 
 const DISPLAY_NUMBER_FORMAT = { maximumFractionDigits: 2 } as const;
 
+/**
+ * Chỗ đặt nút của trang con (`ExamEditorActions` gắn vào bằng portal). Khi trang con chưa gắn nút, ẩn luôn khung nút của
+ * `DetailHeader` để màn hẹp không thừa một khoảng trống dưới tiêu đề.
+ */
+const ACTIONS_SLOT_HIDE_EMPTY = "[&_[data-slot=page-actions]:has(>[data-exam-editor-actions]:empty)]:hidden";
+
+function ActionsSlot({ slotRef }: { slotRef: (node: HTMLDivElement | null) => void }) {
+  return <div ref={slotRef} data-exam-editor-actions="" className="contents" />;
+}
+
 export function ExamEditorLayout({ examId, children }: { examId?: string; children: ReactNode }) {
   if (!examId) {
     return <ExamEditorCreateLayout>{children}</ExamEditorCreateLayout>;
@@ -26,26 +37,19 @@ export function ExamEditorLayout({ examId, children }: { examId?: string; childr
 
 function ExamEditorCreateLayout({ children }: { children: ReactNode }) {
   const t = useTranslations("exams");
+  const tCommon = useTranslations("common");
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-col gap-3">
-        <Link
-          href="/exams"
-          className="inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text"
-        >
-          <ArrowLeft aria-hidden className="size-4" />
-          {t("editor.backToList")}
-        </Link>
-        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-          <div className="flex min-w-0 flex-col gap-1">
-            <h1 className="min-w-0 text-page-title font-bold wrap-break-word text-text">{t("create.title")}</h1>
-            <p className="text-body text-text-secondary">{t("create.description")}</p>
-          </div>
-          <div ref={setActionsSlot} className="flex flex-wrap items-center justify-end gap-2 empty:hidden" />
-        </div>
-      </header>
+      <DetailHeader
+        className={ACTIONS_SLOT_HIDE_EMPTY}
+        back={{ href: "/exams", label: tCommon("backTo.exams") }}
+        linkComponent={Link}
+        title={t("create.title")}
+        description={t("create.description")}
+        actions={<ActionsSlot slotRef={setActionsSlot} />}
+      />
       <NavTabs aria-label={t("editor.tabsLabel")}>
         {EXAM_EDITOR_TABS.map((tab) =>
           tab === "general" ? (
@@ -160,8 +164,10 @@ function ExamEditorHeader({
   actionsRef: (node: HTMLDivElement | null) => void;
 }) {
   const t = useTranslations("exams");
+  const tCommon = useTranslations("common");
   const format = useFormatter();
   const kindLabel = useKindLabel();
+  useSetBreadcrumbLeaf(exam.code);
   const structureQuery = useExamStructure(exam.id);
   const structure = structureQuery.data;
 
@@ -190,19 +196,14 @@ function ExamEditorHeader({
     Math.abs(totals.totalPoints - exam.maxScore) > 1e-6;
 
   return (
-    <header className="flex flex-col gap-3">
-      <Link
-        href="/exams"
-        className="inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text"
-      >
-        <ArrowLeft aria-hidden className="size-4" />
-        {t("editor.backToList")}
-      </Link>
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 data-exam-content className="min-w-0 text-page-title font-bold wrap-break-word text-text">
-            {exam.name}
-          </h1>
+    <DetailHeader
+      className={ACTIONS_SLOT_HIDE_EMPTY}
+      back={{ href: "/exams", label: tCommon("backTo.exams") }}
+      linkComponent={Link}
+      title={exam.name}
+      titleProps={{ "data-exam-content": "" }}
+      chips={
+        <>
           <StatusChip tone={EXAM_STATUS_TONE[exam.status]}>
             {exam.status === "PUBLISHED" && exam.servingVersion !== null
               ? t("status.servingVersion", { version: exam.servingVersion })
@@ -222,9 +223,10 @@ function ExamEditorHeader({
               })}
             </StatusChip>
           )}
-        </div>
-        <div ref={actionsRef} className="flex flex-wrap items-center justify-end gap-2 empty:hidden" />
-      </div>
+        </>
+      }
+      actions={<ActionsSlot slotRef={actionsRef} />}
+    >
       <dl
         aria-label={t("editor.structureSummaryLabel")}
         className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-body"
@@ -245,7 +247,7 @@ function ExamEditorHeader({
         )}
         <SummaryItem label={t("summary.attempts")} value={format.number(exam.attemptCount)} numeric />
       </dl>
-    </header>
+    </DetailHeader>
   );
 }
 

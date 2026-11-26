@@ -1131,6 +1131,38 @@ describe("BulkImportBatchView: đổi bước thì focus tới tiêu đề của
   }, 20_000);
 });
 
+describe("Cấp hàng loạt: đầu trang dùng chung (UNI-2825)", () => {
+  function expectBackToUsersAbove(heading: HTMLElement) {
+    const header = heading.closest("header")!;
+    expect(header).toHaveAttribute("data-slot", "detail-header");
+    expect(header.closest(".bg-surface")).toBeNull();
+    const back = within(header).getByRole("link", { name: "Danh sách tài khoản" });
+    expect(back).toHaveAttribute("href", "/users");
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(header).getByRole("button", { name: "Tải file mẫu" })).toBeInTheDocument();
+    return header;
+  }
+
+  it("trang đợt cấp: tiêu đề là tên tệp đã tải lên, lối về danh sách tài khoản nằm trên tiêu đề", async () => {
+    renderBatch(makeDeps());
+    const heading = await screen.findByRole("heading", { level: 1, name: "students.xlsx" });
+    const header = expectBackToUsersAbove(heading);
+    expect(header).toHaveTextContent("Tối đa 2.000 dòng, tệp không quá 5 MB.");
+  });
+
+  it("trang đợt cấp không có tên tệp: giữ tiêu đề chung", async () => {
+    renderBatch(makeDeps({ getImportBatch: vi.fn(async () => makeBatch({ originalFilename: undefined })) }));
+    const heading = await screen.findByRole("heading", { level: 1, name: "Cấp tài khoản hàng loạt" });
+    expectBackToUsersAbove(heading);
+  });
+
+  it("bước tải lên: tiêu đề chung, cùng lối về danh sách tài khoản", async () => {
+    renderUpload(makeDeps());
+    const heading = await screen.findByRole("heading", { level: 1, name: "Cấp tài khoản hàng loạt" });
+    expectBackToUsersAbove(heading);
+  });
+});
+
 describe("Bước 1 cấp hàng loạt: tên tệp, bỏ tệp, bảng mẫu, các bước (U-20)", () => {
   it("tên tệp dài hiện đủ (không cắt đuôi), có nút bỏ tệp; bỏ xong focus về ô chọn tệp", async () => {
     renderUpload(makeDeps());
@@ -1191,7 +1223,8 @@ describe("Cấp hàng loạt dùng được từ 360px (UNI-2586)", () => {
 
   it("thẻ số liệu xếp hai cột ở khung hẹp, bốn cột từ @4xl; tên tệp xuống dòng thay vì cắt", async () => {
     renderBatch(makeDeps({ getImportBatch: vi.fn(async () => makeBatch()) }));
-    const fileName = await screen.findByText("students.xlsx");
+    // Tên tệp có ở cả tiêu đề trang (h1) và thẻ số liệu; ở đây kiểm tra thẻ số liệu.
+    const fileName = await screen.findByText("students.xlsx", { selector: "div" });
     expect(fileName).toHaveClass("line-clamp-2", "wrap-anywhere");
     expect(fileName).not.toHaveClass("truncate");
     const cardsGrid = fileName.parentElement!.parentElement!;

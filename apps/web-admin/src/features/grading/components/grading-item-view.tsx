@@ -6,15 +6,15 @@ import {
   Card,
   cn,
   ConfirmDialog,
+  DetailHeader,
   EmptyState,
-  focusRing,
   LiveStatus,
   notify,
   Skeleton,
   StatusChip,
 } from "@thi360/ui";
 import { normalizeUiLocale } from "@thi360/web-kit/preferences";
-import { ArrowLeft, TriangleAlert, WifiOff } from "lucide-react";
+import { TriangleAlert, WifiOff } from "lucide-react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -114,8 +114,7 @@ export function GradingItemView({ itemId, deps }: GradingItemViewProps) {
   if (isOffline) {
     body = (
       <div className="flex flex-col gap-5">
-        <BackLink />
-        <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
+        <StateHeader title={t("title")} />
         <Card>
           <EmptyState
             icon={<WifiOff />}
@@ -143,8 +142,7 @@ export function GradingItemView({ itemId, deps }: GradingItemViewProps) {
     const notFound = detailQuery.isError && getErrorStatus(detailQuery.error) === 404;
     body = (
       <div className="flex flex-col gap-5">
-        <BackLink />
-        <h1 className="text-page-title font-bold text-text">{t("title")}</h1>
+        <StateHeader title={t("title")} />
         <Card>
           <EmptyState
             icon={<TriangleAlert />}
@@ -220,19 +218,11 @@ export function GradingItemSkeleton({ label }: { label?: string }) {
   );
 }
 
-function BackLink() {
-  const t = useTranslations("grading.detail");
+/** Đầu trang của trạng thái mất mạng / lỗi: lối quay lại và tiêu đề chung, chưa có dữ liệu câu. */
+function StateHeader({ title }: { title: string }) {
+  const tCommon = useTranslations("common");
   return (
-    <Link
-      href="/grading"
-      className={cn(
-        "inline-flex w-fit items-center gap-1.5 rounded-sm text-label font-medium text-text-secondary hover:text-text pointer-coarse:min-h-11",
-        focusRing,
-      )}
-    >
-      <ArrowLeft aria-hidden className="size-4" />
-      {t("backToList")}
-    </Link>
+    <DetailHeader back={{ href: "/grading", label: tCommon("backTo.grading") }} linkComponent={Link} title={title} />
   );
 }
 
@@ -244,6 +234,7 @@ function ItemHeader({
   examKinds: ReturnType<typeof useGradingExamKinds>["data"];
 }) {
   const t = useTranslations("grading");
+  const tCommon = useTranslations("common");
   const format = useFormatter();
   const uiLocale = normalizeUiLocale(useLocale());
 
@@ -252,20 +243,19 @@ function ItemHeader({
   const kindLabel = resolveExamKindLabel(detail.examKindCode, examKinds, uiLocale);
 
   return (
-    <Card padding="none" className="flex flex-col gap-4 p-4 sm:p-5">
-      <BackLink />
-      <div className="flex min-w-0 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-page-title font-bold wrap-anywhere text-text">
-            {t("detail.heading", { code: attemptCode, number: detail.displayNo ?? 0 })}
-          </h1>
+    <DetailHeader
+      back={{ href: "/grading", label: tCommon("backTo.grading") }}
+      linkComponent={Link}
+      title={t("detail.heading", { code: attemptCode, number: detail.displayNo ?? 0 })}
+      chips={
+        <>
           <StatusChip tone={GRADING_STATUS_TONE[state]}>{t(`status.${state}`)}</StatusChip>
-          {detail.regrading && (
-            <StatusChip tone="warning">{t("detail.regrading")}</StatusChip>
-          )}
-        </div>
-        {detail.examName && (
-          <p className="text-body text-text-secondary">
+          {detail.regrading && <StatusChip tone="warning">{t("detail.regrading")}</StatusChip>}
+        </>
+      }
+      description={
+        detail.examName && (
+          <>
             <span data-exam-content>{detail.examName}</span>
             {detail.partName && (
               <>
@@ -273,10 +263,10 @@ function ItemHeader({
                 <span data-exam-content>{detail.partName}</span>
               </>
             )}
-          </p>
-        )}
-      </div>
-
+          </>
+        )
+      }
+    >
       <dl className="m-0 flex flex-wrap gap-x-6 gap-y-2 text-body">
         <SummaryItem label={t("detail.summary.attemptCode")} value={`#${attemptCode}`} mono />
         {kindLabel && <SummaryItem label={t("detail.summary.kind")} value={kindLabel} />}
@@ -297,7 +287,7 @@ function ItemHeader({
           />
         )}
       </dl>
-    </Card>
+    </DetailHeader>
   );
 }
 

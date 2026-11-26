@@ -1,5 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { BreadcrumbLeafProvider, useBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
+import { ExamEditorActions } from "../components/exam-editor-actions";
 import { ExamEditorLayout } from "../components/exam-editor-layout";
 import type { ExamDetail, ExamPart, QuestionBlock } from "../types";
 import { ExamsBackend, toWireExam } from "./fake-exams-backend";
@@ -77,8 +79,11 @@ describe("ExamEditorLayout & ExamEditorHeader (AC-01, AC-02)", () => {
       </main>,
     );
 
-    expect(screen.getByRole("link", { name: "Danh sách bài thi" })).toHaveAttribute("href", "/exams");
-    expect(screen.getByRole("heading", { name: "Tạo bài thi", level: 1 })).toBeInTheDocument();
+    const backLink = screen.getByRole("link", { name: "Danh sách bài thi" });
+    expect(backLink).toHaveAttribute("href", "/exams");
+    const heading = screen.getByRole("heading", { name: "Tạo bài thi", level: 1 });
+    expect(heading.closest('[data-slot="detail-header"]')).toContainElement(backLink);
+    expect(backLink.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId("create-child")).toBeInTheDocument();
 
     const nav = screen.getByRole("navigation", { name: "Các phần của bài thi" });
@@ -91,6 +96,42 @@ describe("ExamEditorLayout & ExamEditorHeader (AC-01, AC-02)", () => {
       expect(tab).toHaveAttribute("aria-disabled", "true");
       expect(tab.closest("a")).toBeNull();
     }
+  });
+
+  it("UNI-2825: đầu trang chi tiết có lối quay lại trên tiêu đề, chip cạnh tiêu đề, nút trang con trong khung nút, dải tổng hợp trong đầu trang, tab ở ngoài và mục cuối breadcrumb là mã bài", async () => {
+    const seeded: ExamDetail = { ...backend.app("ex-hsa-f-001"), id: EXAM_ID, code: "HSA-HEADER-01", name: "HSA đầu trang" };
+    backend.seedExam(seeded);
+    function LeafProbe() {
+      return <output data-testid="leaf">{useBreadcrumbLeaf() ?? ""}</output>;
+    }
+
+    window.history.replaceState(null, "", `/exams/${EXAM_ID}`);
+    renderExamsUi(
+      <BreadcrumbLeafProvider>
+        <LeafProbe />
+        <ExamEditorLayout examId={EXAM_ID}>
+          <ExamEditorActions>
+            <button type="button">Nút của trang con</button>
+          </ExamEditorActions>
+        </ExamEditorLayout>
+      </BreadcrumbLeafProvider>,
+    );
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "HSA đầu trang" });
+    expect(heading).toHaveAttribute("data-exam-content");
+    const header = heading.closest('[data-slot="detail-header"]') as HTMLElement;
+    expect(header).not.toBeNull();
+    const backLink = within(header).getByRole("link", { name: "Danh sách bài thi" });
+    expect(backLink).toHaveAttribute("href", "/exams");
+    expect(backLink.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Chip trạng thái và chip kiểm tra nằm cùng hàng với h1.
+    expect(heading.parentElement!.children.length).toBeGreaterThan(1);
+
+    const actions = header.querySelector('[data-slot="page-actions"]') as HTMLElement;
+    expect(await within(actions).findByRole("button", { name: "Nút của trang con" })).toBeInTheDocument();
+    expect(within(header).getByLabelText("Tổng hợp cấu trúc")).toBeInTheDocument();
+    expect(header.contains(screen.getByRole("navigation", { name: "Các phần của bài thi" }))).toBe(false);
+    await waitFor(() => expect(screen.getByTestId("leaf")).toHaveTextContent("HSA-HEADER-01"));
   });
 
   it("AC-02: dùng useKindLabel (V-ACT), ẩn thời lượng khi durationMinutes <= 0 và hiện hậu tố số câu trên đề khi printedQuestions khác totalQuestions", async () => {

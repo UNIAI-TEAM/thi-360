@@ -991,3 +991,54 @@ describe("BundleCreatePage & BundleEditPage (AC-5, AC-6, BS 2)", () => {
     });
   });
 });
+
+describe("Đầu trang tạo và chi tiết bộ đề (UNI-2825)", () => {
+  beforeEach(() => {
+    fakeApi.reset();
+    resetBundleNavigation("/bundles/new", "");
+    fakeApi.get("/api/v1/catalog/options", () => ok(EXAM_KIND_OPTIONS));
+    fakeApi.get("/api/v1/admin/bundles/candidates", () => ok([]));
+  });
+
+  function expectBackLinkAboveTitle(heading: HTMLElement, label: string, href: string) {
+    const header = heading.closest('[data-slot="detail-header"]');
+    expect(header).not.toBeNull();
+    const back = within(header as HTMLElement).getByRole("link", { name: label });
+    expect(back).toHaveAttribute("href", href);
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    return header as HTMLElement;
+  }
+
+  it("trang tạo: lối Danh sách bộ đề về /bundles nằm trên tiêu đề", async () => {
+    renderBundlesUi(<BundleCreatePage />);
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "Tạo bộ đề" });
+    expectBackLinkAboveTitle(heading, "Danh sách bộ đề", "/bundles");
+    expect(screen.queryByRole("link", { name: "Quay lại danh sách" })).not.toBeInTheDocument();
+  });
+
+  it("trang bộ đề: chip trạng thái cạnh tiêu đề, mã ở dòng phụ, Ngừng bán trước Công bố lại, không còn nút Quay lại", async () => {
+    fakeApi.get("/api/v1/admin/bundles/{id}", () =>
+      ok(
+        makeBundleDetail({
+          id: BUNDLE_ID_1,
+          status: "PUBLISHED",
+          saleState: "ON_SALE",
+          hasUnpublishedChanges: true,
+        }),
+      ),
+    );
+    renderBundlesUi(<BundleEditPage bundleId={BUNDLE_ID_1} />);
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "Bộ đề SP2E khối A00" });
+    const header = expectBackLinkAboveTitle(heading, "Danh sách bộ đề", "/bundles");
+    expect(heading.parentElement).toHaveTextContent("Đang bán");
+    expect(heading.parentElement).toHaveTextContent("Có thay đổi chưa công bố");
+    expect(within(header).getByText("BO-SP2E-001")).toHaveAttribute("data-exam-content");
+
+    const actions = header.querySelector('[data-slot="page-actions"]') as HTMLElement;
+    const buttons = within(actions).getAllByRole("button");
+    expect(buttons.map((b) => b.textContent)).toEqual(["Ngừng bán", "Công bố lại"]);
+    expect(screen.queryByRole("link", { name: "Quay lại danh sách" })).not.toBeInTheDocument();
+  });
+});

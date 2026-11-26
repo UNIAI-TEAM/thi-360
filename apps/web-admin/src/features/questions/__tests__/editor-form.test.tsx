@@ -56,6 +56,31 @@ describe("biểu mẫu soạn câu hỏi", () => {
     expect(screen.getByRole("button", { name: "Save question" })).toBeInTheDocument();
   });
 
+  it("UNI-2825: trang sửa có lối quay lại Chi tiết câu hỏi ở trên tiêu đề, nút trong đầu trang", async () => {
+    renderEn(<QuestionEditorView mode="edit" questionId="q-0003" />);
+    // Khung chờ tải cũng có lối quay lại: đợi biểu mẫu hiện rồi mới kiểm.
+    await screen.findByRole("button", { name: "Save question" });
+    const backLink = screen.getByRole("link", { name: "Question details" });
+    const heading = screen.getByRole("heading", { level: 1, name: "Edit question" });
+    const header = heading.closest('[data-slot="detail-header"]') as HTMLElement;
+    expect(header).toContainElement(backLink);
+    expect(backLink).toHaveAttribute("href", "/questions/q-0003");
+    expect(backLink.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const actions = header.querySelector('[data-slot="page-actions"]') as HTMLElement;
+    expect(within(actions).getByRole("button", { name: "Save question" })).toBeInTheDocument();
+    expect(within(actions).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("UNI-2825: trang tạo có lối quay lại Ngân hàng câu hỏi ở trên tiêu đề", async () => {
+    renderEn(<QuestionEditorView mode="create" type="SINGLE_CHOICE" />);
+    const backLink = await screen.findByRole("link", { name: "Question bank" });
+    const heading = screen.getByRole("heading", { level: 1, name: "Create question" });
+    const header = heading.closest('[data-slot="detail-header"]') as HTMLElement;
+    expect(header).toContainElement(backLink);
+    expect(backLink).toHaveAttribute("href", "/questions");
+    expect(backLink.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("lưu câu Sẵn sàng tạo bản Nháp mới rồi mở trang chi tiết", async () => {
     const user = userEvent.setup();
     renderEn(<QuestionEditorView mode="edit" questionId="q-0003" />);

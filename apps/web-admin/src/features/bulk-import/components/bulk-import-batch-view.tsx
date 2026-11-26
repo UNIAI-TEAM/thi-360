@@ -814,7 +814,7 @@ function BulkImportBatchContent({
   return (
     <div className="@container flex flex-col gap-4">
       <LiveStatus message={announcement} />
-      <BulkImportHeader deps={deps} />
+      <BulkImportHeader deps={deps} title={batch.originalFilename} />
       <BulkImportStepper currentStep={currentStep} />
 
       {actionError && (

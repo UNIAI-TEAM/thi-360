@@ -2,6 +2,17 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### Đồng bộ đầu trang các màn chi tiết web quản trị (2026-11-26, `UNI-2825`)
+
+- **Yêu cầu:** M.Trường thấy mỗi cụm menu dựng đầu trang màn chi tiết một kiểu (nút quay lại chỗ phải, chỗ trái, chỗ trong thẻ). Đã chốt: đầu trang không đặt trong thẻ; hàng nút làm giống màn chi tiết khuyến mãi (Xóa là nút đỏ đứng cuối).
+- **Đã làm:**
+  - Thành phần `DetailHeader` trong `packages/ui`: lối quay lại trên tiêu đề bên trái, chip cạnh tiêu đề, dòng phụ, hàng nút bên phải, phần thêm (`children`) cho dải `<dl>` hoặc ghi chú. Chữ quay lại dùng `common.backTo.*`.
+  - Áp cho: khuyến mãi (chi tiết, tạo, sửa), bộ đề (tạo, chi tiết), đơn hàng, lớp học, tài khoản, đợt cấp tài khoản hàng loạt (và trang tải tệp), bài thi (sửa, tạo), câu hỏi (chi tiết, tạo, sửa, cả khung chờ và lỗi), chấm tự luận, lượt thi.
+  - Mục cuối breadcrumb mới cho bài thi (mã), câu hỏi và trang sửa câu hỏi (mã), tài khoản (họ tên).
+  - DESIGN.md mục 5.8 ghi quy tắc đầu trang màn chi tiết.
+- **Kiểm chứng:** web quản trị typecheck, lint sạch; toàn bộ vitest qua (một test câu hỏi đã sửa sau lượt chạy đầu); kit UI 5/5. e2e `users.spec.ts`, `promotions.spec.ts` sửa theo nhãn mới, chạy trên CI.
+- **Tiếp theo:** chờ CI, merge, deploy demo, kiểm trên trình duyệt (sáng/tối, vi/en).
+
 ### Quy tắc MAPID "ngân sách lồng nhau" (2026-11-26, `UNI-2824`)
 
 - **Nguồn:** quyết định M.Trường 2026-11-26 (`.thi360-dev/decisions-2026-11-26-mapid-ngan-sach-long-nhau.md`). Nhánh dựng trên `UNI-2822` (#221).

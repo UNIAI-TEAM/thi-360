@@ -223,6 +223,21 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
 - **Lề:** thanh trên và vùng nội dung đệm 16px (`px-4`, `p-4`) dưới 640px (`sm`), 24px từ 640px. Cột nội dung co theo cửa sổ (`min-w-0`), không có bề rộng tối thiểu. Bề rộng dùng được cho nội dung của một màn: 360px → 328px, 390px → 358px; 640–1023px → bề rộng cửa sổ − 48px; từ 1024px → bề rộng cửa sổ − 248px − 48px.
 - **Thanh trên dưới 640px** phải vừa một hàng ở 360px: nút menu, breadcrumb chỉ còn trang hiện tại (`Breadcrumb collapseOnNarrow`, cắt bằng dấu ba chấm nếu vẫn dài), nút sáng/tối, nút ngôn ngữ, menu avatar chỉ còn avatar (tên đăng nhập hiện ở dòng đầu của menu). Từ 640px breadcrumb đủ các mục và menu avatar có tên đăng nhập kèm mũi tên.
 - **Tiêu đề trang** (`PageHeader`): dưới 640px nút của màn xuống dưới tiêu đề và mô tả, căn trái, tự xuống dòng khi không đủ một hàng; từ 640px nút nằm cùng hàng với tiêu đề, căn phải. Màn chỉ truyền nút qua `actions`, không tự bọc thêm hàng.
+- **Đầu trang màn chi tiết** (`DetailHeader`, UNI-2825, 2026-11-26): mọi màn đi vào từ danh sách chính của một mục menu (chi tiết, sửa, tạo mới) dùng cùng một mẫu, không màn nào tự dựng đầu trang:
+
+  ```
+  ← Danh sách khuyến mãi
+  trừ 100%  ● Đang chạy  Tự động  Phiên bản #2         [Sửa] [Dừng] [Xóa]
+  Khuyến mãi tự động · Cập nhật lúc: 09:43 26/11/2026
+  (phần thêm nếu có: ghi chú khóa thao tác, dải thông tin <dl>)
+  [Tab con nếu có, nằm ngoài đầu trang]
+  ```
+
+  - **Lối quay lại** luôn ở trên tiêu đề, bên trái: link chữ `text-secondary` có mũi tên `ArrowLeft`, ghi "Danh sách ‹mục›" (khóa `common.backTo.*`; Ngân hàng câu hỏi giữ đúng tên mục). Trang sửa quay về chi tiết ("Chi tiết ‹đối tượng›"), trang tạo quay về danh sách. Không đặt nút quay lại trong hàng nút.
+  - **Tiêu đề** là tên đối tượng; chip trạng thái và thẻ loại nằm ngay cạnh tiêu đề. **Dòng phụ** là mã và thông tin chính, nối bằng " · ".
+  - **Hàng nút** bên phải hàng tiêu đề (dưới 640px xuống dưới, căn trái như `PageHeader`): nút phụ trước, tối đa một nút chính, nút Xóa dạng `danger` đứng cuối (vẫn mở dialog xác nhận). Đây là ngoại lệ có chủ đích của mục 5.1 cho đầu trang chi tiết, theo màn chi tiết khuyến mãi.
+  - **Đầu trang nằm trên nền trang, không đặt trong thẻ**, giống màn danh sách. Thẻ trắng chỉ dùng cho nội dung bên dưới.
+  - Mọi màn chi tiết đặt mục cuối của breadcrumb (`useSetBreadcrumbLeaf`), nên mục menu trên thanh trên luôn là link về danh sách.
 - Menu và nút chỉ hiện khi người dùng có quyền tương ứng.
 - Menu chính đợt 1: **Tổng quan** (Bảng điều khiển) · **Người dùng** (Tài khoản, Lớp học) · **Nội dung** (Cấu hình chung) · **Hệ thống** (Phân quyền, Tùy chỉnh giao diện; Nhật ký là tab trong chi tiết tài khoản).
 - Bổ sung qua đợt 2 & đợt 3 (`apps/web-admin/src/lib/navigation.ts`):

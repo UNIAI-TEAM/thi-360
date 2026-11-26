@@ -7,6 +7,7 @@ import {
   Card,
   cn,
   ConfirmDialog,
+  DetailHeader,
   EmptyState,
   focusRing,
   IconButton,
@@ -40,7 +41,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { keepPreviousWhileSameScope } from "@/lib/api/keep-previous";
-import { Can } from "@/features/session/can";
 import { ForbiddenView } from "@/features/session/forbidden-view";
 import { usePermissions, useSession } from "@/features/session/session-provider";
 import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
@@ -386,45 +386,78 @@ function ClassDetailContent({
 
   return (
     <div className="flex flex-col gap-5">
-      <Link
-        href="/classes"
-        className="inline-flex items-center gap-1.5 self-start text-body font-medium text-primary-text hover:underline"
-      >
-        <ArrowLeft className="size-4" />
-        <span>{t("detail.backToList")}</span>
-      </Link>
+      <DetailHeader
+        back={{ href: "/classes", label: common("backTo.classes") }}
+        linkComponent={Link}
+        title={classDetail.name}
+        chips={
+          <StatusChip tone={isActive ? "success" : "neutral"}>
+            {t(`statuses.${classDetail.status}`)}
+          </StatusChip>
+        }
+        description={t("detail.subtitle", {
+          code: classDetail.code,
+          descriptionPart: classDetail.description ? `${classDetail.description} · ` : "",
+          owner: classDetail.ownerUsername ?? "—",
+          count: classDetail.memberCount,
+        })}
+        actions={
+          canModify && (
+            <>
+              <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
+                <Pencil />
+                <span>{t("detail.editInfo")}</span>
+              </Button>
 
-      <Card className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-page-title font-bold break-words text-text">{classDetail.name}</h1>
-            <StatusChip tone={isActive ? "success" : "neutral"}>
-              {t(`statuses.${classDetail.status}`)}
-            </StatusChip>
-          </div>
-          <p className="text-body break-words text-text-secondary">
-            {t("detail.subtitle", {
-              code: classDetail.code,
-              descriptionPart: classDetail.description ? `${classDetail.description} · ` : "",
-              owner: classDetail.ownerUsername ?? "—",
-              count: classDetail.memberCount,
-            })}
-          </p>
-        </div>
+              {isActive ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    actionController.openDeactivate({
+                      id: classDetail.id,
+                      code: classDetail.code,
+                      name: classDetail.name,
+                      version: classDetail.version,
+                    })
+                  }
+                >
+                  <PowerOff />
+                  <span>{t("actions.deactivate")}</span>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() =>
+                    actionController.openActivate({
+                      id: classDetail.id,
+                      code: classDetail.code,
+                      name: classDetail.name,
+                      version: classDetail.version,
+                    })
+                  }
+                >
+                  <Power />
+                  <span>{t("actions.activate")}</span>
+                </Button>
+              )}
 
-        <Can permission="CLASS.MODIFY">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="secondary" onClick={() => setEditOpen(true)}>
-              <Pencil />
-              <span>{t("detail.editInfo")}</span>
-            </Button>
-
-            {isActive ? (
               <Button
                 type="button"
-                variant="secondary"
+                disabled={!isActive}
+                title={!isActive ? t("detail.addDisabledTooltip") : undefined}
+                onClick={() => setAddMembersOpen(true)}
+              >
+                <Plus />
+                <span>{t("detail.addMembers")}</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="danger"
                 onClick={() =>
-                  actionController.openDeactivate({
+                  actionController.openDelete({
                     id: classDetail.id,
                     code: classDetail.code,
                     name: classDetail.name,
@@ -432,55 +465,13 @@ function ClassDetailContent({
                   })
                 }
               >
-                <PowerOff />
-                <span>{t("actions.deactivate")}</span>
+                <Trash2 />
+                <span>{t("actions.delete")}</span>
               </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() =>
-                  actionController.openActivate({
-                    id: classDetail.id,
-                    code: classDetail.code,
-                    name: classDetail.name,
-                    version: classDetail.version,
-                  })
-                }
-              >
-                <Power />
-                <span>{t("actions.activate")}</span>
-              </Button>
-            )}
-
-            <Button
-              type="button"
-              variant="danger"
-              onClick={() =>
-                actionController.openDelete({
-                  id: classDetail.id,
-                  code: classDetail.code,
-                  name: classDetail.name,
-                  version: classDetail.version,
-                })
-              }
-            >
-              <Trash2 />
-              <span>{t("actions.delete")}</span>
-            </Button>
-
-            <Button
-              type="button"
-              disabled={!isActive}
-              title={!isActive ? t("detail.addDisabledTooltip") : undefined}
-              onClick={() => setAddMembersOpen(true)}
-            >
-              <Plus />
-              <span>{t("detail.addMembers")}</span>
-            </Button>
-          </div>
-        </Can>
-      </Card>
+            </>
+          )
+        }
+      />
 
       {!isActive && (
         <div

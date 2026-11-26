@@ -5,7 +5,7 @@ import { isEmptyContent, planWordFill, type FillWrite } from "@/components/rich-
 import { clearWordPending, markWordPending } from "@/components/rich-text/insert/word/pending-marks";
 import { isWordHtml } from "@/components/rich-text/insert/word/detect";
 import type { WordPasteResult } from "@/components/rich-text/insert/word/word-paste-dialog";
-import { Button, ConfirmDialog, LiveStatus, notify, PageHeader } from "@thi360/ui";
+import { Button, ConfirmDialog, DetailHeader, LiveStatus, notify } from "@thi360/ui";
 import { ClipboardPaste, Info } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -14,6 +14,7 @@ import { lazy, Suspense, useEffect, useId, useMemo, useState, type FormEvent } f
 import { FormProvider, useForm, useFormContext, useWatch, type Path } from "react-hook-form";
 import type { ContentReference, QuestionType } from "@/features/content/types";
 import { apiErrorCode, apiFieldErrors, isRevisionConflict } from "@/features/content/api-error";
+import { useSetBreadcrumbLeaf } from "@/features/shell/breadcrumb-leaf";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { applyServerFieldErrors, serverErrorKey } from "../editor-field-errors";
 import {
@@ -90,6 +91,7 @@ const CONTENT_HINT_KEY: Record<QuestionType, string> = {
  */
 export function QuestionEditorForm(props: QuestionEditorFormProps) {
   const t = useTranslations("questions.editor");
+  const tCommon = useTranslations("common");
   const tType = useTranslations("content.questionType");
   const format = useFormatter();
   const tRich = useTranslations("richText");
@@ -108,6 +110,8 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
   useEffect(() => () => clearWordPending(), []);
   const question = props.question ?? null;
   const type = question?.type ?? props.type ?? "SINGLE_CHOICE";
+  // Trang sửa không nằm trong khung chi tiết câu hỏi: tự đặt mục cuối breadcrumb là mã câu.
+  useSetBreadcrumbLeaf(question?.code);
 
   const locale = useUiLocale();
   const methods = useForm<QuestionEditorValues>({
@@ -233,7 +237,13 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
       <EditorWarningsProvider warnings={readinessWarnings}>
       <EditorAnnounceProvider announce={setLiveMessage}>
         <div className="flex flex-col gap-5">
-          <PageHeader
+          <DetailHeader
+            back={
+              question
+                ? { href: leaveHref, label: tCommon("backTo.questionDetail") }
+                : { href: "/questions", label: tCommon("backTo.questions") }
+            }
+            linkComponent={Link}
             title={question ? t("editTitle") : t("createTitle")}
             description={description}
             actions={

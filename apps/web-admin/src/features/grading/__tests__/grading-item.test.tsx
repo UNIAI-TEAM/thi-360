@@ -157,6 +157,33 @@ describe("GradingItemView word count & content isolation", () => {
     expect(reopenedReasonEl.closest("p")).toHaveTextContent("Reopen reason: Cần chấm lại");
   });
 
+  it("UNI-2825: đầu trang chi tiết nằm trên nền trang, lối quay lại Danh sách chấm tự luận ở trên tiêu đề, chip cạnh tiêu đề, dải thông tin trong đầu trang", async () => {
+    fakeApi.get("/api/v1/catalog/options", ok(EXAM_KIND_CATALOG_FIXTURES));
+    fakeApi.get(
+      "/api/v1/admin/grading/items/{itemId}",
+      ok(makeDetail({ state: "IN_PROGRESS", regrading: true, activeGrade: makeEssayGrade({ graderId: GRADER_1_ID }) })),
+    );
+
+    renderGradingUi(<GradingItemView itemId={ITEM_1_ID} />);
+
+    const heading = await screen.findByRole("heading", { level: 1, name: /^Chấm câu #/ });
+    const header = heading.closest('[data-slot="detail-header"]') as HTMLElement;
+    expect(header).not.toBeNull();
+    // Không còn bọc trong thẻ (Card có bóng `shadow-xs`).
+    expect(header.parentElement!.closest(".shadow-xs")).toBeNull();
+
+    const backLink = within(header).getByRole("link", { name: "Danh sách chấm tự luận" });
+    expect(backLink).toHaveAttribute("href", "/grading");
+    expect(backLink.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Quay lại danh sách chấm" })).toBeNull();
+
+    const titleRow = heading.parentElement!;
+    expect(within(titleRow).getByText("Đang chấm")).toBeInTheDocument();
+    expect(within(titleRow).getByText("Đang chấm lại")).toBeInTheDocument();
+    expect(header).toHaveTextContent("BCA Literature Mock 01 · Writing Section");
+    expect(header.querySelector("dl")).not.toBeNull();
+  });
+
   it("hiển thị tối đa 4 chữ số thập phân và GradingItemSkeleton có aria-busy (R1-23, R1-40)", async () => {
     fakeApi.get("/api/v1/catalog/options", ok(EXAM_KIND_CATALOG_FIXTURES));
     fakeApi.get(

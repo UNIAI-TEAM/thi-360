@@ -723,3 +723,40 @@ describe("OrderDetailView (AC-4, AC-9, AC-10, AC-15, AC-17)", () => {
     }
   });
 });
+
+describe("Đầu trang chi tiết đơn hàng (UNI-2825)", () => {
+  beforeEach(() => {
+    fakeApi.reset();
+    resetMockNavigation("/orders/DH-261121-0001", "");
+  });
+
+  function expectBackLinkAboveTitle(heading: HTMLElement) {
+    const header = heading.closest('[data-slot="detail-header"]');
+    expect(header).not.toBeNull();
+    const back = within(header as HTMLElement).getByRole("link", { name: "Danh sách đơn hàng" });
+    expect(back).toHaveAttribute("href", "/orders");
+    expect(back.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    return header as HTMLElement;
+  }
+
+  it("lối Danh sách đơn hàng nằm trên tiêu đề, chip trạng thái cạnh tiêu đề, nút Quay lại không còn trong nhóm nút", async () => {
+    fakeApi.get("/api/v1/admin/orders/{code}", () => ok(makeOrderDetail()));
+    renderOrdersUi(<OrderDetailView code="DH-261121-0001" />);
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "Đơn hàng DH-261121-0001" });
+    const header = expectBackLinkAboveTitle(heading);
+    expect(heading.parentElement).toHaveTextContent("Đã cấp quyền");
+    expect(header).toHaveTextContent("Thành tiền cần trả: 299.000 đ");
+    const actions = header.querySelector('[data-slot="page-actions"]') as HTMLElement;
+    expect(within(actions).getByRole("link", { name: "Xem đơn của người mua" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Quay lại danh sách đơn hàng" })).not.toBeInTheDocument();
+  });
+
+  it("màn lỗi 404 cũng có đầu trang với lối Danh sách đơn hàng", async () => {
+    fakeApi.get("/api/v1/admin/orders/{code}", () => fail(404, { code: "ORDER_NOT_FOUND" }));
+    renderOrdersUi(<OrderDetailView code="DH-261121-0001" />);
+
+    const heading = await screen.findByRole("heading", { level: 1, name: "Đơn hàng DH-261121-0001" });
+    expectBackLinkAboveTitle(heading);
+  });
+});

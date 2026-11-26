@@ -9,10 +9,10 @@ import {
   Badge,
   Button,
   Card,
+  DetailHeader,
   EmptyState,
   ListCard,
   ListCardTag,
-  PageHeader,
   Skeleton,
   Table,
   cn,
@@ -193,6 +193,7 @@ function auditDotTone(action: string, outcome: string): TimelineTone {
 
 export function OrderDetailView({ code }: { code: string }) {
   const t = useTranslations("orders");
+  const tCommon = useTranslations("common");
   const tStates = useTranslations("orders.states");
   const tFallback = useTranslations("orders.statusFallback");
   const tErrors = useTranslations("orders.errors");
@@ -640,7 +641,11 @@ export function OrderDetailView({ code }: { code: string }) {
   if (isOffline) {
     return (
       <div className="flex flex-col gap-5">
-        <PageHeader title={t("detail.title", { code })} />
+        <DetailHeader
+          back={{ href: "/orders", label: tCommon("backTo.orders") }}
+          linkComponent={Link}
+          title={t("detail.title", { code })}
+        />
         <EmptyState
           headingLevel={2}
           icon={<AlertCircle className="h-6 w-6" />}
@@ -672,7 +677,11 @@ export function OrderDetailView({ code }: { code: string }) {
       detailQuery.error instanceof OrderApiError && detailQuery.error.status === 404;
     return (
       <div className="flex flex-col gap-5">
-        <PageHeader title={t("detail.title", { code })} />
+        <DetailHeader
+          back={{ href: "/orders", label: tCommon("backTo.orders") }}
+          linkComponent={Link}
+          title={t("detail.title", { code })}
+        />
         <EmptyState
           headingLevel={2}
           icon={<AlertCircle className="h-6 w-6" />}
@@ -731,75 +740,73 @@ export function OrderDetailView({ code }: { code: string }) {
 
   return (
     <div className="@container flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <PageHeader
-          title={t("detail.title", { code: order.code })}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Button asChild variant="secondary" size="sm">
-                <Link href="/orders">
-                  <ArrowLeft aria-hidden="true" />
-                  <span>{t("nav.backToOrders")}</span>
+      <DetailHeader
+        back={{ href: "/orders", label: tCommon("backTo.orders") }}
+        linkComponent={Link}
+        title={t("detail.title", { code: order.code })}
+        chips={
+          <>
+            <OrderStateChip state={order.state} />
+            <OrderPaymentStatusChip status={order.paymentStatus} />
+            <OrderRefundStatusChip status={order.refundStatus} />
+          </>
+        }
+        description={[
+          `${t("detail.snapshot.createdAt")}: ${formatOrderDateTime(order.createdAt, locale)}`,
+          `${t("detail.snapshot.totalDue")}: ${formatVnd(order.amountDueVnd, locale)}`,
+        ].join(" · ")}
+        actions={
+          <>
+            <Button asChild variant="secondary">
+              <Link href={`/orders?q=${encodeURIComponent(order.buyer.username)}`}>
+                <span>{t("detail.actions.viewBuyerOrders")}</span>
+              </Link>
+            </Button>
+
+            {canViewExam && order.examId ? (
+              <Button asChild variant="outline">
+                <Link href={`/exams/${encodeURIComponent(order.examId)}`}>
+                  <span>{t("nav.openExam")}</span>
+                  <ExternalLink aria-hidden="true" />
                 </Link>
               </Button>
+            ) : null}
 
-              <Button asChild variant="secondary" size="sm">
-                <Link href={`/orders?q=${encodeURIComponent(order.buyer.username)}`}>
-                  <span>{t("detail.actions.viewBuyerOrders")}</span>
+            {canViewExam && order.productType === "BUNDLE" && order.bundleId ? (
+              <Button asChild variant="outline">
+                <Link href={`/bundles/${encodeURIComponent(order.bundleId)}`}>
+                  <span>{t("nav.openBundle")}</span>
+                  <ExternalLink aria-hidden="true" />
                 </Link>
               </Button>
+            ) : null}
 
-              {canViewExam && order.examId ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/exams/${encodeURIComponent(order.examId)}`}>
-                    <span>{t("nav.openExam")}</span>
-                    <ExternalLink aria-hidden="true" />
-                  </Link>
-                </Button>
-              ) : null}
+            {canRecover && pendingLatePayments.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLateSuccessPaymentId(pendingLatePayments[0]!.id)}
+              >
+                {t("detail.actions.reviewLateSuccess")}
+              </Button>
+            ) : null}
 
-              {canViewExam && order.productType === "BUNDLE" && order.bundleId ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/bundles/${encodeURIComponent(order.bundleId)}`}>
-                    <span>{t("nav.openBundle")}</span>
-                    <ExternalLink aria-hidden="true" />
-                  </Link>
-                </Button>
-              ) : null}
+            {canRefund && primaryRefundCandidate ? (
+              <PaymentRefundActionButton
+                payment={primaryRefundCandidate}
+                context="header"
+                onOpen={() => setRefundPaymentId(primaryRefundCandidate.id)}
+              />
+            ) : null}
 
-              {canRecover && showContinueFulfill ? (
-                <Button type="button" variant="primary" size="sm" onClick={() => setFulfillOpen(true)}>
-                  {t("detail.actions.continueFulfill")}
-                </Button>
-              ) : null}
-
-              {canRecover && pendingLatePayments.length > 0 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setLateSuccessPaymentId(pendingLatePayments[0]!.id)}
-                >
-                  {t("detail.actions.reviewLateSuccess")}
-                </Button>
-              ) : null}
-
-              {canRefund && primaryRefundCandidate ? (
-                <PaymentRefundActionButton
-                  payment={primaryRefundCandidate}
-                  context="header"
-                  onOpen={() => setRefundPaymentId(primaryRefundCandidate.id)}
-                />
-              ) : null}
-            </div>
-          }
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <OrderStateChip state={order.state} />
-          <OrderPaymentStatusChip status={order.paymentStatus} />
-          <OrderRefundStatusChip status={order.refundStatus} />
-        </div>
-      </div>
+            {canRecover && showContinueFulfill ? (
+              <Button type="button" variant="primary" onClick={() => setFulfillOpen(true)}>
+                {t("detail.actions.continueFulfill")}
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
       {order.replacedByOrderCode ? (
         <div
@@ -1415,6 +1422,7 @@ function PaymentRefundActionButton({
   context: "header" | "row";
 }) {
   const t = useTranslations("orders.detail.actions");
+  const size = context === "header" ? undefined : "sm";
   const hasActiveRefund = payment.refunds.some(
     (r) => r.state === "UNKNOWN" || r.state === "PROCESSING",
   );
@@ -1430,7 +1438,7 @@ function PaymentRefundActionButton({
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size={size}
           disabled
           aria-label={ariaLabel}
           aria-describedby={reasonId}
@@ -1449,7 +1457,7 @@ function PaymentRefundActionButton({
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" aria-label={ariaLabel} onClick={onOpen}>
+    <Button type="button" variant="outline" size={size} aria-label={ariaLabel} onClick={onOpen}>
       {t("refund")}
     </Button>
   );
