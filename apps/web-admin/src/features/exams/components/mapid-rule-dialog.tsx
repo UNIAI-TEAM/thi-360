@@ -22,6 +22,7 @@ import { KnowledgePickerDialog } from "@/features/content/components/knowledge-p
 import { indexKnowledge } from "@/features/content/knowledge-tree";
 import type { ContentReference, KnowledgeRef } from "@/features/content/types";
 import { countFromPercent } from "../allocation";
+import { groupBudget, groupRulesLeftOutside, onlyElsewhereNodes, subjectBudget, subjectSourceNodes } from "../mapid-rule-budget";
 import { allocatedRuleQuestions, checkMapidRuleConflicts } from "../mapid-rule-form-conflicts";
 import {
   emptyRuleForm,
@@ -104,12 +105,15 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
   const [numberInvalid, setNumberInvalid] = useState(false);
   /** Ghi nhớ việc bỏ chọn `ONLY_IN_GROUP` khi chuyển từ một nhóm sang Toàn môn để hiển thị thông báo phù hợp. */
   const [typeClearedForSubject, setTypeClearedForSubject] = useState(false);
+  /** Thu hẹp nguồn toàn môn làm các quy tắc nhóm này rơi ra ngoài: hỏi trước khi lưu (UNI-2824, điểm 4). */
+  const [leftOutside, setLeftOutside] = useState<MapidRule[] | null>(null);
 
   const view = useMemo(() => ({ ...section, blocks: [...groups] }), [section, groups]);
   const knowledgeIndex = useMemo(() => indexKnowledge(reference.knowledgeTree), [reference]);
 
   const patch = (change: Partial<MapidRuleForm>) => {
     if ("type" in change || "entry" in change || "withNumber" in change) setNumberInvalid(false);
+    setLeftOutside(null);
     setForm((current) => ({ ...current, ...change }));
   };
 
@@ -117,6 +121,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     const nextGroupId = value === SUBJECT_SCOPE ? null : value;
     if (nextGroupId === null && form.type === "ONLY_IN_GROUP") {
       setNumberInvalid(false);
+      setLeftOutside(null);
       setTypeClearedForSubject(true);
       setForm((current) => ({ ...current, groupId: null, type: null, withNumber: false }));
       return;
@@ -203,17 +208,8 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
       item === "COUNT_ABOVE_TOTAL",
   );
 
-  const conditionError = !needsNumber
-    ? undefined
-    : numberInvalid
-      ? t("issues.NUMBER_INVALID")
-      : blockingNumberIssue === "COUNT_ABOVE_GROUP"
-        ? t("issues.COUNT_ABOVE_GROUP", { units: units ?? 0, scope: markedScopeName })
-        : blockingNumberIssue
-          ? t(`issues.${blockingNumberIssue}`, { total: section.questionCount ?? 0 })
-          : undefined;
 
-  const canEvaluateCrossRow =
+  const baseReady =
     form.type !== null &&
     form.nodeIds.length > 0 &&
     !groupGone &&
@@ -225,14 +221,98 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
     !issues.includes("COUNT_ABOVE_GROUP") &&
     !issues.includes("COUNT_ABOVE_TOTAL");
 
+  const candidate = useMemo(() => (baseReady ? ruleFromForm(form, view) : null), [baseReady, form, view]);
+
+  // UNI-2824: toàn môn là ngân sách chia cho các nhóm. Ô số báo giới hạn ngay khi gõ thay cho báo xung đột sau khi lưu.
+  const budget = useMemo(() => {
+    if (!candidate || !needsNumber) return null;
+    const count = candidate.count ?? 0;
+    if (!candidate.groupId) {
+      const found = subjectBudget(view, candidate, knowledgeIndex);
+      if (!found) return null;
+      if (found.onlyGroup && count > found.onlyGroup.units) {
+        return { kind: "ABOVE_ONLY_GROUP", error: true, ...found, onlyGroup: found.onlyGroup } as const;
+      }
+      if (candidate.comparator === "EXACT" && count < found.allocated) return { kind: "BELOW_GROUP_SHARES", error: true, ...found } as const;
+      if (found.allocated === 0) return null;
+      if (candidate.comparator === "EXACT") return { kind: "SUBJECT_EXACT", error: false, ...found, free: count - found.allocated } as const;
+      return found.allocated >= count
+        ? ({ kind: "SUBJECT_ENOUGH", error: false, ...found } as const)
+        : ({ kind: "SUBJECT_PARTIAL", error: false, ...found, more: count - found.allocated } as const);
+    }
+    const found = groupBudget(view, candidate, knowledgeIndex);
+    if (!found) return null;
+    const over = count > found.remaining;
+    return { kind: over ? "ABOVE_SUBJECT_REMAINING" : "GROUP_REMAINING", error: over, ...found, remaining: Math.max(0, found.remaining) } as const;
+  }, [candidate, needsNumber, view, knowledgeIndex]);
+
+  const canEvaluateCrossRow = baseReady && !budget?.error;
+
+  const sharesText = (shares: readonly { groupId: string; need: number }[]): string =>
+    format.list(
+      shares.map((share) => t("budget.share", { group: ruleText.scopeLabel(groups, share.groupId), count: share.need })),
+      { type: "unit" },
+    );
+
+  const budgetText = (() => {
+    if (!budget || !candidate) return undefined;
+    switch (budget.kind) {
+      case "ABOVE_ONLY_GROUP":
+        return t("issues.ABOVE_ONLY_GROUP", {
+          topics: ruleText.topics(candidate.nodeIds, true),
+          group: ruleText.scopeLabel(groups, budget.onlyGroup.groupId),
+          units: budget.onlyGroup.units,
+        });
+      case "BELOW_GROUP_SHARES":
+        return t("issues.BELOW_GROUP_SHARES", {
+          allocated: budget.allocated,
+          topics: ruleText.topics(candidate.nodeIds, true),
+          shares: sharesText(budget.shares),
+        });
+      case "SUBJECT_EXACT":
+        return t("budget.subjectExact", {
+          allocated: budget.allocated,
+          topics: ruleText.topics(candidate.nodeIds, true),
+          shares: sharesText(budget.shares),
+          free: budget.free,
+        });
+      case "SUBJECT_ENOUGH":
+        return t("budget.subjectEnough", { shares: sharesText(budget.shares) });
+      case "SUBJECT_PARTIAL":
+        return t("budget.subjectPartial", {
+          allocated: budget.allocated,
+          topics: ruleText.topics(candidate.nodeIds, true),
+          shares: sharesText(budget.shares),
+          more: budget.more,
+        });
+      case "ABOVE_SUBJECT_REMAINING":
+        return t("issues.ABOVE_SUBJECT_REMAINING", {
+          remaining: budget.remaining,
+          topics: ruleText.topics(budget.subjectRule.nodeIds, true),
+          rule: ruleText.sentence(view, budget.subjectRule, true),
+        });
+      case "GROUP_REMAINING":
+        return t("budget.groupRemaining", { remaining: budget.remaining, topics: ruleText.topics(budget.subjectRule.nodeIds, true) });
+    }
+  })();
+
+  const conditionError = !needsNumber
+    ? undefined
+    : numberInvalid
+      ? t("issues.NUMBER_INVALID")
+      : blockingNumberIssue === "COUNT_ABOVE_GROUP"
+        ? t("issues.COUNT_ABOVE_GROUP", { units: units ?? 0, scope: markedScopeName })
+        : blockingNumberIssue
+          ? t(`issues.${blockingNumberIssue}`, { total: section.questionCount ?? 0 })
+          : budget?.error
+            ? budgetText
+            : undefined;
+  const budgetHint = !conditionError && budget && !budget.error ? budgetText : undefined;
+
   const crossCheck = useMemo(() => {
-    if (!canEvaluateCrossRow) return { kind: "OK" } as const;
-    return checkMapidRuleConflicts({
-      candidate: ruleFromForm(form, view),
-      section: view,
-      knowledgeIndex,
-    });
-  }, [canEvaluateCrossRow, form, view, knowledgeIndex]);
+    if (!canEvaluateCrossRow || !candidate) return { kind: "OK" } as const;
+    return checkMapidRuleConflicts({ candidate, section: view, knowledgeIndex });
+  }, [canEvaluateCrossRow, candidate, view, knowledgeIndex]);
 
   // uniworkos UNI-1719: cảnh báo (không chặn lưu) khi các quy tắc của môn cần nhiều câu hơn số câu đã chọn ở cấu trúc.
   const overTotal = useMemo(() => {
@@ -368,7 +448,26 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
 
   const isBlockingCrossCheck =
     crossCheck.kind === "CONFLICT" || crossCheck.kind === "EQUIVALENT" || crossCheck.kind === "SUBSUMED_BY";
-  const canSave = !numberInvalid && issues.length === 0 && !isBlockingCrossCheck;
+  const canSave = !numberInvalid && issues.length === 0 && !budget?.error && !isBlockingCrossCheck;
+
+  const requestSave = (next: MapidRule, options?: { replaceIds?: readonly string[] }) => {
+    const outside = groupRulesLeftOutside(view, next, knowledgeIndex);
+    if (outside.length > 0 && leftOutside === null) {
+      setLeftOutside(outside);
+      return;
+    }
+    onSave(next, options);
+  };
+
+  const pickerWithin = useMemo(
+    () => (form.groupId ? subjectSourceNodes(view.mapidRules ?? [], form.id) : null),
+    [form.groupId, form.id, view],
+  );
+  const pickerExcluded = useMemo(
+    () => (form.groupId ? onlyElsewhereNodes(view, form.groupId, form.id) : null),
+    [form.groupId, form.id, view],
+  );
+  const pickerLimited = !!pickerWithin || (pickerExcluded?.length ?? 0) > 0;
   const saveDescribedBy = [
     form.type === null && typeErrorId,
     form.nodeIds.length === 0 && nodesErrorId,
@@ -593,6 +692,11 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                   )}
                 </p>
               </div>
+              {budgetHint && (
+                <p data-testid="mapid-rule-budget" className="text-caption text-text-secondary">
+                  <ExamContentText text={budgetHint} />
+                </p>
+              )}
               {conditionError && (
                 <p id={conditionErrorId} role="alert" className="text-caption text-danger">
                   <ExamContentText text={conditionError} />
@@ -645,7 +749,7 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
                       disabled={!canSave}
                       className="h-auto min-h-9 min-w-0 max-w-full whitespace-normal py-1.5 text-left [&>span]:min-w-0 [&>span]:max-w-full"
                       data-testid="mapid-rule-replace"
-                      onClick={() => onSave(ruleFromForm(form, view), { replaceIds: crossCheck.relatedRules.map((item) => item.id) })}
+                      onClick={() => requestSave(ruleFromForm(form, view), { replaceIds: crossCheck.relatedRules.map((item) => item.id) })}
                     >
                       <Replace />
                       <span className="min-w-0 wrap-anywhere">{t("conflict.replaceRule")}</span>
@@ -676,6 +780,36 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
               )}
             </div>
           )}
+
+          {leftOutside && (
+            <div
+              data-testid="mapid-rule-narrow-source"
+              role="alert"
+              className="flex min-w-0 max-w-full flex-col gap-2.5 rounded-md border border-warning/40 bg-warning-bg px-3 py-2.5 text-body text-text"
+            >
+              <div className="flex min-w-0 items-start gap-2">
+                <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warning" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <p className="wrap-anywhere">{t("narrowSource.message", { count: leftOutside.length })}</p>
+                  <ul className="m-0 flex list-disc flex-col gap-1 ps-5">
+                    {leftOutside.map((item) => (
+                      <li key={item.id} className="wrap-anywhere">
+                        <ExamContentText text={ruleText.sentence(view, item, true)} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" data-testid="mapid-rule-narrow-confirm" onClick={() => onSave(ruleFromForm(form, view))}>
+                  {t("narrowSource.confirm")}
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setLeftOutside(null)}>
+                  {t("narrowSource.back")}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -686,9 +820,9 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
         <Button
           type="button"
           data-testid="mapid-rule-save"
-          disabled={!canSave}
+          disabled={!canSave || leftOutside !== null}
           aria-describedby={saveDescribedBy || undefined}
-          onClick={() => onSave(ruleFromForm(form, view))}
+          onClick={() => requestSave(ruleFromForm(form, view))}
         >
           {t("save")}
         </Button>
@@ -701,7 +835,9 @@ function RuleForm({ section, groups, subjectName, reference, rule, onOpenChange,
         selectableLevels={["CHAPTER", "LESSON", "KNOWLEDGE"]}
         withPrimary={false}
         defaultSubjectCode={section.subjectCode}
-        description={t("pickerDescription", { name: scopeName })}
+        description={t(pickerLimited ? "pickerDescriptionLimited" : "pickerDescription", { name: scopeName })}
+        withinNodeIds={pickerWithin}
+        excludedNodeIds={pickerExcluded}
         onApply={(next) => {
           patch({ nodeIds: next.map((ref) => ref.nodeId) });
           setPicking(false);

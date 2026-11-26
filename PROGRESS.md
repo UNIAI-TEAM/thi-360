@@ -2,6 +2,25 @@
 
 > Cập nhật mỗi lần dừng việc. Trạng thái issue sống nằm trên UniAI; file này ghi **đã làm gì, vướng gì, làm gì tiếp**.
 
+### Quy tắc MAPID "ngân sách lồng nhau" (2026-11-26, `UNI-2824`)
+
+- **Nguồn:** quyết định M.Trường 2026-11-26 (`.thi360-dev/decisions-2026-11-26-mapid-ngan-sach-long-nhau.md`). Nhánh dựng trên `UNI-2822` (#221).
+- **Web quản trị:**
+  - `mapid-rule-budget.ts` mới tính phần đã chia / còn lại theo MAPID, giới hạn của nhóm chỉ-ở-nhóm, nguồn toàn môn và cảnh báo trên dòng.
+  - Hộp quy tắc: ô số báo giới hạn ngay khi gõ và chặn lưu (toàn môn "đúng N" ≥ phần các nhóm; nhóm ≤ phần toàn môn còn lại; toàn môn ≤ số câu nhóm chỉ-ở-nhóm), kèm dòng gợi ý ("Toàn môn còn 1 câu Hàm số chưa chia", "Đã đủ nhờ các nhóm").
+  - Hộp chọn MAPID của nhóm chỉ hiện nút trong nguồn toàn môn và ẩn MAPID chỉ-ở-nhóm-khác (`KnowledgePickerDialog` thêm `withinNodeIds`, `excludedNodeIds`; `restrictKnowledgeTree`).
+  - Thu hẹp nguồn toàn môn làm quy tắc nhóm rơi ra ngoài thì hỏi trước, liệt kê dòng, cho "Vẫn lưu".
+  - Bảng quy tắc hiện cảnh báo trên dòng với nút sửa nhanh ("Nâng toàn môn lên 4", "Giảm nhóm Chùm cuối còn 1", giảm về số câu của nhóm sau khi sửa cấu trúc).
+  - Kiểm tra chéo thêm `OUTSIDE_SUBJECT_SOURCE`, `SUBJECT_MINIMUM_ABOVE_ONLY_GROUP`.
+  - Chữ vi/en cho hai loại `MAPID_RULE_CONFLICT` mới.
+- **Máy chủ:** `MapidRuleConflicts` thêm `GROUP_RULE_OUTSIDE_SUBJECT_SOURCE` (nguồn toàn môn là biên ngoài, tính cả `SOURCE` của nhóm) và `SUBJECT_MINIMUM_ABOVE_ONLY_GROUP_UNITS`. Không đổi lược đồ, không migration.
+- **Thay đổi hành vi cần biết:** trước đây nguồn toàn môn A và nguồn nhóm B ghép AND, nên câu gắn cả A và B vẫn hợp lệ. Theo điểm 4 của quyết định, trường hợp này nay là xung đột. IT `ExamMapidRulesIT` đổi theo (`aGroupSourceOutsideTheSubjectSourceIsAConflict`).
+- **Đặc tả:** `docs/specs/2026-11-19-form-theo-mon.md` R-5.
+- **Kiểm chứng:**
+  - Web quản trị: 3190/3190 test; typecheck và lint sạch. Test mới: `mapid-rule-budget.test.ts` (25), `mapid-rule-budget-ui.test.tsx` (8).
+  - Máy chủ: `MapidRule*Test`, `ExamCheck*Test` 55/55. IT chạy trên CI (máy này không có Docker).
+- **Tiếp theo:** merge #221, đưa nhánh lên `develop`, PR, CI, merge, deploy demo.
+
 ### Quy tắc MAPID: bỏ giới hạn 20 quy tắc, cảnh báo khi tổng số câu vượt cấu trúc (2026-11-26, `UNI-2822`)
 
 - **Nguồn:** hai task BA giao trên uniworkos (sub-task UNI-1695 bên uniworkos): UNI-1718, UNI-1719.

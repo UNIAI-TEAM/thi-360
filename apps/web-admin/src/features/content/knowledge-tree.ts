@@ -70,6 +70,31 @@ export function filterKnowledgeTree(
   return nodes.map(prune).filter((node): node is KnowledgeNode => node !== null);
 }
 
+/**
+ * Thu cây theo giới hạn của nơi gọi: chỉ giữ nút nằm trong `within` (hoặc dưới nó) và bỏ nút thuộc `exclude` (cùng nhánh
+ * con). Tổ tiên của nút trong `within` vẫn hiện để dẫn đường nhưng nằm trong `pathOnly`, không tick được.
+ */
+export function restrictKnowledgeTree(
+  nodes: readonly KnowledgeNode[],
+  restrict: { within?: readonly string[] | null; exclude?: readonly string[] | null },
+): { tree: KnowledgeNode[]; pathOnly: ReadonlySet<string> } {
+  const within = restrict.within?.length ? new Set(restrict.within) : null;
+  const exclude = new Set(restrict.exclude ?? []);
+  const pathOnly = new Set<string>();
+  if (!within && exclude.size === 0) return { tree: [...nodes], pathOnly };
+  const prune = (node: KnowledgeNode, inside: boolean): KnowledgeNode | null => {
+    if (exclude.has(node.id)) return null;
+    const nowInside = inside || !within || within.has(node.id);
+    const children = node.children.map((child) => prune(child, nowInside)).filter((child): child is KnowledgeNode => child !== null);
+    if (nowInside) return children.length === node.children.length ? node : { ...node, children };
+    if (children.length === 0) return null;
+    pathOnly.add(node.id);
+    return { ...node, children };
+  };
+  const tree = nodes.map((node) => prune(node, false)).filter((node): node is KnowledgeNode => node !== null);
+  return { tree, pathOnly };
+}
+
 /** Bảo đảm đúng một kiến thức chính khi danh sách có mục: giữ mục đang chính, không có thì lấy mục đầu. */
 export function normalizePrimary(refs: readonly KnowledgeRef[]): KnowledgeRef[] {
   if (refs.length === 0) return [];

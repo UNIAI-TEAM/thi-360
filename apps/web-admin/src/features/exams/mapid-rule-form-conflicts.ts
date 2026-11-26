@@ -11,7 +11,9 @@ type MapidRuleConflictCode =
   | "ONLY_IN_GROUP_EXCLUDES_OTHER_GROUP"
   | "ONLY_IN_GROUP_OVERLAPS_OTHER_GROUP"
   | "ONLY_IN_GROUP_EXCLUDES_SOURCE"
-  | "EXACT_ZERO_CONFLICTS_SOURCE";
+  | "EXACT_ZERO_CONFLICTS_SOURCE"
+  | "OUTSIDE_SUBJECT_SOURCE"
+  | "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP";
 
 type MapidRuleSubsumptionReason =
   | "EXACT_COVERS_PRESENT"
@@ -168,6 +170,20 @@ export function checkMapidRuleConflicts({
       available: section.questionCount,
       nodeIds: cand.nodeIds,
     };
+  }
+
+  // 1a'. UNI-2824 point 4: the whole-subject source is the outer boundary of every group rule.
+  if (cand.groupId !== null) {
+    const sources = existing.filter((e) => e.groupId === null && e.rule.type === "SOURCE");
+    if (sources.length > 0 && !nodesCover(sources.flatMap((e) => e.nodeIds), cand.nodeIds, knowledgeIndex)) {
+      return {
+        kind: "CONFLICT",
+        code: "OUTSIDE_SUBJECT_SOURCE",
+        relatedRules: sources.map((e) => e.rule),
+        scopeGroupId: cand.groupId,
+        nodeIds: cand.nodeIds,
+      };
+    }
   }
 
   // 1b. Same scope EXACT vs EXACT / AT_LEAST / PRESENT (both directions)
@@ -359,6 +375,28 @@ export function checkMapidRuleConflicts({
     }
   }
 
+  // 1e'. UNI-2824 point 5: a MAPID only in group A cannot reach more questions on the whole subject than A holds.
+  for (const e of existing) {
+    const pairs: Array<[NormalizedRule, NormalizedRule]> = [
+      [cand, e],
+      [e, cand],
+    ];
+    for (const [only, subject] of pairs) {
+      if (only.rule.type !== "ONLY_IN_GROUP" || only.groupId === null || subject.groupId !== null) continue;
+      if (only.units === null || subject.min <= only.units || !nodesCover(only.nodeIds, subject.nodeIds, knowledgeIndex)) continue;
+      return {
+        kind: "CONFLICT",
+        code: "SUBJECT_MINIMUM_ABOVE_ONLY_GROUP",
+        relatedRules: [e.rule],
+        scopeGroupId: null,
+        onlyGroupId: only.groupId,
+        required: subject.min,
+        available: only.units,
+        nodeIds: subject.nodeIds,
+      };
+    }
+  }
+
   // 1f. EXACT 0 vs SOURCE in same non-empty scope, Subject EXACT 0 vs non-empty Group SOURCE, or Subject SOURCE vs non-empty Group EXACT 0
   for (const e of existing) {
     const pairs: Array<[NormalizedRule, NormalizedRule]> = [
@@ -475,7 +513,8 @@ export function checkMapidRuleConflicts({
   return { kind: "OK" };
 }
 
-function ruleDemand(section: ExamSection, rule: MapidRule): number {
+/** Mức tối thiểu của quy tắc: PRESENT 1 câu; COUNT và ONLY_IN_GROUP kèm số lấy số câu; còn lại 0. */
+export function ruleDemand(section: ExamSection, rule: MapidRule): number {
   if (rule.type === "COUNT") return ruleCount(section, rule);
   if (rule.type === "ONLY_IN_GROUP" && (rule.count != null || rule.percent != null)) return ruleCount(section, rule);
   if (rule.type === "PRESENT") return 1;

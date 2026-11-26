@@ -26,6 +26,7 @@ import {
   indexKnowledge,
   knowledgePath,
   normalizePrimary,
+  restrictKnowledgeTree,
   type KnowledgeIndexEntry,
 } from "../knowledge-tree";
 import { useContentReference } from "../queries";
@@ -50,6 +51,10 @@ export interface KnowledgePickerDialogProps {
   selectionNote?: string | null;
   /** Tên nút áp dụng, mặc định "Áp dụng (n)". Nhận số mục đang chọn. */
   applyLabel?: (count: number) => string;
+  /** Chỉ cho chọn nút nằm trong các nút này (hoặc dưới chúng), ví dụ nguồn toàn môn của quy tắc MAPID nhóm. */
+  withinNodeIds?: readonly string[] | null;
+  /** Ẩn các nút này cùng nhánh con, ví dụ MAPID chỉ được xuất hiện ở nhóm khác. */
+  excludedNodeIds?: readonly string[] | null;
 }
 
 /**
@@ -101,6 +106,8 @@ function PickerBody({
   description,
   selectionNote,
   applyLabel,
+  withinNodeIds,
+  excludedNodeIds,
 }: KnowledgePickerDialogProps) {
   const t = useTranslations("content.knowledgePicker");
   const referenceQuery = useContentReference();
@@ -119,14 +126,17 @@ function PickerBody({
   const index = useMemo(() => indexKnowledge(reference?.knowledgeTree ?? []), [reference]);
   const subjectFilter = subjectCode === ALL ? null : subjectCode;
   const gradeFilter = gradeCode === ALL ? null : gradeCode;
-  const tree = useMemo(
+  const { tree, pathOnly } = useMemo(
     () =>
-      filterKnowledgeTree(reference?.knowledgeTree ?? [], {
-        subjectCode: subjectFilter,
-        gradeCode: gradeFilter,
-        query,
-      }),
-    [reference, subjectFilter, gradeFilter, query],
+      restrictKnowledgeTree(
+        filterKnowledgeTree(reference?.knowledgeTree ?? [], {
+          subjectCode: subjectFilter,
+          gradeCode: gradeFilter,
+          query,
+        }),
+        { within: withinNodeIds, exclude: excludedNodeIds },
+      ),
+    [reference, subjectFilter, gradeFilter, query, withinNodeIds, excludedNodeIds],
   );
   // Cây chỉ có sau khi danh mục về: tính nhánh mở sẵn một lần ở lần đầu có dữ liệu.
   const openSet = expanded ?? (reference ? initialExpanded(value, index, tree) : new Set<string>());
@@ -174,7 +184,7 @@ function PickerBody({
   const renderNode = (node: KnowledgeNode, depth: number): ReactNode => {
     // Đã chọn một môn thì bỏ cấp môn, cây bắt đầu từ Chương như canvas.
     if (node.level === "SUBJECT" && subjectFilter) return node.children.map((child) => renderNode(child, depth));
-    const selectable = selectableLevels.includes(node.level);
+    const selectable = selectableLevels.includes(node.level) && !pathOnly.has(node.id);
     const hasChildren = node.children.length > 0;
     const isOpen = searching || openSet.has(node.id);
     const checked = selectedIds.has(node.id);

@@ -272,14 +272,14 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     expect(within(dialog).queryByTestId("mapid-rule-over-total")).not.toBeInTheDocument();
   });
 
-  it("AC-1707-7: Subject EXACT 3 + single Group EXACT 2 allowed; Group sum > Subject EXACT blocks with open buttons", async () => {
+  it("AC-1707-7 + UNI-2824: Subject EXACT 3 is a budget: group inputs show what is left, the group sum cannot pass it", async () => {
     const u = userEvent.setup();
     const initialRules: MapidRule[] = [
       { id: "r-subj", type: "COUNT", groupId: null, nodeIds: ["kn-0D2-1"], comparator: "EXACT", count: 3 },
     ];
     const latest = renderTable(makeSection({ mapidRules: initialRules }));
 
-    // Allowed: add Group Trả lời ngắn EXACT 2 (2 <= 3)
+    // Allowed: add Group Trả lời ngắn EXACT 2 (2 <= 3); the input says how much of the subject is still unshared.
     let dialog = await openAdd(u);
     await selectScope(u, /^Trả lời ngắn/);
     await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
@@ -287,17 +287,32 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     await u.click(within(within(dialog).getByTestId("mapid-rule-comparator")).getByRole("radio", { name: "Bằng" }));
     await u.clear(within(dialog).getByTestId("mapid-rule-count"));
     await u.type(within(dialog).getByTestId("mapid-rule-count"), "2");
+    expect(within(dialog).getByTestId("mapid-rule-budget")).toHaveTextContent("Toàn môn còn 3 câu Hàm số chưa chia.");
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeEnabled();
     await u.click(within(dialog).getByTestId("mapid-rule-save"));
     expect(latest.rules).toHaveLength(2);
 
-    // Conflict: add second Group Trắc nghiệm AT_LEAST 2 (2 + 2 = 4 > 3) -> blocked, shows message + open buttons
+    // Field limit: Trắc nghiệm AT_LEAST 2 would need 2 + 2 = 4 > 3, so the input itself says 1 is left.
     dialog = await openAdd(u);
     await selectScope(u, /^Trắc nghiệm/);
     await u.click(within(dialog).getByTestId("mapid-rule-type-COUNT"));
     await pickNode(u, "0D2-1");
     await u.clear(within(dialog).getByTestId("mapid-rule-count"));
     await u.type(within(dialog).getByTestId("mapid-rule-count"), "2");
+    expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Toàn môn chỉ còn 1 câu Hàm số chưa chia");
+    expect(within(dialog).getByTestId("mapid-rule-count")).toHaveAttribute("aria-invalid", "true");
+    expect(within(dialog).queryByTestId("mapid-rule-cross-check")).not.toBeInTheDocument();
+    await u.clear(within(dialog).getByTestId("mapid-rule-count"));
+    await u.type(within(dialog).getByTestId("mapid-rule-count"), "1");
+    expect(within(dialog).getByTestId("mapid-rule-budget")).toHaveTextContent("Toàn môn còn 1 câu Hàm số chưa chia.");
+    await u.click(within(dialog).getByTestId("mapid-rule-save"));
+    expect(latest.rules).toHaveLength(3);
+
+    // A rule without a number (PRESENT in Chùm cuối) has no input to limit: the cross-row check still blocks it.
+    dialog = await openAdd(u);
+    await selectScope(u, /^Chùm cuối/);
+    await pickNode(u, "0D2-1");
     expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
     expect(within(dialog).getByTestId("mapid-rule-cross-check")).toHaveTextContent(
       "Các nhóm đang yêu cầu tối thiểu 4 câu Hàm số, vượt mức 3 câu của toàn môn.",
@@ -313,7 +328,7 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     expect(within(switchedDialog).getByTestId("mapid-rule-count")).toHaveValue("3");
   });
 
-  it("AC-1707-7: SUBSUMED_BY blocks weaker duplicate; ONLY_IN_GROUP cross-group conflict blocks in both orders; Edit excludes self and preserves input", async () => {
+  it("AC-1707-7: SUBSUMED_BY blocks weaker duplicate; another group cannot pick an ONLY_IN_GROUP MAPID (UNI-2824); Edit excludes self and preserves input", async () => {
     const u = userEvent.setup();
     const initialRules: MapidRule[] = [
       { id: "r-ex3", type: "COUNT", groupId: null, nodeIds: ["kn-0D2-1"], comparator: "EXACT", count: 3 },
@@ -328,16 +343,15 @@ describe("UNI-1707 MapidRuleDialog 2-column UX & 3-way cross-row checks", () => 
     expect(within(dialog).getByTestId("mapid-rule-cross-check")).toHaveTextContent(/đã nằm trong quy tắc chặt hơn/);
     expect(within(dialog).getByTestId("mapid-rule-open-r-ex3")).toBeInTheDocument();
 
-    // ONLY_IN_GROUP in b-short (0D1) vs PRESENT in b-single (0D1) -> blocked, preserves selection
+    // UNI-2824 point 5: 0D1 may appear only in b-short, so the picker of another group does not offer it at all.
     await selectScope(u, /^Trắc nghiệm/);
     await u.click(within(dialog).getByTestId("mapid-rule-mapid-picker"));
     const picker = await screen.findByRole("dialog", { name: /Chọn kiến thức/ });
-    await u.click(await within(picker).findByRole("checkbox", { name: /^0D2-1 / }));
+    expect(picker).toHaveTextContent("chỉ hiện MAPID nằm trong nguồn của toàn môn và không bị giới hạn ở nhóm khác");
+    expect(await within(picker).findByRole("checkbox", { name: /^0D2-1 / })).toBeChecked();
     await u.type(within(picker).getByRole("searchbox"), "0D1");
-    await u.click(await within(picker).findByRole("checkbox", { name: /^0D1 / }));
-    await u.click(within(picker).getByRole("button", { name: /Áp dụng/ }));
-    expect(within(dialog).getByTestId("mapid-rule-save")).toBeDisabled();
-    expect(within(dialog).getByTestId("mapid-rule-open-r-only")).toBeInTheDocument();
+    expect(within(picker).queryByRole("checkbox", { name: /^0D1 / })).not.toBeInTheDocument();
+    await u.click(within(picker).getByRole("button", { name: "Hủy" }));
 
     // Close and edit r-ex3 -> excludes itself, allows changing count 3 -> 4
     await u.click(within(dialog).getByRole("button", { name: "Hủy" }));

@@ -285,22 +285,23 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         }
     }
 
-    // ---- SOURCE rules combine by AND (BA "chỉ lấy": every row, every scope); inside a row A | B stays OR ---------
+    // ---- SOURCE rules combine by AND (BA "chỉ lấy": every row of a scope); inside a row A | B stays OR ------------
+    // A group source must sit inside the subject source (UNI-2824), so the cross-scope AND case is now a conflict.
 
     @Test
-    void aSubjectSourceAndAGroupSourceBothHoldForTheGroup() throws Exception {
+    void aGroupSourceOutsideTheSubjectSourceIsAConflict() throws Exception {
+        // UNI-2824 (quyết định 2026-11-26, điểm 4): nguồn toàn môn là biên ngoài, quy tắc nhóm chỉ trỏ tới MAPID bên trong.
         arrange();
         for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(0));
         for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(1));
         for (int i = 0; i < 4; i++) single("SINGLE_CHOICE", nodes.get(0), nodes.get(1));
         UUID exam = exam(section(2, "MATRIX", "[" + rule("subject", "SOURCE", null, a()) + ","
                 + rule("group", "SOURCE", "g1", b()) + "]", block("g1", "SINGLE_CHOICE", 2)));
-        assertValid(check(exam));
-        for (int seed = 1; seed <= 6; seed++) {
-            List<String> ids = questionIds(preview(exam, seed));
-            assertThat(carriers(ids, nodes.get(0))).as("seed %d carries A", seed).isEqualTo(2);
-            assertThat(carriers(ids, nodes.get(1))).as("seed %d carries B", seed).isEqualTo(2);
-        }
+        JsonNode check = check(exam);
+        assertThat(check.path("status").asText()).isEqualTo("INVALID");
+        JsonNode conflict = issue(check, "MAPID_RULE_CONFLICT");
+        assertThat(conflict.path("conflictKind").asText()).isEqualTo("GROUP_RULE_OUTSIDE_SUBJECT_SOURCE");
+        assertThat(texts(conflict.path("ruleIds"))).containsExactly("subject", "group");
     }
 
     @Test
