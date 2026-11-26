@@ -225,7 +225,7 @@ MT hiện hai hàng ô số: **Khối lớp** (Lớp 10, 11, 12, và Liên lớp
 
 **HSA-D giao gì** (tóm tắt để đọc; nguồn chính là pha 0 v2 mục b, d, e):
 
-- Dữ liệu trong tài liệu cấu trúc, không migration: `section.mapidMode` (`ALL` | `MATRIX`) và `section.mapidRules[]` với 4 loại `PRESENT`, `COUNT`, `ONLY_IN_GROUP`, `SOURCE`; `groupId` trỏ `QuestionBlock.id`, `null` là cả môn. Chỉ HSA, tối đa 20 quy tắc mỗi mục. Khi có `mapidMode`, máy chủ biên dịch quy tắc và bỏ qua `knowledgeScope.nodeIds`, `topicQuotas` của mục và của nhóm (năng lực và điều kiện khác giữ).
+- Dữ liệu trong tài liệu cấu trúc, không migration: `section.mapidMode` (`ALL` | `MATRIX`) và `section.mapidRules[]` với 4 loại `PRESENT`, `COUNT`, `ONLY_IN_GROUP`, `SOURCE`; `groupId` trỏ `QuestionBlock.id`, `null` là cả môn. Chỉ HSA; không giới hạn số quy tắc mỗi mục (bỏ mức 20 cũ theo BA, uniworkos UNI-1718, 2026-11-26, `UNI-2822`). Hộp thêm/sửa quy tắc cảnh báo, không chặn, khi tổng số câu các quy tắc cần vượt số câu của môn ở cấu trúc (uniworkos UNI-1719). Khi có `mapidMode`, máy chủ biên dịch quy tắc và bỏ qua `knowledgeScope.nodeIds`, `topicQuotas` của mục và của nhóm (năng lực và điều kiện khác giữ).
 - Bài HSA cũ chưa có `mapidMode`: web của HSA-D chuyển phạm vi và chỉ tiêu cũ thành quy tắc khi nạp, không mất dữ liệu, ghi ở lần lưu sau (HSA-D AC-10).
 - Giao diện: lựa chọn "Toàn bài (không giới hạn MAPID)" / "Theo ma trận MAPID"; bảng "Quy tắc MAPID" (mỗi quy tắc một câu, sửa, xóa); hộp "Thêm quy tắc" (Áp dụng cho, Loại quy tắc, MAPID, số câu hoặc %); cột "Phạm vi nguồn" của nhóm; mã `MAPID_RULE_CONFLICT` và thông báo thiếu theo quy tắc.
 

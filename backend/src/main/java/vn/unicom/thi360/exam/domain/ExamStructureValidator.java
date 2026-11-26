@@ -12,7 +12,6 @@ import vn.unicom.thi360.shared.api.BusinessRuleException;
 public final class ExamStructureValidator {
     public static final int MAX_PATHS = 200;
     public static final int DEFAULT_MAX_TOPIC_QUOTAS = 8;
-    public static final int DEFAULT_MAX_MAPID_RULES = 20;
     private static final BigDecimal ONE_HUNDRED = BigDecimal.valueOf(100);
     /** Not legal as a question-set child (QuestionBodyValidator, QUESTION_CHILD_TYPE_NOT_ALLOWED). */
     private static final Set<QuestionType> NOT_CHILD_TYPES = EnumSet.of(QuestionType.QUESTION_SET, QuestionType.CLOZE);
@@ -21,22 +20,16 @@ public final class ExamStructureValidator {
     }
 
     public static void validate(ExamStructureDocument document) {
-        validate(document, DEFAULT_MAX_TOPIC_QUOTAS, DEFAULT_MAX_MAPID_RULES);
+        validate(document, DEFAULT_MAX_TOPIC_QUOTAS);
     }
 
+    /** MAPID rules have no count limit (uniworkos UNI-1718, `UNI-2822`). */
     public static void validate(ExamStructureDocument document, int maxTopicQuotas) {
-        validate(document, maxTopicQuotas, DEFAULT_MAX_MAPID_RULES);
-    }
-
-    public static void validate(ExamStructureDocument document, int maxTopicQuotas, int maxMapidRules) {
         if (document == null) {
             invalid("structure", "structure is required");
         }
         if (maxTopicQuotas < 1) {
             throw new IllegalArgumentException("maxTopicQuotas must be positive");
-        }
-        if (maxMapidRules < 1) {
-            throw new IllegalArgumentException("maxMapidRules must be positive");
         }
         Set<String> ids = new HashSet<>();
         if (document.parts().size() > 10) {
@@ -54,7 +47,7 @@ public final class ExamStructureValidator {
             }
         }
         for (ExamPart part : document.parts()) {
-            validatePart(part, ids, maxTopicQuotas, maxMapidRules, fixedSubjects);
+            validatePart(part, ids, maxTopicQuotas, fixedSubjects);
         }
         validateExamQuotas(document.examQuotas());
         for (int i = 0; i < document.parts().size(); i++) {
@@ -72,7 +65,7 @@ public final class ExamStructureValidator {
         return pathCount(document.parts());
     }
 
-    private static void validatePart(ExamPart part, Set<String> ids, int maxTopicQuotas, int maxMapidRules,
+    private static void validatePart(ExamPart part, Set<String> ids, int maxTopicQuotas,
             Set<String> fixedSubjects) {
         id(part.id(), "parts.id", ids);
         nonNegative(part.durationMinutes(), "parts.durationMinutes");
@@ -92,7 +85,7 @@ public final class ExamStructureValidator {
             invalid("parts.subjectPool", "subjectPool requires codeSource");
         }
         for (ExamSection section : part.subjectPool()) {
-            validateSection(section, ids, maxTopicQuotas, maxMapidRules);
+            validateSection(section, ids, maxTopicQuotas);
             if (!fixedSubjects.add(section.subjectCode())) {
                 invalid("parts.subjectPool", "subjectPool subject is duplicated");
             }
@@ -110,12 +103,12 @@ public final class ExamStructureValidator {
             blockCount += section.blocks().size();
         }
         for (ExamSection section : part.sections()) {
-            validateSection(section, ids, maxTopicQuotas, maxMapidRules);
+            validateSection(section, ids, maxTopicQuotas);
             blockCount += section == null ? 0 : section.blocks().size();
         }
         int optionCount = 0;
         for (ExamPartOption option : part.options()) {
-            validateOption(option, ids, maxTopicQuotas, maxMapidRules);
+            validateOption(option, ids, maxTopicQuotas);
             optionCount++;
             if (option != null) {
                 blockCount += option.blocks().size();
@@ -133,14 +126,13 @@ public final class ExamStructureValidator {
         }
     }
 
-    private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas,
-            int maxMapidRules) {
-        validateSection(section, ids, maxTopicQuotas, maxMapidRules, null);
+    private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas) {
+        validateSection(section, ids, maxTopicQuotas, null);
     }
 
     /** {@code choiceUnits}: the largest count of the subject-choice option the section belongs to, or null. */
     private static void validateSection(ExamSection section, Set<String> ids, int maxTopicQuotas,
-            int maxMapidRules, Integer choiceUnits) {
+            Integer choiceUnits) {
         if (section == null) {
             invalid("sections", "section must not be null");
         }
@@ -164,14 +156,14 @@ public final class ExamStructureValidator {
         for (QuestionBlock block : section.blocks()) {
             validateBlock(block, ids, maxTopicQuotas);
         }
-        validateMapidRules(section, maxMapidRules, choiceUnits);
+        validateMapidRules(section, choiceUnits);
     }
 
     /**
      * Shape of the MAPID rules of one section (UNI-1704 v2). Whether the rules contradict each other or the
      * data is a check matter. Every error names {@code sections.mapidRules}.
      */
-    private static void validateMapidRules(ExamSection section, int max, Integer choiceUnits) {
+    private static void validateMapidRules(ExamSection section, Integer choiceUnits) {
         String field = "sections.mapidRules";
         List<MapidRule> rules = section.mapidRules();
         if (rules.isEmpty()) {
@@ -179,9 +171,6 @@ public final class ExamStructureValidator {
         }
         if (section.mapidMode() == null) {
             invalid(field, "mapidRules require mapidMode");
-        }
-        if (rules.size() > max) {
-            reject("MAPID rule limit exceeded", field, "MAX_MAPID_RULES", "STRUCTURE_FIELD_INVALID", field);
         }
         Set<String> blockIds = new HashSet<>();
         for (QuestionBlock block : section.blocks()) {
@@ -238,8 +227,7 @@ public final class ExamStructureValidator {
         }
     }
 
-    private static void validateOption(ExamPartOption option, Set<String> ids, int maxTopicQuotas,
-            int maxMapidRules) {
+    private static void validateOption(ExamPartOption option, Set<String> ids, int maxTopicQuotas) {
         if (option == null || option.kind() == null) {
             invalid("options.kind", "option kind is invalid or unsupported");
         }
@@ -276,7 +264,7 @@ public final class ExamStructureValidator {
                 ? option.countsByPick().stream().filter(java.util.Objects::nonNull).max(Integer::compare).orElse(null)
                 : null;
         for (ExamSection section : option.sections()) {
-            validateSection(section, ids, maxTopicQuotas, maxMapidRules, choiceUnits);
+            validateSection(section, ids, maxTopicQuotas, choiceUnits);
         }
         for (QuestionBlock block : option.blocks()) {
             validateBlock(block, ids, maxTopicQuotas);

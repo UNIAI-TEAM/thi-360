@@ -307,17 +307,11 @@ describe("Bảng quy tắc", () => {
     expect(latest.section.mapidRules!.map((item) => item.id)).toEqual(["r1"]);
   });
 
-  it("tối đa 20 quy tắc: bộ đếm, nút thêm khóa khi đủ", () => {
-    renderPanel(makeSection({ mapidMode: "MATRIX", mapidRules: Array.from({ length: 19 }, (_, index) => rule(index)) }));
-    expect(screen.getByTestId("mapid-rules-counter")).toHaveTextContent("19/20 quy tắc");
+  it("uniworkos UNI-1718: không giới hạn số quy tắc; bộ đếm chỉ còn số quy tắc, nút thêm luôn mở", () => {
+    renderPanel(makeSection({ mapidMode: "MATRIX", mapidRules: Array.from({ length: 25 }, (_, index) => rule(index)) }));
+    expect(screen.getByTestId("mapid-rules-counter")).toHaveTextContent(/^25 quy tắc$/);
     expect(screen.getByTestId("mapid-rule-add")).toBeEnabled();
-  });
-
-  it("đủ 20 quy tắc: nút thêm bị khóa", () => {
-    renderPanel(makeSection({ mapidMode: "MATRIX", mapidRules: Array.from({ length: 20 }, (_, index) => rule(index)) }));
-    expect(screen.getByTestId("mapid-rules-counter")).toHaveTextContent("20/20 quy tắc");
-    expect(screen.getByTestId("mapid-rule-add")).toBeDisabled();
-    expect(screen.getByText("Đã đủ 20 quy tắc.")).toBeInTheDocument();
+    expect(screen.queryByText(/Đã đủ .* quy tắc/)).not.toBeInTheDocument();
   });
 
   it("mỗi dòng có data-testid và mỏ neo mapid-rule-<id>; focusMapidRule đưa focus tới dòng", () => {

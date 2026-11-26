@@ -6902,7 +6902,7 @@
       "add": "Thêm quy tắc",
       "addAria": "Thêm quy tắc MAPID cho {subject}",
       "caption": "Quy tắc MAPID của {subject}",
-      "counter": "{count, number}/{max, number} quy tắc",
+      "counter": "{count, number} quy tắc",
       "delete": "Xóa",
       "deleteAria": "Xóa quy tắc: {sentence}",
       "deletedGroup": "Nhóm đã xóa",
@@ -7040,7 +7040,8 @@
           "legend": "Loại quy tắc"
         },
         "withNumber": "Kèm số lượng",
-        "withNumberHint": "Bỏ chọn nếu chỉ giới hạn vị trí (cho phép 0 câu)."
+        "withNumberHint": "Bỏ chọn nếu chỉ giới hạn vị trí (cho phép 0 câu).",
+        "overTotal": "Các quy tắc của môn sẽ cần {allocated, number} câu, nhiều hơn {over, number} câu so với {total, number} câu đã chọn ở cấu trúc. Vẫn lưu được, nhưng đề có thể không ghép đủ các quy tắc."
       },
       "edit": "Sửa",
       "editAria": "Sửa quy tắc: {sentence}",
@@ -7061,7 +7062,6 @@
         "setShortage": "{group} cần {requiredSets, number} chùm có {setSize, number} câu con cùng chủ đề. Hiện có {availableSingles, number} câu đơn và {availableSets, number} chùm phù hợp.",
         "shortage": "Quy tắc {rule} thiếu nguồn{hasCount, select, yes {: cần {required, number} câu, hiện có {available, number} câu, còn thiếu {missing, number} câu} other {}}{hasTopics, select, yes { (MAPID {topics})} other {}}."
       },
-      "limit": "Đã đủ {max, number} quy tắc.",
       "mode": {
         "all": "Không giới hạn MAPID",
         "allHint": "Lấy ngẫu nhiên từ toàn bộ nguồn hợp lệ của môn. Câu chưa gắn MAPID vẫn có thể được chọn.",

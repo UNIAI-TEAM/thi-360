@@ -6902,7 +6902,7 @@
       "add": "Add rule",
       "addAria": "Add a MAPID rule for {subject}",
       "caption": "MAPID rules of {subject}",
-      "counter": "{count, number}/{max, number} rules",
+      "counter": "{count, plural, one {# rule} other {# rules}}",
       "delete": "Delete",
       "deleteAria": "Delete rule: {sentence}",
       "deletedGroup": "Deleted group",
@@ -7040,7 +7040,8 @@
           "legend": "Rule type"
         },
         "withNumber": "With a count",
-        "withNumberHint": "Leave unchecked to restrict placement only (0 questions allowed)."
+        "withNumberHint": "Leave unchecked to restrict placement only (0 questions allowed).",
+        "overTotal": "These rules would need {allocated, number} questions, {over, number} more than the {total, number} questions set in the structure. You can still save, but the exam may not meet every rule."
       },
       "edit": "Edit",
       "editAria": "Edit rule: {sentence}",
@@ -7061,7 +7062,6 @@
         "setShortage": "{group} needs {requiredSets, plural, one {# set} other {# sets}} with {setSize, plural, one {# sub-question} other {# sub-questions}} on the same topic. There {availableSingles, plural, one {is # single question} other {are # single questions}} and {availableSets, plural, one {# matching set} other {# matching sets}} available.",
         "shortage": "Rule {rule} lacks source{hasCount, select, yes {: it needs {required, number} questions, {available, number} are available, {missing, number} short} other {}}{hasTopics, select, yes { (MAPID {topics})} other {}}."
       },
-      "limit": "The limit of {max, number} rules is reached.",
       "mode": {
         "all": "No MAPID limit",
         "allHint": "Draws at random from all valid sources of the subject. Questions without a MAPID can still be picked.",

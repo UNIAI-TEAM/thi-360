@@ -12,7 +12,6 @@ import {
   formatRuleTopicNames,
   type GroupRule,
   mapidRuleAnchor,
-  MAX_MAPID_RULES,
   type RuleSentence,
 } from "../mapid-rules";
 import type { ExamSection, MapidRule, QuestionBlock } from "../types";
@@ -93,7 +92,6 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
   const text = useMapidRuleText(reference);
   const [editing, setEditing] = useState<MapidRule | "new" | null>(null);
   const rules = section.mapidRules ?? [];
-  const full = rules.length >= MAX_MAPID_RULES;
   const view = useMemo(() => ({ ...section, blocks: [...groups] }), [section, groups]);
   const deleted = useMemo(() => new Set(deletedGroupRules(view).map((rule) => rule.id)), [view]);
 
@@ -118,7 +116,7 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
             {t("title")}
           </h4>
           <p className="text-caption text-text-muted">
-            <span data-testid="mapid-rules-counter">{t("counter", { count: rules.length, max: MAX_MAPID_RULES })}</span> · {t("hint")}
+            <span data-testid="mapid-rules-counter">{t("counter", { count: rules.length })}</span> · {t("hint")}
           </p>
         </div>
         <Button
@@ -127,14 +125,12 @@ export function MapidRulesTable({ section, groups, subjectName, reference, onCha
           size="sm"
           data-testid="mapid-rule-add"
           aria-label={t("addAria", { subject: subjectName })}
-          disabled={full}
           onClick={() => setEditing("new")}
         >
           <Plus />
           <span>{t("add")}</span>
         </Button>
       </div>
-      {full && <p className="text-caption text-text-muted">{t("limit", { max: MAX_MAPID_RULES })}</p>}
       {rules.length === 0 ? (
         <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
