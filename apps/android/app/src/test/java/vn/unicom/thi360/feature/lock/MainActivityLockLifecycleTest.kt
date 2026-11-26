@@ -8,7 +8,6 @@ import androidx.test.core.app.ApplicationProvider
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,26 +35,25 @@ import vn.unicom.thi360.core.biometric.FakeBiometricAvailabilityChecker
 import vn.unicom.thi360.core.biometric.FakeBiometricVault
 import vn.unicom.thi360.core.biometric.InMemoryBiometricPromptMemoryStore
 import vn.unicom.thi360.core.config.Environment
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.session.AppSessionContainer
 import vn.unicom.thi360.core.session.SessionState
 import vn.unicom.thi360.core.storage.Tokens
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w390dp-h844dp")
 class MainActivityLockLifecycleTest {
 
     private lateinit var app: Thi360Application
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
         app = ApplicationProvider.getApplicationContext()
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -96,7 +94,7 @@ class MainActivityLockLifecycleTest {
             promptMemoryStore = InMemoryBiometricPromptMemoryStore(),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(
                 Tokens("access-1", "refresh-active", 300, 604800, false, "student.active"),
@@ -105,12 +103,7 @@ class MainActivityLockLifecycleTest {
             onSessionCleared = { biometricController.clearForSessionEnd() },
             startLocked = false,
         )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("refresh-200.json"),
-            ),
-        )
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
         app.setTestOverrides(
             appearanceRepository = appearanceRepo,
             biometricController = biometricController,
@@ -125,7 +118,6 @@ class MainActivityLockLifecycleTest {
             (controller.get().window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0,
         )
 
-        // Foreground configuration change recreation must NOT lock an active biometric session.
         controller.recreate()
         drainMainLooper()
 
@@ -159,7 +151,7 @@ class MainActivityLockLifecycleTest {
             promptMemoryStore = InMemoryBiometricPromptMemoryStore(),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(
                 Tokens("access-warm", "refresh-warm", 300, 604800, false, "student.warm"),
@@ -168,12 +160,7 @@ class MainActivityLockLifecycleTest {
             onSessionCleared = { biometricController.clearForSessionEnd() },
             startLocked = false,
         )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("refresh-200.json"),
-            ),
-        )
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
         app.setTestOverrides(
             appearanceRepository = appearanceRepo,
             biometricController = biometricController,
@@ -185,15 +172,12 @@ class MainActivityLockLifecycleTest {
         assertTrue(stack.sessionManager.state.value is SessionState.Active)
         val initialFetchCount = appearanceFetches.get()
 
-        // User backgrounds the app (non-config-change onStop records backgroundedAtMillis).
         val savedState = Bundle()
         initialController.pause().stop().saveInstanceState(savedState).destroy()
         drainMainLooper()
 
-        // 5 minutes pass while Thi360Application stays alive in memory.
         ShadowSystemClock.advanceBy(Duration.ofMinutes(5))
 
-        // MainActivity is recreated (e.g., fold/unfold, locale change, or reclaimed activity).
         val recreatedController = Robolectric.buildActivity(MainActivity::class.java).create(savedState)
         assertTrue(
             "Session must already be Locked in MainActivity.onCreate before shell renders",
@@ -242,7 +226,7 @@ class MainActivityLockLifecycleTest {
             promptMemoryStore = InMemoryBiometricPromptMemoryStore(),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(
                 Tokens("access-2", "refresh-2", 300, 604800, false, "student.avail"),
@@ -251,12 +235,7 @@ class MainActivityLockLifecycleTest {
             onSessionCleared = { biometricController.clearForSessionEnd() },
             startLocked = false,
         )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("refresh-200.json"),
-            ),
-        )
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
         app.setTestOverrides(
             appearanceRepository = appearanceRepo,
             biometricController = biometricController,
@@ -271,7 +250,6 @@ class MainActivityLockLifecycleTest {
             biometricController.state.value,
         )
 
-        // User leaves app for 65s, enrolls a fingerprint in Android Settings, and Activity recreates on return.
         val savedState = Bundle()
         initialController.pause().stop().saveInstanceState(savedState).destroy()
         ShadowSystemClock.advanceBy(Duration.ofSeconds(65))
@@ -294,7 +272,6 @@ class MainActivityLockLifecycleTest {
             BiometricState.Off,
             biometricController.state.value,
         )
-        // Also ensure no stale session survives test.
         runBlocking { stack.sessionManager.clearSession() }
         recreatedController.pause().stop().destroy()
     }

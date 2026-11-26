@@ -10,8 +10,10 @@ data class Tokens(
     val refreshExpiresIn: Int,
     val mustChangePassword: Boolean,
     val username: String? = null,
+    val accountId: String? = null,
 ) {
     override fun toString(): String =
         "Tokens(accessToken=[REDACTED], refreshToken=[REDACTED], accessExpiresIn=$accessExpiresIn, " +
-            "refreshExpiresIn=$refreshExpiresIn, mustChangePassword=$mustChangePassword, username=$username)"
+            "refreshExpiresIn=$refreshExpiresIn, mustChangePassword=$mustChangePassword, " +
+            "username=$username, accountId=$accountId)"
 }

@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.launch
 import vn.unicom.thi360.R
+import vn.unicom.thi360.core.brand.BrandMark
 import vn.unicom.thi360.core.biometric.BiometricAuthFailureReason
 import vn.unicom.thi360.core.biometric.BiometricAuthenticator
 import vn.unicom.thi360.core.biometric.BiometricController
@@ -230,31 +231,10 @@ fun LockScreenContent(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(
+            BrandMark(
+                markSize = 44.dp,
                 modifier = Modifier.padding(top = 24.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(colors.primaryFill),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_thi360_logo),
-                        contentDescription = null,
-                        tint = colors.onPrimary,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = colors.text,
-                )
-            }
+            )
 
             Column(
                 modifier = Modifier

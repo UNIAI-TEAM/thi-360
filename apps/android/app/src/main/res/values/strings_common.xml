@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_backHome">Về trang chủ</string>
+    <string name="common_closeToast">Đóng thông báo</string>
+    <string name="common_loading">Đang tải</string>
+    <string name="common_notificationsLabel">Thông báo</string>
+    <string name="common_offline_title">Không có kết nối</string>
+    <string name="common_offline_description">Kiểm tra kết nối mạng rồi thử lại.</string>
+    <string name="common_retry">Thử lại</string>
+
+    <string name="errorPage_eyebrow">MÃ LỖI 500</string>
+    <string name="errorPage_title">Đã có lỗi máy chủ</string>
+    <string name="errorPage_description">Đã xảy ra lỗi không mong muốn khi xử lý yêu cầu. Vui lòng thử lại sau.</string>
+    <string name="errorPage_traceLabel">Mã yêu cầu: %1$s</string>
+
+    <string name="landing_support_pending">Thông tin liên hệ đang được cập nhật.</string>
+
+    <string name="storefront_format_BUNDLE">Bộ đề</string>
+    <string name="storefront_format_FULL">Bài thi FULL</string>
+    <string name="storefront_format_PART">Bài thi theo phần</string>
+    <string name="storefront_format_SUBJECT">Bài thi theo môn</string>
+    <string name="storefront_review">Bài ôn</string>
+
+    <plurals name="storefront_units_attempts">
+        <item quantity="other">%1$d lượt</item>
+    </plurals>
+    <plurals name="storefront_units_attemptsPerExam">
+        <item quantity="other">%1$d lượt mỗi bài</item>
+    </plurals>
+    <string name="storefront_units_minutes">%1$d phút</string>
+    <string name="storefront_units_questions">%1$d câu</string>
+
+    <string name="account_deletion_deletedNotice">Tài khoản của bạn đã được xóa.</string>
+</resources>

@@ -10,8 +10,6 @@ import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -32,7 +30,6 @@ import vn.unicom.thi360.core.biometric.FakeBiometricAvailabilityChecker
 import vn.unicom.thi360.core.biometric.FakeBiometricVault
 import vn.unicom.thi360.core.biometric.InMemoryBiometricPromptMemoryStore
 import vn.unicom.thi360.core.config.Environment
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -43,6 +40,7 @@ import vn.unicom.thi360.feature.login.LoginTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class LockScreenTest {
@@ -50,12 +48,11 @@ class LockScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -76,7 +73,7 @@ class LockScreenTest {
             Tokens("access-1", "refresh-1", 300, 604800, false, "student.demo"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -98,26 +95,22 @@ class LockScreenTest {
             )
         }
 
-        // Navigate to History tab before backgrounding.
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).performClick()
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).assertIsSelected()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.History)).assertIsDisplayed()
 
-        // Backgrounding displays Recents privacy shield.
         composeRule.runOnIdle {
             backgrounded = true
             controller.onAppBackgrounded(nowMillis = 10_000L)
         }
         composeRule.onNodeWithTag(LockTestTags.RECENTS_PRIVACY_SHIELD).assertIsDisplayed()
 
-        // Returning before 5 minutes (< 300_000ms) does not lock.
         composeRule.runOnIdle {
             backgrounded = false
             assertFalse(controller.shouldLockOnForeground(nowMillis = 10_000L + 299_000L))
         }
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.History)).assertIsDisplayed()
 
-        // Returning after 5 minutes (>= 300_000ms) locks and hides all shell content.
         composeRule.runOnIdle {
             controller.onAppBackgrounded(nowMillis = 500_000L)
             assertTrue(controller.shouldLockOnForeground(nowMillis = 500_000L + 300_000L))
@@ -132,13 +125,7 @@ class LockScreenTest {
         composeRule.onNodeWithTag(ShellTestTags.BOTTOM_BAR).assertDoesNotExist()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.History)).assertDoesNotExist()
 
-        // Unlock via biometric restores exact History tab.
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("refresh-200.json"),
-            ),
-        )
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
         composeRule.onNodeWithTag(LockTestTags.UNLOCK_BUTTON).performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -163,14 +150,14 @@ class LockScreenTest {
             Tokens("locked-access", "locked-refresh", 300, 604800, false, "student.locked"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
             onSessionCleared = { controller.clearForSessionEnd() },
             startLocked = true,
         )
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
 
         composeRule.setContent {
             AppRoot(
@@ -187,14 +174,18 @@ class LockScreenTest {
         composeRule.onNodeWithTag(LockTestTags.OTHER_ACCOUNT_BUTTON).performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            stack.sessionManager.state.value is SessionState.SignedOut
+            stack.sessionManager.state.value is SessionState.SignedOut &&
+                server.requestCount("POST", "/api/v1/auth/mobile/logout") == 1
         }
         composeRule.waitForIdle()
 
         assertNull("Held session must be cleared", tokenStore.read())
         assertEquals(BiometricState.Off, controller.state.value)
         assertFalse(vault.hasWrappedToken())
-        assertEquals("/api/v1/auth/mobile/logout", server.takeRequest().path)
+        assertEquals(
+            "/api/v1/auth/mobile/logout",
+            server.requests("POST", "/api/v1/auth/mobile/logout").single().path,
+        )
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD)
             .assertIsDisplayed()
             .assertTextContains("", substring = false)
@@ -243,7 +234,7 @@ class LockScreenTest {
             Tokens("access-rotate", "refresh-rotate", 300, 604800, false, "student.rotate"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -263,7 +254,6 @@ class LockScreenTest {
             )
         }
 
-        // Navigate to History tab and lock the session.
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).performClick()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.History)).assertIsDisplayed()
 
@@ -271,18 +261,11 @@ class LockScreenTest {
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertIsDisplayed()
 
-        // Emulate Activity rotation / savedInstanceState recreation while Locked.
         restorationTester.emulateSavedInstanceStateRestore()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertIsDisplayed()
 
-        // Unlock must still restore the saved History tab, not reset to Home.
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("refresh-200.json"),
-            ),
-        )
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
         composeRule.onNodeWithTag(LockTestTags.UNLOCK_BUTTON).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             stack.sessionManager.state.value is SessionState.Active

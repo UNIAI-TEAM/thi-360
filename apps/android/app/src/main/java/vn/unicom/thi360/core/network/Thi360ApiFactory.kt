@@ -15,6 +15,7 @@ import vn.unicom.thi360.core.network.generated.model.MobileRefreshRequest
 import vn.unicom.thi360.core.network.generated.model.MobileTokenResponse
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.session.MobileAuthGateway
+import vn.unicom.thi360.core.session.SessionCleanup
 import vn.unicom.thi360.core.session.SessionManager
 import vn.unicom.thi360.core.storage.TokenStore
 import vn.unicom.thi360.core.storage.Tokens
@@ -30,9 +31,11 @@ suspend fun <T> safeApiCall(block: suspend () -> Response<T>): ApiResult<T> = tr
         }
     } else {
         val rawError = response.errorBody()?.string()
+        val parsedError = ApiErrorParser.parse(rawError)
         ApiResult.HttpFailure(
             statusCode = response.code(),
-            error = ApiErrorParser.parse(rawError),
+            error = parsedError,
+            retryAfterSeconds = RetryAfter.parse(response.headers()["Retry-After"], parsedError),
         )
     }
 } catch (cancelled: CancellationException) {
@@ -49,9 +52,11 @@ suspend fun safeEmptyApiCall(block: suspend () -> Response<Unit>): ApiResult<Uni
         ApiResult.Success(Unit)
     } else {
         val rawError = response.errorBody()?.string()
+        val parsedError = ApiErrorParser.parse(rawError)
         ApiResult.HttpFailure(
             statusCode = response.code(),
-            error = ApiErrorParser.parse(rawError),
+            error = parsedError,
+            retryAfterSeconds = RetryAfter.parse(response.headers()["Retry-After"], parsedError),
         )
     }
 } catch (cancelled: CancellationException) {
@@ -100,7 +105,15 @@ class Thi360SessionStack(
     val profileApi: ProfileApi,
     val publicOkHttpClient: OkHttpClient,
     val authenticatedOkHttpClient: OkHttpClient,
-)
+    private val publicApiClient: ApiClient,
+    private val authenticatedApiClient: ApiClient,
+) {
+    fun <S> authenticatedService(serviceClass: Class<S>): S =
+        authenticatedApiClient.createService(serviceClass)
+
+    fun <S> publicService(serviceClass: Class<S>): S =
+        publicApiClient.createService(serviceClass)
+}
 
 object Thi360ApiFactory {
     private const val CONNECT_TIMEOUT_SECONDS = 15L
@@ -115,6 +128,8 @@ object Thi360ApiFactory {
         logger: AppLogger = AndroidAppLogger,
         onSessionCleared: () -> Unit = {},
         startLocked: Boolean = false,
+        sessionCleanup: SessionCleanup? = null,
+        resolveAccountIdOnAuth: Boolean = true,
     ): Thi360SessionStack {
         val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
         val acceptLanguageInterceptor = AcceptLanguageInterceptor(localeProvider)
@@ -123,7 +138,6 @@ object Thi360ApiFactory {
             logger = logger,
         )
 
-        // Separate public client prevents mobile/refresh from re-entering TokenAuthenticator.
         val publicOkHttpClient = OkHttpClient.Builder()
             .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -138,11 +152,31 @@ object Thi360ApiFactory {
         )
         val publicAuthApi = publicApiClient.createService(AuthApi::class.java)
         val authGateway = OpenApiMobileAuthGateway(publicAuthApi)
+
+        var authenticatedAuthApiRef: AuthApi? = null
+        val accountIdResolver: (suspend () -> String?)? = if (resolveAccountIdOnAuth) {
+            {
+                val api = authenticatedAuthApiRef
+                if (api == null) {
+                    null
+                } else {
+                    when (val meResult = safeApiCall { api.me() }) {
+                        is ApiResult.Success -> meResult.data.id.toString()
+                        else -> null
+                    }
+                }
+            }
+        } else {
+            null
+        }
+
         val sessionManager = SessionManager(
             tokenStore = tokenStore,
             authGateway = authGateway,
             onSessionCleared = onSessionCleared,
             startLocked = startLocked,
+            sessionCleanup = sessionCleanup,
+            accountIdResolver = accountIdResolver,
         )
 
         val authenticatedOkHttpClient = OkHttpClient.Builder()
@@ -160,6 +194,7 @@ object Thi360ApiFactory {
             callFactory = authenticatedOkHttpClient,
         )
         val authenticatedAuthApi = authenticatedApiClient.createService(AuthApi::class.java)
+        authenticatedAuthApiRef = authenticatedAuthApi
         val profileApi = authenticatedApiClient.createService(ProfileApi::class.java)
 
         return Thi360SessionStack(
@@ -170,6 +205,8 @@ object Thi360ApiFactory {
             profileApi = profileApi,
             publicOkHttpClient = publicOkHttpClient,
             authenticatedOkHttpClient = authenticatedOkHttpClient,
+            publicApiClient = publicApiClient,
+            authenticatedApiClient = authenticatedApiClient,
         )
     }
 }

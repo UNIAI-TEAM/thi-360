@@ -13,8 +13,6 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -27,7 +25,6 @@ import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -43,6 +40,7 @@ import vn.unicom.thi360.feature.recovery.RecoveryTestTags
 import vn.unicom.thi360.feature.recovery.RegistrationStartData
 import vn.unicom.thi360.feature.recovery.ResetLink
 import vn.unicom.thi360.shell.AppRoot
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class NewPasswordFromLinkTest {
@@ -50,12 +48,11 @@ class NewPasswordFromLinkTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -82,13 +79,13 @@ class NewPasswordFromLinkTest {
             ),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.respondEmpty("POST", "/api/v1/auth/password/reset", 204)
 
         composeRule.setContent {
             AppRoot(
@@ -105,7 +102,6 @@ class NewPasswordFromLinkTest {
         composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
         composeRule.onNodeWithTag(PasswordTestTags.LINK_BANNER).assertIsDisplayed()
 
-        // Client-side validation: weak password and mismatch block API call.
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("weak")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performTextInput("different")
         composeRule.onNodeWithTag(PasswordTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
@@ -114,9 +110,12 @@ class NewPasswordFromLinkTest {
             .assertTextContains("Mật khẩu mới chưa đáp ứng đủ các điều kiện.")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_ERROR, useUnmergedTree = true)
             .assertTextContains("Mật khẩu nhập lại chưa khớp.")
-        assertEquals("Invalid input must not call reset API", 0, server.requestCount)
+        assertEquals(
+            "Invalid input must not call reset API",
+            0,
+            server.requestCount("POST", "/api/v1/auth/password/reset"),
+        )
 
-        // Valid matching password resets and wipes existing local session.
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextClearance()
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("NewStrongPass1!")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performTextClearance()
@@ -139,17 +138,17 @@ class NewPasswordFromLinkTest {
     @Config(qualifiers = "w390dp-h844dp")
     fun resetTokenInvalidShowsInvalidLinkScreenWithLinkToForgotPassword() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                422,
-                ContractFixtureLoader.readApiFixture("password-reset-422-reset-token-invalid.json"),
-            ),
+        server.respondApiFixture(
+            "POST",
+            "/api/v1/auth/password/reset",
+            422,
+            "password-reset-422-reset-token-invalid.json",
         )
 
         composeRule.setContent {
@@ -213,7 +212,7 @@ class NewPasswordFromLinkTest {
             override suspend fun changePassword(oldPassword: String, newPassword: String): ApiResult<Unit> = error("unused")
         }
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -261,17 +260,17 @@ class NewPasswordFromLinkTest {
             ),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                422,
-                ContractFixtureLoader.readApiFixture("password-reset-422-reset-token-invalid.json"),
-            ),
+        server.respondApiFixture(
+            "POST",
+            "/api/v1/auth/password/reset",
+            422,
+            "password-reset-422-reset-token-invalid.json",
         )
 
         var dispatcher: androidx.activity.OnBackPressedDispatcher? = null
@@ -308,7 +307,6 @@ class NewPasswordFromLinkTest {
             }.getOrDefault(false)
         }
 
-        // System Back must dismiss the Forgot Password overlay back to the Active shell, not finish Activity.
         composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             runCatching {

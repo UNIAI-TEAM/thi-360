@@ -28,6 +28,7 @@ import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 
 val LocalBrandColors = staticCompositionLocalOf { BrandPalette.DefaultLightColors }
+val LocalStatusColors = staticCompositionLocalOf { StatusPalette.Light }
 val LocalAppLocale = staticCompositionLocalOf { AppLocale.Default }
 val LocalThemeMode = staticCompositionLocalOf { ThemeMode.LIGHT }
 
@@ -36,6 +37,11 @@ object Thi360Theme {
         @Composable
         @ReadOnlyComposable
         get() = LocalBrandColors.current
+
+    val statusColors: StatusColors
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalStatusColors.current
 
     val themeMode: ThemeMode
         @Composable
@@ -143,6 +149,7 @@ fun Thi360Theme(
     val effectiveMode = preferences.effectiveThemeMode(brandPalette.defaultMode)
     val effectiveLocale = preferences.effectiveLocale
     val brandColors = brandPalette.colorsFor(effectiveMode)
+    val statusColors = StatusPalette.forMode(effectiveMode)
     val colorScheme = remember(brandColors, effectiveMode) {
         brandColors.toMaterialColorScheme(effectiveMode)
     }
@@ -174,6 +181,7 @@ fun Thi360Theme(
 
     CompositionLocalProvider(
         LocalBrandColors provides brandColors,
+        LocalStatusColors provides statusColors,
         LocalAppLocale provides effectiveLocale,
         LocalThemeMode provides effectiveMode,
         LocalConfiguration provides localizedConfiguration,

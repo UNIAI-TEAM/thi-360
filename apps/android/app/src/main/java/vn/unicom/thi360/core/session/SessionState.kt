@@ -5,6 +5,11 @@ sealed interface SignOutReason {
     data object Expired : SignOutReason
     data class StudentOnly(val username: String) : SignOutReason
     data object PasswordReset : SignOutReason
+    data object AccountDeleted : SignOutReason
+
+    companion object {
+        val UserInitiated: SignOutReason = None
+    }
 }
 
 sealed interface SessionState {

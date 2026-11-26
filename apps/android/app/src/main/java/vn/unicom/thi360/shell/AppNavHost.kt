@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,16 +41,20 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import vn.unicom.thi360.Thi360Application
 import vn.unicom.thi360.core.biometric.BiometricAuthenticator
 import vn.unicom.thi360.core.biometric.BiometricController
 import vn.unicom.thi360.core.biometric.BiometricState
 import vn.unicom.thi360.core.biometric.BiometricUnavailableReason
 import vn.unicom.thi360.core.biometric.RecentsPrivacyPolicy
 import vn.unicom.thi360.core.biometric.applyRecentsPrivacy
+import vn.unicom.thi360.core.brand.BrandMark
 import vn.unicom.thi360.core.config.AppEnvironment
+import vn.unicom.thi360.core.legal.LegalRepository
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
@@ -80,8 +85,19 @@ import vn.unicom.thi360.feature.recovery.OpenApiRecoveryGateway
 import vn.unicom.thi360.feature.recovery.RecoveryGateway
 import vn.unicom.thi360.feature.recovery.RecoveryRoutes
 import vn.unicom.thi360.feature.recovery.ResetLink
-import vn.unicom.thi360.feature.recovery.ResetLinkIntentResult
 import vn.unicom.thi360.feature.register.RegistrationFlowScreen
+import vn.unicom.thi360.shell.routes.AppNavigator
+import vn.unicom.thi360.shell.routes.AppRoute
+import vn.unicom.thi360.shell.routes.InboundLinkRouter
+import vn.unicom.thi360.shell.routes.attemptGraph
+import vn.unicom.thi360.shell.routes.authLegalGraph
+import vn.unicom.thi360.shell.routes.catalogGraph
+import vn.unicom.thi360.shell.routes.legalGraph
+import vn.unicom.thi360.shell.routes.myExamsGraph
+import vn.unicom.thi360.shell.routes.paymentGraph
+import vn.unicom.thi360.shell.routes.prepareGraph
+import vn.unicom.thi360.shell.routes.profileGraph
+import vn.unicom.thi360.shell.routes.resultGraph
 
 internal sealed interface ActiveResetOverlay {
     data class Valid(val link: ResetLink) : ActiveResetOverlay {
@@ -95,21 +111,6 @@ private tailrec fun Context.findComponentActivityOrNull(): ComponentActivity? = 
     is ComponentActivity -> this
     is ContextWrapper -> baseContext.findComponentActivityOrNull()
     else -> null
-}
-
-private fun clearConsumedResetIntent(activity: ComponentActivity?, allowedHost: String) {
-    val current = activity?.intent ?: return
-    if (ResetLink.parseIntent(current, allowedHost) is ResetLinkIntentResult.Ignored) {
-        return
-    }
-    val savedComponent = current.component
-    // Mutate the live Intent in place so ActivityClientRecord cannot retain the reset token URI in memory.
-    current.action = Intent.ACTION_MAIN
-    current.data = null
-    current.replaceExtras(null as Bundle?)
-    activity.intent = Intent(Intent.ACTION_MAIN).apply {
-        component = savedComponent
-    }
 }
 
 @Composable
@@ -134,8 +135,11 @@ fun AppRoot(
     biometricAuthenticator: BiometricAuthenticator? = null,
     profileGateway: AccountProfileGateway? = null,
     isAppBackgrounded: Boolean = false,
+    inboundLinkRouter: InboundLinkRouter? = null,
+    legalRepository: LegalRepository? = null,
+    navigator: AppNavigator? = null,
+    homeExtraRoutes: NavGraphBuilder.() -> Unit = {},
 ) {
-    // Preserve direct shell entry when callers pin an explicit startDestination without a SessionManager.
     if (startDestination != null && sessionManager == null && initialIntent == null) {
         Thi360App(
             preferences = preferences,
@@ -146,12 +150,16 @@ fun AppRoot(
             startDestination = startDestination,
             accountContent = accountContent,
             extraDestinations = extraDestinations,
+            homeExtraRoutes = homeExtraRoutes,
+            navigator = navigator,
+            legalRepository = legalRepository,
         )
         return
     }
 
     val context = LocalContext.current
     val activity = remember(context) { context.findComponentActivityOrNull() }
+    val app = remember(context) { context.applicationContext as? Thi360Application }
     val activeSessionManager = remember(sessionManager, context) {
         sessionManager ?: AppSessionContainer.get(context).sessionManager
     }
@@ -168,7 +176,14 @@ fun AppRoot(
             profileApi = AppSessionContainer.get(context).profileApi,
         )
     }
-    val allowedResetHost = remember { ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl) }
+    val activeLinkRouter = remember(inboundLinkRouter, app) {
+        inboundLinkRouter ?: app?.inboundLinkRouter ?: InboundLinkRouter(
+            allowedHostProvider = { ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl) },
+        )
+    }
+    val activeLegalRepository = remember(legalRepository, app, context) {
+        legalRepository ?: app?.legalRepository ?: LegalRepository.create(context)
+    }
 
     SideEffect {
         AppSessionContainer.setLocale(preferences.effectiveLocale)
@@ -178,6 +193,10 @@ fun AppRoot(
     val biometricState by (biometricController?.state
         ?: remember { MutableStateFlow<BiometricState>(BiometricState.Unavailable(BiometricUnavailableReason.NO_HARDWARE)) })
         .collectAsStateWithLifecycle()
+
+    LaunchedEffect(activeLinkRouter, sessionState) {
+        activeLinkRouter.onSessionStateChanged(sessionState)
+    }
 
     val protectWindow = RecentsPrivacyPolicy.shouldProtectWindow(
         biometricState = biometricState,
@@ -193,43 +212,29 @@ fun AppRoot(
         }
     }
 
-    // Keep reset link token strictly in ephemeral composition memory; never save to Bundle or disk.
-    var activeResetOverlay by remember { mutableStateOf<ActiveResetOverlay?>(null) }
+    val activeResetOverlay by activeLinkRouter.activeResetOverlay.collectAsStateWithLifecycle()
     var openForgotPasswordOverlay by remember { mutableStateOf(false) }
-    // Persist only a plain consumed flag so Activity recreation / state restoration never replays a dismissed reset Intent.
     var initialIntentConsumed by rememberSaveable { mutableStateOf(false) }
 
-    fun processResetIntent(candidate: Intent?) {
-        when (val parsed = ResetLink.parseIntent(candidate, allowedResetHost)) {
-            is ResetLinkIntentResult.Valid -> {
-                activeResetOverlay = ActiveResetOverlay.Valid(parsed.link)
-                openForgotPasswordOverlay = false
-                clearConsumedResetIntent(activity, allowedResetHost)
-            }
-
-            ResetLinkIntentResult.MissingToken -> {
-                activeResetOverlay = ActiveResetOverlay.InvalidLink
-                openForgotPasswordOverlay = false
-                clearConsumedResetIntent(activity, allowedResetHost)
-            }
-
-            ResetLinkIntentResult.Ignored -> Unit
+    LaunchedEffect(activeResetOverlay) {
+        if (activeResetOverlay != null) {
+            openForgotPasswordOverlay = false
         }
     }
 
-    LaunchedEffect(initialIntent, activity) {
+    LaunchedEffect(initialIntent, activity, activeLinkRouter) {
         if (!initialIntentConsumed) {
             initialIntentConsumed = true
-            processResetIntent(initialIntent ?: activity?.intent)
+            activeLinkRouter.handleIntent(initialIntent ?: activity?.intent, activity)
         }
     }
 
-    DisposableEffect(activity, allowedResetHost) {
+    DisposableEffect(activity, activeLinkRouter) {
         if (activity == null) {
             onDispose {}
         } else {
             val listener = Consumer<Intent> { newIntent ->
-                processResetIntent(newIntent)
+                activeLinkRouter.handleIntent(newIntent, activity)
             }
             activity.addOnNewIntentListener(listener)
             onDispose {
@@ -256,12 +261,10 @@ fun AppRoot(
         lockedContent = lockedContent,
         activeResetOverlay = activeResetOverlay,
         onDismissResetOverlay = {
-            activeResetOverlay = null
-            clearConsumedResetIntent(activity, allowedResetHost)
+            activeLinkRouter.dismissResetOverlay(activity)
         },
         onMarkResetLinkInvalid = {
-            activeResetOverlay = ActiveResetOverlay.InvalidLink
-            clearConsumedResetIntent(activity, allowedResetHost)
+            activeLinkRouter.markResetLinkInvalid(activity)
         },
         openForgotPasswordOverlay = openForgotPasswordOverlay,
         onOpenForgotPasswordOverlay = { openForgotPasswordOverlay = it },
@@ -269,6 +272,9 @@ fun AppRoot(
         biometricController = biometricController,
         biometricAuthenticator = biometricAuthenticator,
         isAppBackgrounded = isAppBackgrounded,
+        legalRepository = activeLegalRepository,
+        navigator = navigator,
+        homeExtraRoutes = homeExtraRoutes,
     )
 }
 
@@ -298,6 +304,9 @@ internal fun AppSessionContent(
     biometricController: BiometricController? = null,
     biometricAuthenticator: BiometricAuthenticator? = null,
     isAppBackgrounded: Boolean = false,
+    legalRepository: LegalRepository? = null,
+    navigator: AppNavigator? = null,
+    homeExtraRoutes: NavGraphBuilder.() -> Unit = {},
 ) {
     val latestSelectLocale by rememberUpdatedState(onSelectLocale)
     val latestForgotPasswordClick by rememberUpdatedState(onForgotPasswordClick)
@@ -314,8 +323,7 @@ internal fun AppSessionContent(
         ?: remember { MutableStateFlow(false) })
         .collectAsStateWithLifecycle()
 
-    // Session-scoped UI state survives Active <-> Locked transitions (and rotation while Locked)
-    // and wipes on sign-out / session replacement.
+    val shellSaveableStateHolder = rememberSaveableStateHolder()
     var savedShellNavState by rememberSaveable(sessionGeneration) { mutableStateOf<Bundle?>(null) }
     var profileState by remember(sessionManager, sessionGeneration) {
         mutableStateOf<ProfileLoadState>(ProfileLoadState.Loading)
@@ -330,9 +338,11 @@ internal fun AppSessionContent(
     val isSignedOut = sessionState is SessionState.SignedOut
     var lastSeenSessionGeneration by remember(sessionManager) { mutableLongStateOf(sessionGeneration) }
     LaunchedEffect(isSignedOut, sessionGeneration) {
-        val generationChanged = sessionGeneration != lastSeenSessionGeneration
+        val prevGeneration = lastSeenSessionGeneration
+        val generationChanged = sessionGeneration != prevGeneration
         lastSeenSessionGeneration = sessionGeneration
         if (isSignedOut || generationChanged) {
+            shellSaveableStateHolder.removeState("shell_$prevGeneration")
             ChangePasswordDraftViewModel.clearAllActiveDrafts()
             savedShellNavState = null
             profileState = ProfileLoadState.Loading
@@ -347,7 +357,6 @@ internal fun AppSessionContent(
         previousSessionState = sessionState
     }
 
-    // Password reset deep links bypass Locked, MustChangePassword, Active, and SignedOut states.
     if (activeResetOverlay != null) {
         Thi360Theme(
             preferences = preferences,
@@ -411,10 +420,11 @@ internal fun AppSessionContent(
         return
     }
 
-    // Separate signed-out auth NavHost from authenticated Thi360App so shell graph startDestination
-    // stays pinned to Home (preserving tab saveState/restoreState) and sign-out disposes prior tab state.
     if (sessionState is SessionState.SignedOut) {
         val authNavController = rememberNavController()
+        val authNavigator = remember(authNavController) {
+            AppNavigator(navController = authNavController, authLegalOnly = true)
+        }
         val initialAuthRoute = remember(sessionManager) {
             routeForSignedOut(sessionState.reason)
         }
@@ -507,6 +517,8 @@ internal fun AppSessionContent(
                                 authNavController.popBackStack(LoginRoutes.LOGIN, inclusive = false)
                             },
                             clockMillis = clockMillis,
+                            onOpenLegal = { id -> authNavigator.openLegal(id) },
+                            legalRepository = legalRepository,
                         )
                     }
                     composable(RecoveryRoutes.FORGOT_PASSWORD) {
@@ -518,6 +530,10 @@ internal fun AppSessionContent(
                             clockMillis = clockMillis,
                         )
                     }
+                    authLegalGraph(
+                        onBack = { authNavController.popBackStack() },
+                        legalRepository = legalRepository,
+                    )
                     extraDestinations()
                 }
             }
@@ -642,6 +658,7 @@ internal fun AppSessionContent(
     }
 
     key(sessionGeneration) {
+        shellSaveableStateHolder.SaveableStateProvider("shell_$sessionGeneration") {
         val shellNavController = navController ?: rememberNavController()
         if (navController == null) {
             val bundleToRestore = savedShellNavState
@@ -701,7 +718,6 @@ internal fun AppSessionContent(
         val isOffline = activeState.isOffline
 
         Box(modifier = Modifier.fillMaxSize()) {
-            // Keep Thi360App at a stable slot in Column so toggling isOffline never unmounts the NavHost.
             Column(modifier = Modifier.fillMaxSize()) {
                 if (isOffline) {
                     OfflineBannerSlot(
@@ -739,6 +755,9 @@ internal fun AppSessionContent(
                         startDestination = startDestination ?: Destination.Home.route,
                         accountContent = resolvedAccountContent,
                         extraDestinations = extraDestinations,
+                        homeExtraRoutes = homeExtraRoutes,
+                        navigator = navigator,
+                        legalRepository = legalRepository,
                     )
                 }
             }
@@ -746,6 +765,7 @@ internal fun AppSessionContent(
             if (isAppBackgrounded && biometricState is BiometricState.On) {
                 RecentsPrivacyShieldOverlay(preferences = preferences, brandPalette = brandPalette)
             }
+        }
         }
     }
 }
@@ -766,7 +786,7 @@ private fun RecentsPrivacyShieldOverlay(
                 .testTag(LockTestTags.RECENTS_PRIVACY_SHIELD),
             contentAlignment = Alignment.Center,
         ) {
-            BrandMark(sizeDp = 56)
+            BrandMark(markSize = 56.dp)
         }
     }
 }
@@ -799,7 +819,11 @@ private fun OfflineBannerSlot(
 
 private fun routeForSignedOut(reason: SignOutReason): String = when (reason) {
     is SignOutReason.StudentOnly -> LoginRoutes.ROLE_NOTICE
-    SignOutReason.None, SignOutReason.Expired, SignOutReason.PasswordReset -> LoginRoutes.LOGIN
+    SignOutReason.None,
+    SignOutReason.Expired,
+    SignOutReason.PasswordReset,
+    SignOutReason.AccountDeleted,
+    -> LoginRoutes.LOGIN
 }
 
 @Composable
@@ -814,6 +838,9 @@ fun AppNavHost(
     startDestination: String = Destination.Home.route,
     accountContent: (@Composable (isTwoPaneWidth: Boolean) -> Unit)? = null,
     extraDestinations: NavGraphBuilder.() -> Unit = {},
+    homeExtraRoutes: NavGraphBuilder.() -> Unit = {},
+    navigator: AppNavigator = remember(navController) { AppNavigator(navController) },
+    legalRepository: LegalRepository? = null,
 ) {
     val showCompactBrandHeader = navLayout == NavLayout.BottomBar
 
@@ -822,36 +849,85 @@ fun AppNavHost(
         startDestination = startDestination,
         modifier = modifier,
     ) {
-        composable(Destination.Home.route) {
-            PlaceholderTabScreen(
-                destination = Destination.Home,
+        navigation(
+            route = Destination.Home.route,
+            startDestination = AppRoute.rootRouteFor(Destination.Home),
+        ) {
+            catalogGraph(
+                tab = Destination.Home,
+                navigator = navigator,
                 showCompactBrandHeader = showCompactBrandHeader,
             )
+            paymentGraph(tab = Destination.Home, navigator = navigator)
+            prepareGraph(tab = Destination.Home, navigator = navigator)
+            resultGraph(tab = Destination.Home, navigator = navigator)
+            homeExtraRoutes()
         }
-        composable(Destination.MyExams.route) {
-            PlaceholderTabScreen(
-                destination = Destination.MyExams,
+
+        navigation(
+            route = Destination.MyExams.route,
+            startDestination = AppRoute.rootRouteFor(Destination.MyExams),
+        ) {
+            myExamsGraph(
+                tab = Destination.MyExams,
+                navigator = navigator,
                 showCompactBrandHeader = showCompactBrandHeader,
             )
-        }
-        composable(Destination.History.route) {
-            PlaceholderTabScreen(
-                destination = Destination.History,
+            catalogGraph(
+                tab = Destination.MyExams,
+                navigator = navigator,
                 showCompactBrandHeader = showCompactBrandHeader,
             )
+            paymentGraph(tab = Destination.MyExams, navigator = navigator)
+            prepareGraph(tab = Destination.MyExams, navigator = navigator)
+            resultGraph(tab = Destination.MyExams, navigator = navigator)
         }
-        composable(Destination.Account.route) {
-            if (accountContent != null) {
-                accountContent(isTwoPaneWidth)
-            } else {
-                AccountShellPlaceholder(
-                    isTwoPaneWidth = isTwoPaneWidth,
-                    preferences = preferences,
-                    onSelectLocale = onSelectLocale,
-                    onSelectThemeMode = onSelectThemeMode,
-                )
+
+        navigation(
+            route = Destination.History.route,
+            startDestination = AppRoute.rootRouteFor(Destination.History),
+        ) {
+            myExamsGraph(
+                tab = Destination.History,
+                navigator = navigator,
+                showCompactBrandHeader = showCompactBrandHeader,
+            )
+            catalogGraph(
+                tab = Destination.History,
+                navigator = navigator,
+                showCompactBrandHeader = showCompactBrandHeader,
+            )
+            paymentGraph(tab = Destination.History, navigator = navigator)
+            prepareGraph(tab = Destination.History, navigator = navigator)
+            resultGraph(tab = Destination.History, navigator = navigator)
+        }
+
+        navigation(
+            route = Destination.Account.route,
+            startDestination = AppRoute.rootRouteFor(Destination.Account),
+        ) {
+            composable(AppRoute.rootRouteFor(Destination.Account)) {
+                if (accountContent != null) {
+                    accountContent(isTwoPaneWidth)
+                } else {
+                    AccountShellPlaceholder(
+                        isTwoPaneWidth = isTwoPaneWidth,
+                        preferences = preferences,
+                        onSelectLocale = onSelectLocale,
+                        onSelectThemeMode = onSelectThemeMode,
+                    )
+                }
             }
+            profileGraph(tab = Destination.Account, navigator = navigator)
+            paymentGraph(tab = Destination.Account, navigator = navigator)
+            legalGraph(
+                tab = Destination.Account,
+                navigator = navigator,
+                legalRepository = legalRepository,
+            )
         }
+
+        attemptGraph(navigator = navigator)
         extraDestinations()
     }
 }

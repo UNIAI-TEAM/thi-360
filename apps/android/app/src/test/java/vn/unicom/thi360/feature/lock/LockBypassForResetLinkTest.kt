@@ -9,8 +9,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,6 +41,7 @@ import vn.unicom.thi360.feature.recovery.OpenApiRecoveryGateway
 import vn.unicom.thi360.feature.recovery.PasswordTestTags
 import vn.unicom.thi360.feature.recovery.ResetLink
 import vn.unicom.thi360.shell.AppRoot
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class LockBypassForResetLinkTest {
@@ -50,12 +49,11 @@ class LockBypassForResetLinkTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -81,7 +79,7 @@ class LockBypassForResetLinkTest {
             Tokens("locked-access", "locked-refresh", 300, 604800, false, "student.locked"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -89,7 +87,7 @@ class LockBypassForResetLinkTest {
             startLocked = true,
         )
         val recoveryGateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.respondEmpty("POST", "/api/v1/auth/password/reset", 204)
 
         composeRule.setContent {
             AppRoot(
@@ -105,7 +103,6 @@ class LockBypassForResetLinkTest {
             )
         }
 
-        // Opens NewPasswordScreen directly without requiring unlock.
         composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
         composeRule.onNodeWithTag(PasswordTestTags.LINK_BANNER).assertIsDisplayed()
         composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertDoesNotExist()
@@ -137,7 +134,7 @@ class LockBypassForResetLinkTest {
             promptMemoryStore = InMemoryBiometricPromptMemoryStore(),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(
                 Tokens("locked-access", "locked-refresh", 300, 604800, false, "student.locked"),

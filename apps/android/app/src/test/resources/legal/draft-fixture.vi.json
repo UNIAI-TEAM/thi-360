@@ -1,0 +1,62 @@
+{
+  "id": "terms",
+  "locale": "vi",
+  "version": "2026-11-01-draft",
+  "status": "draft",
+  "effectiveDate": null,
+  "title": "Điều kiện giao dịch chung (Bản nháp kiểm thử)",
+  "note": null,
+  "contentHash": "fixture-draft-hash-001",
+  "blocks": [
+    {
+      "type": "heading",
+      "level": 2,
+      "text": "1. Phạm vi áp dụng"
+    },
+    {
+      "type": "paragraph",
+      "text": "Văn bản này là bản nháp phục vụ kiểm thử hiển thị biểu ngữ bản nháp."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "1.1 Danh sách kiểm tra"
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "items": [
+        "Mục không đánh số thứ nhất",
+        "Mục không đánh số thứ hai"
+      ]
+    },
+    {
+      "type": "list",
+      "ordered": true,
+      "items": [
+        "Bước một trong quy trình",
+        "Bước hai trong quy trình"
+      ]
+    },
+    {
+      "type": "table",
+      "headers": [
+        "Trường hợp",
+        "Mức hoàn tiền",
+        "Thời hạn xử lý"
+      ],
+      "rows": [
+        [
+          "Chưa mở đề thi",
+          "100% học phí",
+          "Trong vòng 7 ngày làm việc"
+        ],
+        [
+          "Đã bắt đầu làm bài",
+          "Không áp dụng hoàn tiền",
+          "Không áp dụng"
+        ]
+      ]
+    }
+  ]
+}

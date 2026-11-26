@@ -19,7 +19,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -43,6 +42,7 @@ import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class LoginFlowTest {
@@ -50,12 +50,11 @@ class LoginFlowTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -68,24 +67,13 @@ class LoginFlowTest {
     fun successAndRelaunch() {
         val persistentTokenStore = InMemoryTokenStore()
         val firstRunStack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = persistentTokenStore,
             localeProvider = { AppLocale.VI },
         )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("login-200.json"),
-            ),
-        )
-        // Cold relaunch refreshes the stored session in the background.
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("refresh-200.json"),
-            ),
-        )
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json")
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
 
         var launchGeneration by mutableIntStateOf(1)
 
@@ -99,7 +87,7 @@ class LoginFlowTest {
                 )
             } else {
                 val relaunchStack = Thi360ApiFactory.createSessionStack(
-                    baseUrl = server.url("/").toString(),
+                    baseUrl = server.url("/"),
                     environment = Environment.DEV,
                     tokenStore = persistentTokenStore,
                     localeProvider = { AppLocale.VI },
@@ -126,11 +114,10 @@ class LoginFlowTest {
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).assertIsSelected()
         assertNotNull(persistentTokenStore.read())
 
-        val loginReq = server.takeRequest()
+        val loginReq = server.requests("POST", "/api/v1/auth/mobile/login").single()
         assertEquals("/api/v1/auth/mobile/login", loginReq.path)
         assertEquals("vi", loginReq.getHeader("Accept-Language"))
 
-        // Simulate full process kill + cold relaunch reading only persisted tokens.
         composeRule.runOnIdle { launchGeneration = 2 }
         composeRule.waitForIdle()
 
@@ -143,18 +130,18 @@ class LoginFlowTest {
     fun mustChangePasswordAdoptAndLogoutTransitionsMatchB13() = runTest {
         val store = InMemoryTokenStore()
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = store,
             localeProvider = { AppLocale.EN },
         )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("login-200-must-change-password.json"),
-            ),
+        server.respondAuthFixture(
+            "POST",
+            "/api/v1/auth/mobile/login",
+            200,
+            "login-200-must-change-password.json",
         )
-        server.enqueue(okhttp3.mockwebserver.MockResponse().setResponseCode(204))
+        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
 
         stack.sessionManager.login("student.forced", "TempPass1!")
         assertTrue(stack.sessionManager.state.value is SessionState.MustChangePassword)
@@ -189,7 +176,7 @@ class LoginFlowTest {
     fun signedOutLoginPreservesTabStateBoundsBackStackAndClearsSavedStateAcrossSignOut() {
         val store = InMemoryTokenStore()
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = store,
             localeProvider = { AppLocale.VI },
@@ -198,9 +185,13 @@ class LoginFlowTest {
             .replace("student.demo", "student.alpha")
         val userBLogin = ContractFixtureLoader.readAuthFixture("login-200.json")
             .replace("student.demo", "student.beta")
-        server.enqueue(ContractFixtureLoader.jsonResponse(200, userALogin))
-        server.enqueue(okhttp3.mockwebserver.MockResponse().setResponseCode(204))
-        server.enqueue(ContractFixtureLoader.jsonResponse(200, userBLogin))
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/mobile/login",
+            { ContractFakeServer.jsonResponse(200, userALogin) },
+            { ContractFakeServer.jsonResponse(200, userBLogin) },
+        )
+        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
 
         var observedNavController: NavHostController? = null
 
@@ -224,7 +215,6 @@ class LoginFlowTest {
             )
         }
 
-        // Cold signed-out login as User A.
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.alpha")
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("StudentPass1!")
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
@@ -234,7 +224,6 @@ class LoginFlowTest {
         }
         composeRule.waitForIdle()
 
-        // Home -> Account (type draft) -> MyExams -> Account -> Home.
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag("account_draft_input").performTextInput("alpha-draft-note")
@@ -257,7 +246,6 @@ class LoginFlowTest {
         )
         assertEquals(Destination.Home.route, controller.graph.startDestinationRoute)
 
-        // Sign out User A and sign in as User B -> User A's Account draft must not survive.
         runBlocking { stack.sessionManager.logout() }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             runCatching {

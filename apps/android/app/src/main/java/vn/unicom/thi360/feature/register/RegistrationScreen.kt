@@ -29,7 +29,6 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -55,21 +54,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +86,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import vn.unicom.thi360.R
+import vn.unicom.thi360.core.legal.LegalId
+import vn.unicom.thi360.core.legal.LegalRepository
 import vn.unicom.thi360.core.network.ApiError
 import vn.unicom.thi360.core.network.ApiResult
 import vn.unicom.thi360.core.session.SessionManager
@@ -132,6 +143,7 @@ class RegistrationController(
     private val sessionManager: SessionManager,
     private val scope: CoroutineScope,
     private val clockMillis: () -> Long,
+    private val termsVersionProvider: () -> String,
 ) {
     private val formSubmitInFlight = AtomicBoolean(false)
     private val otpSubmitInFlight = AtomicBoolean(false)
@@ -248,7 +260,7 @@ class RegistrationController(
                     username = formData.username.trim(),
                     email = formData.email.trim(),
                     password = password,
-                    termsVersion = TERMS_VERSION,
+                    termsVersion = termsVersionProvider(),
                     registrationId = formData.pendingRegistrationId,
                 )
                 when (result) {
@@ -560,6 +572,10 @@ class RegistrationController(
     }
 }
 
+internal class RegistrationFlowHolderViewModel : ViewModel() {
+    var controller: RegistrationController? = null
+}
+
 @Composable
 fun RegistrationFlowScreen(
     recoveryGateway: RecoveryGateway,
@@ -567,15 +583,37 @@ fun RegistrationFlowScreen(
     onBackToLogin: () -> Unit,
     modifier: Modifier = Modifier,
     clockMillis: () -> Long = System::currentTimeMillis,
+    onOpenLegal: (LegalId) -> Unit = {},
+    legalRepository: LegalRepository? = null,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val controller = remember(recoveryGateway, sessionManager, clockMillis) {
-        RegistrationController(
+    val activeLegalRepository = remember(legalRepository, context) {
+        legalRepository ?: LegalRepository.create(context)
+    }
+    val viewModelStoreOwner = LocalViewModelStoreOwner.current
+    val controller = if (viewModelStoreOwner != null) {
+        val key = "register_${System.identityHashCode(sessionManager)}_${System.identityHashCode(recoveryGateway)}"
+        val holder = remember(viewModelStoreOwner, key) {
+            ViewModelProvider(viewModelStoreOwner)[key, RegistrationFlowHolderViewModel::class.java]
+        }
+        holder.controller ?: RegistrationController(
             recoveryGateway = recoveryGateway,
             sessionManager = sessionManager,
             scope = scope,
             clockMillis = clockMillis,
-        )
+            termsVersionProvider = { activeLegalRepository.termsVersionOrFallback() },
+        ).also { holder.controller = it }
+    } else {
+        remember(recoveryGateway, sessionManager, clockMillis, activeLegalRepository) {
+            RegistrationController(
+                recoveryGateway = recoveryGateway,
+                sessionManager = sessionManager,
+                scope = scope,
+                clockMillis = clockMillis,
+                termsVersionProvider = { activeLegalRepository.termsVersionOrFallback() },
+            )
+        }
     }
 
     val passwordText = controller.passwordState.text.toString()
@@ -604,6 +642,7 @@ fun RegistrationFlowScreen(
                 onEmailChanged = controller::onEmailChanged,
                 onTogglePasswordVisibility = controller::togglePasswordVisibility,
                 onAcceptTermsChanged = controller::onAcceptTermsChanged,
+                onOpenLegal = onOpenLegal,
                 onSubmit = controller::submitForm,
                 onBackToLogin = onBackToLogin,
                 modifier = modifier,
@@ -665,46 +704,10 @@ fun RegisterFormScreenContent(
     onSubmit: () -> Unit,
     onBackToLogin: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenLegal: (LegalId) -> Unit = {},
 ) {
     val colors = Thi360Theme.colors
     val fieldColors = thi360FieldColors()
-    var showTermsDialog by remember { mutableStateOf(false) }
-
-    if (showTermsDialog) {
-        AlertDialog(
-            onDismissRequest = { showTermsDialog = false },
-            containerColor = colors.bgSurface,
-            titleContentColor = colors.text,
-            textContentColor = colors.textSecondary,
-            title = { Text(stringResource(R.string.register_terms_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(R.string.register_terms_draft),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                    )
-                    Text(
-                        text = stringResource(R.string.register_terms_body),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary,
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showTermsDialog = false },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) {
-                    Text(
-                        text = stringResource(R.string.register_terms_close),
-                        color = colors.primaryText,
-                    )
-                }
-            },
-            modifier = Modifier.testTag(RegisterTestTags.TERMS_DIALOG),
-        )
-    }
 
     Column(
         modifier = modifier
@@ -872,49 +875,57 @@ fun RegisterFormScreenContent(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                val rawConsentTemplate = stringResource(R.string.register_terms_label)
+                val consentAnnotated = remember(rawConsentTemplate, colors.primaryText, onOpenLegal) {
+                    buildConsentAnnotatedString(
+                        template = rawConsentTemplate,
+                        linkColor = colors.primaryText,
+                        onOpenLegal = onOpenLegal,
+                    )
+                }
+                val plainConsentText = consentAnnotated.text
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .toggleable(
-                            value = formData.acceptTerms,
-                            enabled = !uiState.isSubmittingForm,
-                            role = Role.Checkbox,
-                            onValueChange = onAcceptTermsChanged,
-                        )
-                        .testTag(RegisterTestTags.TERMS_CHECKBOX),
+                        .heightIn(min = 48.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Checkbox(
-                        checked = formData.acceptTerms,
-                        onCheckedChange = null,
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = colors.primaryFill,
-                            checkmarkColor = colors.onPrimary,
-                            uncheckedColor = if (uiState.fieldErrors.acceptTermsRequired) {
-                                colors.dangerText
-                            } else {
-                                colors.borderStrong
-                            },
-                        ),
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .toggleable(
+                                value = formData.acceptTerms,
+                                enabled = !uiState.isSubmittingForm,
+                                role = Role.Checkbox,
+                                onValueChange = onAcceptTermsChanged,
+                            )
+                            .semantics { contentDescription = plainConsentText }
+                            .testTag(RegisterTestTags.TERMS_CHECKBOX),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Checkbox(
+                            checked = formData.acceptTerms,
+                            onCheckedChange = null,
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = colors.primaryFill,
+                                checkmarkColor = colors.onPrimary,
+                                uncheckedColor = if (uiState.fieldErrors.acceptTermsRequired) {
+                                    colors.dangerText
+                                } else {
+                                    colors.borderStrong
+                                },
+                            ),
+                        )
+                    }
                     Text(
-                        text = stringResource(R.string.register_terms_label),
+                        text = consentAnnotated,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary,
-                    )
-                }
-
-                TextButton(
-                    onClick = { showTermsDialog = true },
-                    modifier = Modifier
-                        .heightIn(min = 48.dp)
-                        .testTag(RegisterTestTags.TERMS_VIEW_BUTTON),
-                ) {
-                    Text(
-                        text = stringResource(R.string.register_terms_view),
-                        color = colors.primaryText,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag(RegisterTestTags.TERMS_CONSENT_TEXT),
                     )
                 }
 
@@ -1282,6 +1293,48 @@ private val OtpDigitsInputTransformation = InputTransformation {
     }
     if (filtered != current.toString()) {
         replace(0, length, filtered)
+    }
+}
+
+private val CONSENT_TAG_REGEX = Regex("<(terms|privacy)>(.*?)</\\1>")
+
+internal fun buildConsentAnnotatedString(
+    template: String,
+    linkColor: Color,
+    onOpenLegal: (LegalId) -> Unit,
+): AnnotatedString = buildAnnotatedString {
+    val linkStyles = TextLinkStyles(
+        style = SpanStyle(
+            color = linkColor,
+            fontWeight = FontWeight.Medium,
+            textDecoration = TextDecoration.Underline,
+        ),
+    )
+    var cursor = 0
+    for (match in CONSENT_TAG_REGEX.findAll(template)) {
+        if (match.range.first > cursor) {
+            append(template.substring(cursor, match.range.first))
+        }
+        val tagName = match.groupValues[1]
+        val label = match.groupValues[2]
+        val (legalId, linkTag) = if (tagName == "terms") {
+            LegalId.TERMS to RegisterTestTags.TERMS_LINK_TERMS
+        } else {
+            LegalId.PRIVACY to RegisterTestTags.TERMS_LINK_PRIVACY
+        }
+        withLink(
+            LinkAnnotation.Clickable(
+                tag = linkTag,
+                styles = linkStyles,
+                linkInteractionListener = { onOpenLegal(legalId) },
+            ),
+        ) {
+            append(label)
+        }
+        cursor = match.range.last + 1
+    }
+    if (cursor < template.length) {
+        append(template.substring(cursor))
     }
 }
 

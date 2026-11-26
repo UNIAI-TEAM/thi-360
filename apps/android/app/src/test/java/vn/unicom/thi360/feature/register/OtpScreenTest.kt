@@ -15,7 +15,6 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -27,7 +26,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -42,6 +40,7 @@ import vn.unicom.thi360.feature.recovery.RegistrationStartData
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class OtpScreenTest {
@@ -49,12 +48,11 @@ class OtpScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -84,36 +82,20 @@ class OtpScreenTest {
     fun validOtpSignsInAndInvalidAndExpiredShowExpectedGuidance() {
         val tokenStore = InMemoryTokenStore()
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
 
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readApiFixture("register-200.json"),
-            ),
-        )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                422,
-                ContractFixtureLoader.readAuthFixture("register-verify-422-email-code-invalid.json"),
-            ),
-        )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                422,
-                ContractFixtureLoader.readAuthFixture("register-verify-422-email-code-expired.json"),
-            ),
-        )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                201,
-                ContractFixtureLoader.readAuthFixture("register-verify-201.json"),
-            ),
+        server.respondApiFixture("POST", "/api/v1/auth/register", 200, "register-200.json")
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/mobile/register/verify",
+            { ContractFakeServer.authFixtureResponse(422, "register-verify-422-email-code-invalid.json") },
+            { ContractFakeServer.authFixtureResponse(422, "register-verify-422-email-code-expired.json") },
+            { ContractFakeServer.authFixtureResponse(201, "register-verify-201.json") },
         )
 
         composeRule.setContent {
@@ -128,14 +110,13 @@ class OtpScreenTest {
 
         navigateToOtpStep()
 
-        // Blank / incomplete OTP blocks submission without API call.
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_FIELD).performTextInput("123")
         composeRule.onNodeWithTag(RegisterTestTags.OTP_SUBMIT_BUTTON).performScrollTo().performClick()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_ERROR)
             .assertTextContains("Vui lòng nhập mã gồm 6 chữ số.")
-        assertEquals(1, server.requestCount)
+        assertEquals(0, server.requestCount("POST", "/api/v1/auth/mobile/register/verify"))
+        assertEquals(1, server.requestCount("POST", "/api/v1/auth/register"))
 
-        // Wrong 6-digit code -> remaining attempts message.
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_FIELD).performTextClearance()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_FIELD).performTextInput("000000")
         composeRule.onNodeWithTag(RegisterTestTags.OTP_SUBMIT_BUTTON).performScrollTo().performClick()
@@ -147,7 +128,6 @@ class OtpScreenTest {
             }.getOrDefault(false)
         }
 
-        // Expired code -> resend guidance.
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_FIELD).performTextClearance()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_FIELD).performTextInput("111111")
         composeRule.onNodeWithTag(RegisterTestTags.OTP_SUBMIT_BUTTON).performScrollTo().performClick()
@@ -159,7 +139,6 @@ class OtpScreenTest {
             }.getOrDefault(false)
         }
 
-        // Valid code -> adopts session and enters Home shell.
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_FIELD).performTextClearance()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_CODE_FIELD).performTextInput("407123")
         composeRule.onNodeWithTag(RegisterTestTags.OTP_SUBMIT_BUTTON).performScrollTo().performClick()
@@ -177,31 +156,23 @@ class OtpScreenTest {
     fun resendCooldown() {
         var fakeClockMillis by mutableLongStateOf(1_000_000L)
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
 
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readApiFixture("register-200.json"),
-            ),
-        )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readApiFixture("register-resend-200.json"),
-            ),
-        )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                429,
-                ContractFixtureLoader.readApiFixture("register-resend-429-rate-limited.json")
-                    .replace("\"retryAfter\": 60", "\"retryAfter\": 90"),
-            ),
+        server.respondApiFixture("POST", "/api/v1/auth/register", 200, "register-200.json")
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/register/resend",
+            { ContractFakeServer.apiFixtureResponse(200, "register-resend-200.json") },
+            {
+                ContractFakeServer.apiFixtureResponse(429, "register-resend-429-rate-limited.json") {
+                    it.replace("\"retryAfter\": 60", "\"retryAfter\": 90")
+                }
+            },
         )
 
         composeRule.setContent {
@@ -217,20 +188,17 @@ class OtpScreenTest {
 
         navigateToOtpStep()
 
-        // Locked immediately for resendAfterSeconds = 60.
         composeRule.onNodeWithTag(RegisterTestTags.OTP_RESEND_BUTTON).performScrollTo().assertIsNotEnabled()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_RESEND_COUNTDOWN)
             .performScrollTo()
             .assertTextContains("01:00", substring = true)
 
-        // Advance 30s -> still locked at 00:30.
         composeRule.runOnIdle { fakeClockMillis += 30_000L }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_RESEND_BUTTON).assertIsNotEnabled()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_RESEND_COUNTDOWN)
             .assertTextContains("00:30", substring = true)
 
-        // Advance remaining 30s -> unlocked; click resend -> success notice & new cooldown.
         composeRule.runOnIdle { fakeClockMillis += 30_000L }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_RESEND_BUTTON).assertIsEnabled().performClick()
@@ -245,7 +213,6 @@ class OtpScreenTest {
         }
         composeRule.onNodeWithTag(RegisterTestTags.OTP_RESEND_BUTTON).performScrollTo().assertIsNotEnabled()
 
-        // Wait out 60s -> hit 429 with retryAfter = 90 -> locks for 01:30.
         composeRule.runOnIdle { fakeClockMillis += 60_000L }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(RegisterTestTags.OTP_RESEND_BUTTON).assertIsEnabled().performClick()
@@ -295,7 +262,7 @@ class OtpScreenTest {
             override suspend fun changePassword(oldPassword: String, newPassword: String): ApiResult<Unit> = error("unused")
         }
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -323,7 +290,6 @@ class OtpScreenTest {
         composeRule.onNodeWithTag(RegisterTestTags.OTP_SUBMIT_BUTTON).performClick()
         assertEquals(1, verifyCalls)
 
-        // Back / Back-to-edit must be ignored while verification is in flight.
         composeRule.onNodeWithTag(RegisterTestTags.OTP_BACK_TO_EDIT_BUTTON).performScrollTo().assertIsNotEnabled()
         composeRule.runOnIdle { checkNotNull(dispatcher).onBackPressed() }
         composeRule.waitForIdle()

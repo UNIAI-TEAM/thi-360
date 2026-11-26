@@ -2,8 +2,6 @@ package vn.unicom.thi360.feature.register
 
 import java.util.UUID
 
-const val TERMS_VERSION = "2026-11"
-
 data class RegistrationFormData(
     val fullName: String = "",
     val username: String = "",

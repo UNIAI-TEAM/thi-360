@@ -4,7 +4,6 @@ import android.util.Log
 import java.util.UUID
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,18 +21,17 @@ import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.storage.Tokens
-import vn.unicom.thi360.feature.register.TERMS_VERSION
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class RecoveryLogRedactionTest {
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
         ShadowLog.clear()
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -55,14 +53,26 @@ class RecoveryLogRedactionTest {
             .replace("fixture-access-token", secretAccess)
             .replace("fixture-refresh-token", secretRefresh)
 
-        server.enqueue(ContractFixtureLoader.jsonResponse(200, ContractFixtureLoader.readApiFixture("register-200.json")))
-        server.enqueue(ContractFixtureLoader.jsonResponse(422, ContractFixtureLoader.readAuthFixture("register-verify-422-email-code-invalid.json")))
-        server.enqueue(ContractFixtureLoader.jsonResponse(201, verifyFixture))
-        server.enqueue(ContractFixtureLoader.jsonResponse(202, ContractFixtureLoader.readApiFixture("password-forgot-202.json")))
-        server.enqueue(ContractFixtureLoader.jsonResponse(422, ContractFixtureLoader.readApiFixture("password-reset-422-reset-token-invalid.json")))
-        server.enqueue(MockResponse().setResponseCode(204))
-        server.enqueue(ContractFixtureLoader.jsonResponse(400, ContractFixtureLoader.readApiFixture("change-password-400-wrong-old-password.json")))
-        server.enqueue(MockResponse().setResponseCode(200))
+        server.respondApiFixture("POST", "/api/v1/auth/register", 200, "register-200.json")
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/mobile/register/verify",
+            { ContractFakeServer.authFixtureResponse(422, "register-verify-422-email-code-invalid.json") },
+            { ContractFakeServer.jsonResponse(201, verifyFixture) },
+        )
+        server.respondApiFixture("POST", "/api/v1/auth/password/forgot", 202, "password-forgot-202.json")
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/password/reset",
+            { ContractFakeServer.apiFixtureResponse(422, "password-reset-422-reset-token-invalid.json") },
+            { MockResponse().setResponseCode(204) },
+        )
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/change-password",
+            { ContractFakeServer.apiFixtureResponse(400, "change-password-400-wrong-old-password.json") },
+            { MockResponse().setResponseCode(200) },
+        )
 
         val env = if (BuildConfig.FLAVOR == "demo") Environment.DEMO else AppEnvironment.environment
         val tokenStore = InMemoryTokenStore(
@@ -76,7 +86,7 @@ class RecoveryLogRedactionTest {
             ),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = env,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -84,7 +94,7 @@ class RecoveryLogRedactionTest {
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
         val regId = UUID.fromString("019320a0-0000-7000-8000-000000000002")
 
-        gateway.startRegistration("Student Demo", "student.demo", "student.demo@thi360.vn", secretRegPassword, TERMS_VERSION)
+        gateway.startRegistration("Student Demo", "student.demo", "student.demo@thi360.vn", secretRegPassword, "2026-11-26")
         gateway.verifyRegistration(regId, secretOtpCode, "student.demo")
         gateway.verifyRegistration(regId, secretOtpCode, "student.demo")
         gateway.forgotPassword("student.demo@thi360.vn")
