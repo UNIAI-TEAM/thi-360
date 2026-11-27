@@ -1,6 +1,5 @@
 package vn.unicom.thi360.feature.catalog
 
-import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -20,7 +19,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -99,10 +97,11 @@ class ProductCardTest {
                 }
             }
 
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productStats("EXAM-RANGE-01"))
+                        .fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-RANGE-01"))
                         .fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
@@ -133,6 +132,10 @@ class ProductCardTest {
                         .fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(CatalogTestTags.productTitle("EXAM-RANGE-01"), useUnmergedTree = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.productTitle("EXAM-RANGE-01"), useUnmergedTree = true)
@@ -143,6 +146,10 @@ class ProductCardTest {
                         .fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-RANGE-01"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.productViewDetail("EXAM-RANGE-01")).performClick()

@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.compositionLocalOf
 import coil3.ImageLoader
 import java.io.IOException
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.WeakHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
@@ -308,26 +308,44 @@ data class CatalogDependencies(
     val clockMillis: () -> Long = { System.nanoTime() / 1_000_000L },
 ) {
     companion object {
-        private val defaultCleanupRegistered = AtomicBoolean(false)
+        private val storesByStack = WeakHashMap<Thi360SessionStack, CatalogFeedStore>()
+
+        private fun feedStoreFor(
+            stack: Thi360SessionStack,
+            app: Thi360Application?,
+        ): CatalogFeedStore = synchronized(storesByStack) {
+            storesByStack[stack] ?: CatalogFeedStore().also { created ->
+                storesByStack[stack] = created
+                app?.sessionCleanup?.register { created.clearAll() }
+            }
+        }
+
+        private fun resolveBaseUrl(stack: Thi360SessionStack): String = runCatching {
+            val apiClientField = Thi360SessionStack::class.java.getDeclaredField("authenticatedApiClient")
+            apiClientField.isAccessible = true
+            val apiClient = apiClientField.get(stack) as? ApiClient ?: return@runCatching AppEnvironment.apiBaseUrl
+            val baseUrlField = ApiClient::class.java.getDeclaredField("baseUrl")
+            baseUrlField.isAccessible = true
+            (baseUrlField.get(apiClient) as? String)?.takeIf { it.isNotBlank() } ?: AppEnvironment.apiBaseUrl
+        }.getOrElse { AppEnvironment.apiBaseUrl }
 
         fun defaultFor(context: Context): CatalogDependencies {
             val appContext = context.applicationContext
             val app = appContext as? Thi360Application
             val stack = AppSessionContainer.get(appContext)
-            if (app != null && defaultCleanupRegistered.compareAndSet(false, true)) {
-                app.sessionCleanup.register { CatalogFeedStore.Default.clearAll() }
-            }
+            val resolvedBaseUrl = resolveBaseUrl(stack)
+            val feedStore = feedStoreFor(stack, app)
             return CatalogDependencies(
                 gateway = OpenApiCatalogGateway.create(
-                    baseUrl = AppEnvironment.apiBaseUrl,
+                    baseUrl = resolvedBaseUrl,
                     sessionStack = stack,
                 ),
                 sessionManager = stack.sessionManager,
                 connectivityMonitor = app?.connectivityMonitor,
-                apiBaseUrl = AppEnvironment.apiBaseUrl,
+                apiBaseUrl = resolvedBaseUrl,
                 imageLoader = app?.imageLoader?.imageLoader,
                 supportContact = SupportContact.fromBuildConfig(),
-                feedStore = CatalogFeedStore.Default,
+                feedStore = feedStore,
             )
         }
     }

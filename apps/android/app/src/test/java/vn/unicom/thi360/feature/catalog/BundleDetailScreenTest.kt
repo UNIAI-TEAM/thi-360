@@ -1,6 +1,5 @@
 package vn.unicom.thi360.feature.catalog
 
-import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -28,7 +27,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -150,8 +148,7 @@ class BundleDetailScreenTest {
             }
 
             composeRule.runOnIdle { navRef!!.openProduct("BUNDLE-DEMO-01") }
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).fetchSemanticsNodes().isNotEmpty() &&
                     composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_OWNED_NOTES).fetchSemanticsNodes().isNotEmpty()
             }
@@ -190,8 +187,7 @@ class BundleDetailScreenTest {
             composeRule.onNodeWithTag(ProductDetailTestTags.bundleItemTitle("EXAM-MISSING-404"))
                 .performScrollTo()
                 .performClick()
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-MISSING-404") == 1 &&
                     composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_NOT_FOUND).fetchSemanticsNodes().isNotEmpty()
             }
@@ -199,8 +195,14 @@ class BundleDetailScreenTest {
             composeRule.onNodeWithTag(ProductDetailTestTags.STATUS_NOT_FOUND).assertIsDisplayed()
 
             composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).performScrollTo().performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(RoutePlaceholderTestTags.ROUTE_NAME).fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("checkout")
             composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)

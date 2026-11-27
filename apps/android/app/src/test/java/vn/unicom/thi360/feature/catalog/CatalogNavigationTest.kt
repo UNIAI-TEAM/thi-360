@@ -1,6 +1,5 @@
 package vn.unicom.thi360.feature.catalog
 
-import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -19,7 +18,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -62,8 +60,7 @@ class CatalogNavigationTest {
                 }
             }
 
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-DEMO-01"))
                         .fetchSemanticsNodes().isNotEmpty()
@@ -74,12 +71,19 @@ class CatalogNavigationTest {
             viewDetailBtn.performClick()
             now.addAndGet(100L)
             runCatching { viewDetailBtn.performClick() }
+            composeRule.waitUntilIdle {
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1 &&
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.SCREEN).fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(ProductDetailTestTags.SCREEN).assertIsDisplayed()
             assertEquals(1, harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01"))
 
             composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(CatalogTestTags.LIST).assertIsDisplayed()
             assertEquals("home/catalog", navControllerRef?.currentDestination?.route)
@@ -152,8 +156,7 @@ class CatalogNavigationTest {
                 }
             }
 
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productPrimaryAction("EX-NONE"))
                         .fetchSemanticsNodes().isNotEmpty()

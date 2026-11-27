@@ -78,21 +78,35 @@ class CatalogStateRetentionTest {
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EXAM-12")
             composeRule.waitUntilIdle {
-                (feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? vn.unicom.thi360.core.ui.LoadState.Loaded)
-                    ?.value?.items?.size == 24
+                val state = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value
+                (state.loadState as? vn.unicom.thi360.core.ui.LoadState.Loaded)?.value?.items?.size == 24 &&
+                    state.accessMap["EXAM-20"] is AccessCell.Ready
             }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EXAM-20")
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-20"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(CatalogTestTags.productCard("EXAM-20")).assertIsDisplayed()
 
             val productsCallsBeforeTrips = harness.server.requestCount("GET", "/api/v1/public/storefront/products")
 
-            composeRule.onNodeWithTag(CatalogTestTags.productViewDetail("EXAM-20")).performClick()
+            composeRule.onNodeWithTag(CatalogTestTags.productViewDetail("EXAM-20"))
+                .assertIsDisplayed()
+                .performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(ProductDetailTestTags.SCREEN).fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(ProductDetailTestTags.SCREEN).assertIsDisplayed()
 
             composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(CatalogTestTags.productCard("EXAM-20"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.productCard("EXAM-20")).assertIsDisplayed()
@@ -103,8 +117,15 @@ class CatalogStateRetentionTest {
             )
 
             composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(CatalogTestTags.SCREEN).fetchSemanticsNodes().isEmpty()
+            }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(CatalogTestTags.productCard("EXAM-20"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.productCard("EXAM-20")).assertIsDisplayed()
