@@ -1,5 +1,7 @@
 package vn.unicom.thi360
 
+import android.os.Looper
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -8,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -28,6 +31,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -35,6 +39,9 @@ import vn.unicom.thi360.core.preferences.DataStoreAppPreferencesRepository
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.theme.BrandPalette
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.feature.catalog.CatalogTestFixtures
+import vn.unicom.thi360.feature.catalog.CatalogTestTags
+import vn.unicom.thi360.feature.catalog.LocalCatalogDependencies
 import vn.unicom.thi360.shell.AccountShellPlaceholder
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
@@ -53,19 +60,27 @@ class LocalePreferenceTest {
     @Config(qualifiers = "en-w412dp-h915dp")
     fun defaultsToVietnameseOnEnglishDeviceAndSwitchesImmediatelyWithoutLosingTab() {
         var preferences by mutableStateOf(AppPreferences())
+        val catalogDeps = CatalogTestFixtures.createDeterministicFixtureDependencies()
 
         composeRule.setContent {
-            Thi360App(
-                preferences = preferences,
-                onSelectLocale = { locale -> preferences = preferences.copy(locale = locale) },
-                onSelectThemeMode = { mode -> preferences = preferences.copy(themeMode = mode) },
-            )
+            CompositionLocalProvider(LocalCatalogDependencies provides catalogDeps) {
+                Thi360App(
+                    preferences = preferences,
+                    onSelectLocale = { locale -> preferences = preferences.copy(locale = locale) },
+                    onSelectThemeMode = { mode -> preferences = preferences.copy(themeMode = mode) },
+                )
+            }
         }
+        composeRule.waitUntil(10_000) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithTag(CatalogTestTags.SHOWING_SUMMARY).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home))
-            .assertTextEquals("Trang chủ")
-        composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
-            .assertTextEquals("Chưa có nội dung")
+            .assertTextEquals("Chọn bài thi")
+        composeRule.onNodeWithTag(CatalogTestTags.SHOWING_SUMMARY)
+            .assertTextEquals("Hiển thị 1–2 trong 2 bài thi đang mở bán")
 
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Account))
@@ -79,10 +94,11 @@ class LocalePreferenceTest {
             .assertTextEquals("Account")
 
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
+        composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home))
-            .assertTextEquals("Home")
-        composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
-            .assertTextEquals("No content yet")
+            .assertTextEquals("Choose an exam")
+        composeRule.onNodeWithTag(CatalogTestTags.SHOWING_SUMMARY)
+            .assertTextEquals("Showing 1–2 of 2 exams on sale")
     }
 
     @Test
@@ -158,18 +174,21 @@ class LocalePreferenceTest {
             assertEquals(AppLocale.EN, restored.locale)
             assertEquals(ThemeMode.DARK, restored.themeMode)
 
+            val catalogDeps = CatalogTestFixtures.createDeterministicFixtureDependencies()
             composeRule.setContent {
                 val prefs by repo2.preferences.collectAsStateWithLifecycle(initialValue = restored)
                 val uiScope = rememberCoroutineScope()
-                Thi360App(
-                    preferences = prefs,
-                    onSelectLocale = { uiScope.launch { repo2.setLocale(it) } },
-                    onSelectThemeMode = { uiScope.launch { repo2.setThemeMode(it) } },
-                )
+                CompositionLocalProvider(LocalCatalogDependencies provides catalogDeps) {
+                    Thi360App(
+                        preferences = prefs,
+                        onSelectLocale = { uiScope.launch { repo2.setLocale(it) } },
+                        onSelectThemeMode = { uiScope.launch { repo2.setThemeMode(it) } },
+                    )
+                }
             }
 
             composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home))
-                .assertTextEquals("Home")
+                .assertTextEquals("Choose an exam")
         } finally {
             withContext(NonCancellable) { job2.cancelAndJoin() }
         }

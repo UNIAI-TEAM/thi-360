@@ -100,6 +100,7 @@ class OpenApiMobileAuthGateway(
 }
 
 class Thi360SessionStack(
+    val baseUrl: String,
     val tokenStore: TokenStore,
     val sessionManager: SessionManager,
     val publicAuthApi: AuthApi,
@@ -213,6 +214,7 @@ object Thi360ApiFactory {
         sessionCleanup?.register { catalogOptionsCache.clear() }
 
         return Thi360SessionStack(
+            baseUrl = normalizedBaseUrl,
             tokenStore = tokenStore,
             sessionManager = sessionManager,
             publicAuthApi = publicAuthApi,
