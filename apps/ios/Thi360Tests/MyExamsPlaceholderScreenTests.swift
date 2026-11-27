@@ -36,18 +36,12 @@ private final class MyExamsPlaceholderNetworkSpyURLProtocol: URLProtocol {
 @MainActor
 final class MyExamsPlaceholderScreenTests: XCTestCase {
     func testMyExamsPlaceholderExposesLocalizedTitleAndEmptyMessage() {
-        XCTAssertTrue(Destination.myExams.isPlaceholder)
         XCTAssertEqual(ShellStrings.text(Destination.myExams.titleKey, locale: .vi), "Bài thi của tôi")
         XCTAssertEqual(ShellStrings.text(Destination.myExams.titleKey, locale: .en), "My exams")
-        XCTAssertEqual(ShellStrings.text("shell.placeholder.title", locale: .vi), "Chưa có nội dung")
-        XCTAssertEqual(ShellStrings.text("shell.placeholder.title", locale: .en), "No content yet")
-
-        let key = Destination.myExams.placeholderDescriptionKey
-        XCTAssertNotNil(key)
-        if let key {
-            XCTAssertFalse(ShellStrings.text(key, locale: .vi).isEmpty)
-            XCTAssertFalse(ShellStrings.text(key, locale: .en).isEmpty)
-        }
+        XCTAssertEqual(MyExamsStrings.text("home.pageTitle", locale: .vi), "Bài thi của tôi")
+        XCTAssertEqual(MyExamsStrings.text("home.pageTitle", locale: .en), "My exams")
+        XCTAssertEqual(MyExamsStrings.text("home.emptyTitle", locale: .vi), "Bạn chưa có bài thi nào")
+        XCTAssertEqual(MyExamsStrings.text("home.emptyTitle", locale: .en), "You have no exams yet")
     }
 
     func testRenderingMyExamsPlaceholderPerformsZeroNetworkRequests() {

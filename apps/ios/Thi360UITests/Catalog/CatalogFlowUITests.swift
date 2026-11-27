@@ -65,6 +65,24 @@ final class CatalogFlowUITests: XCTestCase {
             operationId: "me",
             status: 200
         )
+        let attemptsData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "listHistory",
+            status: 200,
+            variant: ""
+        )
+        let examOptionsData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "getOptions",
+            status: 200,
+            variant: "exam"
+        )
+        let subjectOptionsData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "getOptions",
+            status: 200,
+            variant: "subject"
+        )
 
         let listRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: listBaseData) as? [String: Any])
         let templateItem = try XCTUnwrap((listRoot["items"] as? [[String: Any]])?.first)
@@ -110,6 +128,10 @@ final class CatalogFlowUITests: XCTestCase {
             if method == "POST", path == "/api/v1/auth/mobile/refresh" { return (200, refreshData) }
             if method == "GET", path == "/api/v1/me" { return (200, meData) }
             if method == "GET", path == "/api/v1/me/profile" { return (200, profileData) }
+            if method == "GET", path == "/api/v1/me/attempts" { return (200, attemptsData) }
+            if method == "GET", path == "/api/v1/catalog/options" {
+                return (200, query["group"] == "SUBJECT" ? subjectOptionsData : examOptionsData)
+            }
             if method == "GET", path == "/api/v1/public/storefront/filters" { return (200, filtersData) }
             if method == "GET", path == "/api/v1/public/storefront/products" {
                 let page = Int(query["page"] ?? "0") ?? 0
@@ -207,7 +229,7 @@ final class CatalogFlowUITests: XCTestCase {
         }
 
         openDestination(titled: "Lịch sử", identifier: "shell.dest.history", in: app)
-        XCTAssertTrue(app.staticTexts["Lịch sử"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["history.heading"].firstMatch.waitForExistence(timeout: 8))
         openDestination(titled: "Trang chủ", identifier: "shell.dest.home", in: app)
 
         XCUIDevice.shared.orientation = .landscapeLeft

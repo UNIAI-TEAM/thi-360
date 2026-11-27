@@ -36,19 +36,12 @@ private final class HistoryPlaceholderNetworkSpyURLProtocol: URLProtocol {
 @MainActor
 final class HistoryPlaceholderScreenTests: XCTestCase {
     func testHistoryPlaceholderExposesLocalizedTitleAndEmptyMessage() {
-        let placeholders = Destination.allCases.filter(\.isPlaceholder)
-        XCTAssertEqual(placeholders, [.home, .myExams, .history])
         XCTAssertEqual(ShellStrings.text(Destination.history.titleKey, locale: .vi), "Lịch sử")
         XCTAssertEqual(ShellStrings.text(Destination.history.titleKey, locale: .en), "History")
-        XCTAssertEqual(ShellStrings.text("shell.placeholder.title", locale: .vi), "Chưa có nội dung")
-        XCTAssertEqual(ShellStrings.text("shell.placeholder.title", locale: .en), "No content yet")
-
-        let key = Destination.history.placeholderDescriptionKey
-        XCTAssertNotNil(key)
-        if let key {
-            XCTAssertFalse(ShellStrings.text(key, locale: .vi).isEmpty)
-            XCTAssertFalse(ShellStrings.text(key, locale: .en).isEmpty)
-        }
+        XCTAssertEqual(MyExamsStrings.text("history.pageTitle", locale: .vi), "Lịch sử luyện thi")
+        XCTAssertEqual(MyExamsStrings.text("history.pageTitle", locale: .en), "Practice history")
+        XCTAssertEqual(MyExamsStrings.text("history.empty.noAttemptsTitle", locale: .vi), "Bạn chưa có lượt luyện thi nào")
+        XCTAssertEqual(MyExamsStrings.text("history.empty.noAttemptsTitle", locale: .en), "You have no practice attempts yet")
     }
 
     func testRenderingHistoryPlaceholderPerformsZeroNetworkRequests() {
