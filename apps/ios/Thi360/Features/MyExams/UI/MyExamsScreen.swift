@@ -19,7 +19,23 @@ struct MyExamsScreen: View {
     }
 
     private var navigationHandler: MyExamsNavigationHandler {
-        MyExamsNavigationHandler(router: router)
+        MyExamsNavigationHandler(router: router, debouncer: feed.navigationDebouncer)
+    }
+
+    func triggerCardAction(_ action: MyExamCardButtonAction) {
+        navigationHandler.handleCardAction(action)
+    }
+
+    func triggerExploreCatalog() {
+        navigationHandler.openExploreCatalog()
+    }
+
+    func triggerBundleDetail(code: String) {
+        navigationHandler.openBundleDetail(code: code)
+    }
+
+    func triggerOrderDetail(orderCode: String) {
+        navigationHandler.openOrderDetail(orderCode: orderCode)
     }
 
     private var gridColumns: [GridItem] {
@@ -96,6 +112,15 @@ struct MyExamsScreen: View {
         .onChange(of: router.presentedAttempt) { oldAttempt, newAttempt in
             if oldAttempt != nil && newAttempt == nil && router.selectedDestination == .myExams {
                 Task { await feed.reloadKeepingExisting() }
+            }
+        }
+        .onDisappear {
+            if router.presentedAttempt != nil
+                || router.isPresentingChangePassword
+                || router.selectedDestination != .myExams
+                || !router.path(for: .myExams).isEmpty
+            {
+                feed.markLeftTab()
             }
         }
         .accessibilityElement(children: .contain)

@@ -70,4 +70,31 @@ final class MyExamsNavigationTests: XCTestCase {
         await feed.reloadKeepingExisting()
         XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/me/exams"), 1)
     }
+
+    func testScreenLevelNavigationDebouncesRapidHistoryAndCrossButtonTaps() throws {
+        let clock = MyExamsManualClock()
+        let router = AppRouter(initialDestination: .myExams)
+        let feed = MyExamsFeed(
+            accountId: "acc-debounce",
+            api: PreviewEmptyMyExamsAPI(),
+            clock: clock,
+            retrySleeper: RecordingRetrySleeper(),
+            initialFullName: "An",
+            initialUsername: "an"
+        )
+        let screen = MyExamsScreen(feed: feed, router: router, locale: .vi, showsBrandHeader: false)
+
+        screen.triggerCardAction(.history)
+        clock.advance(by: 0.1)
+        screen.triggerCardAction(.history)
+        XCTAssertEqual(router.selectedDestination, .history)
+        XCTAssertEqual(router.reloadCount(for: .history), 1, "Rapid double-tap on History button must increment reloadToken strictly once")
+
+        router.switchTab(.myExams)
+        clock.advance(by: 1.0)
+        screen.triggerCardAction(.viewResult(attemptId: "att-1"))
+        clock.advance(by: 0.2)
+        screen.triggerCardAction(.buyMore(code: "EXAM-2"))
+        XCTAssertEqual(router.path(for: .myExams), [.result(attemptId: "att-1")], "Rapid tap on second button within 600ms must be debounced")
+    }
 }

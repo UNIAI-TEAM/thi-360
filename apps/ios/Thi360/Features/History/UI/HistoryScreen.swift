@@ -17,7 +17,19 @@ struct HistoryScreen: View {
     }
 
     private var navigationHandler: HistoryNavigationHandler {
-        HistoryNavigationHandler(router: router)
+        HistoryNavigationHandler(router: router, debouncer: feed.navigationDebouncer)
+    }
+
+    func triggerRowContinue(attemptId: String) {
+        navigationHandler.handleContinue(attemptId: attemptId)
+    }
+
+    func triggerRowViewResult(attemptId: String) {
+        navigationHandler.handleViewResult(attemptId: attemptId)
+    }
+
+    func triggerRowTitleTap(for item: HistoryAttemptItem) {
+        navigationHandler.handleTitleTap(for: item)
     }
 
     private var loadTaskKey: String {
@@ -97,6 +109,15 @@ struct HistoryScreen: View {
         .onChange(of: router.presentedAttempt) { oldAttempt, newAttempt in
             if oldAttempt != nil && newAttempt == nil && router.selectedDestination == .history {
                 Task { await feed.reloadWithCurrentFilter() }
+            }
+        }
+        .onDisappear {
+            if router.presentedAttempt != nil
+                || router.isPresentingChangePassword
+                || router.selectedDestination != .history
+                || !router.path(for: .history).isEmpty
+            {
+                feed.markLeftTab()
             }
         }
         .accessibilityElement(children: .contain)

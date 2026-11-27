@@ -36,32 +36,51 @@ final class CheckingCardTests: XCTestCase {
         let msgOrderSupport = CheckingMessage.of(cardWithOrder, support: withSupport, locale: .vi)
         XCTAssertEqual(msgOrderSupport.messageKey, "home.checking.message")
         XCTAssertEqual(msgOrderSupport.viewOrderCode, "DH001")
-        XCTAssertTrue(msgOrderSupport.text.contains("DH001"))
-        XCTAssertTrue(msgOrderSupport.text.contains("1900 1234 · hotro@thi360.vn (8:00–21:00)"))
-        XCTAssertTrue(msgOrderSupport.text.contains("Tải lại màn hình sau ít phút"))
-        XCTAssertFalse(msgOrderSupport.text.contains("Tải lại trang"))
+        XCTAssertEqual(
+            msgOrderSupport.text,
+            "Đã nhận thanh toán cho đơn DH001. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua 1900 1234 · hotro@thi360.vn (8:00–21:00) và gửi kèm mã đơn."
+        )
 
         let msgOrderNoSupport = CheckingMessage.of(cardWithOrder, support: noSupport, locale: .vi)
         XCTAssertEqual(msgOrderNoSupport.messageKey, "home.checking.messageNoContact")
         XCTAssertEqual(msgOrderNoSupport.viewOrderCode, "DH001")
-        XCTAssertTrue(msgOrderNoSupport.text.contains("Thông tin liên hệ đang được cập nhật."))
-        XCTAssertTrue(msgOrderNoSupport.text.contains("Tải lại màn hình sau ít phút"))
+        XCTAssertEqual(
+            msgOrderNoSupport.text,
+            "Đã nhận thanh toán cho đơn DH001. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ kèm mã đơn. Thông tin liên hệ đang được cập nhật."
+        )
 
         let msgNoOrderSupport = CheckingMessage.of(cardNoOrder, support: withSupport, locale: .vi)
         XCTAssertEqual(msgNoOrderSupport.messageKey, "home.checking.messageNoOrder")
         XCTAssertNil(msgNoOrderSupport.viewOrderCode)
-        XCTAssertTrue(msgNoOrderSupport.text.contains("1900 1234 · hotro@thi360.vn (8:00–21:00)"))
-        XCTAssertTrue(msgNoOrderSupport.text.contains("Tải lại màn hình sau ít phút"))
+        XCTAssertEqual(
+            msgNoOrderSupport.text,
+            "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua 1900 1234 · hotro@thi360.vn (8:00–21:00)."
+        )
 
         let msgNoOrderNoSupport = CheckingMessage.of(cardNoOrder, support: noSupport, locale: .vi)
         XCTAssertEqual(msgNoOrderNoSupport.messageKey, "home.checking.messageNoOrderNoContact")
         XCTAssertNil(msgNoOrderNoSupport.viewOrderCode)
-        XCTAssertTrue(msgNoOrderNoSupport.text.hasSuffix("Thông tin liên hệ đang được cập nhật."))
-        XCTAssertTrue(msgNoOrderNoSupport.text.contains("Tải lại màn hình sau ít phút"))
+        XCTAssertEqual(
+            msgNoOrderNoSupport.text,
+            "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ. Thông tin liên hệ đang được cập nhật."
+        )
 
-        let msgEn = CheckingMessage.of(cardWithOrder, support: withSupport, locale: .en)
-        XCTAssertTrue(msgEn.text.contains("Reload the screen in a few minutes"))
-        XCTAssertFalse(msgEn.text.contains("Reload the page"))
+        XCTAssertEqual(
+            CheckingMessage.of(cardWithOrder, support: withSupport, locale: .en).text,
+            "Payment received for order DH001. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support via 1900 1234 · hotro@thi360.vn (8:00–21:00) and include your order code."
+        )
+        XCTAssertEqual(
+            CheckingMessage.of(cardWithOrder, support: noSupport, locale: .en).text,
+            "Payment received for order DH001. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support with your order code. Contact information is being updated."
+        )
+        XCTAssertEqual(
+            CheckingMessage.of(cardNoOrder, support: withSupport, locale: .en).text,
+            "Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support via 1900 1234 · hotro@thi360.vn (8:00–21:00)."
+        )
+        XCTAssertEqual(
+            CheckingMessage.of(cardNoOrder, support: noSupport, locale: .en).text,
+            "Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support. Contact information is being updated."
+        )
 
         let router = AppRouter(initialDestination: .myExams)
         let nav = MyExamsNavigationHandler(router: router)
@@ -166,5 +185,52 @@ final class CheckingCardTests: XCTestCase {
         let grouped = MyExamsLayout.group(finalCards)
         XCTAssertTrue(grouped.checking.isEmpty, "Checking card must disappear once entitlement is granted")
         XCTAssertEqual(grouped.standalone.map(\.code), ["CHK-ORDER"])
+    }
+
+    func testMyExamsStringCatalogMatchesWebMessages() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let viData = try Data(contentsOf: repoRoot.appendingPathComponent("apps/web-student/src/messages/vi.json"))
+        let enData = try Data(contentsOf: repoRoot.appendingPathComponent("apps/web-student/src/messages/en.json"))
+        let xcData = try Data(contentsOf: repoRoot.appendingPathComponent("apps/ios/Thi360/Resources/MyExams.xcstrings"))
+
+        let viWeb = try XCTUnwrap(JSONSerialization.jsonObject(with: viData) as? [String: Any])
+        let enWeb = try XCTUnwrap(JSONSerialization.jsonObject(with: enData) as? [String: Any])
+        let xcRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: xcData) as? [String: Any])
+        let strings = try XCTUnwrap(xcRoot["strings"] as? [String: [String: Any]])
+
+        func lookup(_ root: [String: Any], dottedKey: String) -> String? {
+            var current: Any = root
+            for part in dottedKey.split(separator: ".").map(String.init) {
+                guard let dict = current as? [String: Any], let next = dict[part] else { return nil }
+                current = next
+            }
+            return current as? String
+        }
+
+        var comparedCount = 0
+        for (key, entry) in strings {
+            guard let localizations = entry["localizations"] as? [String: [String: Any]] else { continue }
+            for (lang, webTree) in [("vi", viWeb), ("en", enWeb)] {
+                guard let webVal = lookup(webTree, dottedKey: key),
+                      let stringUnit = localizations[lang]?["stringUnit"] as? [String: Any],
+                      let iosVal = stringUnit["value"] as? String
+                else {
+                    continue
+                }
+                let expected = key.hasPrefix("home.checking.")
+                    ? webVal
+                        .replacingOccurrences(of: "Tải lại trang", with: "Tải lại màn hình")
+                        .replacingOccurrences(of: "Reload the page", with: "Reload the screen")
+                    : webVal
+                XCTAssertEqual(iosVal, expected, "Mismatch in MyExams.xcstrings for \(key) [\(lang)]")
+                comparedCount += 1
+            }
+        }
+        XCTAssertGreaterThan(comparedCount, 120)
     }
 }

@@ -25,6 +25,7 @@ final class MyExamsFeed {
     private(set) var greetingUsername: String?
 
     @ObservationIgnored let clock: any AppClock
+    @ObservationIgnored let navigationDebouncer: MyExamsNavigationDebouncer
     @ObservationIgnored private let api: any MyExamsAPIClientProtocol
     @ObservationIgnored private let retrySleeper: any MyExamsRetrySleeper
     @ObservationIgnored private let connectivityMonitor: ConnectivityMonitor?
@@ -49,6 +50,7 @@ final class MyExamsFeed {
         self.api = api
         self.connectivityMonitor = connectivityMonitor
         self.clock = clock
+        self.navigationDebouncer = MyExamsNavigationDebouncer(clock: clock)
         self.retrySleeper = retrySleeper
         self.greetingFullName = initialFullName
         self.greetingUsername = initialUsername
@@ -146,6 +148,9 @@ final class MyExamsFeed {
 
     func setLoadedStateForTesting(items: [MyExamCard], lastLoadedAt: Date?, stale: Bool) {
         self.hasLoadedOnce = true
+        self.needsReloadOnTabReturn = false
+        self.lastHandledReloadToken = 0
+        self.isReloading = false
         self.cachedItems = items
         self.lastLoadedAt = lastLoadedAt
         if items.isEmpty {
@@ -157,6 +162,9 @@ final class MyExamsFeed {
 
     func setFailedStateForTesting(kind: LoadFailureKind) {
         self.hasLoadedOnce = true
+        self.needsReloadOnTabReturn = false
+        self.lastHandledReloadToken = 0
+        self.isReloading = false
         self.cachedItems = nil
         self.loadState = .failed(kind: kind, canRetry: true, retryAfter: nil)
     }
@@ -285,7 +293,7 @@ final class MyExamsNavigationDebouncer {
 
     func shouldAllow(key: String) -> Bool {
         let now = clock.now
-        if let lastTapDate, lastTapKey == key, now.timeIntervalSince(lastTapDate) < minimumIntervalSeconds {
+        if let lastTapDate, now.timeIntervalSince(lastTapDate) < minimumIntervalSeconds {
             return false
         }
         lastTapDate = now
@@ -298,6 +306,11 @@ final class MyExamsNavigationDebouncer {
 final class MyExamsNavigationHandler {
     private let router: AppRouter
     private let debouncer: MyExamsNavigationDebouncer
+
+    init(router: AppRouter, debouncer: MyExamsNavigationDebouncer) {
+        self.router = router
+        self.debouncer = debouncer
+    }
 
     init(router: AppRouter, clock: any AppClock = SystemClock()) {
         self.router = router

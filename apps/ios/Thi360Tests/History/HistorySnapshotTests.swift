@@ -66,6 +66,8 @@ final class HistorySnapshotTests: XCTestCase {
                         showsBrandHeader: viewport.shellWidth == .narrow
                     )
                 }
+                XCTAssertFalse(feed.isSwitchingFilter, "Snapshot state '\(stateName)' must remain at rest")
+                XCTAssertFalse(feed.isRetryingStale, "Snapshot state '\(stateName)' must remain at rest")
             }
         }
     }

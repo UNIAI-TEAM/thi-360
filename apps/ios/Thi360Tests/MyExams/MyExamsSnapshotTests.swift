@@ -66,6 +66,7 @@ final class MyExamsSnapshotTests: XCTestCase {
                         supportContact: SupportContact(phone: "1900 1234", email: "hotro@thi360.vn", hours: "8:00–21:00")
                     )
                 }
+                XCTAssertFalse(feed.isReloading, "Snapshot state '\(stateName)' must remain at rest with no reloading spinner")
             }
         }
     }

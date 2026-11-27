@@ -1390,7 +1390,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua {contact}."
+            "value" : "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua {contact}."
           }
         }
       }
@@ -1407,7 +1407,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ. {pending}"
+            "value" : "Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ. {pending}"
           }
         }
       }

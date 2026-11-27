@@ -95,6 +95,7 @@ final class BundleGroupTests: XCTestCase {
         XCTAssertEqual(router.path(for: .myExams), [.product(code: "BY-200")])
 
         router.back()
+        stack.clock.advance(by: 1.0)
         nav.openBundleDetail(code: groupX.ref.code)
         XCTAssertEqual(router.path(for: .myExams), [.product(code: "BX-100")])
 

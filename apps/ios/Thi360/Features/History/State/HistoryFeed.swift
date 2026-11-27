@@ -34,6 +34,7 @@ final class HistoryFeed {
     private(set) var subjectMap: [String: CatalogOptionItem] = [:]
 
     @ObservationIgnored let clock: any AppClock
+    @ObservationIgnored let navigationDebouncer: MyExamsNavigationDebouncer
     @ObservationIgnored private let api: any HistoryAPIClientProtocol
     @ObservationIgnored private let optionsCache: CatalogOptionsCache?
     @ObservationIgnored private let sleeper: any HistoryDebounceSleeper
@@ -66,6 +67,7 @@ final class HistoryFeed {
         self.sleeper = sleeper
         self.connectivityMonitor = connectivityMonitor
         self.clock = clock
+        self.navigationDebouncer = MyExamsNavigationDebouncer(clock: clock)
     }
 
     var currentPage: HistoryPage? {
@@ -264,6 +266,11 @@ final class HistoryFeed {
         subjects: [CatalogOptionItem] = []
     ) {
         self.hasLoadedOnce = true
+        self.needsReloadOnTabReturn = false
+        self.lastHandledReloadToken = 0
+        self.hasAppliedResetForCurrentToken = false
+        self.isSwitchingFilter = false
+        self.isRetryingStale = false
         self.filter = filter
         self.searchText = filter.q
         self.cachedPage = page
@@ -276,6 +283,11 @@ final class HistoryFeed {
 
     func setEmptyStateForTesting(filter: HistoryFilter = .empty) {
         self.hasLoadedOnce = true
+        self.needsReloadOnTabReturn = false
+        self.lastHandledReloadToken = 0
+        self.hasAppliedResetForCurrentToken = false
+        self.isSwitchingFilter = false
+        self.isRetryingStale = false
         self.filter = filter
         self.searchText = filter.q
         self.cachedPage = nil
@@ -290,6 +302,11 @@ final class HistoryFeed {
 
     func setFailedStateForTesting(kind: LoadFailureKind) {
         self.hasLoadedOnce = true
+        self.needsReloadOnTabReturn = false
+        self.lastHandledReloadToken = 0
+        self.hasAppliedResetForCurrentToken = false
+        self.isSwitchingFilter = false
+        self.isRetryingStale = false
         self.cachedPage = nil
         self.loadState = .failed(kind: kind, canRetry: true, retryAfter: nil)
     }
@@ -530,6 +547,11 @@ final class HistoryFeed {
 final class HistoryNavigationHandler {
     private let router: AppRouter
     private let debouncer: MyExamsNavigationDebouncer
+
+    init(router: AppRouter, debouncer: MyExamsNavigationDebouncer) {
+        self.router = router
+        self.debouncer = debouncer
+    }
 
     init(router: AppRouter, clock: any AppClock = SystemClock()) {
         self.router = router
