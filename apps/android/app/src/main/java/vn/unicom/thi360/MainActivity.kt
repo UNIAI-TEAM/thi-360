@@ -28,6 +28,7 @@ class MainActivity : FragmentActivity() {
     private var isAppBackgrounded by mutableStateOf(false)
     private var hasCompletedInitialStart = false
     private var hadSavedInstanceState = false
+    private var wasStoppedInBackground = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +51,9 @@ class MainActivity : FragmentActivity() {
                 sessionState = sessionStack.sessionManager.state.value,
             ),
         )
+
+        app.inboundLinkRouter.onSessionStateChanged(sessionStack.sessionManager.state.value)
+        app.inboundLinkRouter.notifyAppStarted()
 
         if (savedInstanceState == null) {
             lifecycleScope.launch {
@@ -88,6 +92,8 @@ class MainActivity : FragmentActivity() {
                 biometricController = biometricController,
                 biometricAuthenticator = biometricAuthenticator,
                 isAppBackgrounded = isAppBackgrounded,
+                inboundLinkRouter = app.inboundLinkRouter,
+                legalRepository = app.legalRepository,
             )
         }
     }
@@ -100,6 +106,11 @@ class MainActivity : FragmentActivity() {
         val biometricController = app.biometricController
         if (biometricController.shouldLockOnForeground(nowMillis = SystemClock.elapsedRealtime())) {
             sessionManager.lockSession()
+        }
+        app.inboundLinkRouter.onSessionStateChanged(sessionManager.state.value)
+        if (wasStoppedInBackground) {
+            wasStoppedInBackground = false
+            app.inboundLinkRouter.notifyForegroundReturn()
         }
         biometricController.refreshAvailability()
         if (hasCompletedInitialStart || hadSavedInstanceState) {
@@ -114,6 +125,7 @@ class MainActivity : FragmentActivity() {
         super.onStop()
         if (!isChangingConfigurations) {
             isAppBackgrounded = true
+            wasStoppedInBackground = true
             val app = application as Thi360Application
             app.biometricController.onAppBackgrounded(SystemClock.elapsedRealtime())
         }

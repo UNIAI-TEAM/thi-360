@@ -11,7 +11,6 @@ import androidx.compose.ui.test.performTextInput
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,7 +34,6 @@ import vn.unicom.thi360.core.biometric.InMemoryBiometricPromptMemoryStore
 import vn.unicom.thi360.core.biometric.PromptAnswer
 import vn.unicom.thi360.core.biometric.PromptMemory
 import vn.unicom.thi360.core.config.Environment
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -49,6 +47,7 @@ import vn.unicom.thi360.feature.password.ChangePasswordDraftViewModel
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class LockPasswordFallbackTest {
@@ -56,12 +55,11 @@ class LockPasswordFallbackTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -83,7 +81,7 @@ class LockPasswordFallbackTest {
             Tokens("old-access-token", "old-refresh-token", 300, 604800, false, "minhanh.tran"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -108,7 +106,6 @@ class LockPasswordFallbackTest {
             )
         }
 
-        // Biometric lockout keeps app locked and displays lockout guidance.
         composeRule.onNodeWithTag(LockTestTags.UNLOCK_BUTTON).performClick()
         composeRule.waitUntil(timeoutMillis = 3_000) {
             runCatching {
@@ -118,35 +115,37 @@ class LockPasswordFallbackTest {
         }
         assertTrue(stack.sessionManager.state.value is SessionState.Locked)
 
-        // Biometric cancelled also keeps app locked.
         authenticator.nextResult = BiometricPromptResult.Failure(BiometricAuthFailureReason.CANCELLED)
         composeRule.onNodeWithTag(LockTestTags.UNLOCK_BUTTON).performClick()
         composeRule.waitForIdle()
         assertTrue(stack.sessionManager.state.value is SessionState.Locked)
 
-        // Tap "Nhập mật khẩu" -> opens Login pre-filled with locked username.
         composeRule.onNodeWithTag(LockTestTags.ENTER_PASSWORD_BUTTON).performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD)
             .assertIsDisplayed()
             .assertTextContains("minhanh.tran")
 
-        // System Back returns to Lock screen while keeping held session intact.
         composeRule.runOnIdle { checkNotNull(backDispatcher).onBackPressed() }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertIsDisplayed()
         assertEquals("old-refresh-token", tokenStore.read()?.refreshToken)
         assertTrue(stack.sessionManager.state.value is SessionState.Locked)
 
-        // Open fallback again; invalid credentials show login error and keep old locked session.
         composeRule.onNodeWithTag(LockTestTags.ENTER_PASSWORD_BUTTON).performClick()
         composeRule.waitForIdle()
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                401,
-                ContractFixtureLoader.readAuthFixture("login-401-invalid-credentials.json"),
-            ),
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/mobile/login",
+            { ContractFakeServer.authFixtureResponse(401, "login-401-invalid-credentials.json") },
+            { ContractFakeServer.authFixtureResponse(200, "login-200.json") },
         )
+        server.respond("POST", "/api/v1/auth/mobile/logout") {
+            MockResponse()
+                .setResponseCode(500)
+                .setHeadersDelay(150, TimeUnit.MILLISECONDS)
+        }
+
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("WrongPass1!")
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -157,27 +156,13 @@ class LockPasswordFallbackTest {
         }
         assertEquals("old-refresh-token", tokenStore.read()?.refreshToken)
         assertTrue(stack.sessionManager.state.value is SessionState.Locked)
-        server.takeRequest()
-
-        // Valid login replaces session, calls mobile/logout on old session asynchronously (even when delayed and failing with 500),
-        // clears old biometric data, and re-prompts per PromptMemory (lastAnswer == YES -> prompt shown!).
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("login-200.json"),
-            ),
-        )
-        server.enqueue(
-            MockResponse()
-                .setResponseCode(500)
-                .setHeadersDelay(150, TimeUnit.MILLISECONDS),
-        )
 
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("CorrectPass1!")
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             stack.sessionManager.state.value is SessionState.Active &&
+                server.requestCount("POST", "/api/v1/auth/mobile/logout") == 1 &&
                 runCatching {
                     composeRule.onNodeWithTag(LockTestTags.ENABLE_PROMPT_SCREEN).assertIsDisplayed()
                     true
@@ -188,15 +173,15 @@ class LockPasswordFallbackTest {
         assertEquals("Old biometric state must be cleared before re-enable", BiometricState.Off, controller.state.value)
         assertFalse(vault.hasWrappedToken())
 
-        val loginReq = server.takeRequest(5, TimeUnit.SECONDS)
+        val loginReq = server.lastRequest("POST", "/api/v1/auth/mobile/login")
         assertNotNull("Expected mobile/login request", loginReq)
         assertEquals("/api/v1/auth/mobile/login", loginReq!!.path)
-        val oldLogoutReq = server.takeRequest(5, TimeUnit.SECONDS)
+        val oldLogoutReq = server.lastRequest("POST", "/api/v1/auth/mobile/logout")
         assertNotNull("Expected background mobile/logout request for old session", oldLogoutReq)
         assertEquals("/api/v1/auth/mobile/logout", oldLogoutReq!!.path)
         assertTrue(
             "Old session refreshToken must be sent to mobile/logout",
-            oldLogoutReq.body.readUtf8().contains("old-refresh-token"),
+            oldLogoutReq.body.clone().readUtf8().contains("old-refresh-token"),
         )
     }
 
@@ -213,7 +198,7 @@ class LockPasswordFallbackTest {
             Tokens("old-access", "old-refresh-token", 300, 604800, false, "minhanh.tran"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -239,19 +224,15 @@ class LockPasswordFallbackTest {
         }
 
         composeRule.onNodeWithTag(LockTestTags.ENTER_PASSWORD_BUTTON).performClick()
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("login-200.json"),
-            ),
-        )
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json")
+        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
 
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("CorrectPass1!")
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            stack.sessionManager.state.value is SessionState.Active
+            stack.sessionManager.state.value is SessionState.Active &&
+                server.requestCount("POST", "/api/v1/auth/mobile/logout") == 1
         }
         composeRule.waitForIdle()
 
@@ -260,8 +241,8 @@ class LockPasswordFallbackTest {
         assertEquals("", activeDraft.oldPasswordState.text.toString())
         assertEquals("", activeDraft.newPasswordState.text.toString())
         assertEquals("", activeDraft.confirmPasswordState.text.toString())
-        assertNotNull(server.takeRequest(5, TimeUnit.SECONDS))
-        assertNotNull(server.takeRequest(5, TimeUnit.SECONDS))
+        assertNotNull(server.lastRequest("POST", "/api/v1/auth/mobile/login"))
+        assertNotNull(server.lastRequest("POST", "/api/v1/auth/mobile/logout"))
     }
 
     @Test
@@ -271,7 +252,7 @@ class LockPasswordFallbackTest {
             Tokens("access-1", "refresh-1", 300, 604800, false, "student.locked"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },

@@ -2,6 +2,7 @@ package vn.unicom.thi360.feature.password
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -20,11 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.compose.runtime.CompositionLocalProvider
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -36,7 +35,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -51,6 +49,7 @@ import vn.unicom.thi360.feature.recovery.RegistrationStartData
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class ChangePasswordTest {
@@ -58,12 +57,11 @@ class ChangePasswordTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -85,20 +83,19 @@ class ChangePasswordTest {
             ),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
 
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                400,
-                ContractFixtureLoader.readApiFixture("change-password-400-wrong-old-password.json"),
-            ),
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/change-password",
+            { ContractFakeServer.apiFixtureResponse(400, "change-password-400-wrong-old-password.json") },
+            { MockResponse().setResponseCode(200) },
         )
-        server.enqueue(MockResponse().setResponseCode(200))
 
         var callbackCount = 0
 
@@ -112,14 +109,13 @@ class ChangePasswordTest {
             }
         }
 
-        // Weak password + same as username client validation blocks network call.
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performTextInput("OldPass1!")
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("short")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performTextInput("short")
         composeRule.onNodeWithTag(PasswordTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_ERROR, useUnmergedTree = true)
             .assertTextContains("Mật khẩu mới chưa đáp ứng đủ các điều kiện.")
-        assertEquals(0, server.requestCount)
+        assertEquals(0, server.requestCount("POST", "/api/v1/auth/change-password"))
 
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextClearance()
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("userpass1!")
@@ -128,9 +124,8 @@ class ChangePasswordTest {
         composeRule.onNodeWithTag(PasswordTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_ERROR, useUnmergedTree = true)
             .assertTextContains("Mật khẩu mới không được trùng tên đăng nhập.")
-        assertEquals(0, server.requestCount)
+        assertEquals(0, server.requestCount("POST", "/api/v1/auth/change-password"))
 
-        // Wrong old password from backend -> shows error under old password field.
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextClearance()
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("StrongNew2!")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performTextClearance()
@@ -144,11 +139,10 @@ class ChangePasswordTest {
                 true
             }.getOrDefault(false)
         }
-        val wrongOldReq = server.takeRequest()
+        val wrongOldReq = server.requests("POST", "/api/v1/auth/change-password").first()
         assertEquals("/api/v1/auth/change-password", wrongOldReq.path)
         assertEquals("Bearer active-access-token", wrongOldReq.getHeader("Authorization"))
 
-        // Correct old password -> success banner shown and session remains Active with tokens intact.
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performTextClearance()
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performTextInput("RealOldPass1!")
         composeRule.onNodeWithTag(PasswordTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
@@ -170,7 +164,7 @@ class ChangePasswordTest {
     @Config(qualifiers = "w1280dp-h915dp")
     fun survivesConfigurationChange() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -209,7 +203,6 @@ class ChangePasswordTest {
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().performTextInput("NewDraft2@")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().performTextInput("NewDraft2@")
 
-        // Unfold to 840x720 + emulate Activity config-change recreation -> all 3 fields survive in retained ViewModelStore.
         composeRule.runOnIdle {
             widthDp = 840.dp
             heightDp = 720.dp
@@ -226,7 +219,6 @@ class ChangePasswordTest {
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().assertTextContains("NewDraft2@")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().assertTextContains("NewDraft2@")
 
-        // Fold back to compact 360x640 + emulate config-change recreation -> all 3 fields still preserved.
         composeRule.runOnIdle {
             widthDp = 360.dp
             heightDp = 640.dp
@@ -304,7 +296,7 @@ class ChangePasswordTest {
     @Config(qualifiers = "w390dp-h844dp")
     fun voluntaryTopBarBackAndSystemBackClearDraftPasswords() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -344,7 +336,6 @@ class ChangePasswordTest {
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("NewSecret2@")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performTextInput("NewSecret2@")
 
-        // Leave via top-bar Back -> clears retained ViewModel draft.
         composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
         composeRule.waitForIdle()
         assertEquals(1, backCalls)
@@ -358,7 +349,6 @@ class ChangePasswordTest {
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().assertTextContains("", substring = false)
 
-        // Type again and leave via Android system Back -> BackHandler intercepts and clears draft.
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performScrollTo().performTextInput("SecondOld1!")
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().performTextInput("SecondNew2@")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().performTextInput("SecondNew2@")

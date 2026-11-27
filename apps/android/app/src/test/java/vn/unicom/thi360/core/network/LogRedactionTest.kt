@@ -2,7 +2,6 @@ package vn.unicom.thi360.core.network
 
 import android.util.Log
 import kotlinx.coroutines.test.runTest
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -15,17 +14,17 @@ import vn.unicom.thi360.BuildConfig
 import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.preferences.AppLocale
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class LogRedactionTest {
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
         ShadowLog.clear()
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -46,32 +45,30 @@ class LogRedactionTest {
             .replace("fixture-access-token", "${secretAccessToken}New")
             .replace("fixture-refresh-token", "${secretRefreshToken}New")
 
-        server.enqueue(ContractFixtureLoader.jsonResponse(200, loginFixture))
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                401,
-                ContractFixtureLoader.readAuthFixture("login-401-invalid-credentials.json"),
-            ),
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/mobile/login",
+            { ContractFakeServer.jsonResponse(200, loginFixture) },
+            {
+                ContractFakeServer.authFixtureResponse(
+                    401,
+                    "login-401-invalid-credentials.json",
+                )
+            },
+            {
+                ContractFakeServer.jsonResponse(
+                    503,
+                    """{"code":"SERVICE_UNAVAILABLE","message":"Temporarily unavailable"}""",
+                )
+            },
         )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                503,
-                """{"code":"SERVICE_UNAVAILABLE","message":"Temporarily unavailable"}""",
-            ),
-        )
-        server.enqueue(ContractFixtureLoader.jsonResponse(200, refreshFixture))
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readApiFixture("me-200.json"),
-            ),
-        )
+        server.respondJson("POST", "/api/v1/auth/mobile/refresh", 200, refreshFixture)
+        server.respondApiFixture("GET", "/api/v1/me", 200, "me-200.json")
 
         val env = if (BuildConfig.FLAVOR == "demo") Environment.DEMO else AppEnvironment.environment
         val tokenStore = InMemoryTokenStore()
-        // Exercise the production default AndroidAppLogger writing to android.util.Log.
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = env,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -85,7 +82,7 @@ class LogRedactionTest {
 
         AndroidAppLogger.warn(
             "Thi360Auth",
-            """Authorization: Bearer $secretAccessToken {"password":"$secretPassword","refreshToken":"$secretRefreshToken"} /reset-password?token=resetSecret123""",
+            """Authorization: Bearer $secretAccessToken {"password":"$secretPassword","refreshToken":"$secretRefreshToken","voucherCode":"SECRET-VOUCHER-99"} /reset-password?token=resetSecret123&vnp_SecureHash=vnpHash999&vnp_TxnRef=txnSecret888""",
         )
 
         val shadowLogs = ShadowLog.getLogs()
@@ -118,6 +115,9 @@ class LogRedactionTest {
             secretAccessToken,
             secretRefreshToken,
             "resetSecret123",
+            "SECRET-VOUCHER-99",
+            "vnpHash999",
+            "txnSecret888",
         )
 
         for (secret in forbiddenSecrets) {

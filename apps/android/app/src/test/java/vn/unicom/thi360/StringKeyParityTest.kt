@@ -3,6 +3,7 @@ package vn.unicom.thi360
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
@@ -51,15 +52,41 @@ class StringKeyParityTest {
         assertTrue("Expected at least one strings*.xml file", viFiles.isNotEmpty())
         assertTrue("Expected strings_recovery.xml in values", viFiles.contains("strings_recovery.xml"))
         assertTrue("Expected strings_account.xml in values", viFiles.contains("strings_account.xml"))
+        assertTrue("Expected strings_common.xml in values", viFiles.contains("strings_common.xml"))
+        assertTrue("Expected strings_legal.xml in values", viFiles.contains("strings_legal.xml"))
         assertEquals("String resource file sets must match between values and values-en", viFiles, enFiles)
+
+        val seenViStrings = linkedMapOf<String, String>()
+        val seenEnStrings = linkedMapOf<String, String>()
+        val seenViPlurals = linkedMapOf<String, String>()
+        val seenEnPlurals = linkedMapOf<String, String>()
 
         for (fileName in viFiles) {
             val viKeys = parseResourceKeys(File(viDir, fileName), "string")
             val enKeys = parseResourceKeys(File(enDir, fileName), "string")
             assertEquals("String key sets in $fileName must match between values and values-en", viKeys, enKeys)
+
+            for (key in viKeys) {
+                val existing = seenViStrings.put(key, fileName)
+                assertNull("Duplicate string key '$key' across values/$existing and values/$fileName", existing)
+            }
+            for (key in enKeys) {
+                val existing = seenEnStrings.put(key, fileName)
+                assertNull("Duplicate string key '$key' across values-en/$existing and values-en/$fileName", existing)
+            }
+
             val viPlurals = parseResourceKeys(File(viDir, fileName), "plurals")
             val enPlurals = parseResourceKeys(File(enDir, fileName), "plurals")
             assertEquals("Plurals key sets in $fileName must match between values and values-en", viPlurals, enPlurals)
+
+            for (key in viPlurals) {
+                val existing = seenViPlurals.put(key, fileName)
+                assertNull("Duplicate plurals key '$key' across values/$existing and values/$fileName", existing)
+            }
+            for (key in enPlurals) {
+                val existing = seenEnPlurals.put(key, fileName)
+                assertNull("Duplicate plurals key '$key' across values-en/$existing and values-en/$fileName", existing)
+            }
         }
     }
 }

@@ -67,6 +67,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import vn.unicom.thi360.R
+import vn.unicom.thi360.core.brand.BrandMark
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.session.LoginErrorKind
 import vn.unicom.thi360.core.session.LoginOutcome
@@ -544,6 +545,7 @@ private fun LoginFormSection(
             val noticeRes = when (signOutReason) {
                 SignOutReason.Expired -> R.string.login_notice_session_expired
                 SignOutReason.PasswordReset -> R.string.login_notice_password_reset
+                SignOutReason.AccountDeleted -> R.string.account_deletion_deletedNotice
                 SignOutReason.None, is SignOutReason.StudentOnly -> null
             }
             if (noticeRes != null) {
@@ -731,31 +733,7 @@ private fun StatusBanner(
 
 @Composable
 private fun LoginBrandHeader() {
-    val colors = Thi360Theme.colors
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(colors.primaryFill),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_thi360_logo),
-                contentDescription = null,
-                tint = colors.onPrimary,
-                modifier = Modifier.size(26.dp),
-            )
-        }
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = colors.text,
-        )
-    }
+    BrandMark(markSize = 44.dp)
 }
 
 @Composable

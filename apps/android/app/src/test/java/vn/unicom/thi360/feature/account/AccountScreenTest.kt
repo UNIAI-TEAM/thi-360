@@ -19,7 +19,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import java.io.IOException
 import kotlinx.coroutines.CompletableDeferred
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -39,7 +38,6 @@ import vn.unicom.thi360.core.biometric.InMemoryBiometricPromptMemoryStore
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiError
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -52,6 +50,7 @@ import vn.unicom.thi360.feature.recovery.PasswordTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class AccountScreenTest {
@@ -59,12 +58,11 @@ class AccountScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -105,7 +103,7 @@ class AccountScreenTest {
             }
         }
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(signedInTokens()),
             localeProvider = { AppLocale.VI },
@@ -133,11 +131,9 @@ class AccountScreenTest {
             )
         }
 
-        // 1. Loading state
         composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_SINGLE_PANE).assertIsDisplayed()
         composeRule.onNodeWithTag(AccountTestTags.PROFILE_LOADING).assertIsDisplayed()
 
-        // Unavailable biometric switch is disabled with explanation and TalkBack contentDescription.
         val switchNode = composeRule.onNodeWithTag(AccountTestTags.BIOMETRIC_SWITCH)
             .assertIsNotEnabled()
             .fetchSemanticsNode()
@@ -150,7 +146,6 @@ class AccountScreenTest {
         )
         composeRule.onNodeWithTag(AccountTestTags.BIOMETRIC_EXPLANATION).assertIsDisplayed()
 
-        // 2. Error state + Retry + local settings still usable
         gate.complete(ApiResult.HttpFailure(500, ApiError(code = "INTERNAL_ERROR")))
         composeRule.waitUntil(timeoutMillis = 5_000) {
             runCatching {
@@ -168,7 +163,6 @@ class AccountScreenTest {
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_OPTION_VI).performClick()
         assertEquals(AppLocale.VI, preferences.locale)
 
-        // 3. Offline state on retry
         composeRule.onNodeWithTag(AccountTestTags.PROFILE_RETRY_BUTTON).performScrollTo().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             runCatching {
@@ -177,7 +171,6 @@ class AccountScreenTest {
             }.getOrDefault(false)
         }
 
-        // 4. Loaded state on retry
         composeRule.onNodeWithTag(AccountTestTags.PROFILE_RETRY_BUTTON).performScrollTo().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             runCatching {
@@ -194,14 +187,9 @@ class AccountScreenTest {
     @Test
     @Config(qualifiers = "w390dp-h844dp")
     fun accountWithoutEmailHidesEmailRowAndVerificationBadge() {
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readApiFixture("me-profile-200-no-email.json"),
-            ),
-        )
+        server.respondApiFixture("GET", "/api/v1/me/profile", 200, "me-profile-200-no-email.json")
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(signedInTokens("student.noemail")),
             localeProvider = { AppLocale.VI },
@@ -234,14 +222,9 @@ class AccountScreenTest {
     @Test
     @Config(qualifiers = "w840dp-h720dp")
     fun twoPane() {
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readApiFixture("me-profile-200.json"),
-            ),
-        )
+        server.respondApiFixture("GET", "/api/v1/me/profile", 200, "me-profile-200.json")
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(signedInTokens()),
             localeProvider = { AppLocale.VI },
@@ -276,7 +259,6 @@ class AccountScreenTest {
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).assertIsNotSelected()
         composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).assertIsNotSelected()
 
-        // Selecting Language switches right detail pane and updates selection semantics & app copy immediately.
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).assertIsSelected()
         composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsNotSelected()
@@ -284,13 +266,11 @@ class AccountScreenTest {
         assertEquals(AppLocale.EN, preferences.locale)
         composeRule.onNodeWithText("Security").assertIsDisplayed()
 
-        // Selecting Theme switches right detail pane and updates theme preference.
         composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).assertIsSelected()
         composeRule.onNodeWithTag(AccountTestTags.THEME_OPTION_DARK).performClick()
         assertEquals(ThemeMode.DARK, preferences.themeMode)
 
-        // Selecting Change Password remounts AND-3 ChangePasswordScreen in right pane.
         composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsSelected()
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).assertIsDisplayed()
@@ -300,7 +280,7 @@ class AccountScreenTest {
     @Config(qualifiers = "w840dp-h720dp")
     fun foldFromTwoPaneToSinglePaneMidPasswordDraftPreservesChangePasswordScreenAndDraft() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(signedInTokens("student.fold")),
             localeProvider = { AppLocale.VI },
@@ -339,12 +319,10 @@ class AccountScreenTest {
             }
         }
 
-        // User starts typing into the mounted two-pane ChangePasswordScreen without clicking the left row.
         composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performTextInput("OldSecret1!")
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performTextInput("NewSecret1!")
 
-        // Device folds below 840dp: ChangePasswordScreen must stay mounted with draft preserved.
         composeRule.runOnIdle { isTwoPaneWidth = false }
         composeRule.waitForIdle()
 
@@ -352,7 +330,6 @@ class AccountScreenTest {
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).assertTextContains("OldSecret1!")
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).assertTextContains("NewSecret1!")
 
-        // Navigating back from single-pane ChangePasswordScreen returns to the Account list.
         composeRule.onNodeWithTag(PasswordTestTags.CLOSE_BUTTON).performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_SINGLE_PANE).assertIsDisplayed()
@@ -362,7 +339,7 @@ class AccountScreenTest {
     @Config(qualifiers = "w360dp-h640dp", fontScale = 2.0f)
     fun narrowViewportAt200PercentFontScaleKeepsThemeRowReadableAndActionable() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(signedInTokens()),
             localeProvider = { AppLocale.EN },

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Thi 360</string>
+    <string name="app_name">Thi360</string>
     <string name="nav_home">Trang chủ</string>
     <string name="nav_my_exams">Bài thi của tôi</string>
     <string name="nav_history">Lịch sử</string>

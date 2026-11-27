@@ -8,7 +8,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import kotlinx.coroutines.test.runTest
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -35,6 +34,7 @@ import vn.unicom.thi360.feature.lock.LockTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class BiometricInvalidationStateTest {
@@ -42,12 +42,11 @@ class BiometricInvalidationStateTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -96,7 +95,7 @@ class BiometricInvalidationStateTest {
             ),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -136,14 +135,8 @@ class BiometricInvalidationStateTest {
         composeRule.onNodeWithTag(LockTestTags.UNLOCK_BUTTON).assertIsNotEnabled()
         composeRule.onNodeWithTag(LockTestTags.ENTER_PASSWORD_BUTTON).assertIsDisplayed()
 
-        // After signing in again via password (simulating unlock by password), Account switch is Off.
-        server.enqueue(
-            vn.unicom.thi360.core.network.ContractFixtureLoader.jsonResponse(
-                200,
-                vn.unicom.thi360.core.network.ContractFixtureLoader.readAuthFixture("login-200.json"),
-            ),
-        )
-        server.enqueue(okhttp3.mockwebserver.MockResponse().setResponseCode(204))
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json")
+        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
 
         composeRule.onNodeWithTag(LockTestTags.ENTER_PASSWORD_BUTTON).performClick()
         composeRule.waitForIdle()
