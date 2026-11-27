@@ -64,6 +64,9 @@ private struct ProfileRouteHostView: View {
                     router.openProfileVerifyEmail()
                 }
             )
+            .onDisappear {
+                accountVM.clearProfileViewModelIfPopped(router: router, destination: destination)
+            }
         } else {
             ProfileFallbackEmptyHostView(
                 titleKey: "account.profile.title",

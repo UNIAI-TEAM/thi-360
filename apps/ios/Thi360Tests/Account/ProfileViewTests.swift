@@ -226,4 +226,45 @@ final class ProfileViewTests: XCTestCase {
             )
         }
     }
+
+    func testLeavingProfileDiscardsUnsavedDraftsAndClearsCurrentPasswordOnReentry() async throws {
+        let profileData = try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
+        let stack = AccountTestFactory.makeContractStack(
+            initialTokens: AccountTestFactory.sampleTokens()
+        ) { transport in
+            transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: profileData)
+        }
+        defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
+
+        let router = AppRouter(initialDestination: .account)
+        let accountVM = AccountViewModel(
+            sessionStore: stack.sessionStore,
+            biometricManager: stack.biometricManager
+        )
+        await accountVM.loadProfile()
+
+        router.openProfile()
+        let firstVM = accountVM.ensureProfileViewModel()
+        firstVM.updateFullName("Họ Tên Bỏ Dở")
+        firstVM.updatePhone("0999888777")
+        firstVM.toggleChangeEmailForm()
+        firstVM.updateNewEmail("abandoned@thi360.vn")
+        firstVM.updateCurrentPassword("SecretUnsavedPass123!")
+        XCTAssertTrue(firstVM.hasUnsavedDraft)
+
+        router.back()
+        accountVM.clearProfileViewModelIfPopped(router: router, destination: .account)
+        XCTAssertEqual(firstVM.currentPassword, "", "Leaving Profile must clear plaintext currentPassword")
+        XCTAssertNil(accountVM.existingProfileViewModel())
+
+        router.openProfile()
+        let reopenedVM = accountVM.ensureProfileViewModel()
+        await reopenedVM.onAppearLoad()
+        XCTAssertEqual(reopenedVM.fullName, "Nguyễn Văn An")
+        XCTAssertEqual(reopenedVM.phone, "")
+        XCTAssertFalse(reopenedVM.isShowingChangeEmailForm)
+        XCTAssertEqual(reopenedVM.newEmail, "")
+        XCTAssertEqual(reopenedVM.currentPassword, "")
+        XCTAssertFalse(reopenedVM.isInfoDirty)
+    }
 }

@@ -49,8 +49,13 @@ struct DeleteAccountView: View {
             id: "deleteAccount.screen",
             label: ProfileStrings.text("account.deletion.title", locale: locale)
         )
-        .task {
-            await viewModel.loadCheckIfNeeded()
+        .onAppear {
+            Task {
+                await viewModel.loadCheckIfNeeded()
+            }
+        }
+        .onDisappear {
+            viewModel.markRecheckNeededIfBlocked()
         }
         .alert(
             ProfileStrings.text("account.deletion.confirmTitle", locale: locale),
@@ -153,6 +158,7 @@ struct DeleteAccountView: View {
             case .attemptInProgress:
                 let title = ProfileStrings.text("account.deletion.openMyExams", locale: locale)
                 Button {
+                    viewModel.markRecheckNeededIfBlocked()
                     onOpenMyExams()
                 } label: {
                     Text(title)
@@ -175,6 +181,7 @@ struct DeleteAccountView: View {
             case .orderPendingPayment:
                 let title = ProfileStrings.text("account.deletion.openMyOrders", locale: locale)
                 Button {
+                    viewModel.markRecheckNeededIfBlocked()
                     onOpenOrders()
                 } label: {
                     Text(title)

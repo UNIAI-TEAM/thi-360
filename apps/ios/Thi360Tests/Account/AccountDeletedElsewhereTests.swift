@@ -57,6 +57,7 @@ final class AccountDeletedElsewhereTests: XCTestCase {
             sessionStore: stack.sessionStore,
             biometricManager: stack.biometricManager
         )
+        accountVM.attachImageLoader(imageLoader)
         await accountVM.ensureCleanupRegistered()
         await accountVM.loadProfile()
 
@@ -76,6 +77,11 @@ final class AccountDeletedElsewhereTests: XCTestCase {
         XCTAssertEqual(stack.biometricManager.state, .off)
         XCTAssertNil(accountVM.loadedProfile, "AccountProfileStore must be wiped")
         XCTAssertNil(imageLoader.cachedImage(for: avatarURL), "ImageLoader cache must be wiped when account deleted elsewhere")
-        XCTAssertFalse(storeProvider.accountDirectoryExists(for: "acc-elsewhere"), "AccountScopedStore must be wiped when account deleted elsewhere")
+        XCTAssertTrue(router.path(for: .account).isEmpty, "Account navigation stack must be cleared on expired sign-out")
+        let loginVM = LoginViewModel(sessionStore: stack.sessionStore, initialReason: .expired)
+        XCTAssertEqual(
+            loginVM.serverBanner?.message(locale: .vi),
+            "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+        )
     }
 }

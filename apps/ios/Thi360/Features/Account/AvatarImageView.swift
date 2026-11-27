@@ -89,7 +89,16 @@ struct AvatarCircleView: View {
         attemptedKey = requestKey
         loadedImage = nil
         do {
-            let image = try await loader.loadImage(from: rawURL, authenticated: true)
+            let image: UIImage
+            if let resolved = loader.resolveURL(rawURL) {
+                image = try await AvatarInFlightLoader.load(
+                    rawURL: rawURL,
+                    resolvedURL: resolved,
+                    using: loader
+                )
+            } else {
+                image = try await loader.loadImage(from: rawURL, authenticated: true)
+            }
             if !Task.isCancelled {
                 loadedImage = image
             }
@@ -97,6 +106,61 @@ struct AvatarCircleView: View {
             if !Task.isCancelled {
                 loadedImage = nil
             }
+        }
+    }
+}
+
+@MainActor
+enum AvatarInFlightLoader {
+    private struct Key: Hashable {
+        let loaderID: ObjectIdentifier
+        let url: String
+    }
+
+    private static var tasks: [Key: Task<UIImage, Error>] = [:]
+    private static let observedLoaders = NSHashTable<ImageLoader>.weakObjects()
+
+    static func track(_ loader: ImageLoader) {
+        observedLoaders.add(loader)
+    }
+
+    static func clearAllCaches() {
+        for task in tasks.values {
+            task.cancel()
+        }
+        tasks.removeAll()
+        for loader in observedLoaders.allObjects {
+            loader.clearMemoryCache()
+        }
+    }
+
+    static func load(rawURL: String, resolvedURL: URL, using loader: ImageLoader) async throws -> UIImage {
+        observedLoaders.add(loader)
+        if let cached = loader.cachedImage(for: resolvedURL) {
+            return cached
+        }
+        let key = Key(loaderID: ObjectIdentifier(loader), url: resolvedURL.absoluteString)
+        let task: Task<UIImage, Error>
+        if let existing = tasks[key] {
+            task = existing
+        } else {
+            let created = Task<UIImage, Error> {
+                try await loader.loadImage(from: rawURL, authenticated: true)
+            }
+            tasks[key] = created
+            task = created
+        }
+        do {
+            let image = try await task.value
+            if tasks[key] == task {
+                tasks.removeValue(forKey: key)
+            }
+            return image
+        } catch {
+            if tasks[key] == task {
+                tasks.removeValue(forKey: key)
+            }
+            throw error
         }
     }
 }

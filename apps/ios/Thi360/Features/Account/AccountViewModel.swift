@@ -21,6 +21,7 @@ final class AccountViewModel {
     var isShowingLogoutConfirmation: Bool = false
     var selectedDetail: AccountDetailSelection = .profile
     var hasExplicitDetailSelection: Bool = false
+    @ObservationIgnored var isInTwoPaneLayout: Bool = false
 
     let sessionStore: SessionStore
     let biometricManager: BiometricManager
@@ -29,6 +30,7 @@ final class AccountViewModel {
     @ObservationIgnored private var cachedVerifyEmailModel: VerifyEmailModel?
     @ObservationIgnored private var cachedDeleteAccountVM: DeleteAccountViewModel?
     @ObservationIgnored private var cleanupRegistrationTask: Task<Void, Never>?
+    @ObservationIgnored private weak var attachedImageLoader: ImageLoader?
 
     init(
         sessionStore: SessionStore,
@@ -116,6 +118,38 @@ final class AccountViewModel {
         cachedProfileVM
     }
 
+    func clearProfileViewModel() {
+        cachedProfileVM?.clearSensitiveInputs()
+        cachedProfileVM = nil
+    }
+
+    func clearProfileViewModelIfPopped(router: AppRouter, destination: Destination) {
+        if isInTwoPaneLayout && selectedDetail == .profile {
+            return
+        }
+        guard !router.path(for: destination).contains(.profile) else { return }
+        clearProfileViewModel()
+    }
+
+    func handleEmbeddedProfileDisappear(isOnAccountTab: Bool, accountPath: [AppRoute]) {
+        if !isOnAccountTab {
+            clearProfileViewModel()
+            return
+        }
+        if accountPath.contains(.profileVerifyEmail) {
+            cachedProfileVM?.resetCooldown()
+        }
+    }
+
+    func handleAccountTabExitInTwoPane() {
+        if selectedDetail == .profile {
+            clearProfileViewModel()
+        }
+        if selectedDetail == .deleteAccount {
+            cachedDeleteAccountVM?.markRecheckNeededIfBlocked()
+        }
+    }
+
     func verifyEmailModel() -> VerifyEmailModel {
         if let existing = cachedVerifyEmailModel {
             return existing
@@ -164,7 +198,11 @@ final class AccountViewModel {
     }
 
     func selectDetail(_ selection: AccountDetailSelection) {
+        if selectedDetail == .profile && selection != .profile {
+            clearProfileViewModel()
+        }
         if selectedDetail == .deleteAccount && selection != .deleteAccount {
+            cachedDeleteAccountVM?.clearSensitiveInputs()
             cachedDeleteAccountVM = nil
         }
         selectedDetail = selection
@@ -273,8 +311,16 @@ final class AccountViewModel {
         resetForSessionChange()
     }
 
+    func attachImageLoader(_ loader: ImageLoader?) {
+        guard let loader else { return }
+        attachedImageLoader = loader
+        AvatarInFlightLoader.track(loader)
+    }
+
     func resetForSessionChange() {
         profileStore.wipe()
+        attachedImageLoader?.clearMemoryCache()
+        AvatarInFlightLoader.clearAllCaches()
         cachedProfileVM?.clearSensitiveInputs()
         cachedProfileVM = nil
         cachedVerifyEmailModel = nil

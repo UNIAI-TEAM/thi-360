@@ -444,10 +444,17 @@ final class ProfileViewModel {
         activeToast = nil
     }
 
+    func resetCooldown() {
+        cooldown = .ready
+        cooldownTick &+= 1
+        didAnnounceCooldownEnd = true
+    }
+
     func clearSensitiveInputs() {
         currentPassword = ""
         isCurrentPasswordVisible = false
         pendingCode = ""
+        resetCooldown()
         toastDismissTask?.cancel()
         toastDismissTask = nil
     }

@@ -1,6 +1,7 @@
 import Foundation
 import HTTPTypes
 import OpenAPIRuntime
+import SwiftUI
 import UIKit
 import XCTest
 @testable import Thi360
@@ -74,5 +75,91 @@ final class AvatarCacheTests: XCTestCase {
         XCTAssertEqual(accountVM.loadedProfile?.username, "student.noemail")
         XCTAssertNil(accountVM.loadedProfile?.avatarUrl)
         XCTAssertNil(imageLoader.cachedImage(for: resolvedURL), "User B must never see User A's cached avatar")
+    }
+
+    func testConcurrentAvatarCircleViewMountsIssueStrictlyOneGetRequestAndPopulateAllViews() async throws {
+        URLCache.shared.removeAllCachedResponses()
+        let pngA = try ProfileFixtureHelper.makeSamplePNG(width: 24, height: 24, color: .systemBlue)
+        let gate = TestAsyncGate()
+
+        let stack = AccountTestFactory.makeContractStack(
+            initialTokens: AccountTestFactory.sampleTokens(username: "userA", accountId: "acc-A", accessToken: "token-A", refreshToken: "refresh-A")
+        ) { transport in
+            transport.register(method: .get, path: self.avatarPathA) { _ in
+                await gate.enterAndWait()
+                var fields = HTTPFields()
+                fields[.contentType] = "image/png"
+                return (HTTPResponse(status: .ok, headerFields: fields), HTTPBody(pngA))
+            }
+        }
+        defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
+
+        let imageLoader = ImageLoader(
+            apiBaseURL: stack.sessionStore.apiClient.serverURL,
+            tokenStore: stack.tokenStore,
+            refresher: stack.sessionStore.apiClient.refresher,
+            fetcher: ClientTransportImageDataFetcher(transport: stack.transport)
+        )
+
+        let combinedView = HStack(spacing: 12) {
+            AvatarCircleView(
+                avatarUrl: avatarPathA,
+                initials: "MA",
+                size: 36,
+                fontSize: 13,
+                locale: .vi,
+                exposeAvatarAccessibility: true,
+                loaderOverride: imageLoader
+            )
+            AvatarCircleView(
+                avatarUrl: avatarPathA,
+                initials: "MA",
+                size: 48,
+                fontSize: 17,
+                locale: .vi,
+                exposeAvatarAccessibility: true,
+                loaderOverride: imageLoader
+            )
+            AvatarCircleView(
+                avatarUrl: avatarPathA,
+                initials: "MA",
+                size: 68,
+                fontSize: 22,
+                locale: .vi,
+                exposeAvatarAccessibility: true,
+                loaderOverride: imageLoader
+            )
+        }
+        .environment(\.brandPalette, .defaultLight)
+
+        let (window, controller) = ProfileFixtureHelper.host(
+            combinedView,
+            size: CGSize(width: 390, height: 200),
+            sizeClass: .regular,
+            themeMode: .light
+        )
+        defer { window.isHidden = true }
+
+        await gate.waitUntilEntered()
+        try await Task.sleep(nanoseconds: 80_000_000)
+        XCTAssertEqual(
+            stack.transport.callCount(method: .get, path: avatarPathA),
+            1,
+            "3 simultaneous AvatarCircleView mounts must coalesce into strictly 1 GET /api/v1/avatars/{assetId}"
+        )
+
+        await gate.release()
+        let loadedLabel = ProfileStrings.text("account.profile.avatar.current", locale: .vi)
+        let allRendered = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            ProfileFixtureHelper.collectAccessibilityLabels(in: controller.view)
+                .filter { $0 == loadedLabel }
+                .count == 3
+        }
+
+        XCTAssertEqual(stack.transport.callCount(method: .get, path: avatarPathA), 1)
+        XCTAssertTrue(
+            allRendered,
+            "All 3 mounted AvatarCircleView instances must render the loaded avatar after shared request completes"
+        )
     }
 }

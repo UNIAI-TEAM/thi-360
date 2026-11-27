@@ -16,6 +16,7 @@ struct AccountView: View {
 
     @Environment(\.brandPalette) private var palette
     @Environment(\.statusPalette) private var statusPalette
+    @Environment(\.imageLoader) private var envImageLoader
     @State private var avatarReloadToken: Int = 0
     @State private var didDisappearOnce: Bool = false
 
@@ -65,6 +66,7 @@ struct AccountView: View {
         .accessibilityIdentifier("shell.account.view")
         .accountProbe(id: "shell.account.view")
         .onAppear {
+            viewModel.attachImageLoader(envImageLoader)
             if didDisappearOnce {
                 didDisappearOnce = false
                 avatarReloadToken &+= 1
@@ -760,6 +762,12 @@ struct AccountDetailPaneView: View {
                     router.openProfileVerifyEmail()
                 }
             )
+            .onDisappear {
+                accountViewModel.handleEmbeddedProfileDisappear(
+                    isOnAccountTab: router.selectedDestination == .account,
+                    accountPath: router.path(for: .account)
+                )
+            }
         case .orders:
             AppRouteView(
                 route: .orders,

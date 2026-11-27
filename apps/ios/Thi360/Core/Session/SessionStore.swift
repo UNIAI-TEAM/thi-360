@@ -22,7 +22,6 @@ final class SessionStore {
     private let skipsLaunchValidation: Bool
     private var hasTriggeredLaunchValidation = false
     @ObservationIgnored private var isSigningOut = false
-    @ObservationIgnored private var lastKnownAccountId: String?
 
     init(
         tokenStore: any TokenStore,
@@ -69,10 +68,10 @@ final class SessionStore {
             }
         }
 
-        self.lastKnownAccountId = (try? tokenStore.read())?.accountId
-
         apiClient.refresher.eventSink.setHandler { [weak self] event in
-            await self?.handleRefreshEvent(event)
+            await MainActor.run {
+                self?.applyRefreshEvent(event)
+            }
         }
     }
 
@@ -113,7 +112,6 @@ final class SessionStore {
             await apiClient.refresher.invalidate()
             try tokenStore.write(tokens)
             await fetchAndPersistAccountIdIfMissing()
-            lastKnownAccountId = currentAccountId
             connectivityState = .online
             state = tokens.mustChangePassword ? .mustChangePassword : .active
             if !tokens.mustChangePassword {
@@ -151,7 +149,6 @@ final class SessionStore {
             await apiClient.refresher.invalidate()
             try tokenStore.write(newTokens)
             await fetchAndPersistAccountIdIfMissing()
-            lastKnownAccountId = currentAccountId
             biometricManager?.clearForSessionEnd()
             onSessionReplaced?()
             connectivityState = .online
@@ -212,7 +209,6 @@ final class SessionStore {
         await apiClient.refresher.invalidate()
         try tokenStore.write(tokens)
         await fetchAndPersistAccountIdIfMissing()
-        lastKnownAccountId = currentAccountId
         connectivityState = .online
         state = tokens.mustChangePassword ? .mustChangePassword : .active
         logger.log(.info, category: "session", message: "Mobile session established")
@@ -259,7 +255,7 @@ final class SessionStore {
         guard !isSigningOut else { return }
         let storedTokens = try? tokenStore.read()
         let refreshToken = storedTokens?.refreshToken
-        let accountId = storedTokens?.accountId ?? lastKnownAccountId
+        let accountId = storedTokens?.accountId
         let hasRefreshToken = (refreshToken?.isEmpty == false)
         guard state.isAuthenticated || hasRefreshToken else {
             return
@@ -270,7 +266,6 @@ final class SessionStore {
 
         // Run per-account cleanup before clearing tokens so an interrupted logout can resume cleanly on next launch.
         await sessionCleanup.runLogout(accountId: accountId)
-        lastKnownAccountId = nil
 
         try? tokenStore.clear()
         biometricManager?.clearForSessionEnd()
@@ -284,27 +279,11 @@ final class SessionStore {
         }
     }
 
-    func handleRefreshEvent(_ event: TokenRefreshEvent) async {
-        guard state.isAuthenticated else { return }
-        switch event {
-        case .refreshed:
-            applyRefreshEvent(event)
-        case .expired, .studentOnly:
-            let accountId = currentAccountId ?? lastKnownAccountId
-            await sessionCleanup.runLogout(accountId: accountId)
-            lastKnownAccountId = nil
-            applyRefreshEvent(event)
-        }
-    }
-
     func applyRefreshEvent(_ event: TokenRefreshEvent) {
         guard state.isAuthenticated else { return }
 
         switch event {
         case let .refreshed(tokens):
-            if let accountId = tokens.accountId {
-                lastKnownAccountId = accountId
-            }
             connectivityState = .online
             if tokens.mustChangePassword {
                 state = .mustChangePassword
@@ -312,13 +291,11 @@ final class SessionStore {
                 state = .active
             }
         case .expired:
-            lastKnownAccountId = nil
             biometricManager?.clearForSessionEnd()
             onSessionCleared?()
             connectivityState = .online
             state = .signedOut(reason: .expired)
         case let .studentOnly(username):
-            lastKnownAccountId = nil
             biometricManager?.clearForSessionEnd()
             onSessionCleared?()
             connectivityState = .online
@@ -370,7 +347,6 @@ final class SessionStore {
                 issuedAt: current.issuedAt
             )
             try? tokenStore.write(updated)
-            lastKnownAccountId = trimmedId
         } catch {
             logger.log(.info, category: "session", message: "Deferred accountId fetch; will retry when online")
         }

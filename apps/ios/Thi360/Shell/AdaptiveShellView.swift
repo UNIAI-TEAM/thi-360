@@ -48,12 +48,22 @@ struct AdaptiveShellView: View {
         .accessibilityIdentifier(layoutMode.accessibilityIdentifier)
         .onAppear {
             Thi360AppDelegate.refreshSupportedOrientations(for: effectiveSizeClass)
+            accountViewModel?.isInTwoPaneLayout = (layoutMode == .iPadSidebar || layoutMode == .phoneTwoPaneBook)
         }
         .onChange(of: effectiveSizeClass) { _, newValue in
             Thi360AppDelegate.refreshSupportedOrientations(for: newValue)
         }
         .onChange(of: layoutMode) { oldMode, newMode in
             syncAccountNavigationOnLayoutTransition(from: oldMode, to: newMode)
+        }
+        .onChange(of: router.selectedDestination) { oldDestination, newDestination in
+            if oldDestination == .account,
+               newDestination != .account,
+               let accountViewModel,
+               layoutMode == .iPadSidebar || layoutMode == .phoneTwoPaneBook
+            {
+                accountViewModel.handleAccountTabExitInTwoPane()
+            }
         }
     }
 
@@ -497,9 +507,10 @@ struct AdaptiveShellView: View {
         from oldMode: ShellLayoutMode,
         to newMode: ShellLayoutMode
     ) {
-        guard router.selectedDestination == .account, let accountViewModel else { return }
         let wasTwoPane = oldMode == .iPadSidebar || oldMode == .phoneTwoPaneBook
         let isTwoPane = newMode == .iPadSidebar || newMode == .phoneTwoPaneBook
+        accountViewModel?.isInTwoPaneLayout = isTwoPane
+        guard router.selectedDestination == .account, let accountViewModel else { return }
         guard wasTwoPane != isTwoPane else { return }
 
         var accountPath = router.path(for: .account)

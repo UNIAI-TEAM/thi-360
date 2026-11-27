@@ -88,4 +88,70 @@ final class ResendCodeTests: XCTestCase {
             "Không gửi được mã mới. Vui lòng thử lại."
         )
     }
+
+    func testLeavingProfileDuringCooldownUnlocksSendAndAppliesServer429RetryAfterOnReentry() async throws {
+        let profileData = try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
+        let server429 = try ProfileFixtureHelper.mutateJSON("me-email-verification-429-rate-limited.json") { dict in
+            dict["retryAfter"] = 42
+        }
+        let clock = ManualClock(start: Date(timeIntervalSince1970: 1_760_000_000))
+        let stack = AccountTestFactory.makeContractStack(
+            initialTokens: AccountTestFactory.sampleTokens()
+        ) { transport in
+            transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: profileData)
+            transport.registerEmpty(method: .post, path: "/api/v1/me/email/change", statusCode: 202)
+        }
+        defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
+
+        let router = AppRouter(initialDestination: .account)
+        let accountVM = AccountViewModel(
+            sessionStore: stack.sessionStore,
+            biometricManager: stack.biometricManager,
+            clock: clock
+        )
+        await accountVM.loadProfile()
+
+        router.openProfile()
+        let firstVM = accountVM.ensureProfileViewModel()
+        firstVM.toggleChangeEmailForm()
+        firstVM.updateNewEmail("next@thi360.vn")
+        firstVM.updateCurrentPassword("Password123!")
+        await firstVM.submitEmailChange(locale: .vi)
+        XCTAssertTrue(firstVM.isCooldownActive)
+        XCTAssertEqual(firstVM.cooldownRemainingSeconds, 60)
+
+        router.back()
+        accountVM.clearProfileViewModelIfPopped(router: router, destination: .account)
+        XCTAssertNil(accountVM.existingProfileViewModel())
+
+        clock.advance(by: 18)
+        stack.transport.registerJSON(method: .post, path: "/api/v1/me/email/change", statusCode: 429, data: server429)
+
+        router.openProfile()
+        let reopenedVM = accountVM.ensureProfileViewModel()
+        XCTAssertFalse(reopenedVM.isCooldownActive, "Reopening Profile after exit must unlock cooldown so tap hits server 429")
+        reopenedVM.resendPendingEmailCode(locale: .vi)
+        XCTAssertTrue(reopenedVM.isShowingChangeEmailForm)
+        XCTAssertEqual(reopenedVM.newEmail, "next@thi360.vn")
+        reopenedVM.updateCurrentPassword("Password123!")
+        await reopenedVM.submitEmailChange(locale: .vi)
+        XCTAssertEqual(stack.transport.callCount(method: .post, path: "/api/v1/me/email/change"), 2)
+        XCTAssertTrue(reopenedVM.isCooldownActive)
+        XCTAssertEqual(reopenedVM.cooldownRemainingSeconds, 42)
+
+        accountVM.isInTwoPaneLayout = true
+        accountVM.selectDetail(.orders)
+        XCTAssertNil(accountVM.existingProfileViewModel(), "Switching 2-col pane away from Profile must clear cooldown")
+        accountVM.selectDetail(.profile)
+        let twoPaneReopened = accountVM.ensureProfileViewModel()
+        XCTAssertFalse(twoPaneReopened.isCooldownActive)
+        twoPaneReopened.toggleChangeEmailForm()
+        twoPaneReopened.updateNewEmail("again@thi360.vn")
+        twoPaneReopened.updateCurrentPassword("Password123!")
+        await twoPaneReopened.submitEmailChange(locale: .vi)
+        XCTAssertEqual(twoPaneReopened.cooldownRemainingSeconds, 42)
+
+        accountVM.handleAccountTabExitInTwoPane()
+        XCTAssertNil(accountVM.existingProfileViewModel(), "Switching tabs away from Account in 2-col must clear Profile VM")
+    }
 }

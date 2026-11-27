@@ -109,4 +109,52 @@ final class DeleteAccountBlockedTests: XCTestCase {
             }
         }
     }
+
+    func testReturningAfterResolvingBlockersViaOrdersOrMyExamsRechecksAndTransitionsToReady() async throws {
+        let blockedData = try ContractFixtureLoader.loadApiFixture("me-account-deletion-check-200-blocked.json")
+        let readyData = try ContractFixtureLoader.loadApiFixture("me-account-deletion-check-200.json")
+
+        let stack = AccountTestFactory.makeContractStack(
+            initialTokens: AccountTestFactory.sampleTokens()
+        ) { transport in
+            transport.registerJSON(method: .get, path: "/api/v1/me/account/deletion-check", statusCode: 200, data: blockedData)
+        }
+        defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
+
+        let router = AppRouter(initialDestination: .account)
+        let accountVM = router.accountViewModel(
+            sessionStore: stack.sessionStore,
+            biometricManager: stack.biometricManager
+        )
+        router.openDeleteAccount()
+        let vm = accountVM.ensureDeleteAccountViewModel()
+
+        await vm.loadCheckIfNeeded()
+        XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/me/account/deletion-check"), 1)
+        XCTAssertEqual(vm.state, .blocked([.attemptInProgress, .orderBeingChecked, .orderPendingPayment]))
+
+        vm.markRecheckNeededIfBlocked()
+        router.openOrders()
+        XCTAssertEqual(router.path(for: .account), [.deleteAccount, .orders])
+        accountVM.clearDeleteAccountViewModelIfPopped(router: router, destination: .account, isEmbedded: false)
+
+        router.back()
+        XCTAssertEqual(router.path(for: .account), [.deleteAccount])
+        await vm.loadCheckIfNeeded()
+        XCTAssertEqual(
+            stack.transport.callCount(method: .get, path: "/api/v1/me/account/deletion-check"),
+            2,
+            "Returning from Orders while DeleteAccountView was blocked must re-run deletion-check"
+        )
+
+        stack.transport.registerJSON(method: .get, path: "/api/v1/me/account/deletion-check", statusCode: 200, data: readyData)
+        vm.markRecheckNeededIfBlocked()
+        router.switchTab(.myExams)
+        accountVM.handleAccountTabExitInTwoPane()
+        router.switchTab(.account)
+
+        await vm.loadCheckIfNeeded()
+        XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/me/account/deletion-check"), 3)
+        XCTAssertEqual(vm.state, .ready(unusedAttempts: 0, pendingGrading: false))
+    }
 }

@@ -52,6 +52,12 @@ final class DeleteAccountViewModel {
         await loadCheck()
     }
 
+    func markRecheckNeededIfBlocked() {
+        if case .blocked = state {
+            hasAttemptedInitialCheck = false
+        }
+    }
+
     func loadCheck() async {
         guard !isChecking else { return }
         isChecking = true
