@@ -748,9 +748,9 @@
   },
   "errorPage": {
     "description": "Đã xảy ra lỗi không mong muốn khi xử lý yêu cầu. Vui lòng thử lại sau.",
-    "eyebrow": "MÃ LỖI 500",
+    "eyebrow": "Lỗi hệ thống",
     "title": "Đã có lỗi máy chủ",
-    "traceLabel": "Mã yêu cầu: {traceId}"
+    "traceLabel": "Khi cần hỗ trợ, gửi kèm mã này: {traceId}"
   },
   "errors": {
     "forbiddenToast": "Bạn không có quyền thực hiện thao tác này.",
@@ -804,7 +804,7 @@
   "forbidden": {
     "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
-    "eyebrow": "MÃ LỖI 403",
+    "eyebrow": "Không có quyền",
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
   },
@@ -1283,7 +1283,7 @@
   },
   "notFound": {
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",
-    "eyebrow": "MÃ LỖI 404",
+    "eyebrow": "Không tìm thấy",
     "title": "Không tìm thấy trang"
   },
   "orders": {
@@ -1630,6 +1630,7 @@
       "SUBMITTED": "Nộp bài",
       "TIME_UP": "Hết giờ"
     },
+    "endReasonUnknown": "Lượt thi đã kết thúc",
     "errorDescription": "Kiểm tra kết nối mạng rồi thử lại.",
     "errorTitle": "Không tải được kết quả lượt thi",
     "eyebrow": "Kết quả lượt thi",
@@ -1676,7 +1677,7 @@
     },
     "notFound": {
       "description": "Lượt thi không tồn tại hoặc không thuộc tài khoản đang đăng nhập.",
-      "eyebrow": "MÃ LỖI 404",
+      "eyebrow": "Không tìm thấy",
       "title": "Không tìm thấy kết quả lượt thi",
       "toHistory": "Lịch sử luyện thi",
       "toHome": "Bài thi của tôi"
@@ -1821,7 +1822,7 @@
     },
     "notFound": {
       "description": "Lượt thi không tồn tại hoặc không thuộc tài khoản đang đăng nhập.",
-      "eyebrow": "MÃ LỖI 404",
+      "eyebrow": "Không tìm thấy",
       "title": "Không tìm thấy bài làm",
       "toHistory": "Lịch sử luyện thi",
       "toHome": "Bài thi của tôi"
@@ -1996,7 +1997,7 @@
     },
     "gone": {
       "descriptionTail": "không còn mở bán. Bạn có thể chọn bài thi khác trong danh mục.",
-      "eyebrow": "MÃ LỖI 410",
+      "eyebrow": "Không còn mở bán",
       "myExams": "Bài thi của tôi",
       "owned": "Nếu đã mua bài này, quyền và số lượt còn lại của bạn vẫn ở Bài thi của tôi.",
       "title": "Bài thi đã ngừng bán",
@@ -2005,7 +2006,7 @@
     "listPriceLabel": "Giá gốc",
     "notFound": {
       "description": "Đường dẫn không đúng hoặc bài thi chưa được công bố.",
-      "eyebrow": "MÃ LỖI 404",
+      "eyebrow": "Không tìm thấy",
       "title": "Không tìm thấy bài thi",
       "toCatalog": "Về danh mục bài thi"
     },

@@ -241,8 +241,9 @@ describe("rulesChangedOnCheckPage", () => {
       await screen.findByText("Quy tắc kiểm tra đã đổi sau lần kiểm tra này. Kiểm tra lại cả bài trước khi công bố."),
     ).toBeInTheDocument();
     const errors = within(await screen.findByTestId("findings-errors"));
-    expect(errors.getByText("SECTION_SET_COUNT_RANGE")).toBeInTheDocument();
-    expect(errors.getByText("SHORT_ANSWER_MIN")).toBeInTheDocument();
+    // Không hiện mã kỹ thuật, chỉ câu (UNI-2889).
+    expect(errors.queryByText("SECTION_SET_COUNT_RANGE")).toBeNull();
+    expect(errors.queryByText("SHORT_ANSWER_MIN")).toBeNull();
     expect(errors.queryByText("INFO_MISSING")).not.toBeInTheDocument();
     expect(errors.getByText(/LY: số chùm phải từ 1 đến 2/)).toBeInTheDocument();
     expect(errors.getByText(/HOA: cần ít nhất 1 câu Điền đáp án \(loại Trả lời ngắn\)/)).toBeInTheDocument();

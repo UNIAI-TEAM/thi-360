@@ -98,6 +98,7 @@
       "FINISHED": "Part finished",
       "TIME_UP": "Time up"
     },
+    "closeReasonUnknown": "Other reason",
     "detail": {
       "actions": {
         "alreadyCompensated": "1 attempt compensated",
@@ -1682,9 +1683,9 @@
   },
   "errorPage": {
     "description": "An unexpected error occurred while processing your request. Please try again later.",
-    "eyebrow": "ERROR 500",
+    "eyebrow": "System error",
     "title": "Server error",
-    "traceLabel": "Request ID: {traceId}"
+    "traceLabel": "If you contact support, include this code: {traceId}"
   },
   "errors": {
     "forbiddenToast": "You do not have permission to perform this action.",
@@ -1698,7 +1699,7 @@
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionOrigin": "The server rejected this request because the admin address does not match its configuration (THI360_ADMIN_URL). Contact a system administrator; signing in again will not fix this.",
-    "eyebrow": "ERROR 403",
+    "eyebrow": "No access",
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
   },
@@ -1773,7 +1774,7 @@
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",
-    "eyebrow": "ERROR 404",
+    "eyebrow": "Not found",
     "title": "Page not found"
   },
   "orders": {
@@ -2363,6 +2364,7 @@
         "SELF_LOCKOUT": "You cannot revoke your own assignment permission.",
         "USER_NOT_AVAILABLE": "Account does not exist or has been deleted."
       },
+      "reasonUnknown": "Could not be applied to this user.",
       "reasonHelper": "Required when granting direct permissions. The reason is saved per account and recorded in the audit log.",
       "reasonLabel": "Reason",
       "reasonPlaceholder": "Example: Assist with catalog review before exam",
@@ -6101,6 +6103,7 @@
         "MAPID_RULE_GROUP_MISSING": "Rule {rule} points to a group that no longer exists. Choose the scope again or delete the rule.",
         "STATEMENT_POINTS_UNEVEN": "Block {block}: question {codes} awards unequal points to its True/False statements, while a block scored per statement needs every statement to carry the same points. Replace this question."
       },
+      "issueUnknown": "Something in this exam still needs attention. Review its structure and matrix.",
       "issueNoCount": {
         "CELL_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
         "DIMENSION_SHORTAGE": "Block {block}{count, plural, =0 {} other { (subject receives # questions)}}{hasBucket, select, yes { ({bucket})} other {}}: there are not enough matching source questions for the quota.",
@@ -6437,6 +6440,7 @@
           "SETS_INTACT": "Question sets taken whole, sub-questions consecutive",
           "TOTAL_POINTS": "Total score {value, number}"
         },
+        "nameUnknown": "Other check",
         "status": {
           "PASS": "Passed",
           "FAIL": "Failed",
@@ -6483,7 +6487,8 @@
           "MAPID": "{sentence}",
           "MAPID_COUNT": "{sentence} · questions in the group",
           "MAPID_OUTSIDE": "{sentence} · outside this group",
-          "MAPID_UNKNOWN": "MAPID rule {id}",
+          "MAPID_UNKNOWN": "A MAPID rule that is no longer in the exam",
+          "UNKNOWN": "Other criterion",
           "TOPIC": "Topic quota",
           "UNCLASSIFIED": "Unclassified"
         },
@@ -6735,6 +6740,7 @@
       },
       "validation": {
         "nameRequired": "Enter the exam name.",
+        "kindRequired": "Choose an exam.",
         "nameMax": "The name can have at most {max} characters.",
         "codeRequired": "Enter the exam code.",
         "codeInvalid": "Use only unaccented letters, digits and hyphens, starting with a letter or digit.",
@@ -7126,6 +7132,8 @@
         "goToRule": "Go to rule",
         "goToRuleAria": "Go to rule: {issue}",
         "quoted": "«{sentence}»",
+        "topicRemoved": "a topic no longer in the knowledge tree",
+        "ruleUnnamed": "for this subject",
         "setShortage": "{group} needs {requiredSets, plural, one {# set} other {# sets}} with {setSize, plural, one {# sub-question} other {# sub-questions}} on the same topic. There {availableSingles, plural, one {is # single question} other {are # single questions}} and {availableSets, plural, one {# matching set} other {# matching sets}} available.",
         "shortage": "Rule {rule} lacks source{hasCount, select, yes {: it needs {required, number} questions, {available, number} are available, {missing, number} short} other {}}{hasTopics, select, yes { (MAPID {topics})} other {}}."
       },
@@ -9151,7 +9159,7 @@
       },
       "banner": {
         "conflictDescription": "The server holds a newer revision than the one you are editing. Reload the latest version before saving.",
-        "conflictTitle": "Version conflict (412)",
+        "conflictTitle": "This promotion was just changed elsewhere",
         "formErrorTitle": "Unable to save promotion",
         "inUseConflictDescription": "The latest promotion details were reloaded automatically and restricted fields are now locked.",
         "inUseConflictTitle": "Promotion just received redemptions",

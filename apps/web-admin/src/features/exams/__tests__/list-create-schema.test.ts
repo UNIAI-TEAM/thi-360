@@ -31,6 +31,7 @@ const MESSAGES: ExamInfoSchemaMessages = {
   codeTaken: "codeTaken",
   subjectRequired: "subjectRequired",
   kindSubjectRequired: "kindSubjectRequired",
+  kindRequired: "kindRequired",
   sharedDurationPositive: "sharedDurationPositive",
   maxScoreRequired: "maxScoreRequired",
   maxScorePositive: "maxScorePositive",

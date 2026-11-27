@@ -98,6 +98,7 @@
       "FINISHED": "Hoàn thành phần",
       "TIME_UP": "Hết giờ"
     },
+    "closeReasonUnknown": "Lý do khác",
     "detail": {
       "actions": {
         "alreadyCompensated": "Đã cấp bù 1 lượt",
@@ -1682,9 +1683,9 @@
   },
   "errorPage": {
     "description": "Đã xảy ra lỗi không mong muốn khi xử lý yêu cầu. Vui lòng thử lại sau.",
-    "eyebrow": "MÃ LỖI 500",
+    "eyebrow": "Lỗi hệ thống",
     "title": "Đã có lỗi máy chủ",
-    "traceLabel": "Mã yêu cầu: {traceId}"
+    "traceLabel": "Khi cần hỗ trợ, gửi kèm mã này: {traceId}"
   },
   "errors": {
     "forbiddenToast": "Bạn không có quyền thực hiện thao tác này.",
@@ -1698,7 +1699,7 @@
     "description": "Tài khoản <strong>{username}</strong> không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "descriptionAnonymous": "Tài khoản của bạn không có quyền mở trang hoặc chức năng này. Nếu bạn cần quyền này, hãy liên hệ quản trị viên.",
     "descriptionOrigin": "Máy chủ từ chối yêu cầu vì địa chỉ trang quản trị không khớp với cấu hình (THI360_ADMIN_URL). Hãy liên hệ quản trị hệ thống; đăng nhập lại không giải quyết được.",
-    "eyebrow": "MÃ LỖI 403",
+    "eyebrow": "Không có quyền",
     "otherAccount": "Đăng nhập bằng tài khoản khác",
     "title": "Bạn không có quyền vào trang này"
   },
@@ -1773,7 +1774,7 @@
   },
   "notFound": {
     "description": "Trang bạn mở không tồn tại hoặc đã được chuyển đi.",
-    "eyebrow": "MÃ LỖI 404",
+    "eyebrow": "Không tìm thấy",
     "title": "Không tìm thấy trang"
   },
   "orders": {
@@ -2363,6 +2364,7 @@
         "SELF_LOCKOUT": "Không thể tự gỡ quyền gán phân quyền của chính bạn.",
         "USER_NOT_AVAILABLE": "Tài khoản không tồn tại hoặc đã bị xóa."
       },
+      "reasonUnknown": "Không áp dụng được cho người dùng này.",
       "reasonHelper": "Bắt buộc khi gán quyền trực tiếp. Lý do được lưu cho từng tài khoản và ghi vào nhật ký.",
       "reasonLabel": "Lý do",
       "reasonPlaceholder": "Ví dụ: Hỗ trợ rà soát danh mục trước kỳ thi",
@@ -6101,6 +6103,7 @@
         "MAPID_RULE_GROUP_MISSING": "Quy tắc {rule} trỏ tới nhóm không còn. Chọn lại phạm vi áp dụng hoặc xóa quy tắc.",
         "STATEMENT_POINTS_UNEVEN": "Khối {block}: câu {codes} có các ý Đúng/Sai không chia điểm đều, trong khi khối chấm theo từng ý cần mọi ý bằng điểm nhau. Thay câu này bằng câu khác."
       },
+      "issueUnknown": "Bài thi còn một điểm cần xem lại. Hãy kiểm tra lại cấu trúc và ma trận.",
       "issueNoCount": {
         "CELL_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
         "DIMENSION_SHORTAGE": "Khối {block}{count, plural, =0 {} other { (môn nhận # câu)}}{hasBucket, select, yes { ({bucket})} other {}}: nguồn câu hỏi phù hợp chưa đủ cho chỉ tiêu.",
@@ -6437,6 +6440,7 @@
           "SETS_INTACT": "Bộ câu hỏi lấy nguyên bộ, câu con liền nhau",
           "TOTAL_POINTS": "Tổng điểm {value, number}"
         },
+        "nameUnknown": "Kiểm tra khác",
         "status": {
           "PASS": "Đạt",
           "FAIL": "Không đạt",
@@ -6483,7 +6487,8 @@
           "MAPID": "{sentence}",
           "MAPID_COUNT": "{sentence} · số câu trong nhóm",
           "MAPID_OUTSIDE": "{sentence} · ngoài nhóm này",
-          "MAPID_UNKNOWN": "Quy tắc MAPID {id}",
+          "MAPID_UNKNOWN": "Quy tắc MAPID không còn trong bài",
+          "UNKNOWN": "Tiêu chí khác",
           "TOPIC": "Chỉ tiêu chủ đề",
           "UNCLASSIFIED": "Chưa phân loại"
         },
@@ -6735,6 +6740,7 @@
       },
       "validation": {
         "nameRequired": "Nhập tên bài thi.",
+        "kindRequired": "Chọn kỳ thi.",
         "nameMax": "Tên tối đa {max} ký tự.",
         "codeRequired": "Nhập mã bài thi.",
         "codeInvalid": "Mã chỉ gồm chữ cái không dấu, chữ số và dấu gạch ngang, bắt đầu bằng chữ hoặc số.",
@@ -7126,6 +7132,8 @@
         "goToRule": "Đi tới quy tắc",
         "goToRuleAria": "Đi tới quy tắc: {issue}",
         "quoted": "«{sentence}»",
+        "topicRemoved": "chủ đề không còn trong cây kiến thức",
+        "ruleUnnamed": "của môn này",
         "setShortage": "{group} cần {requiredSets, number} chùm có {setSize, number} câu con cùng chủ đề. Hiện có {availableSingles, number} câu đơn và {availableSets, number} chùm phù hợp.",
         "shortage": "Quy tắc {rule} thiếu nguồn{hasCount, select, yes {: cần {required, number} câu, hiện có {available, number} câu, còn thiếu {missing, number} câu} other {}}{hasTopics, select, yes { (MAPID {topics})} other {}}."
       },
@@ -9151,7 +9159,7 @@
       },
       "banner": {
         "conflictDescription": "Dữ liệu trên máy chủ mới hơn bản bạn đang sửa. Bấm tải lại bản mới nhất trước khi lưu lại.",
-        "conflictTitle": "Xung đột phiên bản (412)",
+        "conflictTitle": "Khuyến mãi vừa được sửa ở nơi khác",
         "formErrorTitle": "Không thể lưu khuyến mãi",
         "inUseConflictDescription": "Hệ thống đã tự động tải lại dữ liệu mới nhất và khóa các trường không thể sửa sau khi phát sinh lượt sử dụng.",
         "inUseConflictTitle": "Khuyến mãi vừa phát sinh lượt sử dụng",

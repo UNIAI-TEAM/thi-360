@@ -192,9 +192,9 @@ describe("thiếu nguồn của quy tắc", () => {
     expect(text).toContain("lacks source: it needs 3 questions, 1 are available, 2 short (MAPID M12-HS, M12-XS).");
   });
 
-  it("chưa có cấu trúc thì gọi quy tắc bằng mã của nó", async () => {
+  it("chưa có cấu trúc thì gọi chung quy tắc của môn, không in mã quy tắc (UNI-2889)", async () => {
     expect(await textOf(shortage, { withExam: false })).toBe(
-      "Quy tắc «r1» thiếu nguồn: cần 3 câu, hiện có 1 câu, còn thiếu 2 câu (MAPID M12-HS, M12-XS).",
+      "Quy tắc của môn này thiếu nguồn: cần 3 câu, hiện có 1 câu, còn thiếu 2 câu (MAPID M12-HS, M12-XS).",
     );
   });
 

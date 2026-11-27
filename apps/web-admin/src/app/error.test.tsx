@@ -12,7 +12,7 @@ describe("web-admin error page", () => {
 
     expect(screen.getAllByRole("main")).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: "Đã có lỗi máy chủ" })).toBeInTheDocument();
-    expect(screen.getByText("Mã yêu cầu: trace-xyz-123")).toBeInTheDocument();
+    expect(screen.getByText("Khi cần hỗ trợ, gửi kèm mã này: trace-xyz-123")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Về trang chủ" })).toHaveAttribute("href", "/");
 
     await userEvent.click(screen.getByRole("button", { name: "Thử lại" }));
@@ -25,7 +25,7 @@ describe("web-admin error page", () => {
     renderWithProviders(<ErrorPage error={err} reset={vi.fn()} />, { locale: "en", messages: en });
 
     expect(screen.getByRole("heading", { level: 1, name: "Server error" })).toBeInTheDocument();
-    expect(screen.getByText("Request ID: digest-9")).toBeInTheDocument();
+    expect(screen.getByText("If you contact support, include this code: digest-9")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 });

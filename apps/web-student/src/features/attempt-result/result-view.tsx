@@ -782,7 +782,9 @@ function LoadedResultContent({
     : "—";
   const endReasonText = isKnownEndReason(result.endReason)
     ? t(`endReasons.${result.endReason}`)
-    : (result.endReason ?? "—");
+    : result.endReason
+      ? t("endReasonUnknown")
+      : "—";
 
   const showSystemFaultBanner =
     result.compensated === true || result.faultFlag === "SYSTEM_FAULT" || result.endReason === "FAULT_CLOSED";

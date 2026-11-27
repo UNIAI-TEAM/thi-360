@@ -277,7 +277,7 @@ test.describe("FA-2: Web admin Khuyen mai", () => {
       // Nguoi thu 1 luu tren phien ban cu -> 412
       await nameInput.fill(`${TAG}-CONFLICT-STALE`);
       await page.getByRole("button", { name: "Lưu thay đổi" }).click();
-      await expect(page.getByText("Xung đột phiên bản (412)")).toBeVisible();
+      await expect(page.getByText("Khuyến mãi vừa được sửa ở nơi khác")).toBeVisible();
 
       await page.getByRole("button", { name: "Tải bản mới nhất" }).click();
       await expect(nameInput).toHaveValue(`${TAG}-CONFLICT-V2`);

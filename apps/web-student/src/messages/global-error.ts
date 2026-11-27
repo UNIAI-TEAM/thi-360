@@ -16,18 +16,18 @@ export interface GlobalErrorMessages {
 
 export const GLOBAL_ERROR_MESSAGES: Record<AppLocale, GlobalErrorMessages> = {
   vi: {
-    eyebrow: "MÃ LỖI 500",
+    eyebrow: "Lỗi hệ thống",
     title: "Đã có lỗi máy chủ",
     description: "Đã xảy ra lỗi không mong muốn khi xử lý yêu cầu. Vui lòng thử lại sau.",
-    traceLabel: "Mã yêu cầu: {traceId}",
+    traceLabel: "Khi cần hỗ trợ, gửi kèm mã này: {traceId}",
     retry: "Thử lại",
     backHome: "Về trang chủ",
   },
   en: {
-    eyebrow: "ERROR 500",
+    eyebrow: "System error",
     title: "Server error",
     description: "An unexpected error occurred while processing your request. Please try again later.",
-    traceLabel: "Request ID: {traceId}",
+    traceLabel: "If you contact support, include this code: {traceId}",
     retry: "Retry",
     backHome: "Back to home",
   },

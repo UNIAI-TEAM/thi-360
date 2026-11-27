@@ -194,6 +194,7 @@ function joinedNames(value: string | null, nameOf: (code: string) => string): st
 function useIssueTranslate(exam?: Pick<ExamDetail, "parts">, marked = false) {
   const t = useTranslations("exams.review.issue");
   const tNoCount = useTranslations("exams.review.issueNoCount");
+  const tReview = useTranslations("exams.review");
   const tContent = useTranslations("content");
   const tFormat = useTranslations("questions.detail.body.answerFormats");
   const lookup = useLookup();
@@ -300,16 +301,20 @@ function useIssueTranslate(exam?: Pick<ExamDetail, "parts">, marked = false) {
     return {
       text: (issue: CheckIssue) => {
         const built = build(issue, false);
-        return built.text !== null ? built.text : built.translator(issue.code, built.values as TranslationValues);
+        if (built.text !== null) return built.text;
+        // Mã kiểm tra mới chưa có câu dịch: câu chung thay vì đường dẫn khóa (UNI-2889).
+        if (!built.translator.has(issue.code)) return tReview("issueUnknown");
+        return built.translator(issue.code, built.values as TranslationValues);
       },
       node: (issue: CheckIssue, partOverride?: ReactNode): ReactNode => {
         const built = build(issue, true, partOverride);
         if (built.text !== null) return marked ? <ExamContentText text={built.text} /> : built.text;
+        if (!built.translator.has(issue.code)) return tReview("issueUnknown");
         const rich = built.translator.rich(issue.code, built.values as RichTranslationValues);
         return marked ? markedContent(rich) : rich;
       },
     };
-  }, [t, tNoCount, tContent, tFormat, lookup, competencies, exam, mapidIssue, marked]);
+  }, [t, tNoCount, tReview, tContent, tFormat, lookup, competencies, exam, mapidIssue, marked]);
 }
 
 /** Chuỗi trong nút có tên đánh dấu (`markExamContent`, tên quy tắc và nhóm) hiện bằng `ExamContentText`. */

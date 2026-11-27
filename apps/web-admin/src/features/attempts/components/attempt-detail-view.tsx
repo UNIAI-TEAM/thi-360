@@ -665,7 +665,7 @@ function AttemptPartsSection({
           const reason = row.original.closeReason;
           return (
             <span className="text-text-secondary">
-              {isKnownCloseReason(reason) ? t(`closeReason.${reason}`) : reason || "—"}
+              {isKnownCloseReason(reason) ? t(`closeReason.${reason}`) : reason ? t("closeReasonUnknown") : "—"}
             </span>
           );
         },
