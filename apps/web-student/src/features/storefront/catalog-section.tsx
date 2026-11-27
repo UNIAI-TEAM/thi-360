@@ -44,7 +44,12 @@ export type CatalogView =
   | { kind: "noResults" }
   | { kind: "ready"; page: ProductPage };
 
-const cardSlotClass = "flex w-[min(19.5rem,82vw)] shrink-0 snap-start sm:w-80";
+/**
+ * Bề rộng thẻ chia theo bề ngang dải (container query): luôn còn khoảng 1/4 thẻ kế tiếp lộ ở mép phải,
+ * để người xem thấy còn bài mà kéo tiếp; thẻ không hẹp dưới khoảng 18rem (UNI-2888).
+ */
+const cardSlotClass =
+  "flex w-[min(19.5rem,85%)] shrink-0 snap-start @min-[42rem]:w-[calc((100%-1.25rem)/2.25)] @min-[61rem]:w-[calc((100%-2.5rem)/3.25)] @min-[80rem]:w-[calc((100%-3.75rem)/4.25)] @min-[100rem]:w-[calc((100%-5rem)/5.25)]";
 
 /** Khung thẻ có kích thước cố định bằng thẻ thật trên 1 hàng ngang: trang không nhảy khi dữ liệu về (TM 11.3). */
 function CatalogSkeleton({ label }: { label: string }) {
@@ -53,7 +58,7 @@ function CatalogSkeleton({ label }: { label: string }) {
       role="status"
       aria-busy="true"
       aria-label={label}
-      className="flex flex-nowrap gap-5 overflow-hidden py-1"
+      className="@container flex flex-nowrap gap-5 overflow-hidden py-1"
     >
       {Array.from({ length: 5 }, (_, index) => (
         <div
@@ -249,6 +254,9 @@ function CatalogCarousel({
     dragRef.current.active = false;
   }
 
+  // Mọi bài đã nằm gọn một hàng và không còn trang sau: không có gì để kéo, ẩn nút và gợi ý.
+  const canScroll = scrollUi.hasOverflow || hasMore;
+
   const navClass = cn(
     "inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface/90 text-text shadow-xs backdrop-blur-xs transition-colors enabled:hover:border-primary-fill enabled:hover:bg-primary-fill enabled:hover:text-on-primary disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
     focusRing,
@@ -260,7 +268,7 @@ function CatalogCarousel({
         <p role="status" className="text-field-label font-medium text-text-secondary tabular-nums">
           {t("showing", { from: 1, to: items.length, total: page.totalItems })}
         </p>
-        <div className="flex items-center gap-2">
+        <div className={cn("flex items-center gap-2", !canScroll && "hidden")}>
           <span className="hidden text-caption text-text-muted sm:inline">{t("carouselHint")}</span>
           <button
             type="button"
@@ -296,7 +304,8 @@ function CatalogCarousel({
         onMouseUp={stopDrag}
         onMouseLeave={stopDrag}
         className={cn(
-          "flex snap-x snap-mandatory flex-nowrap gap-5 overflow-x-auto scroll-smooth rounded-xl py-1.5 select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          // Ít bài, vừa một hàng thì căn giữa; tràn thì "safe" đưa về đầu dải, không cắt thẻ đầu.
+          "@container flex snap-x snap-mandatory flex-nowrap justify-center-safe gap-5 overflow-x-auto scroll-smooth rounded-xl py-1.5 select-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           focusRing,
         )}
       >

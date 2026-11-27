@@ -8,7 +8,7 @@ import { withCallbackUrl } from "@/features/account/account-links";
 import { coarseTextHitArea } from "@/lib/styles";
 import { checkoutPath } from "./access-action";
 import { useExamAccess } from "./exam-access";
-import { formatDayMonth, rangeText } from "./format";
+import { rangeText } from "./format";
 import { ProductPrice } from "./product-price";
 import type { BundleAccessExamItem, ProductDetail } from "./types";
 
@@ -60,13 +60,6 @@ export function BundleBuyPanel({
         promotion={promotion}
         priceClassName="text-h1"
       />
-      {promotion && (
-        <p className="text-field-label font-medium text-warning">
-          <span data-exam-content>{promotion.name}</span>
-          {" · "}
-          {detail("promoEnds", { date: formatDayMonth(promotion.endsAt) })}
-        </p>
-      )}
       <dl className="flex flex-col gap-2 border-t border-border pt-3 text-text-secondary tabular-nums">
         <div className="flex items-baseline justify-between gap-3">
           <dt className="text-text-muted">{t("detail.examCountLabel")}</dt>
