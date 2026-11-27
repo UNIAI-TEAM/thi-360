@@ -372,7 +372,7 @@ private fun ChoiceMarker(
                 Icon(
                     imageVector = QuestionIcons.Check,
                     contentDescription = null,
-                    tint = brand.bgSurface,
+                    tint = if (review && showAnswers) brand.bgSurface else brand.onPrimary,
                     modifier = Modifier.size(13.dp),
                 )
             }

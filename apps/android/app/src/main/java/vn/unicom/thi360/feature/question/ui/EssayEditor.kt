@@ -2,9 +2,12 @@ package vn.unicom.thi360.feature.question.ui
 
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.text.Editable
 import android.text.InputType
+import android.text.SpanWatcher
+import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.TextWatcher
@@ -15,6 +18,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputConnectionWrapper
 import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -36,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -46,6 +52,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -59,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import vn.unicom.thi360.R
 import vn.unicom.thi360.core.theme.Thi360Theme
@@ -90,10 +98,15 @@ internal class EssayEditText(context: Context) : EditText(context) {
     private val redoStack = ArrayDeque<EssaySnapshot>()
     private var currentCommitted = EssaySnapshot("", 0, 0)
     private var lastEmittedHtml: String = ""
+    private var lastExternalHtml: String? = null
     private var isInternalChange: Boolean = false
     private var isLockedMode: Boolean = false
     private var pendingBold: Boolean = false
     private var pendingItalic: Boolean = false
+
+    private var hadComposingSpan: Boolean = false
+    private var lastComposingStart: Int = -1
+    private var lastComposingEnd: Int = -1
 
     private var insertedStart: Int = -1
     private var insertedCount: Int = 0
@@ -101,6 +114,36 @@ internal class EssayEditText(context: Context) : EditText(context) {
 
     var onCommittedHtmlChanged: ((String) -> Unit)? = null
     var onToolbarStateChanged: ((EssayToolbarState) -> Unit)? = null
+    var onFocusUpdated: ((Boolean) -> Unit)? = null
+
+    private val deferredFlushRunnable = Runnable {
+        flushFinalizedComposing()
+    }
+
+    private val composingWatcher = object : SpanWatcher {
+        override fun onSpanAdded(text: Spannable?, what: Any?, start: Int, end: Int) {
+            if (isInternalChange) return
+            recordComposingBounds((text as? Editable) ?: editableText)
+        }
+
+        override fun onSpanChanged(
+            text: Spannable?,
+            what: Any?,
+            ostart: Int,
+            oend: Int,
+            nstart: Int,
+            nend: Int,
+        ) {
+            if (isInternalChange) return
+            recordComposingBounds((text as? Editable) ?: editableText)
+        }
+
+        override fun onSpanRemoved(text: Spannable?, what: Any?, start: Int, end: Int) {
+            if (isInternalChange || !hadComposingSpan) return
+            removeCallbacks(deferredFlushRunnable)
+            post(deferredFlushRunnable)
+        }
+    }
 
     init {
         minLines = 10
@@ -115,6 +158,7 @@ internal class EssayEditText(context: Context) : EditText(context) {
         importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
         filters = emptyArray()
         defaultKeyListener = keyListener
+        attachComposingWatcher(editableText)
 
         addTextChangedListener(
             object : TextWatcher {
@@ -145,6 +189,13 @@ internal class EssayEditText(context: Context) : EditText(context) {
                 override fun afterTextChanged(s: Editable?) {
                     if (isInternalChange || s == null || isLockedMode) return
                     val composing = hasActiveComposingSpan(s)
+                    if (composing) {
+                        recordComposingBounds(s)
+                    } else {
+                        hadComposingSpan = false
+                        lastComposingStart = -1
+                        lastComposingEnd = -1
+                    }
 
                     if (!composing && insertedCount > 0 && insertedStart >= 0) {
                         val end = (insertedStart + insertedCount).coerceAtMost(s.length)
@@ -185,6 +236,61 @@ internal class EssayEditText(context: Context) : EditText(context) {
         )
     }
 
+    override fun setText(text: CharSequence?, type: BufferType?) {
+        super.setText(text, type)
+        attachComposingWatcher(editableText)
+    }
+
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
+        val base = super.onCreateInputConnection(outAttrs) ?: return null
+        return object : InputConnectionWrapper(base, true) {
+            private var batchDepth = 0
+            private var pendingFinish = false
+
+            override fun beginBatchEdit(): Boolean {
+                batchDepth += 1
+                return super.beginBatchEdit()
+            }
+
+            override fun finishComposingText(): Boolean {
+                val handled = super.finishComposingText()
+                if (batchDepth == 0) {
+                    removeCallbacks(deferredFlushRunnable)
+                    flushFinalizedComposing()
+                } else {
+                    pendingFinish = true
+                }
+                return handled
+            }
+
+            override fun endBatchEdit(): Boolean {
+                val handled = super.endBatchEdit()
+                if (batchDepth > 0) batchDepth -= 1
+                if (batchDepth == 0 && pendingFinish) {
+                    pendingFinish = false
+                    removeCallbacks(deferredFlushRunnable)
+                    flushFinalizedComposing()
+                }
+                return handled
+            }
+        }
+    }
+
+    override fun onFocusChanged(focused: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
+        super.onFocusChanged(focused, direction, previouslyFocusedRect)
+        if (!focused) {
+            editableText?.let { BaseInputConnection.removeComposingSpans(it) }
+            removeCallbacks(deferredFlushRunnable)
+            flushFinalizedComposing()
+        }
+        onFocusUpdated?.invoke(focused)
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(deferredFlushRunnable)
+        super.onDetachedFromWindow()
+    }
+
     override fun onSelectionChanged(selStart: Int, selEnd: Int) {
         super.onSelectionChanged(selStart, selEnd)
         if (!isInternalChange) {
@@ -207,11 +313,21 @@ internal class EssayEditText(context: Context) : EditText(context) {
         return super.onTextContextMenuItem(id)
     }
 
+    fun applyTextSizePx(textSizePx: Float) {
+        if (abs(textSize - textSizePx) > 0.5f) {
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx)
+        }
+    }
+
     fun setLocked(locked: Boolean) {
         if (isLockedMode == locked) return
         isLockedMode = locked
         if (locked) {
+            removeCallbacks(deferredFlushRunnable)
             editableText?.let { BaseInputConnection.removeComposingSpans(it) }
+            hadComposingSpan = false
+            lastComposingStart = -1
+            lastComposingEnd = -1
             keyListener = null
             showSoftInputOnFocus = false
             isCursorVisible = false
@@ -231,18 +347,25 @@ internal class EssayEditText(context: Context) : EditText(context) {
 
     fun syncExternalHtml(html: String) {
         if (hasActiveComposingSpan(editableText)) return
+        if (html == lastExternalHtml) return
+        lastExternalHtml = html
         val currentExport = editableText?.let { EssayHtml.export(it) }.orEmpty()
-        if (currentExport == html) {
-            lastEmittedHtml = html
+        if (currentExport == html || currentExport == EssayHtml.sanitizePastedHtml(html)) {
+            lastEmittedHtml = currentExport
             return
         }
         isInternalChange = true
         try {
+            removeCallbacks(deferredFlushRunnable)
             val loaded = EssayHtml.importToSpannable(html, indentPx)
             setText(loaded)
             setSelection(loaded.length)
-            currentCommitted = EssaySnapshot(html, loaded.length, loaded.length)
-            lastEmittedHtml = html
+            val canonical = EssayHtml.export(loaded)
+            currentCommitted = EssaySnapshot(canonical, loaded.length, loaded.length)
+            lastEmittedHtml = canonical
+            hadComposingSpan = false
+            lastComposingStart = -1
+            lastComposingEnd = -1
             undoStack.clear()
             redoStack.clear()
             pendingBold = false
@@ -267,6 +390,8 @@ internal class EssayEditText(context: Context) : EditText(context) {
         if (isLockedMode) return
         val s = editableText ?: return
         BaseInputConnection.removeComposingSpans(s)
+        removeCallbacks(deferredFlushRunnable)
+        flushFinalizedComposing()
         val selStart = selectionStart.coerceIn(0, s.length)
         val selEnd = selectionEnd.coerceIn(0, s.length)
         val start = minOf(selStart, selEnd)
@@ -320,6 +445,7 @@ internal class EssayEditText(context: Context) : EditText(context) {
         if (isLockedMode || undoStack.isEmpty()) return
         val s = editableText ?: return
         BaseInputConnection.removeComposingSpans(s)
+        hadComposingSpan = false
         redoStack.addLast(currentCommitted)
         val target = undoStack.removeLast()
         restoreSnapshot(target)
@@ -329,6 +455,7 @@ internal class EssayEditText(context: Context) : EditText(context) {
         if (isLockedMode || redoStack.isEmpty()) return
         val s = editableText ?: return
         BaseInputConnection.removeComposingSpans(s)
+        hadComposingSpan = false
         undoStack.addLast(currentCommitted)
         val target = redoStack.removeLast()
         restoreSnapshot(target)
@@ -339,6 +466,57 @@ internal class EssayEditText(context: Context) : EditText(context) {
         val sanitized = EssayHtml.sanitizePastedHtml(rawHtml)
         val imported = EssayHtml.importToSpannable(sanitized, indentPx)
         insertSanitizedSpannable(imported)
+    }
+
+    private fun attachComposingWatcher(editable: Editable?) {
+        if (editable == null) return
+        val existing = editable.getSpans(0, editable.length, SpanWatcher::class.java)
+        if (existing.none { it === composingWatcher }) {
+            editable.setSpan(composingWatcher, 0, editable.length, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+        }
+    }
+
+    private fun recordComposingBounds(editable: Editable?) {
+        if (editable == null) return
+        val cs = BaseInputConnection.getComposingSpanStart(editable)
+        val ce = BaseInputConnection.getComposingSpanEnd(editable)
+        if (cs >= 0 && ce > cs && ce <= editable.length) {
+            hadComposingSpan = true
+            lastComposingStart = cs
+            lastComposingEnd = ce
+        }
+    }
+
+    private fun flushFinalizedComposing() {
+        if (isInternalChange || isLockedMode || !hadComposingSpan) return
+        val s = editableText ?: return
+        if (hasActiveComposingSpan(s)) return
+        hadComposingSpan = false
+        val start = lastComposingStart
+        val end = lastComposingEnd
+        lastComposingStart = -1
+        lastComposingEnd = -1
+
+        if (start >= 0 && end > start && end <= s.length) {
+            applyPendingStylesIfNeeded(s, start, end)
+            ensureListSpanCoversParagraph(s, start)
+        }
+
+        val committedHtml = EssayHtml.export(s)
+        if (committedHtml != currentCommitted.html) {
+            pushUndo(currentCommitted)
+            redoStack.clear()
+            currentCommitted = EssaySnapshot(
+                html = committedHtml,
+                selectionStart = selectionStart.coerceIn(0, s.length),
+                selectionEnd = selectionEnd.coerceIn(0, s.length),
+            )
+        }
+        if (committedHtml != lastEmittedHtml) {
+            lastEmittedHtml = committedHtml
+            onCommittedHtmlChanged?.invoke(committedHtml)
+        }
+        notifyToolbarState()
     }
 
     private fun handlePaste(plainOnly: Boolean) {
@@ -360,6 +538,7 @@ internal class EssayEditText(context: Context) : EditText(context) {
     private fun insertSanitizedSpannable(imported: SpannableStringBuilder) {
         val s = editableText ?: return
         BaseInputConnection.removeComposingSpans(s)
+        hadComposingSpan = false
         val selStart = selectionStart.coerceIn(0, s.length)
         val selEnd = selectionEnd.coerceIn(0, s.length)
         val start = minOf(selStart, selEnd)
@@ -381,6 +560,8 @@ internal class EssayEditText(context: Context) : EditText(context) {
     private fun toggleInlineStyle(style: Int) {
         val s = editableText ?: return
         BaseInputConnection.removeComposingSpans(s)
+        removeCallbacks(deferredFlushRunnable)
+        flushFinalizedComposing()
         val selStart = selectionStart.coerceIn(0, s.length)
         val selEnd = selectionEnd.coerceIn(0, s.length)
         val start = minOf(selStart, selEnd)
@@ -650,6 +831,8 @@ internal fun EssayRichEditor(
     modifier: Modifier = Modifier,
 ) {
     val brand = Thi360Theme.colors
+    val density = LocalDensity.current
+    val textSizePx = with(density) { 16.sp.toPx() }
     val shape = RoundedCornerShape(10.dp)
     val placeholder = stringResource(R.string.question_essayPlaceholder)
     val editorLabel = stringResource(R.string.question_essayEditorLabel)
@@ -762,40 +945,44 @@ internal fun EssayRichEditor(
 
         HorizontalDivider(color = brand.border, thickness = 1.dp)
 
-        AndroidView(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 240.dp)
-                .padding(horizontal = 14.dp, vertical = 12.dp)
-                .testTag(QuestionTestTags.ESSAY_EDITOR),
-            factory = { ctx ->
-                EssayEditText(ctx).apply {
-                    hint = placeholder
-                    contentDescription = editorLabel
-                    setTextColor(textArgb)
-                    setHintTextColor(hintArgb)
-                    setOnFocusChangeListener { _, hasFocus -> focused = hasFocus }
-                    onCommittedHtmlChanged = { nextHtml ->
-                        latestOnCommitted(AnswerValues.stripNullChars(nextHtml))
+        key(itemId) {
+            AndroidView(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 240.dp)
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                    .testTag(QuestionTestTags.ESSAY_EDITOR),
+                factory = { ctx ->
+                    EssayEditText(ctx).apply {
+                        hint = placeholder
+                        contentDescription = editorLabel
+                        applyTextSizePx(textSizePx)
+                        setTextColor(textArgb)
+                        setHintTextColor(hintArgb)
+                        onFocusUpdated = { hasFocus -> focused = hasFocus }
+                        onCommittedHtmlChanged = { nextHtml ->
+                            latestOnCommitted(AnswerValues.stripNullChars(nextHtml))
+                        }
+                        onToolbarStateChanged = { state ->
+                            toolbarState = state
+                        }
+                        syncExternalHtml(html)
+                        setLocked(locked)
+                        editorRef.value = this
                     }
-                    onToolbarStateChanged = { state ->
-                        toolbarState = state
-                    }
-                    syncExternalHtml(html)
-                    setLocked(locked)
-                    editorRef.value = this
-                }
-            },
-            update = { view ->
-                editorRef.value = view
-                view.hint = placeholder
-                view.contentDescription = editorLabel
-                view.setTextColor(textArgb)
-                view.setHintTextColor(hintArgb)
-                view.setLocked(locked)
-                view.syncExternalHtml(html)
-            },
-        )
+                },
+                update = { view ->
+                    editorRef.value = view
+                    view.applyTextSizePx(textSizePx)
+                    view.hint = placeholder
+                    view.contentDescription = editorLabel
+                    view.setTextColor(textArgb)
+                    view.setHintTextColor(hintArgb)
+                    view.setLocked(locked)
+                    view.syncExternalHtml(html)
+                },
+            )
+        }
     }
 }
 

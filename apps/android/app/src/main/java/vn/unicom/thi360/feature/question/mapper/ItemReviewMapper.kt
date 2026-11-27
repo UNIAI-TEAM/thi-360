@@ -1,6 +1,7 @@
 package vn.unicom.thi360.feature.question.mapper
 
 import java.math.BigDecimal
+import java.math.MathContext
 import vn.unicom.thi360.core.network.generated.model.AttemptReviewItem
 import vn.unicom.thi360.core.network.generated.model.AttemptReviewResponse
 import vn.unicom.thi360.core.network.generated.model.EssayAnswer
@@ -70,7 +71,7 @@ object ItemReviewMapper {
         val scoringMethod = TrueFalseScoringMethod.fromWire(item.gradingDetail?.scoringMethod)
         val solutionHtml = if (level.showsSolution) item.solution?.takeIf { it.isNotBlank() } else null
         val essay = if (item.questionType == AttemptReviewItem.QuestionType.ESSAY) {
-            mapEssayReview(item, outcome, includeEssayCriteria)
+            mapEssayReview(item, outcome, level, includeEssayCriteria)
         } else {
             null
         }
@@ -176,7 +177,16 @@ object ItemReviewMapper {
         }
 
         val studentPairs = (item.studentAnswer as? MatchingAnswer)?.pairs.orEmpty()
-        grading.pairResults?.forEach { pair ->
+        val pairResults = grading.pairResults.orEmpty()
+        val pairMax = if (item.pointsMax != null && pairResults.isNotEmpty()) {
+            val divided = item.pointsMax
+                .divide(BigDecimal.valueOf(pairResults.size.toLong()), MathContext.DECIMAL64)
+                .stripTrailingZeros()
+            if (divided.scale() < 0) divided.setScale(0) else divided
+        } else {
+            null
+        }
+        pairResults.forEach { pair ->
             val leftId = pair.leftId ?: return@forEach
             val answered = studentPairs[leftId] != null
             val outcome = when {
@@ -187,6 +197,7 @@ object ItemReviewMapper {
             result[leftId] = PartReviewResult(
                 outcome = outcome,
                 earned = pair.pointsEarned,
+                max = pairMax,
             )
         }
 
@@ -196,6 +207,7 @@ object ItemReviewMapper {
     private fun mapEssayReview(
         item: AttemptReviewItem,
         outcome: ItemOutcome?,
+        level: ReviewLevel,
         includeEssayCriteria: Boolean,
     ): EssayReview {
         val feedback = item.essayFeedback
@@ -206,22 +218,27 @@ object ItemReviewMapper {
         }
         val wordCount = item.gradingDetail?.wordCount
             ?: (item.studentAnswer as? EssayAnswer)?.wordCount
-        val criteria = if (includeEssayCriteria) {
+        val criteria = if (includeEssayCriteria && level.showsSolution) {
             feedback?.criteria.orEmpty().map { criterion ->
                 EssayCriterionReview(
                     id = criterion.id,
-                    description = criterion.comment?.takeIf { it.isNotBlank() } ?: criterion.id.orEmpty(),
+                    description = criterion.id?.takeIf { it.isNotBlank() } ?: criterion.comment.orEmpty(),
                     earned = criterion.points,
-                    comment = criterion.comment,
+                    comment = criterion.comment?.takeIf { it.isNotBlank() },
                 )
             }
         } else {
             emptyList()
         }
+        val comment = if (level.showsSolution) {
+            feedback?.comment?.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
         return EssayReview(
             state = state,
             wordCount = wordCount,
-            comment = feedback?.comment?.takeIf { it.isNotBlank() },
+            comment = comment,
             criteria = criteria,
         )
     }

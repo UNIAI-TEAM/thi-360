@@ -20,6 +20,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -79,6 +81,7 @@ class QuestionFontScaleTest {
             }
         }
 
+        val maxAllowedWidthPx = with(composeRule.density) { 361.dp.toPx() }
         for (index in samples.indices) {
             currentIndex = index
             composeRule.waitForIdle()
@@ -87,7 +90,13 @@ class QuestionFontScaleTest {
             } else {
                 QuestionTestTags.FRAME_ROOT
             }
-            composeRule.onNodeWithTag(expectedTag).assertIsDisplayed()
+            val node = composeRule.onNodeWithTag(expectedTag)
+            node.assertIsDisplayed()
+            val bounds = node.fetchSemanticsNode().boundsInRoot
+            assertTrue(
+                "Sample ${samples[index].key} exceeded 360dp width at 200% font scale: ${bounds.width}px > ${maxAllowedWidthPx}px",
+                bounds.width <= maxAllowedWidthPx,
+            )
         }
     }
 
@@ -134,10 +143,34 @@ class QuestionFontScaleTest {
         }
 
         composeRule.waitForIdle()
+        val hostView = checkNotNull(rootView)
+        val editTextsAt1x = findAllEditTexts(hostView)
+        assertEquals(4, editTextsAt1x.size)
+        val textSizesAt1x = editTextsAt1x.map { it.textSize }
+
         scale = 2.0f
         composeRule.waitForIdle()
 
-        val allTexts = findAllEditTexts(rootView!!).map { it.text.toString() }
+        val editTextsAt2x = findAllEditTexts(hostView)
+        assertEquals(4, editTextsAt2x.size)
+        val baseDensityValue = composeRule.density.density
+        val density2x = Density(baseDensityValue, fontScale = 2.0f)
+        for (i in editTextsAt2x.indices) {
+            val spAt1x = (textSizesAt1x[i] / baseDensityValue).sp
+            val expectedPx = with(density2x) { spAt1x.toPx() }
+            assertEquals(
+                "EditText[$i] textSize must match LocalDensity at 200% fontScale",
+                expectedPx,
+                editTextsAt2x[i].textSize,
+                1.0f,
+            )
+            assertTrue(
+                "EditText[$i] textSize must grow significantly at 200% fontScale (${editTextsAt2x[i].textSize} vs ${textSizesAt1x[i]})",
+                editTextsAt2x[i].textSize > textSizesAt1x[i] * 1.5f,
+            )
+        }
+
+        val allTexts = editTextsAt2x.map { it.text.toString() }
         assertTrue(allTexts.contains("56"))
         assertTrue(allTexts.contains("100"))
         assertTrue(allTexts.contains("0"))

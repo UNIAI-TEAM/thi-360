@@ -23,7 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -140,7 +143,9 @@ internal fun EssayQuestionView(
                         color = brand.textSecondary,
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
-                        modifier = Modifier.testTag(QuestionTestTags.ESSAY_WORD_COUNT),
+                        modifier = Modifier
+                            .semantics { liveRegion = LiveRegionMode.Polite }
+                            .testTag(QuestionTestTags.ESSAY_WORD_COUNT),
                     )
                     if (minWords != null) {
                         val limitText = if (underLimit) {
@@ -300,7 +305,7 @@ private fun EssayReviewBody(
             )
         }
 
-        val criteria = essayReview?.criteria.orEmpty()
+        val criteria = if (review.level.showsSolution) essayReview?.criteria.orEmpty() else emptyList()
         if (criteria.isNotEmpty()) {
             val criterionCol = stringResource(R.string.question_criterionCol)
             val pointsCol = stringResource(R.string.question_pointsCol)
@@ -360,7 +365,7 @@ private fun EssayReviewBody(
             }
         }
 
-        val comment = essayReview?.comment
+        val comment = if (review.level.showsSolution) essayReview?.comment else null
         if (!comment.isNullOrBlank()) {
             Column(
                 modifier = Modifier

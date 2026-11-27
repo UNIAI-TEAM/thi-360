@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -157,5 +158,47 @@ class EssayEditorTest {
         }
         composeRule.onNodeWithTag(QuestionTestTags.ESSAY_LOADING).assertIsDisplayed()
         composeRule.onNodeWithText("Đang tải trình soạn bài viết…").assertIsDisplayed()
+    }
+
+    @Test
+    fun essayEditorPreservesCursorAndUndoAcrossFocusToggleWithHtmlEntities() {
+        val sample = QuestionSamplesLoader.loadByKey("essay")
+        var current by mutableStateOf<AnswerValue?>(EssayAnswer("<p>&quot;Xin chào&quot;</p>", 2))
+        var rootView: View? = null
+
+        composeRule.setContent {
+            rootView = LocalView.current
+            QuestionTestHost {
+                QuestionView(
+                    item = sample.item,
+                    answer = current,
+                    mode = QuestionMode.Answering,
+                    onAnswer = { current = it },
+                )
+            }
+        }
+
+        val editor = findFirstEditText(rootView!!) as EssayEditText
+        composeRule.runOnIdle {
+            assertEquals("\"Xin chào\"", editor.text.toString())
+            editor.requestFocus()
+            editor.setSelection(3)
+        }
+        composeRule.waitForIdle()
+        assertEquals(3, editor.selectionStart)
+
+        composeRule.runOnIdle {
+            editor.editableText.append("!")
+            editor.setSelection(3)
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_UNDO).assertIsEnabled()
+
+        composeRule.runOnIdle {
+            editor.clearFocus()
+        }
+        composeRule.waitForIdle()
+        assertEquals(3, editor.selectionStart)
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_UNDO).assertIsEnabled()
     }
 }

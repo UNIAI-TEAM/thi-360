@@ -1,17 +1,24 @@
 package vn.unicom.thi360.feature.question
 
+import java.math.BigDecimal
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import vn.unicom.thi360.core.network.generated.infrastructure.Serializer
 import vn.unicom.thi360.core.network.generated.model.AnswerValue
+import vn.unicom.thi360.core.network.generated.model.AttemptReviewEssayCriterionScore
+import vn.unicom.thi360.core.network.generated.model.AttemptReviewEssayFeedback
+import vn.unicom.thi360.core.network.generated.model.AttemptReviewItem
 import vn.unicom.thi360.core.network.generated.model.AttemptReviewResponse
 import vn.unicom.thi360.core.network.generated.model.AttemptStateResponse
 import vn.unicom.thi360.core.network.generated.model.ClozeAnswer
 import vn.unicom.thi360.core.network.generated.model.EssayAnswer
 import vn.unicom.thi360.core.network.generated.model.MatchingAnswer
 import vn.unicom.thi360.core.network.generated.model.MultipleChoiceAnswer
+import vn.unicom.thi360.core.network.generated.model.ReviewGradingDetail
+import vn.unicom.thi360.core.network.generated.model.ReviewMatchingPairResult
 import vn.unicom.thi360.core.network.generated.model.ShortAnswerValue
 import vn.unicom.thi360.core.network.generated.model.SingleChoiceAnswer
 import vn.unicom.thi360.core.network.generated.model.TrueFalseAnswer
@@ -161,5 +168,74 @@ class AnswerValueJsonTest {
         val saaReviews = ItemReviewMapper.mapResponse(scoreAndAnswersResp)
         assertNotNull(saaReviews.values.firstOrNull())
         assertTrue(saaReviews.values.all { it.level == ReviewLevel.SCORE_AND_ANSWERS && it.effectiveSolutionHtml == null })
+    }
+
+    @Test
+    fun itemReviewMapperGatesEssayFeedbackComputesMatchingPairMaxAndPreservesCriterionId() {
+        val essayItem = AttemptReviewItem(
+            questionType = AttemptReviewItem.QuestionType.ESSAY,
+            outcome = AttemptReviewItem.Outcome.PARTIAL,
+            earnedPoints = BigDecimal("3.5"),
+            pointsMax = BigDecimal("5"),
+            solution = "<p>Bài mẫu tham khảo</p>",
+            studentAnswer = EssayAnswer("<p>Bài làm học viên</p>", 4),
+            essayFeedback = AttemptReviewEssayFeedback(
+                comment = "Lập luận khá chặt chẽ",
+                points = BigDecimal("3.5"),
+                criteria = listOf(
+                    AttemptReviewEssayCriterionScore(
+                        id = "Tiêu chí 1: Luận điểm",
+                        points = BigDecimal("2"),
+                        comment = "Nêu đúng luận điểm chính",
+                    ),
+                ),
+            ),
+        )
+
+        val scoreOnly = ItemReviewMapper.mapItem(essayItem, ReviewLevel.SCORE_ONLY, includeEssayCriteria = true)
+        assertNull(scoreOnly.effectiveSolutionHtml)
+        assertNull(scoreOnly.essay?.comment)
+        assertTrue(scoreOnly.essay?.criteria.orEmpty().isEmpty())
+
+        val scoreAndAnswers = ItemReviewMapper.mapItem(essayItem, ReviewLevel.SCORE_AND_ANSWERS, includeEssayCriteria = true)
+        assertNull(scoreAndAnswers.effectiveSolutionHtml)
+        assertNull(scoreAndAnswers.essay?.comment)
+        assertTrue(scoreAndAnswers.essay?.criteria.orEmpty().isEmpty())
+
+        val fullDefault = ItemReviewMapper.mapItem(essayItem, ReviewLevel.FULL_SOLUTION)
+        assertEquals("<p>Bài mẫu tham khảo</p>", fullDefault.effectiveSolutionHtml)
+        assertEquals("Lập luận khá chặt chẽ", fullDefault.essay?.comment)
+        assertTrue(fullDefault.essay?.criteria.orEmpty().isEmpty())
+
+        val fullWithCriteria = ItemReviewMapper.mapItem(essayItem, ReviewLevel.FULL_SOLUTION, includeEssayCriteria = true)
+        assertEquals("Lập luận khá chặt chẽ", fullWithCriteria.essay?.comment)
+        assertEquals(1, fullWithCriteria.essay?.criteria?.size)
+        val criterion = fullWithCriteria.essay!!.criteria.first()
+        assertEquals("Tiêu chí 1: Luận điểm", criterion.id)
+        assertEquals("Tiêu chí 1: Luận điểm", criterion.description)
+        assertEquals("Nêu đúng luận điểm chính", criterion.comment)
+        assertEquals(BigDecimal("2"), criterion.earned)
+
+        val matchingItem = AttemptReviewItem(
+            questionType = AttemptReviewItem.QuestionType.MATCHING,
+            outcome = AttemptReviewItem.Outcome.PARTIAL,
+            earnedPoints = BigDecimal("0.5"),
+            pointsMax = BigDecimal("1"),
+            studentAnswer = MatchingAnswer(linkedMapOf("l1" to "r1", "l2" to "r2", "l4" to "r4")),
+            gradingDetail = ReviewGradingDetail(
+                pairResults = listOf(
+                    ReviewMatchingPairResult(leftId = "l1", matched = true, pointsEarned = BigDecimal("0.25")),
+                    ReviewMatchingPairResult(leftId = "l2", matched = false, pointsEarned = BigDecimal.ZERO),
+                    ReviewMatchingPairResult(leftId = "l3", matched = false, pointsEarned = BigDecimal.ZERO),
+                    ReviewMatchingPairResult(leftId = "l4", matched = true, pointsEarned = BigDecimal("0.25")),
+                ),
+            ),
+        )
+        val mappedMatching = ItemReviewMapper.mapItem(matchingItem, ReviewLevel.FULL_SOLUTION)
+        assertEquals(4, mappedMatching.detail.size)
+        assertEquals(BigDecimal("0.25"), mappedMatching.detail["l1"]?.max)
+        assertEquals(BigDecimal("0.25"), mappedMatching.detail["l2"]?.max)
+        assertEquals(BigDecimal("0.25"), mappedMatching.detail["l3"]?.max)
+        assertEquals(BigDecimal("0.25"), mappedMatching.detail["l4"]?.max)
     }
 }

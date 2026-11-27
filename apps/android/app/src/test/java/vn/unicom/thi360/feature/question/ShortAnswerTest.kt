@@ -3,6 +3,7 @@ package vn.unicom.thi360.feature.question
 import android.text.InputType
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,6 +111,66 @@ class ShortAnswerTest {
         }
         composeRule.waitForIdle()
         assertEquals(ShortAnswerValue(text = verbatim), emitted.last())
+    }
+
+    @Test
+    fun shortAnswerFinalizesComposingOnFinishAndFocusLossWithoutErasing() {
+        val item = QuestionItem.ShortAnswer(
+            id = "sa-ime",
+            displayNo = 9,
+            stem = "<p>Nhập tên nguyên tố</p>",
+            answerFormat = AnswerFormat.TEXT,
+            inputHint = null,
+        )
+        var current by mutableStateOf<AnswerValue?>(null)
+        val emitted = mutableListOf<ShortAnswerValue>()
+        var rootView: View? = null
+
+        composeRule.setContent {
+            rootView = LocalView.current
+            QuestionTestHost {
+                QuestionView(
+                    item = item,
+                    answer = current,
+                    mode = QuestionMode.Answering,
+                    onAnswer = {
+                        current = it
+                        emitted.add(it as ShortAnswerValue)
+                    },
+                )
+            }
+        }
+
+        val editText = findFirstEditText(rootView!!)!!
+        composeRule.runOnIdle {
+            editText.requestFocus()
+            val ic = editText.onCreateInputConnection(EditorInfo())!!
+            ic.setComposingText("Việt", 1)
+        }
+        composeRule.waitForIdle()
+        assertTrue(emitted.none { it.text.orEmpty().contains("Việt") })
+
+        composeRule.runOnIdle {
+            val ic = editText.onCreateInputConnection(EditorInfo())!!
+            ic.finishComposingText()
+        }
+        composeRule.waitForIdle()
+        assertEquals(ShortAnswerValue("Việt"), emitted.last())
+        assertEquals("Việt", editText.text.toString())
+
+        composeRule.runOnIdle {
+            val ic = editText.onCreateInputConnection(EditorInfo())!!
+            ic.setComposingText(" Nam", 1)
+        }
+        composeRule.waitForIdle()
+        assertEquals(ShortAnswerValue("Việt"), emitted.last())
+
+        composeRule.runOnIdle {
+            editText.clearFocus()
+        }
+        composeRule.waitForIdle()
+        assertEquals(ShortAnswerValue("Việt Nam"), emitted.last())
+        assertEquals("Việt Nam", editText.text.toString())
     }
 }
 

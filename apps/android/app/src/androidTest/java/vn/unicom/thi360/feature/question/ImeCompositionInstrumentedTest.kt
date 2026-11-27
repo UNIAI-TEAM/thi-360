@@ -3,7 +3,9 @@ package vn.unicom.thi360.feature.question
 import android.view.inputmethod.EditorInfo
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -29,10 +31,12 @@ import org.junit.runner.RunWith
 import vn.unicom.thi360.core.network.generated.model.AnswerValue
 import vn.unicom.thi360.core.network.generated.model.ClozeAnswer
 import vn.unicom.thi360.core.network.generated.model.EssayAnswer
+import vn.unicom.thi360.core.network.generated.model.ShortAnswerValue
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.feature.question.model.AnswerFormat
 import vn.unicom.thi360.feature.question.model.QuestionItem
 import vn.unicom.thi360.feature.question.model.QuestionMode
 import vn.unicom.thi360.feature.question.ui.QuestionTestTags
@@ -213,5 +217,165 @@ class ImeCompositionInstrumentedTest {
         }
         composeRule.waitForIdle()
         assertEquals("Việt", emitted.last().blanks?.get("b1"))
+    }
+
+    @Test
+    fun finishComposingTextAndFocusLossFinalizeVietnameseWithoutErasingAcrossShortClozeAndEssay() {
+        val shortItem = QuestionItem.ShortAnswer(
+            id = "ime-r2-short",
+            displayNo = 1,
+            stem = "<p>Trả lời ngắn Telex</p>",
+            answerFormat = AnswerFormat.TEXT,
+            inputHint = null,
+        )
+        val clozeSample = QuestionAndroidTestSupport.loadSamples().first { it.key == "clozeText" }
+        val essayItem = QuestionItem.Essay(
+            id = "ime-r2-essay",
+            displayNo = 3,
+            stem = "<p>Tự luận Telex</p>",
+            wordLimit = null,
+        )
+        val engine = RaTeXFormulaEngine(composeRule.activity)
+        var shortAns by mutableStateOf<AnswerValue?>(null)
+        var clozeAns by mutableStateOf<AnswerValue?>(null)
+        var essayAns by mutableStateOf<AnswerValue?>(null)
+
+        composeRule.setContent {
+            Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
+                CompositionLocalProvider(LocalFormulaEngine provides engine) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Thi360Theme.colors.bgPage)
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        QuestionView(
+                            item = shortItem,
+                            answer = shortAns,
+                            mode = QuestionMode.Answering,
+                            onAnswer = { shortAns = it },
+                        )
+                        QuestionView(
+                            item = clozeSample.item,
+                            answer = clozeAns,
+                            mode = QuestionMode.Answering,
+                            onAnswer = { clozeAns = it },
+                            formulaEngine = engine,
+                        )
+                        QuestionView(
+                            item = essayItem,
+                            answer = essayAns,
+                            mode = QuestionMode.Answering,
+                            onAnswer = { essayAns = it },
+                        )
+                    }
+                }
+            }
+        }
+
+        composeRule.waitForIdle()
+        val edits = QuestionAndroidTestSupport.findAllEditTexts(composeRule.activity.window.decorView)
+        assertTrue("Expected ShortAnswer + Cloze blanks + Essay EditTexts, got ${edits.size}", edits.size >= 3)
+        val shortEdit = edits.first()
+        val clozeEdit = edits[1]
+        val essayEdit = edits.last()
+
+        composeRule.runOnUiThread {
+            shortEdit.requestFocus()
+            val ic = shortEdit.onCreateInputConnection(EditorInfo())!!
+            ic.setComposingText("Việt", 1)
+        }
+        composeRule.waitForIdle()
+        assertFalse((shortAns as? ShortAnswerValue)?.text.orEmpty().contains("Việt"))
+
+        composeRule.runOnUiThread {
+            val ic = shortEdit.onCreateInputConnection(EditorInfo())!!
+            ic.finishComposingText()
+        }
+        composeRule.waitForIdle()
+        assertEquals(ShortAnswerValue("Việt"), shortAns)
+        assertEquals("Việt", shortEdit.text.toString())
+
+        composeRule.runOnUiThread {
+            val ic = shortEdit.onCreateInputConnection(EditorInfo())!!
+            ic.setComposingText(" Nam", 1)
+        }
+        composeRule.waitForIdle()
+        assertEquals(ShortAnswerValue("Việt"), shortAns)
+
+        composeRule.runOnUiThread {
+            clozeEdit.requestFocus()
+        }
+        composeRule.waitForIdle()
+        assertEquals(ShortAnswerValue("Việt Nam"), shortAns)
+        assertEquals("Việt Nam", shortEdit.text.toString())
+
+        composeRule.runOnUiThread {
+            val ic = clozeEdit.onCreateInputConnection(EditorInfo())!!
+            ic.setComposingText("Nước", 1)
+        }
+        composeRule.waitForIdle()
+        assertFalse((clozeAns as? ClozeAnswer)?.blanks?.get("b1").orEmpty().contains("Nước"))
+
+        composeRule.runOnUiThread {
+            val ic = clozeEdit.onCreateInputConnection(EditorInfo())!!
+            ic.finishComposingText()
+        }
+        composeRule.waitForIdle()
+        assertEquals("Nước", (clozeAns as? ClozeAnswer)?.blanks?.get("b1"))
+        assertEquals("Nước", clozeEdit.text.toString())
+
+        composeRule.runOnUiThread {
+            val ic = clozeEdit.onCreateInputConnection(EditorInfo())!!
+            ic.setComposingText(" cất", 1)
+        }
+        composeRule.waitForIdle()
+        assertEquals("Nước", (clozeAns as? ClozeAnswer)?.blanks?.get("b1"))
+
+        composeRule.runOnUiThread {
+            essayEdit.requestFocus()
+        }
+        composeRule.waitForIdle()
+        assertEquals("Nước cất", (clozeAns as? ClozeAnswer)?.blanks?.get("b1"))
+        assertEquals("Nước cất", clozeEdit.text.toString())
+
+        composeRule.runOnUiThread {
+            val ic = essayEdit.onCreateInputConnection(EditorInfo())!!
+            ic.setComposingText("Tiếng", 1)
+        }
+        composeRule.waitForIdle()
+        assertFalse((essayAns as? EssayAnswer)?.html.orEmpty().contains("Tiếng"))
+
+        composeRule.runOnUiThread {
+            val ic = essayEdit.onCreateInputConnection(EditorInfo())!!
+            ic.finishComposingText()
+        }
+        composeRule.waitForIdle()
+        assertEquals(EssayAnswer("<p>Tiếng</p>", 1), essayAns)
+        assertEquals("Tiếng", essayEdit.text.toString())
+
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_UNDO).performClick()
+        composeRule.waitForIdle()
+        assertEquals("", essayEdit.text.toString())
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_REDO).performClick()
+        composeRule.waitForIdle()
+        assertEquals("Tiếng", essayEdit.text.toString())
+
+        composeRule.runOnUiThread {
+            val ic = essayEdit.onCreateInputConnection(EditorInfo())!!
+            ic.commitText(" ", 1)
+            ic.setComposingText("Việt", 1)
+        }
+        composeRule.waitForIdle()
+        assertEquals("<p>Tiếng </p>", (essayAns as? EssayAnswer)?.html)
+
+        composeRule.runOnUiThread {
+            shortEdit.requestFocus()
+        }
+        composeRule.waitForIdle()
+        assertEquals(EssayAnswer("<p>Tiếng Việt</p>", 2), essayAns)
+        assertEquals("Tiếng Việt", essayEdit.text.toString())
     }
 }

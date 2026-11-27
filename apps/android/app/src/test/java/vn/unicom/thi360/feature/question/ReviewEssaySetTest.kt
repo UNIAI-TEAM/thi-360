@@ -2,6 +2,9 @@ package vn.unicom.thi360.feature.question
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -91,6 +94,33 @@ class ReviewEssaySetTest {
         composeRule.onNodeWithTag(QuestionTestTags.ESSAY_CRITERIA_TABLE).assertIsDisplayed()
         composeRule.onNodeWithText("Nêu đúng luận điểm").assertIsDisplayed()
         composeRule.onNodeWithText("Nhận xét của người chấm").assertIsDisplayed()
+    }
+
+    @Test
+    fun essayReviewHidesCriteriaAndGraderCommentOutsideFullSolution() {
+        val sample = QuestionSamplesLoader.loadByKey("essay")
+        var level by mutableStateOf(ReviewLevel.SCORE_AND_ANSWERS)
+
+        composeRule.setContent {
+            QuestionTestHost {
+                QuestionView(
+                    item = sample.item,
+                    answer = sample.submitted,
+                    mode = QuestionMode.Review(sample.review.copy(level = level)),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_CRITERIA_TABLE).assertDoesNotExist()
+        composeRule.onNodeWithText("Nhận xét của người chấm").assertDoesNotExist()
+        composeRule.onNodeWithTag(QuestionTestTags.FRAME_SOLUTION_BLOCK).assertDoesNotExist()
+
+        level = ReviewLevel.SCORE_ONLY
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_CRITERIA_TABLE).assertDoesNotExist()
+        composeRule.onNodeWithText("Nhận xét của người chấm").assertDoesNotExist()
+        composeRule.onNodeWithTag(QuestionTestTags.FRAME_SOLUTION_BLOCK).assertDoesNotExist()
     }
 
     @Test

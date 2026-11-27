@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -18,17 +19,28 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import vn.unicom.thi360.R
 import vn.unicom.thi360.core.network.generated.model.AnswerValue
 import vn.unicom.thi360.core.theme.LocalAppLocale
@@ -61,6 +73,8 @@ fun QuestionSetView(
 ) {
     val brand = Thi360Theme.colors
     val locale = LocalAppLocale.current
+    val density = LocalDensity.current
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
     val review = (mode as? QuestionMode.Review)?.review
     val fromNo = item.children.minOfOrNull { it.displayNo } ?: item.displayNo
     val toNo = item.children.maxOfOrNull { it.displayNo } ?: item.displayNo
@@ -76,6 +90,11 @@ fun QuestionSetView(
     val passageScrollState = rememberScrollState()
     val childrenScrollState = rememberScrollState()
 
+    var rowHeightPx by remember(item.id) { mutableIntStateOf(0) }
+    var passageHeightPx by remember(item.id) { mutableIntStateOf(0) }
+    var stickyRawOffsetPx by remember(item.id) { mutableIntStateOf(0) }
+    var visibleViewportHeightPx by remember(item.id, screenHeightDp) { mutableIntStateOf(0) }
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -83,10 +102,16 @@ fun QuestionSetView(
     ) {
         val isTwoColumn = maxWidth >= SET_TWO_COLUMN_BREAKPOINT_DP
         val hasBoundedHeight = constraints.hasBoundedHeight && maxHeight != Dp.Infinity
-        val paneHeightLimit = if (hasBoundedHeight) {
-            (maxHeight - 80.dp).coerceAtLeast(240.dp)
+        val defaultUnboundedLimit = (screenHeightDp - 96.dp).coerceIn(240.dp, SET_UNBOUNDED_PANE_MAX_HEIGHT)
+        val observedViewportLimit = if (visibleViewportHeightPx > 0) {
+            with(density) { visibleViewportHeightPx.toDp() }.coerceIn(200.dp, defaultUnboundedLimit)
         } else {
-            SET_UNBOUNDED_PANE_MAX_HEIGHT
+            defaultUnboundedLimit
+        }
+        val paneHeightLimit = if (hasBoundedHeight) {
+            (maxHeight - 80.dp).coerceAtLeast(200.dp)
+        } else {
+            observedViewportLimit
         }
 
         Column(
@@ -125,6 +150,36 @@ fun QuestionSetView(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .onGloballyPositioned { coords ->
+                            val rawPosY = coords.positionInWindow().y
+                            val clipped = coords.boundsInWindow()
+                            val measuredRowHeight = coords.size.height
+                            rowHeightPx = measuredRowHeight
+
+                            var ancestor = coords.parentLayoutCoordinates
+                            var smallestViewport = Int.MAX_VALUE
+                            while (ancestor != null) {
+                                val h = ancestor.size.height
+                                if (h in 1 until measuredRowHeight && h < smallestViewport) {
+                                    smallestViewport = h
+                                }
+                                ancestor = ancestor.parentLayoutCoordinates
+                            }
+                            if (smallestViewport != Int.MAX_VALUE) {
+                                visibleViewportHeightPx = smallestViewport
+                            } else {
+                                val visibleHeight = clipped.height.roundToInt()
+                                if (visibleHeight > visibleViewportHeightPx) {
+                                    visibleViewportHeightPx = visibleHeight
+                                }
+                            }
+
+                            if (clipped.height > 0f) {
+                                stickyRawOffsetPx = (clipped.top - rawPosY).roundToInt().coerceAtLeast(0)
+                            } else if (rawPosY >= 0f) {
+                                stickyRawOffsetPx = 0
+                            }
+                        }
                         .testTag(QuestionTestTags.SET_TWO_COLUMN),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.Top,
@@ -133,13 +188,25 @@ fun QuestionSetView(
                     Column(
                         modifier = Modifier
                             .weight(7f)
+                            .offset {
+                                val y = if (hasBoundedHeight) {
+                                    0
+                                } else {
+                                    stickyRawOffsetPx.coerceIn(
+                                        0,
+                                        (rowHeightPx - passageHeightPx).coerceAtLeast(0),
+                                    )
+                                }
+                                IntOffset(0, y)
+                            }
+                            .testTag(QuestionTestTags.SET_PASSAGE_PANE)
+                            .onSizeChanged { passageHeightPx = it.height }
                             .heightIn(max = paneHeightLimit)
                             .clip(passageShape)
                             .background(brand.bgSurface)
                             .border(1.dp, brand.border, passageShape)
                             .padding(16.dp)
-                            .verticalScroll(passageScrollState)
-                            .testTag(QuestionTestTags.SET_PASSAGE_PANE),
+                            .verticalScroll(passageScrollState),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Row(

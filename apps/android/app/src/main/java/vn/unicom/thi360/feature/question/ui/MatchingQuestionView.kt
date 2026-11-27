@@ -35,9 +35,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -155,7 +157,9 @@ internal fun MatchingQuestionView(
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.testTag(QuestionTestTags.MATCH_COUNTER),
+                        modifier = Modifier
+                            .semantics { liveRegion = LiveRegionMode.Polite }
+                            .testTag(QuestionTestTags.MATCH_COUNTER),
                     )
                 }
 
@@ -303,6 +307,13 @@ internal fun MatchingQuestionView(
                         }
                     }
                 }
+
+                Text(
+                    text = stringResource(R.string.question_matchDoneNote),
+                    color = brand.textMuted,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                )
             }
         }
     }

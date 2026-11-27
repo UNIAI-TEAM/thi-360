@@ -1,10 +1,14 @@
 package vn.unicom.thi360.feature.question.ui
 
 import android.content.Context
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.text.Editable
 import android.text.InputType
+import android.text.SpanWatcher
+import android.text.Spannable
 import android.text.SpannableStringBuilder
+import android.text.Spanned
 import android.text.TextWatcher
 import android.text.method.KeyListener
 import android.text.method.NumberKeyListener
@@ -14,6 +18,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputConnectionWrapper
 import android.widget.EditText
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -37,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -46,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -60,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.math.BigDecimal
+import kotlin.math.abs
 import vn.unicom.thi360.R
 import vn.unicom.thi360.core.network.generated.model.AnswerValue
 import vn.unicom.thi360.core.network.generated.model.ShortAnswerValue
@@ -89,7 +98,7 @@ internal class NumericAllowAllKeyListener : NumberKeyListener() {
         source: CharSequence,
         start: Int,
         end: Int,
-        dest: android.text.Spanned,
+        dest: Spanned,
         dstart: Int,
         dend: Int,
     ): CharSequence? = null
@@ -123,24 +132,218 @@ internal fun hasActiveComposingSpan(editable: Editable?): Boolean {
     return compStart >= 0 && compEnd > compStart && compEnd <= editable.length
 }
 
-internal fun createShortAnswerEditText(
-    context: Context,
-    numeric: Boolean,
-    hint: String,
-    contentDescriptionText: String,
-): EditText = EditText(context).apply {
-    this.hint = hint
-    this.contentDescription = contentDescriptionText
-    isSingleLine = true
-    maxLines = 1
-    background = null
-    gravity = Gravity.CENTER_VERTICAL or Gravity.START
-    setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-    imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_ACTION_DONE
-    importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
-    filters = emptyArray()
-    applyShortAnswerKeyListener(numeric = numeric, editable = true)
+internal class CompositionAwareEditText(context: Context) : EditText(context) {
+    private var isSyncingExternal: Boolean = false
+    private var isEditableMode: Boolean = true
+    private var hadComposingSpan: Boolean = false
+    private var lastEmittedText: String = ""
+    private var lastExternalText: String? = null
+
+    var onCommittedTextChanged: ((String) -> Unit)? = null
+    var onFocusUpdated: ((Boolean) -> Unit)? = null
+
+    private val deferredFlushRunnable = Runnable {
+        flushIfComposingFinalized()
+    }
+
+    private val composingWatcher = object : SpanWatcher {
+        override fun onSpanAdded(text: Spannable?, what: Any?, start: Int, end: Int) {
+            if (isSyncingExternal) return
+            if (hasActiveComposingSpan((text as? Editable) ?: editableText)) {
+                hadComposingSpan = true
+            }
+        }
+
+        override fun onSpanChanged(
+            text: Spannable?,
+            what: Any?,
+            ostart: Int,
+            oend: Int,
+            nstart: Int,
+            nend: Int,
+        ) {
+            if (isSyncingExternal) return
+            if (hasActiveComposingSpan((text as? Editable) ?: editableText)) {
+                hadComposingSpan = true
+            }
+        }
+
+        override fun onSpanRemoved(text: Spannable?, what: Any?, start: Int, end: Int) {
+            if (isSyncingExternal || !hadComposingSpan) return
+            removeCallbacks(deferredFlushRunnable)
+            post(deferredFlushRunnable)
+        }
+    }
+
+    init {
+        isSingleLine = true
+        maxLines = 1
+        background = null
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+        filters = emptyArray()
+        attachComposingWatcher(editableText)
+
+        addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    count: Int,
+                    after: Int,
+                ) = Unit
+
+                override fun onTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int,
+                ) = Unit
+
+                override fun afterTextChanged(s: Editable?) {
+                    if (isSyncingExternal || !isEditableMode) return
+                    val composing = hasActiveComposingSpan(s)
+                    if (composing) {
+                        hadComposingSpan = true
+                    } else {
+                        hadComposingSpan = false
+                    }
+                    val committed = AnswerValues.stripNullChars(
+                        committedTextExcludingComposing(s),
+                    )
+                    if (composing && committed == lastEmittedText) {
+                        return
+                    }
+                    if (committed != lastEmittedText) {
+                        lastEmittedText = committed
+                        onCommittedTextChanged?.invoke(committed)
+                    }
+                }
+            },
+        )
+    }
+
+    override fun setText(text: CharSequence?, type: BufferType?) {
+        super.setText(text, type)
+        attachComposingWatcher(editableText)
+    }
+
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
+        val base = super.onCreateInputConnection(outAttrs) ?: return null
+        return object : InputConnectionWrapper(base, true) {
+            private var batchDepth = 0
+            private var pendingFinish = false
+
+            override fun beginBatchEdit(): Boolean {
+                batchDepth += 1
+                return super.beginBatchEdit()
+            }
+
+            override fun finishComposingText(): Boolean {
+                val handled = super.finishComposingText()
+                if (batchDepth == 0) {
+                    removeCallbacks(deferredFlushRunnable)
+                    flushIfComposingFinalized()
+                } else {
+                    pendingFinish = true
+                }
+                return handled
+            }
+
+            override fun endBatchEdit(): Boolean {
+                val handled = super.endBatchEdit()
+                if (batchDepth > 0) batchDepth -= 1
+                if (batchDepth == 0 && pendingFinish) {
+                    pendingFinish = false
+                    removeCallbacks(deferredFlushRunnable)
+                    flushIfComposingFinalized()
+                }
+                return handled
+            }
+        }
+    }
+
+    override fun onEditorAction(actionCode: Int) {
+        if (actionCode == EditorInfo.IME_ACTION_DONE || actionCode == EditorInfo.IME_ACTION_NEXT) {
+            editableText?.let { BaseInputConnection.removeComposingSpans(it) }
+            removeCallbacks(deferredFlushRunnable)
+            flushIfComposingFinalized()
+        }
+        super.onEditorAction(actionCode)
+    }
+
+    override fun onFocusChanged(focused: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
+        super.onFocusChanged(focused, direction, previouslyFocusedRect)
+        if (!focused) {
+            editableText?.let { BaseInputConnection.removeComposingSpans(it) }
+            removeCallbacks(deferredFlushRunnable)
+            flushIfComposingFinalized()
+        }
+        onFocusUpdated?.invoke(focused)
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(deferredFlushRunnable)
+        super.onDetachedFromWindow()
+    }
+
+    fun applyKeyListenerMode(numeric: Boolean, editable: Boolean) {
+        isEditableMode = editable
+        if (!editable) {
+            removeCallbacks(deferredFlushRunnable)
+            editableText?.let { BaseInputConnection.removeComposingSpans(it) }
+            hadComposingSpan = false
+        }
+        applyShortAnswerKeyListener(numeric = numeric, editable = editable)
+    }
+
+    fun applyTextSizePx(textSizePx: Float) {
+        if (abs(textSize - textSizePx) > 0.5f) {
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx)
+        }
+    }
+
+    fun syncExternalText(externalText: String) {
+        if (hasActiveComposingSpan(editableText)) return
+        if (externalText == lastExternalText) return
+        lastExternalText = externalText
+        val current = editableText?.toString().orEmpty()
+        if (current == externalText) {
+            lastEmittedText = externalText
+            return
+        }
+        isSyncingExternal = true
+        try {
+            removeCallbacks(deferredFlushRunnable)
+            val savedSel = selectionStart.coerceIn(0, externalText.length)
+            setText(externalText)
+            setSelection(savedSel)
+            lastEmittedText = externalText
+            hadComposingSpan = false
+        } finally {
+            isSyncingExternal = false
+        }
+    }
+
+    private fun attachComposingWatcher(editable: Editable?) {
+        if (editable == null) return
+        val existing = editable.getSpans(0, editable.length, SpanWatcher::class.java)
+        if (existing.none { it === composingWatcher }) {
+            editable.setSpan(composingWatcher, 0, editable.length, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+        }
+    }
+
+    private fun flushIfComposingFinalized() {
+        if (isSyncingExternal || !isEditableMode || !hadComposingSpan) return
+        val s = editableText ?: return
+        if (hasActiveComposingSpan(s)) return
+        hadComposingSpan = false
+        val committed = AnswerValues.stripNullChars(s.toString())
+        if (committed != lastEmittedText) {
+            lastEmittedText = committed
+            onCommittedTextChanged?.invoke(committed)
+        }
+    }
 }
 
 internal fun EditText.applyShortAnswerKeyListener(numeric: Boolean, editable: Boolean) {
@@ -180,7 +383,8 @@ internal fun ShortAnswerQuestionView(
     modifier: Modifier = Modifier,
 ) {
     val brand = Thi360Theme.colors
-    val locale = LocalAppLocale.current
+    val density = LocalDensity.current
+    val textSizePx = with(density) { 16.sp.toPx() }
     val text = answer?.text.orEmpty()
     val isNumeric = SymbolInputRules.isNumericFormat(item.answerFormat)
     val showSymbolBar = SymbolInputRules.shouldShowSymbolInput(item.answerFormat, item.inputHint)
@@ -195,7 +399,7 @@ internal fun ShortAnswerQuestionView(
         )
     }
 
-    val editTextRef: MutableState<EditText?> = remember(item.id) { mutableStateOf(null) }
+    val editTextRef: MutableState<CompositionAwareEditText?> = remember(item.id) { mutableStateOf(null) }
     var focused by remember(item.id) { mutableStateOf(false) }
     val latestOnAnswer by rememberUpdatedState(onAnswer)
     val latestIsAnswering by rememberUpdatedState(isAnswering)
@@ -241,8 +445,6 @@ internal fun ShortAnswerQuestionView(
                 }
                 val textArgb = brand.text.toArgb()
                 val hintArgb = brand.textMuted.toArgb()
-                val syncingFlag = remember(item.id) { booleanArrayOf(false) }
-                val lastEmitted = remember(item.id) { arrayOf(text) }
 
                 Box(
                     modifier = Modifier
@@ -254,95 +456,55 @@ internal fun ShortAnswerQuestionView(
                         .padding(horizontal = 14.dp, vertical = 6.dp),
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    AndroidView(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 40.dp)
-                            .testTag(QuestionTestTags.SHORT_ANSWER_INPUT),
-                        factory = { ctx ->
-                            createShortAnswerEditText(
-                                context = ctx,
-                                numeric = isNumeric,
-                                hint = answerPlaceholder,
-                                contentDescriptionText = answerLabel,
-                            ).apply {
-                                setTextColor(textArgb)
-                                setHintTextColor(hintArgb)
-                                setOnFocusChangeListener { _, hasFocus ->
-                                    focused = hasFocus
-                                }
-                                if (text.isNotEmpty()) {
-                                    syncingFlag[0] = true
-                                    setText(text)
-                                    setSelection(text.length)
-                                    syncingFlag[0] = false
-                                }
-                                addTextChangedListener(
-                                    object : TextWatcher {
-                                        override fun beforeTextChanged(
-                                            s: CharSequence?,
-                                            start: Int,
-                                            count: Int,
-                                            after: Int,
-                                        ) = Unit
-
-                                        override fun onTextChanged(
-                                            s: CharSequence?,
-                                            start: Int,
-                                            before: Int,
-                                            count: Int,
-                                        ) = Unit
-
-                                        override fun afterTextChanged(s: Editable?) {
-                                            if (syncingFlag[0] || !latestIsAnswering) return
-                                            val committed = AnswerValues.stripNullChars(
-                                                committedTextExcludingComposing(s),
-                                            )
-                                            if (hasActiveComposingSpan(s) && committed == lastEmitted[0]) {
-                                                return
-                                            }
-                                            if (committed != lastEmitted[0]) {
-                                                lastEmitted[0] = committed
-                                                latestOnAnswer(AnswerValues.shortAnswer(committed))
-                                            }
+                    key(item.id) {
+                        AndroidView(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 40.dp)
+                                .testTag(QuestionTestTags.SHORT_ANSWER_INPUT),
+                            factory = { ctx ->
+                                CompositionAwareEditText(ctx).apply {
+                                    hint = answerPlaceholder
+                                    contentDescription = answerLabel
+                                    gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                                    imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_ACTION_DONE
+                                    applyTextSizePx(textSizePx)
+                                    setTextColor(textArgb)
+                                    setHintTextColor(hintArgb)
+                                    applyKeyListenerMode(numeric = isNumeric, editable = isAnswering)
+                                    onFocusUpdated = { hasFocus -> focused = hasFocus }
+                                    onCommittedTextChanged = { committed ->
+                                        if (latestIsAnswering) {
+                                            latestOnAnswer(AnswerValues.shortAnswer(committed))
                                         }
-                                    },
-                                )
-                                editTextRef.value = this
-                            }
-                        },
-                        update = { view ->
-                            editTextRef.value = view
-                            view.setTextColor(textArgb)
-                            view.setHintTextColor(hintArgb)
-                            view.hint = answerPlaceholder
-                            view.contentDescription = answerLabel
-                            val needsEditable = isAnswering
-                            val currentlyEditable = view.keyListener != null
-                            val expectedNumericClass =
-                                if (isNumeric) InputType.TYPE_CLASS_NUMBER else InputType.TYPE_CLASS_TEXT
-                            val currentClass = view.inputType and InputType.TYPE_MASK_CLASS
-                            if (currentlyEditable != needsEditable ||
-                                (needsEditable && currentClass != expectedNumericClass)
-                            ) {
-                                view.applyShortAnswerKeyListener(
-                                    numeric = isNumeric,
-                                    editable = needsEditable,
-                                )
-                            }
-                            if (!hasActiveComposingSpan(view.text)) {
-                                val current = view.text?.toString().orEmpty()
-                                if (current != text) {
-                                    syncingFlag[0] = true
-                                    val savedSel = view.selectionStart.coerceIn(0, text.length)
-                                    view.setText(text)
-                                    view.setSelection(savedSel)
-                                    lastEmitted[0] = text
-                                    syncingFlag[0] = false
+                                    }
+                                    syncExternalText(text)
+                                    editTextRef.value = this
                                 }
-                            }
-                        },
-                    )
+                            },
+                            update = { view ->
+                                editTextRef.value = view
+                                view.applyTextSizePx(textSizePx)
+                                view.setTextColor(textArgb)
+                                view.setHintTextColor(hintArgb)
+                                view.hint = answerPlaceholder
+                                view.contentDescription = answerLabel
+                                val currentlyEditable = view.keyListener != null
+                                val expectedNumericClass =
+                                    if (isNumeric) InputType.TYPE_CLASS_NUMBER else InputType.TYPE_CLASS_TEXT
+                                val currentClass = view.inputType and InputType.TYPE_MASK_CLASS
+                                if (currentlyEditable != isAnswering ||
+                                    (isAnswering && currentClass != expectedNumericClass)
+                                ) {
+                                    view.applyKeyListenerMode(
+                                        numeric = isNumeric,
+                                        editable = isAnswering,
+                                    )
+                                }
+                                view.syncExternalText(text)
+                            },
+                        )
+                    }
                 }
 
                 val insertAtCursor: (String) -> Unit = { insertion ->
@@ -362,7 +524,6 @@ internal fun ShortAnswerQuestionView(
                             }
                         } else {
                             val result = SymbolInputRules.insertTextAtCursor(text, null, null, insertion)
-                            lastEmitted[0] = result.nextValue
                             latestOnAnswer(AnswerValues.shortAnswer(result.nextValue))
                         }
                     }

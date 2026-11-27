@@ -1,14 +1,8 @@
 package vn.unicom.thi360.feature.question.ui
 
 import android.graphics.Rect
-import android.graphics.Typeface
-import android.text.Editable
-import android.text.TextWatcher
-import android.util.TypedValue
 import android.view.Gravity
-import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.widget.EditText
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -43,6 +38,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -170,7 +168,9 @@ internal fun ClozeQuestionView(
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.testTag(QuestionTestTags.CLOZE_COUNTER),
+                        modifier = Modifier
+                            .semantics { liveRegion = LiveRegionMode.Polite }
+                            .testTag(QuestionTestTags.CLOZE_COUNTER),
                     )
                 }
             }
@@ -219,6 +219,13 @@ private fun ClozeInlineSlot(
     val status = Thi360Theme.statusColors
     val locale = LocalAppLocale.current
     val density = LocalDensity.current
+    val fontScale = density.fontScale.coerceAtLeast(1f)
+    val textSizePx = with(density) { 15.sp.toPx() }
+    val slotMinWidth = (96.dp * fontScale).coerceAtMost(240.dp)
+    val slotMaxWidth = (180.dp * fontScale).coerceAtMost(296.dp)
+    val innerMinWidth = (slotMinWidth - 16.dp).coerceAtLeast(80.dp)
+    val innerMaxWidth = (slotMaxWidth - 16.dp).coerceAtLeast(164.dp)
+
     val coroutineScope = rememberCoroutineScope()
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val latestOnCommitted by rememberUpdatedState(onValueCommitted)
@@ -259,12 +266,11 @@ private fun ClozeInlineSlot(
         }
 
         Box(
-            modifier = Modifier
-                .padding(horizontal = 3.dp, vertical = 2.dp),
+            modifier = Modifier.padding(horizontal = 3.dp, vertical = 2.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .widthIn(min = 96.dp, max = 180.dp)
+                    .widthIn(min = slotMinWidth, max = slotMaxWidth)
                     .heightIn(min = 48.dp)
                     .clip(shape)
                     .background(bgColor)
@@ -306,15 +312,13 @@ private fun ClozeInlineSlot(
     val isLocked = mode is QuestionMode.Locked
     val textArgb = brand.text.toArgb()
     val hintArgb = brand.textMuted.toArgb()
-    val syncingFlag = remember(blankId) { booleanArrayOf(false) }
-    val lastEmitted = remember(blankId) { arrayOf(value) }
     val extraClearancePx = with(density) { 48.dp.roundToPx() }
 
     Box(
         modifier = Modifier
             .bringIntoViewRequester(bringIntoViewRequester)
             .padding(horizontal = 3.dp, vertical = 2.dp)
-            .widthIn(min = 96.dp, max = 180.dp)
+            .widthIn(min = slotMinWidth, max = slotMaxWidth)
             .heightIn(min = 48.dp)
             .clip(shape)
             .background(if (isLocked) brand.bgSubtle else brand.bgSurface)
@@ -326,108 +330,64 @@ private fun ClozeInlineSlot(
             .padding(horizontal = 8.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
-        AndroidView(
-            modifier = Modifier
-                .widthIn(min = 80.dp, max = 164.dp)
-                .heightIn(min = 40.dp)
-                .testTag(QuestionTestTags.clozeBlank(blankId)),
-            factory = { ctx ->
-                EditText(ctx).apply {
-                    hint = placeholder
-                    contentDescription = ariaLabel
-                    isSingleLine = true
-                    maxLines = 1
-                    background = null
-                    gravity = Gravity.CENTER
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                    setTextColor(textArgb)
-                    setHintTextColor(hintArgb)
-                    imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_ACTION_NEXT
-                    importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
-                    filters = emptyArray()
-                    applyShortAnswerKeyListener(numeric = false, editable = isAnswering)
+        key(blankId) {
+            AndroidView(
+                modifier = Modifier
+                    .widthIn(min = innerMinWidth, max = innerMaxWidth)
+                    .heightIn(min = 40.dp)
+                    .testTag(QuestionTestTags.clozeBlank(blankId)),
+                factory = { ctx ->
+                    CompositionAwareEditText(ctx).apply {
+                        hint = placeholder
+                        contentDescription = ariaLabel
+                        gravity = Gravity.CENTER
+                        imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_ACTION_NEXT
+                        applyTextSizePx(textSizePx)
+                        setTextColor(textArgb)
+                        setHintTextColor(hintArgb)
+                        applyKeyListenerMode(numeric = false, editable = isAnswering)
 
-                    if (value.isNotEmpty()) {
-                        syncingFlag[0] = true
-                        setText(value)
-                        setSelection(value.length)
-                        syncingFlag[0] = false
-                    }
-
-                    setOnFocusChangeListener { v, hasFocus ->
-                        focused = hasFocus
-                        if (hasFocus) {
-                            coroutineScope.launch {
-                                bringIntoViewRequester.bringIntoView()
-                                delay(160L)
-                                bringIntoViewRequester.bringIntoView()
-                            }
-                            v.postDelayed(
-                                {
-                                    val rect = Rect(0, 0, v.width, v.height + extraClearancePx)
-                                    v.requestRectangleOnScreen(rect, false)
-                                },
-                                150L,
-                            )
-                        }
-                    }
-
-                    addTextChangedListener(
-                        object : TextWatcher {
-                            override fun beforeTextChanged(
-                                s: CharSequence?,
-                                start: Int,
-                                count: Int,
-                                after: Int,
-                            ) = Unit
-
-                            override fun onTextChanged(
-                                s: CharSequence?,
-                                start: Int,
-                                before: Int,
-                                count: Int,
-                            ) = Unit
-
-                            override fun afterTextChanged(s: Editable?) {
-                                if (syncingFlag[0] || !latestIsAnswering) return
-                                val committed = AnswerValues.stripNullChars(
-                                    committedTextExcludingComposing(s),
+                        onFocusUpdated = { hasFocus ->
+                            focused = hasFocus
+                            if (hasFocus) {
+                                coroutineScope.launch {
+                                    bringIntoViewRequester.bringIntoView()
+                                    delay(160L)
+                                    bringIntoViewRequester.bringIntoView()
+                                }
+                                postDelayed(
+                                    {
+                                        val rect = Rect(0, 0, width, height + extraClearancePx)
+                                        requestRectangleOnScreen(rect, false)
+                                    },
+                                    150L,
                                 )
-                                if (hasActiveComposingSpan(s) && committed == lastEmitted[0]) {
-                                    return
-                                }
-                                if (committed != lastEmitted[0]) {
-                                    lastEmitted[0] = committed
-                                    latestOnCommitted(committed)
-                                }
                             }
-                        },
-                    )
-                }
-            },
-            update = { view ->
-                view.setTextColor(textArgb)
-                view.setHintTextColor(hintArgb)
-                view.hint = placeholder
-                view.contentDescription = ariaLabel
-                val currentlyEditable = view.keyListener != null
-                if (currentlyEditable != isAnswering) {
-                    view.applyShortAnswerKeyListener(numeric = false, editable = isAnswering)
-                }
-                if (!hasActiveComposingSpan(view.text)) {
-                    val current = view.text?.toString().orEmpty()
-                    if (current != value) {
-                        syncingFlag[0] = true
-                        val savedSel = view.selectionStart.coerceIn(0, value.length)
-                        view.setText(value)
-                        view.setSelection(savedSel)
-                        lastEmitted[0] = value
-                        syncingFlag[0] = false
+                        }
+
+                        onCommittedTextChanged = { committed ->
+                            if (latestIsAnswering) {
+                                latestOnCommitted(committed)
+                            }
+                        }
+
+                        syncExternalText(value)
                     }
-                }
-            },
-        )
+                },
+                update = { view ->
+                    view.applyTextSizePx(textSizePx)
+                    view.setTextColor(textArgb)
+                    view.setHintTextColor(hintArgb)
+                    view.hint = placeholder
+                    view.contentDescription = ariaLabel
+                    val currentlyEditable = view.keyListener != null
+                    if (currentlyEditable != isAnswering) {
+                        view.applyKeyListenerMode(numeric = false, editable = isAnswering)
+                    }
+                    view.syncExternalText(value)
+                },
+            )
+        }
     }
 }
 
