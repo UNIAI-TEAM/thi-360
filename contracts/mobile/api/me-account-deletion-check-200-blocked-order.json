@@ -1,0 +1,6 @@
+{
+  "canDelete" : false,
+  "blockers" : [ "ORDER_BEING_CHECKED" ],
+  "unusedAttempts" : 0,
+  "pendingGrading" : false
+}

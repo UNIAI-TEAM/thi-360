@@ -888,6 +888,102 @@
     "variant": "unauthenticated"
   },
   {
+    "file": "api/me-account-deletion-400-wrong-old-password.json",
+    "operationId": "deleteMyAccount",
+    "method": "POST",
+    "path": "/api/v1/me/account/deletion",
+    "status": 400,
+    "variant": "wrong-old-password"
+  },
+  {
+    "file": "api/me-account-deletion-403-account-deletion-not-allowed.json",
+    "operationId": "deleteMyAccount",
+    "method": "POST",
+    "path": "/api/v1/me/account/deletion",
+    "status": 403,
+    "variant": "account-deletion-not-allowed"
+  },
+  {
+    "file": "api/me-account-deletion-409-account-deletion-blocked.json",
+    "operationId": "deleteMyAccount",
+    "method": "POST",
+    "path": "/api/v1/me/account/deletion",
+    "status": 409,
+    "variant": "account-deletion-blocked"
+  },
+  {
+    "file": "api/me-account-deletion-429-login-throttled.json",
+    "operationId": "deleteMyAccount",
+    "method": "POST",
+    "path": "/api/v1/me/account/deletion",
+    "status": 429,
+    "variant": "login-throttled"
+  },
+  {
+    "file": "api/me-account-deletion-check-200-blocked-attempt.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 200,
+    "variant": "blocked-attempt"
+  },
+  {
+    "file": "api/me-account-deletion-check-200-blocked-order.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 200,
+    "variant": "blocked-order"
+  },
+  {
+    "file": "api/me-account-deletion-check-200-blocked-pending-payment.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 200,
+    "variant": "blocked-pending-payment"
+  },
+  {
+    "file": "api/me-account-deletion-check-200-blocked.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 200,
+    "variant": "blocked"
+  },
+  {
+    "file": "api/me-account-deletion-check-200-pending-grading.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 200,
+    "variant": "pending-grading"
+  },
+  {
+    "file": "api/me-account-deletion-check-200-unused-attempts.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 200,
+    "variant": "unused-attempts"
+  },
+  {
+    "file": "api/me-account-deletion-check-200.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 200,
+    "variant": ""
+  },
+  {
+    "file": "api/me-account-deletion-check-403-account-deletion-not-allowed.json",
+    "operationId": "checkMyAccountDeletion",
+    "method": "GET",
+    "path": "/api/v1/me/account/deletion-check",
+    "status": 403,
+    "variant": "account-deletion-not-allowed"
+  },
+  {
     "file": "api/me-avatar-put-200.json",
     "operationId": "replaceMyAvatar",
     "method": "PUT",

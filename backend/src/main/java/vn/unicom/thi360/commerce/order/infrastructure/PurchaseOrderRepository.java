@@ -65,6 +65,8 @@ public interface PurchaseOrderRepository extends JpaRepository<PurchaseOrder, UU
     @Query(value = EXISTS_FULFILLED_BY_USER_ID_SQL, nativeQuery = true)
     boolean existsFulfilledByUserId(@Param("userId") UUID userId);
 
+    boolean existsByUserIdAndState(UUID userId, OrderState state);
+
     @Query("""
             SELECT o.id FROM PurchaseOrder o
             WHERE o.state = :state AND o.paidAt >= :cutoff
