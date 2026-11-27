@@ -98,7 +98,7 @@ class CatalogStatesTest {
                 activeDeps = d2
                 scenarioKey = 2
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.EMPTY_CATALOG).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.EMPTY_CATALOG).assertIsDisplayed()
@@ -108,17 +108,17 @@ class CatalogStatesTest {
                 activeDeps = d3
                 scenarioKey = 3
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("QDA")).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("QDA")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.NO_RESULTS).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.FILTER_BLOCK).assertIsDisplayed()
             composeRule.onNodeWithTag(CatalogTestTags.NO_RESULTS).assertIsDisplayed()
             composeRule.onNodeWithTag(CatalogTestTags.NO_RESULTS_CLEAR).assertIsDisplayed().performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).assertIsDisplayed()
@@ -175,7 +175,7 @@ class CatalogStatesTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.ERROR_STATE).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.FILTER_BLOCK).assertIsDisplayed()
@@ -183,7 +183,7 @@ class CatalogStatesTest {
 
             shouldFail.set(false)
             composeRule.onNodeWithTag(CatalogTestTags.ERROR_RETRY).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 h1.server.requestCount("GET", "/api/v1/public/storefront/filters") == 2 &&
                     h1.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).fetchSemanticsNodes().isNotEmpty()
@@ -191,7 +191,7 @@ class CatalogStatesTest {
             composeRule.onNodeWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).assertIsDisplayed()
 
             h1.connectivityMonitor.setOnline(false)
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.OFFLINE_BANNER).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.OFFLINE_BANNER).assertIsDisplayed()
@@ -201,14 +201,14 @@ class CatalogStatesTest {
                 activeDeps = d2
                 scenarioKey = 2
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.ERROR_STATE).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.ERROR_STATE).assertIsDisplayed()
             composeRule.onNodeWithText("Không có kết nối").assertIsDisplayed()
 
             h2.connectivityMonitor.setOnline(true)
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).assertIsDisplayed()
@@ -239,7 +239,7 @@ class CatalogStatesTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(CatalogTestTags.ERROR_STATE).fetchSemanticsNodes().isNotEmpty()
             }
@@ -250,7 +250,7 @@ class CatalogStatesTest {
 
             failFilters.set(false)
             composeRule.onNodeWithTag(CatalogTestTags.ERROR_RETRY).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/filters") == 2 &&
                     harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&

@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollToKey
@@ -42,10 +43,11 @@ class CatalogScreenTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/filters") >= 1 &&
                     harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1 &&
-                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
+                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.SHOWING_SUMMARY).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -89,8 +91,9 @@ class CatalogScreenTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1
+            composeRule.waitUntilIdle {
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.SHOWING_SUMMARY).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 

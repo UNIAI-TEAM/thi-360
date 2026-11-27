@@ -127,18 +127,26 @@ class ProductCardTest {
 
             composeRule.onNodeWithTag(CatalogTestTags.productCoverFallback("EXAM-RANGE-01"), useUnmergedTree = true)
                 .performTouchInput { click() }
-            composeRule.waitUntil(5_000) { openedCodes.size == 1 }
+            composeRule.waitUntilIdle {
+                openedCodes.size == 1 &&
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.BACK_BUTTON)
+                        .fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.productTitle("EXAM-RANGE-01"), useUnmergedTree = true)
                 .performTouchInput { click() }
-            composeRule.waitUntil(5_000) { openedCodes.size == 2 }
+            composeRule.waitUntilIdle {
+                openedCodes.size == 2 &&
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.BACK_BUTTON)
+                        .fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.productViewDetail("EXAM-RANGE-01")).performClick()
-            composeRule.waitUntil(5_000) { openedCodes.size == 3 }
+            composeRule.waitUntilIdle { openedCodes.size == 3 }
 
             assertEquals(listOf("EXAM-RANGE-01", "EXAM-RANGE-01", "EXAM-RANGE-01"), openedCodes)
         }

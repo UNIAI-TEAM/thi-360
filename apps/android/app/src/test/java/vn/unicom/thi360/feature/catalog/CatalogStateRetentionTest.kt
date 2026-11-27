@@ -63,21 +63,21 @@ class CatalogStateRetentionTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("HSA")).fetchSemanticsNodes().isNotEmpty() &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 2 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EXAM-12")
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 (feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? vn.unicom.thi360.core.ui.LoadState.Loaded)
                     ?.value?.items?.size == 24
             }

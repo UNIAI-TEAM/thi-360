@@ -8,6 +8,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.unit.height
@@ -149,8 +150,12 @@ class CoverImageTest {
                     }
                 }
 
-                composeRule.waitUntil(5_000) {
-                    harness.server.requestCount("GET", "/api/v1/public/storefront/covers/ok.png") >= 1
+                composeRule.waitUntilIdle {
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/covers/ok.png") >= 1 &&
+                        composeRule.onAllNodesWithTag(
+                            CatalogTestTags.productCover("EX-COVER-OK"),
+                            useUnmergedTree = true,
+                        ).fetchSemanticsNodes().isNotEmpty()
                 }
                 composeRule.waitForIdle()
 
@@ -169,8 +174,12 @@ class CoverImageTest {
                     .getUnclippedBoundsInRoot()
 
                 composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EX-COVER-404")
-                composeRule.waitUntil(5_000) {
-                    harness.server.requestCount("GET", "/api/v1/public/storefront/covers/missing.png") >= 1
+                composeRule.waitUntilIdle {
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/covers/missing.png") >= 1 &&
+                        composeRule.onAllNodesWithTag(
+                            CatalogTestTags.productCoverFallback("EX-COVER-404"),
+                            useUnmergedTree = true,
+                        ).fetchSemanticsNodes().isNotEmpty()
                 }
                 composeRule.waitForIdle()
                 composeRule.onNodeWithTag(

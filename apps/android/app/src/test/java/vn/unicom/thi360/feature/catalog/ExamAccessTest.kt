@@ -81,7 +81,7 @@ class ExamAccessTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.productAccessLoading("AC-01"))
                     .fetchSemanticsNodes().isNotEmpty()
             }
@@ -140,11 +140,12 @@ class ExamAccessTest {
                     Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("POST", "/api/v1/auth/mobile/refresh") >= 1 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
                         .fetchSemanticsNodes().isNotEmpty()
             }
+            composeRule.waitForIdle()
             assertTrue(harness.stack.sessionManager.state.value is SessionState.Active)
             composeRule.onNodeWithTag(CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
                 .assertIsDisplayed()
@@ -166,7 +167,7 @@ class ExamAccessTest {
                     Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.stack.sessionManager.state.value is SessionState.SignedOut
             }
             val signedOut = harness.stack.sessionManager.state.value as SessionState.SignedOut
@@ -188,7 +189,7 @@ class ExamAccessTest {
                     Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.stack.sessionManager.state.value is SessionState.SignedOut
             }
             val signedOut = harness.stack.sessionManager.state.value as SessionState.SignedOut

@@ -52,7 +52,7 @@ class CatalogSearchTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1
             }
             composeRule.waitForIdle()
@@ -74,7 +74,7 @@ class CatalogSearchTest {
             assertEquals(400L, pendingDebounces.last().first)
 
             pendingDebounces.last().second.complete(Unit)
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2
             }
             val debouncedPath = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!.path.orEmpty()
@@ -83,7 +83,7 @@ class CatalogSearchTest {
 
             searchNode.performTextReplacement("TOAN-99")
             searchNode.performImeAction()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 3
             }
             val imePath = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!.path.orEmpty()
@@ -91,7 +91,7 @@ class CatalogSearchTest {
 
             searchNode.performTextReplacement("   ")
             searchNode.performImeAction()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 4
             }
             val clearedPath = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!.path.orEmpty()
@@ -100,7 +100,7 @@ class CatalogSearchTest {
             val overlong = "X".repeat(145)
             searchNode.performTextReplacement(overlong)
             searchNode.performImeAction()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 5
             }
             val overlongReq = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!

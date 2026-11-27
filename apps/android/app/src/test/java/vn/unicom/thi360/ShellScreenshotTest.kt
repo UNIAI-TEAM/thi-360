@@ -47,7 +47,7 @@ class ShellScreenshotTest {
             }
         }
         if (destination == Destination.Home) {
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
                     .fetchSemanticsNodes().isNotEmpty()

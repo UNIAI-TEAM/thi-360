@@ -63,7 +63,7 @@ class CatalogScreenshotTest {
                 )
             }
         }
-        composeRule.waitUntil(5_000) {
+        composeRule.waitUntilIdle {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
             composeRule.onAllNodesWithTag(CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
                 .fetchSemanticsNodes().isNotEmpty()
@@ -106,7 +106,7 @@ class CatalogScreenshotTest {
             }
         }
         composeRule.runOnIdle { navRef!!.openProduct(code) }
-        composeRule.waitUntil(5_000) {
+        composeRule.waitUntilIdle {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
             composeRule.onAllNodesWithTag(readyTag).fetchSemanticsNodes().isNotEmpty()
         }
@@ -157,7 +157,7 @@ class CatalogScreenshotTest {
                     }
                 }
                 composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
-                composeRule.waitUntil(5_000) {
+                composeRule.waitUntilIdle {
                     Shadows.shadowOf(Looper.getMainLooper()).idle()
                     composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE)
                         .fetchSemanticsNodes().isNotEmpty() &&

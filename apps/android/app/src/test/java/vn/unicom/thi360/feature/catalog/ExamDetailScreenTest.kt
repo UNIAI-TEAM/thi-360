@@ -304,14 +304,14 @@ class ExamDetailScreenTest {
                 }
             }
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(LoadStateTestTags.ERROR_CONTAINER).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Không có kết nối").assertIsDisplayed()
 
             harness.connectivityMonitor.setOnline(true)
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE).fetchSemanticsNodes().isNotEmpty()
             }

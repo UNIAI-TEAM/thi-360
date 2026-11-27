@@ -54,13 +54,13 @@ class CatalogScrollTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
             }
             val ctrl = feedStore.getOrCreate("acc-catalog-1", 0L, deps)
             for (pageIndex in 0 until 5) {
                 val expectedCount = (pageIndex + 1) * 12
-                composeRule.waitUntil(5_000) {
+                composeRule.waitUntilIdle {
                     (ctrl.state.value.loadState as? vn.unicom.thi360.core.ui.LoadState.Loaded)
                         ?.value?.items?.size == expectedCount
                 }

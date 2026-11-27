@@ -70,7 +70,7 @@ class CatalogTwoPaneTest {
                     }
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-DEMO-01"))
                     .fetchSemanticsNodes().isNotEmpty()
             }
@@ -83,7 +83,7 @@ class CatalogTwoPaneTest {
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EXAM-DEMO-01")
             composeRule.onNodeWithTag(CatalogTestTags.productHeader("EXAM-DEMO-01")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE).fetchSemanticsNodes().isNotEmpty()
             }
@@ -92,7 +92,7 @@ class CatalogTwoPaneTest {
                 .assertTextContains("EXAM-DEMO-01", substring = true)
 
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("QDA")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productCard("BUNDLE-DEMO-01"))
@@ -103,7 +103,7 @@ class CatalogTwoPaneTest {
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("BUNDLE-DEMO-01")
             composeRule.onNodeWithTag(CatalogTestTags.productHeader("BUNDLE-DEMO-01")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
@@ -134,7 +134,7 @@ class CatalogTwoPaneTest {
                     }
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("HSA")).fetchSemanticsNodes().isNotEmpty() &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-DEMO-01"))
                         .fetchSemanticsNodes().isNotEmpty()
@@ -142,7 +142,7 @@ class CatalogTwoPaneTest {
 
             composeRule.onNodeWithTag(ListDetailTestTags.TWO_COLUMN).assertIsDisplayed()
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-DEMO-01"))
                         .fetchSemanticsNodes().isNotEmpty()
@@ -150,7 +150,7 @@ class CatalogTwoPaneTest {
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EXAM-DEMO-01")
             composeRule.onNodeWithTag(CatalogTestTags.productHeader("EXAM-DEMO-01")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE).fetchSemanticsNodes().isNotEmpty()
             }
 

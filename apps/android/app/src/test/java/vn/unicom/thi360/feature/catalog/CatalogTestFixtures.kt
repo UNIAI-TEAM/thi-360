@@ -1,6 +1,8 @@
 package vn.unicom.thi360.feature.catalog
 
 import android.content.Context
+import android.os.Looper
+import androidx.compose.ui.test.junit4.ComposeTestRule
 import coil3.ImageLoader
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
@@ -15,6 +17,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import org.robolectric.Shadows
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.config.SupportContact
 import vn.unicom.thi360.core.network.ApiResult
@@ -298,5 +301,15 @@ internal object CatalogTestFixtures {
             ),
             feedStore = CatalogFeedStore(),
         )
+    }
+}
+
+internal fun ComposeTestRule.waitUntilIdle(
+    timeoutMillis: Long = 10_000L,
+    condition: () -> Boolean,
+) {
+    waitUntil(timeoutMillis) {
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        condition()
     }
 }

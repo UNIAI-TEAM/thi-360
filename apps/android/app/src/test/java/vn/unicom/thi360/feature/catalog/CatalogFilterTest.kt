@@ -85,13 +85,13 @@ class CatalogFilterTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("HSA")).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.KIND_ALL_CHIP).assertIsDisplayed()
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).assertIsDisplayed().performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 h1.server.requestCount("GET", "/api/v1/public/storefront/products") == 2
             }
@@ -102,7 +102,7 @@ class CatalogFilterTest {
 
             composeRule.runOnIdle { activeDeps = d2 }
             composeRule.waitForIdle()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 h2.server.requestCount("GET", "/api/v1/public/storefront/filters") >= 1 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("HSA")).fetchSemanticsNodes().isNotEmpty() &&
@@ -113,7 +113,7 @@ class CatalogFilterTest {
 
             composeRule.runOnIdle { activeDeps = d3 }
             composeRule.waitForIdle()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 h3.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1 &&
                     h3.server.requestCount("GET", "/api/v1/public/storefront/filters") >= 1 &&
@@ -159,7 +159,7 @@ class CatalogFilterTest {
             composeRule.onNodeWithTag(CatalogTestTags.FILTER_FORMAT_HINT).assertIsDisplayed()
 
             composeRule.onNodeWithTag(CatalogTestTags.formatChip("BUNDLE")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2
             }
             val url = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!.requestUrl!!
@@ -195,7 +195,7 @@ class CatalogFilterTest {
             composeRule.onNodeWithTag(CatalogTestTags.sortChip(CatalogSort.PRICE_ASC))
                 .performScrollTo()
                 .performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2
             }
             assertEquals(
@@ -206,7 +206,7 @@ class CatalogFilterTest {
             composeRule.onNodeWithTag(CatalogTestTags.sortChip(CatalogSort.PRICE_DESC))
                 .performScrollTo()
                 .performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 3
             }
             assertEquals(
@@ -218,7 +218,7 @@ class CatalogFilterTest {
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.CLEAR_FILTERS_BUTTON).assertIsDisplayed().performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 4
             }
             assertEquals(
@@ -261,7 +261,7 @@ class CatalogFilterTest {
                 .assertTextContains("QDA · Toán QDA")
 
             composeRule.onNodeWithTag(CatalogTestTags.partSubjectChip("P:HSA:P1")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2
             }
             val afterPart = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!.requestUrl!!
@@ -282,7 +282,7 @@ class CatalogFilterTest {
             composeRule.onNodeWithTag(CatalogTestTags.partSubjectChip("S:TOAN"))
                 .performScrollTo()
                 .performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 3
             }
             val afterSubject = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!.requestUrl!!
