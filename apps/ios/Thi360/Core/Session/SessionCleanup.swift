@@ -17,7 +17,8 @@ actor SessionCleanup {
     private let markerFileURL: URL
     private let logger: RedactingAppLogger
     private var participants: [any SessionCleanupParticipant] = [
-        AttemptAssetTempCleanupParticipant()
+        AttemptAssetTempCleanupParticipant(),
+        AttemptAudioCleanupParticipant()
     ]
 
     init(
