@@ -132,4 +132,15 @@ class CredentialRequestToStringTests {
         RegisterVerifyRequest verify = new RegisterVerifyRequest(UUID.randomUUID(), "928374");
         assertThat(verify.toString()).doesNotContain("928374").contains("code=[REDACTED]");
     }
+
+    @Test
+    void accountDeletionRequest_toStringRedactsCurrentPassword() {
+        String secret = "D3l3teS3cret!99";
+        AccountDeletionRequest req = new AccountDeletionRequest(secret);
+
+        assertThat(req.toString())
+                .doesNotContain(secret)
+                .contains("currentPassword=[REDACTED]");
+        assertThat(new AccountDeletionRequest(null).toString()).contains("currentPassword=null");
+    }
 }

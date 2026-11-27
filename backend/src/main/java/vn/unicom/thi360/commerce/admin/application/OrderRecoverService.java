@@ -66,18 +66,28 @@ public class OrderRecoverService {
         String requiredKey = idempotentCommand.requireKey(idempotencyKey);
         String trimmedReason = request.reason().trim();
 
-        RecoveryOutcome outcome = idempotentCommand.execute(
-                requiredKey,
-                "order.recover",
-                normalizedCode,
-                request,
-                RecoveryOutcome.class,
-                () -> recoverInTx(normalizedCode, actor, trimmedReason));
+        UUID[] skippedOrderId = new UUID[1];
+        RecoveryOutcome outcome;
+        try {
+            outcome = idempotentCommand.execute(
+                    requiredKey,
+                    "order.recover",
+                    normalizedCode,
+                    request,
+                    RecoveryOutcome.class,
+                    () -> recoverInTx(normalizedCode, actor, trimmedReason, skippedOrderId));
+        } catch (ConflictException ex) {
+            if (skippedOrderId[0] != null) {
+                fulfillmentService.fulfill(skippedOrderId[0]);
+            }
+            throw ex;
+        }
 
         return queryService.getOrderDetail(outcome.orderCode());
     }
 
-    private RecoveryOutcome recoverInTx(String normalizedCode, CurrentUser actor, String reason) {
+    private RecoveryOutcome recoverInTx(
+            String normalizedCode, CurrentUser actor, String reason, UUID[] skippedOrderId) {
         PurchaseOrder order = purchaseOrderRepository.lockByCode(normalizedCode)
                 .orElseThrow(() -> new NotFoundException("ORDER_NOT_FOUND", null));
 
@@ -100,6 +110,7 @@ public class OrderRecoverService {
 
         boolean fulfilled = fulfillmentService.fulfillLockedPaidOrder(order, actor.username(), reason);
         if (!fulfilled) {
+            skippedOrderId[0] = order.getId();
             throw new ConflictException("ORDER_RECOVERY_NOT_ALLOWED");
         }
 

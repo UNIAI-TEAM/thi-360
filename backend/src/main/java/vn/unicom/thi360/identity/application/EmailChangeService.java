@@ -16,17 +16,12 @@ import vn.unicom.thi360.identity.domain.EmailCodePurpose;
 import vn.unicom.thi360.identity.domain.Normalizer;
 import vn.unicom.thi360.identity.domain.UserAccount;
 import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient;
-import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.AuthFailureReason;
-import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.KeycloakAuthException;
-import vn.unicom.thi360.identity.infrastructure.KeycloakIdentityClient.TokenResult;
 import vn.unicom.thi360.identity.infrastructure.UserAccountRepository;
 import vn.unicom.thi360.shared.api.ConflictException;
 import vn.unicom.thi360.shared.api.FieldError;
-import vn.unicom.thi360.shared.api.RateLimitedException;
 import vn.unicom.thi360.shared.api.ValidationException;
 import vn.unicom.thi360.shared.mail.MailKind;
 import vn.unicom.thi360.shared.mail.MailQueue;
-import vn.unicom.thi360.shared.security.KeycloakProperties;
 import vn.unicom.thi360.shared.web.AppMessages;
 
 /**
@@ -48,7 +43,7 @@ public class EmailChangeService {
     private final UserAccountRepository userAccountRepository;
     private final EmailCodeService emailCodeService;
     private final KeycloakIdentityClient keycloakClient;
-    private final KeycloakProperties keycloakProperties;
+    private final CurrentPasswordVerifier currentPasswordVerifier;
     private final MailQueue mailQueue;
     private final AuditRecorder auditRecorder;
     private final TransactionTemplate transactionTemplate;
@@ -60,7 +55,7 @@ public class EmailChangeService {
             UserAccountRepository userAccountRepository,
             EmailCodeService emailCodeService,
             KeycloakIdentityClient keycloakClient,
-            KeycloakProperties keycloakProperties,
+            CurrentPasswordVerifier currentPasswordVerifier,
             MailQueue mailQueue,
             AuditRecorder auditRecorder,
             PlatformTransactionManager transactionManager,
@@ -70,7 +65,7 @@ public class EmailChangeService {
         this.userAccountRepository = userAccountRepository;
         this.emailCodeService = emailCodeService;
         this.keycloakClient = keycloakClient;
-        this.keycloakProperties = keycloakProperties;
+        this.currentPasswordVerifier = currentPasswordVerifier;
         this.mailQueue = mailQueue;
         this.auditRecorder = auditRecorder;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -93,7 +88,7 @@ public class EmailChangeService {
         if (newNormalized.equals(current.getEmailNormalized())) {
             throw new ConflictException(ERROR_EMAIL_TAKEN);
         }
-        verifyPassword(current, currentPassword);
+        currentPasswordVerifier.verify(current.getUsername(), currentPassword);
 
         transactionTemplate.executeWithoutResult(status -> {
             UserAccount account = accountLoader.lockActive(current.getId());
@@ -186,22 +181,6 @@ public class EmailChangeService {
                 .ifPresent(other -> {
                     throw new ConflictException(ERROR_EMAIL_TAKEN);
                 });
-    }
-
-    private void verifyPassword(UserAccount account, String currentPassword) {
-        TokenResult verified;
-        try {
-            verified = keycloakClient.passwordGrant(keycloakProperties.realm(), account.getUsername(), currentPassword);
-        } catch (KeycloakAuthException ex) {
-            if (ex.getReason() == AuthFailureReason.ACCOUNT_LOCKED) {
-                throw new RateLimitedException("LOGIN_THROTTLED");
-            }
-            throw new ValidationException(
-                    "WRONG_OLD_PASSWORD",
-                    null,
-                    List.of(new FieldError("currentPassword", "WRONG_OLD_PASSWORD", messages.get("WRONG_OLD_PASSWORD"))));
-        }
-        keycloakClient.logout(keycloakProperties.realm(), verified.refreshToken());
     }
 
     private String validateEmail(String raw) {

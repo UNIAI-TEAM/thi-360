@@ -2392,6 +2392,50 @@ class UserAccountAdminIT extends AbstractKeycloakIntegrationTest {
         verify(keycloakClient).setEnabled(userId, false);
     }
 
+    @Test
+    void adminDeleteUnchangedAfterSelfDeletion() throws Exception {
+        String sfx = suffix();
+        String blockedUsername = "adm.blk." + sfx;
+        String blockedEmail = blockedUsername + "@thi360.vn";
+        UUID blockedId = createUserViaApi(blockedUsername, "Valid@1234", "Blocked Buyer", blockedEmail, null);
+
+        UUID orderId = Ids.newId();
+        UUID examId = Ids.newId();
+        vn.unicom.thi360.commerce.support.CommerceTestFixtures.insertMinimalStubOrder(
+                jdbcTemplate, orderId, blockedId, examId, "DHADMDEL" + sfx.toUpperCase());
+        try {
+            mockMvc.perform(delete("/api/v1/admin/users/{id}", blockedId)
+                            .param("reason", "Admin delete blocked by order")
+                            .with(asUser(Permissions.USER_MODIFY)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("USER_HAS_TRANSACTIONS"))
+                    .andExpect(jsonPath("$.fieldErrors[*].code", hasItem("USER_HAS_ORDERS")));
+            assertThat(userAccountRepository.findById(blockedId).orElseThrow().isDeleted()).isFalse();
+        } finally {
+            vn.unicom.thi360.commerce.support.CommerceTestFixtures.deleteStubOrder(jdbcTemplate, orderId);
+        }
+
+        String unblockedUsername = "adm.ok." + sfx;
+        String unblockedFullName = "Unblocked Admin Delete";
+        String unblockedEmail = unblockedUsername + "@thi360.vn";
+        UUID unblockedId = createUserViaApi(unblockedUsername, "Valid@1234", unblockedFullName, unblockedEmail, null);
+        clearInvocations(auditRecorder);
+
+        mockMvc.perform(delete("/api/v1/admin/users/{id}", unblockedId)
+                        .param("reason", "Admin cleanup")
+                        .with(asUser(Permissions.USER_MODIFY)))
+                .andExpect(status().isNoContent());
+
+        UserAccount deleted = userAccountRepository.findById(unblockedId).orElseThrow();
+        assertThat(deleted.isDeleted()).isTrue();
+        assertThat(deleted.getDeleteReason()).isEqualTo("Admin cleanup");
+        assertThat(deleted.getUsername()).isEqualTo(unblockedUsername);
+        assertThat(deleted.getFullName()).isEqualTo(unblockedFullName);
+        assertThat(deleted.getEmail()).isEqualTo(unblockedEmail);
+        verify(auditRecorder).record(argThat(ev ->
+                "USER_DELETED".equals(ev.action()) && unblockedId.toString().equals(ev.targetId())));
+    }
+
     private UUID createUserViaApi(
             String username, String password, String fullName, String email, List<UUID> roleIds)
             throws Exception {

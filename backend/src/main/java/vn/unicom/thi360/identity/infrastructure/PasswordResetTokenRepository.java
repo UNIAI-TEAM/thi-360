@@ -159,4 +159,8 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
             """)
     List<PasswordResetToken> findUnfinalizedWrites(
             @Param("startedBefore") Instant startedBefore, Pageable pageable);
+
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PasswordResetToken t WHERE t.userId = :userId")
+    int deleteByUserId(@Param("userId") UUID userId);
 }

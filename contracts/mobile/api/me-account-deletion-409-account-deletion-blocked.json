@@ -1,0 +1,7 @@
+{
+  "code" : "ACCOUNT_DELETION_BLOCKED",
+  "message" : "Tài khoản hiện chưa thể xóa do còn điều kiện chặn",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000",
+  "blockers" : [ "ATTEMPT_IN_PROGRESS", "ORDER_BEING_CHECKED", "ORDER_PENDING_PAYMENT" ]
+}

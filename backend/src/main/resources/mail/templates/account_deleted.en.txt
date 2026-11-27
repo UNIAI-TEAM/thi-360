@@ -1,0 +1,8 @@
+Your [(${productName})] account has been deleted
+Hello [(${fullName})],
+
+We confirm that this [(${productName})] account has been permanently closed as requested. Your personal information has been removed and all active sessions have been revoked.
+
+If you did not request this, please contact [(${productName})] support.
+
+[(${productName})]

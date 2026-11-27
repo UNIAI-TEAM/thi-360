@@ -2846,6 +2846,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/account/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Học viên tự xóa tài khoản */
+        post: operations["deleteMyAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/account/deletion-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Kiểm tra điều kiện tự xóa tài khoản */
+        get: operations["checkMyAccountDeletion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/attempts": {
         parameters: {
             query?: never;
@@ -3503,6 +3537,44 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Lỗi 409 khi tài khoản còn điều kiện chặn không thể tự xóa */
+        AccountDeletionBlockedResponse: {
+            /** @description Danh sách điều kiện đang chặn việc xóa */
+            blockers: ("ATTEMPT_IN_PROGRESS" | "ORDER_BEING_CHECKED" | "ORDER_PENDING_PAYMENT")[];
+            /**
+             * @description Mã lỗi
+             * @example ACCOUNT_DELETION_BLOCKED
+             */
+            code: string;
+            /** @description Danh sách lỗi theo từng trường */
+            fieldErrors: components["schemas"]["FieldError"][];
+            /** @description Thông báo lỗi theo ngôn ngữ yêu cầu */
+            message: string;
+            /** @description Mã định danh yêu cầu (X-Request-Id) */
+            traceId: string;
+        };
+        /** @description Kết quả kiểm tra điều kiện tự xóa tài khoản học viên */
+        AccountDeletionCheckResponse: {
+            /** @description Danh sách điều kiện đang chặn việc xóa */
+            blockers: ("ATTEMPT_IN_PROGRESS" | "ORDER_BEING_CHECKED" | "ORDER_PENDING_PAYMENT")[];
+            /** @description Tài khoản có thể xóa ngay lúc này hay không */
+            canDelete: boolean;
+            /** @description Có lượt thi đã nộp đang chờ chấm hay không */
+            pendingGrading: boolean;
+            /**
+             * Format: int32
+             * @description Tổng số lượt thi còn dùng được của mọi quyền thi
+             */
+            unusedAttempts: number;
+        };
+        /** @description Yêu cầu học viên tự xóa tài khoản */
+        AccountDeletionRequest: {
+            /**
+             * Format: password
+             * @description Mật khẩu hiện tại
+             */
+            currentPassword: string;
+        };
         /** @description Yêu cầu thêm học viên vào lớp học */
         AddClassMembersRequest: {
             /** @description Danh sách ID tài khoản học viên cần thêm vào lớp */
@@ -38854,6 +38926,264 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteMyAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountDeletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Tài khoản đã được xóa */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description WRONG_OLD_PASSWORD hoặc VALIDATION_FAILED */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Tài khoản không được phép tự xóa (ACCOUNT_DELETION_NOT_ALLOWED) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Còn điều kiện chặn tự xóa (ACCOUNT_DELETION_BLOCKED) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionBlockedResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Payload Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Tài khoản đang bị tạm khóa đăng nhập (LOGIN_THROTTLED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Not Implemented */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    checkMyAccountDeletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Kết quả kiểm tra điều kiện tự xóa */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionCheckResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Chưa đăng nhập */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Tài khoản không được phép tự xóa (ACCOUNT_DELETION_NOT_ALLOWED) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             /** @description Not Found */

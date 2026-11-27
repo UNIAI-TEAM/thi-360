@@ -47,6 +47,8 @@ final class MailSamples {
                 model.put("orderCode", "DH-0001");
                 model.put("refundAmount", "100.000 ₫");
             }
+            case ACCOUNT_DELETED -> {
+            }
         }
         return model;
     }
@@ -64,6 +66,7 @@ final class MailSamples {
                 yield values;
             }
             case REFUND_DONE -> List.of(FULL_NAME, "DH-0001", "100.000 ₫");
+            case ACCOUNT_DELETED -> List.of(FULL_NAME);
         };
     }
 }

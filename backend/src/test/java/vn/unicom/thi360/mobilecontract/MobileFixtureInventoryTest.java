@@ -81,7 +81,8 @@ class MobileFixtureInventoryTest {
                 MobileAttemptFixturesIT.Fixtures.SET,
                 MobileAttemptContentFixturesIT.Fixtures.SET,
                 MobileResultFixturesIT.Fixtures.SET,
-                MobileProfileFixturesIT.Fixtures.SET);
+                MobileProfileFixturesIT.Fixtures.SET,
+                MeAccountDeletionContractIT.Fixtures.SET);
 
         for (Set<String> set : itSets) {
             for (String file : set) {
@@ -310,6 +311,8 @@ class MobileFixtureInventoryTest {
         m.put("me-email-verify", "verify");
         m.put("me-email-change-confirm", "confirmChange");
         m.put("me-email-change", "requestChange");
+        m.put("me-account-deletion-check", "checkMyAccountDeletion");
+        m.put("me-account-deletion", "deleteMyAccount");
         return Map.copyOf(m);
     }
 
@@ -543,6 +546,19 @@ class MobileFixtureInventoryTest {
                 "api/me-email-change-409-email-taken.json",
                 "api/me-email-change-429-rate-limited.json",
                 "api/me-email-change-429-login-throttled.json",
-                "api/me-email-change-confirm-422-email-code-invalid.json");
+                "api/me-email-change-confirm-422-email-code-invalid.json",
+                // BE-3 Account Self-Deletion (12)
+                "api/me-account-deletion-check-200.json",
+                "api/me-account-deletion-check-200-unused-attempts.json",
+                "api/me-account-deletion-check-200-pending-grading.json",
+                "api/me-account-deletion-check-200-blocked-attempt.json",
+                "api/me-account-deletion-check-200-blocked-order.json",
+                "api/me-account-deletion-check-200-blocked-pending-payment.json",
+                "api/me-account-deletion-check-200-blocked.json",
+                "api/me-account-deletion-check-403-account-deletion-not-allowed.json",
+                "api/me-account-deletion-400-wrong-old-password.json",
+                "api/me-account-deletion-403-account-deletion-not-allowed.json",
+                "api/me-account-deletion-409-account-deletion-blocked.json",
+                "api/me-account-deletion-429-login-throttled.json");
     }
 }

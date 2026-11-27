@@ -199,6 +199,34 @@ class MailTemplateRenderTests {
         assertThat(mail.html()).doesNotContain("<script>").contains("&lt;script&gt;");
     }
 
+    @Test
+    void accountDeletedUsesProductName() {
+        RenderedMail viDefault = renderer.render(MailKind.ACCOUNT_DELETED, "vi", MailSamples.model(MailKind.ACCOUNT_DELETED));
+        RenderedMail enDefault = renderer.render(MailKind.ACCOUNT_DELETED, "en", MailSamples.model(MailKind.ACCOUNT_DELETED));
+        assertThat(viDefault.subject()).isEqualTo("Tài khoản Thi360 của bạn đã được xóa");
+        assertThat(enDefault.subject()).isEqualTo("Your Thi360 account has been deleted");
+
+        MailTemplateRenderer custom =
+                new MailTemplateRenderer(context, "classpath:mail/templates/", WEB_URL, "Acme Học");
+        for (String locale : MailLocale.SUPPORTED) {
+            RenderedMail mail = custom.render(MailKind.ACCOUNT_DELETED, locale, MailSamples.model(MailKind.ACCOUNT_DELETED));
+            String expectedSubject = locale.equals("vi")
+                    ? "Tài khoản Acme Học của bạn đã được xóa"
+                    : "Your Acme Học account has been deleted";
+            assertThat(mail.subject()).isEqualTo(expectedSubject);
+            assertThat(mail.text())
+                    .contains("Acme Học")
+                    .doesNotContain("Thi360")
+                    .doesNotContain("Thi 360");
+            assertThat(mail.html())
+                    .contains("Acme Học")
+                    .doesNotContain("Thi360")
+                    .doesNotContain("Thi 360");
+            List<String> lines = mail.text().lines().map(String::strip).filter(line -> !line.isEmpty()).toList();
+            assertThat(lines.getLast()).isEqualTo("Acme Học");
+        }
+    }
+
     private static void assertProductNameEverywhere(
             MailTemplateRenderer target, String productName, boolean forbidDefaultBrand) {
         String spacedLegacy = "Thi" + " 360";
