@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate,UnusedResources">
+    <string name="attempt_errors_loadTitle">Unable to load attempt</string>
+    <string name="attempt_errors_loadDescription">Unable to load attempt details. Please try again.</string>
+    <string name="attempt_errors_notFoundTitle">Attempt not found</string>
+    <string name="attempt_errors_notFoundDescription">This attempt does not exist or belongs to a different account.</string>
+    <string name="attempt_errors_retry">Try again</string>
+    <string name="attempt_errors_loadBackToMyExams">Back to My exams</string>
+
+    <string name="attempt_closed_heading">Attempt closed</string>
+    <string name="attempt_closed_headingTimeUp">Time is up</string>
+    <string name="attempt_closed_headingChoiceTimeout">Section 3 selection timed out</string>
+    <string name="attempt_closed_description">This attempt has ended and answers can no longer be edited.</string>
+    <string name="attempt_closed_viewResult">View result</string>
+    <string name="attempt_closed_backToMyExams">Back to My exams</string>
+
+    <string name="attempt_takeover_title">Attempt is open in another session</string>
+    <string name="attempt_takeover_description">Do you want to continue on this device? The other device will no longer be able to edit.</string>
+    <string name="attempt_takeover_attemptLabel">Exam</string>
+    <string name="attempt_takeover_lastSeenLabel">Other session last active</string>
+    <string name="attempt_takeover_noteClock">The timer keeps running while you decide.</string>
+    <string name="attempt_takeover_noteUnsaved">Any unsaved edits on the other device will not appear here.</string>
+    <string name="attempt_takeover_confirm">Continue here</string>
+    <string name="attempt_takeover_cancel">Cancel</string>
+    <string name="attempt_takeover_error">Unable to continue the attempt here. Please try again.</string>
+
+    <string name="attempt_evicted_heading">This attempt has been resumed on another device.</string>
+    <string name="attempt_evicted_description">This session can no longer edit answers. Any unsaved edits on this device were not sent to the server.</string>
+    <string name="attempt_evicted_takeoverHere">Continue here</string>
+    <string name="attempt_evicted_backToMyExams">Back to My exams</string>
+
+    <string name="attempt_readOnly_acquiring">Connecting to exam session. You can view questions, but editing is temporarily locked.</string>
+    <string name="attempt_readOnly_unavailable">Unable to start editing session. Read-only mode is active.</string>
+    <string name="attempt_readOnly_partClosed">This section is closed and read-only.</string>
+
+    <string name="attempt_header_finishPart">Finish section</string>
+    <string name="attempt_header_submit">Submit exam</string>
+    <string name="attempt_header_collapseHeader">Collapse top bar</string>
+    <string name="attempt_header_expandHeader">Expand top bar</string>
+    <string name="attempt_header_backLabel">Back</string>
+
+    <string name="attempt_player_pageTitle">Exam attempt</string>
+    <string name="attempt_player_offlineBanner">Connection lost. Latest answers are not saved yet. The timer is still running.</string>
+    <string name="attempt_player_noActiveQuestion">No question available to display.</string>
+    <string name="attempt_player_attachmentsLabel">Attachments</string>
+
+    <string name="attempt_timer_sharedRemaining">Exam time left</string>
+    <string name="attempt_timer_partRemaining">Section %1$d left</string>
+    <string name="attempt_timer_ariaLabel">%1$s: %2$d hours %3$d minutes %4$d seconds</string>
+    <string name="attempt_timer_ariaLabelShort">%1$s: %2$d minutes %3$d seconds</string>
+
+    <string name="attempt_parts_navLabel">Exam sections</string>
+    <string name="attempt_parts_openProgress">%1$d/%2$d questions</string>
+    <string name="attempt_parts_tabAccessibility">%1$s, %2$s</string>
+    <string name="attempt_parts_tabOpenAccessibility">%1$s, %2$s, %3$s</string>
+    <string name="attempt_parts_states_PENDING">Locked</string>
+    <string name="attempt_parts_states_AWAITING_CHOICE">Choosing section</string>
+    <string name="attempt_parts_states_GENERATING">Preparing</string>
+    <string name="attempt_parts_states_GENERATION_FAILED">Failed</string>
+    <string name="attempt_parts_states_OPEN">In progress</string>
+    <string name="attempt_parts_states_CLOSED">Completed</string>
+    <string name="attempt_parts_states_SKIPPED">Skipped</string>
+
+    <string name="attempt_nav_gridLabel">Question list</string>
+    <string name="attempt_nav_controlsLabel">Question navigation</string>
+    <string name="attempt_nav_openGrid">Questions %1$d/%2$d</string>
+    <string name="attempt_nav_openGridCompact">%1$d/%2$d</string>
+    <string name="attempt_nav_closeGrid">Close question list</string>
+    <string name="attempt_nav_answeredCount">%1$d/%2$d answered</string>
+    <string name="attempt_nav_progressLabel">Progress: %1$d of %2$d questions</string>
+    <string name="attempt_nav_questionPosition">Question %1$d/%2$d</string>
+    <string name="attempt_nav_questionNumber">Question %1$d</string>
+    <string name="attempt_nav_prev">Previous</string>
+    <string name="attempt_nav_next">Next</string>
+    <string name="attempt_nav_filterAll">All</string>
+    <string name="attempt_nav_filterUnanswered">Unanswered</string>
+    <string name="attempt_nav_filterFlagged">Flagged</string>
+    <string name="attempt_nav_emptyFiltered">No questions match this filter.</string>
+    <string name="attempt_nav_legendAnswered">Answered</string>
+    <string name="attempt_nav_legendPartial">Partial</string>
+    <string name="attempt_nav_legendBlank">Unanswered</string>
+    <string name="attempt_nav_legendCurrent">Current</string>
+    <string name="attempt_nav_legendFlagged">Flagged</string>
+    <string name="attempt_nav_legendUnsaved">Unsaved</string>
+    <string name="attempt_nav_stateAnswered">answered</string>
+    <string name="attempt_nav_statePartial">partially answered</string>
+    <string name="attempt_nav_stateBlank">unanswered</string>
+    <string name="attempt_nav_stateCurrent">current</string>
+    <string name="attempt_nav_stateFlagged">flagged for review</string>
+    <string name="attempt_nav_stateSaved">saved</string>
+    <string name="attempt_nav_stateUnsaved">unsaved</string>
+
+    <string name="attempt_segments_range">Questions %1$d–%2$d</string>
+    <string name="attempt_segments_maxPoints">%1$s pts</string>
+    <string name="attempt_segments_ungrouped">Other questions</string>
+    <plurals name="attempt_segments_commands">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+
+    <string name="attempt_subjects_heading">%1$s</string>
+    <string name="attempt_subjects_range">Questions %1$d–%2$d</string>
+    <plurals name="attempt_subjects_questionCount">
+        <item quantity="one">%1$d question</item>
+        <item quantity="other">%1$d questions</item>
+    </plurals>
+    <string name="attempt_subjects_codes_ANH">English</string>
+    <string name="attempt_subjects_codes_CNCN">Technology (industrial)</string>
+    <string name="attempt_subjects_codes_CNNN">Technology (agricultural)</string>
+    <string name="attempt_subjects_codes_DIA">Geography</string>
+    <string name="attempt_subjects_codes_ECON_LAW">Economic and Legal Education</string>
+    <string name="attempt_subjects_codes_GDKTPL">Economic and Legal Education</string>
+    <string name="attempt_subjects_codes_HOA">Chemistry</string>
+    <string name="attempt_subjects_codes_INFORMATICS">Informatics</string>
+    <string name="attempt_subjects_codes_LY">Physics</string>
+    <string name="attempt_subjects_codes_SCIENTIFIC_THINKING">Scientific thinking</string>
+    <string name="attempt_subjects_codes_SINH">Biology</string>
+    <string name="attempt_subjects_codes_SU">History</string>
+    <string name="attempt_subjects_codes_TECH_AGRICULTURE">Technology (agricultural)</string>
+    <string name="attempt_subjects_codes_TECH_INDUSTRY">Technology (industrial)</string>
+    <string name="attempt_subjects_codes_TIENG_ANH">English</string>
+    <string name="attempt_subjects_codes_TIN">Informatics</string>
+    <string name="attempt_subjects_codes_TOAN">Mathematics</string>
+    <string name="attempt_subjects_codes_VAN">Literature</string>
+    <string name="attempt_subjects_codes_VIETNAMESE">Vietnamese</string>
+
+    <string name="attempt_partChoice_title">Choose the third section</string>
+    <string name="attempt_partChoice_description">Choose your option for the next section and confirm. Your choice is locked once confirmed.</string>
+    <string name="attempt_partChoice_timerLabel">Selection time left</string>
+    <string name="attempt_partChoice_deadlineWarning">If not confirmed before the timer ends, the attempt closes and Section 3 scores 0.</string>
+    <string name="attempt_partChoice_deadlineExpired">Section 3 selection time has expired.</string>
+    <string name="attempt_partChoice_legendOption">Choose an option or combination</string>
+    <string name="attempt_partChoice_legendSubjects">Select subjects</string>
+    <string name="attempt_partChoice_countsPerSubject">Questions per subject: %1$s</string>
+    <string name="attempt_partChoice_fixedSubjects">Fixed subjects: %1$s</string>
+    <string name="attempt_partChoice_optionQuestions">%1$d questions</string>
+    <string name="attempt_partChoice_optionMinutes">%1$d min</string>
+    <string name="attempt_partChoice_selectedProgress">Selected %1$d/%2$d</string>
+    <string name="attempt_partChoice_subjectsLimitReached">%1$d subjects selected. Uncheck one to choose another.</string>
+    <string name="attempt_partChoice_confirmCta">Confirm section 3 choice</string>
+    <string name="attempt_partChoice_generatingTitle">Preparing questions for this section</string>
+    <string name="attempt_partChoice_generatingDescription">Your choice is locked. The section timer starts only when the questions are ready.</string>
+    <string name="attempt_partChoice_busyNotice">Your section is still being prepared. The app checks automatically.</string>
+    <string name="attempt_partChoice_failedTitle">Could not prepare section</string>
+    <string name="attempt_partChoice_failedDescription">Your selection is preserved. Earlier sections are unaffected and this section timer has not started.</string>
+    <string name="attempt_partChoice_failedRetry">Try again</string>
+    <string name="attempt_partChoice_errors_ATTEMPT_SESSION_REVOKED">This edit session is no longer active because the attempt was opened elsewhere.</string>
+    <string name="attempt_partChoice_errors_CHOICE_LOCKED">Another choice has already been locked for this section.</string>
+    <string name="attempt_partChoice_errors_CHOICE_NOT_ALLOWED">This option is invalid or not included in your purchase.</string>
+    <string name="attempt_partChoice_errors_CHOICE_WINDOW_CLOSED">The selection window for Section 3 has closed.</string>
+    <string name="attempt_partChoice_errors_PART_GENERATING">This section is currently being generated. Please wait a moment.</string>
+    <string name="attempt_partChoice_errors_PART_NOT_AWAITING">This section is not awaiting selection right now.</string>
+    <string name="attempt_partChoice_errors_RATE_LIMITED">Too many requests. Please wait a moment and try again.</string>
+    <string name="attempt_partChoice_errors_SUBJECTS_INVALID">Please select the exact number of valid subjects required.</string>
+    <string name="attempt_partChoice_errors_generic">Unable to confirm selection. Please try again.</string>
+
+    <string name="attempt_saveStatus_saved">Saved</string>
+    <string name="attempt_saveStatus_saving">Saving…</string>
+    <string name="attempt_saveStatus_unsaved">Unsaved</string>
+    <string name="attempt_saveStatus_reasons_offline">Offline</string>
+    <string name="attempt_saveStatus_reasons_network_error">Network error</string>
+    <string name="attempt_saveStatus_reasons_server_error">Server busy</string>
+    <string name="attempt_saveStatus_reasons_rate_limited">Wait %1$ds</string>
+    <string name="attempt_saveStatus_reasons_rejected">Invalid answer</string>
+    <string name="attempt_saveStatus_reasons_session_conflict">Opened elsewhere</string>
+
+    <string name="attempt_dialogs_closeLabel">Close</string>
+    <string name="attempt_dialogs_finishPart_title">Finish section?</string>
+    <string name="attempt_dialogs_finishPart_warningIrreversible">Once finished, you cannot return to this section.</string>
+    <string name="attempt_dialogs_finishPart_missingSummary">%1$d/%2$d questions unanswered</string>
+    <string name="attempt_dialogs_finishPart_allAnswered">You have answered all %1$d/%2$d questions in this section.</string>
+    <string name="attempt_dialogs_finishPart_partialSummary">%1$d questions partially answered</string>
+    <string name="attempt_dialogs_finishPart_nextPartOpensNote">The next section will open right away and you cannot return to this section.</string>
+    <string name="attempt_dialogs_finishPart_nextPartChoiceNote">Next is the Section 3 selection step. You have up to 15 minutes to confirm; if time runs out, the attempt ends and Section 3 scores 0.</string>
+    <string name="attempt_dialogs_finishPart_confirm">Finish section</string>
+    <string name="attempt_dialogs_finishPart_cancel">Keep working</string>
+    <string name="attempt_dialogs_finishPart_unconfirmedTitle">Section completion unconfirmed</string>
+    <string name="attempt_dialogs_finishPart_unconfirmedDesc">Connection was lost before the server responded, so it is unclear whether this section has closed. Once back online, the system checks attempt status before allowing a retry.</string>
+    <string name="attempt_dialogs_finishPart_reconcile">Check attempt status</string>
+    <string name="attempt_dialogs_finishPart_genericError">Unable to finish this section. Please try again.</string>
+
+    <string name="attempt_dialogs_submitConfirm_title">Submit exam?</string>
+    <string name="attempt_dialogs_submitConfirm_description">Once submitted, the attempt ends and answers cannot be modified.</string>
+    <string name="attempt_dialogs_submitConfirm_answeredCount">%1$d/%2$d answered</string>
+    <string name="attempt_dialogs_submitConfirm_blankCount">Unanswered: %1$d</string>
+    <string name="attempt_dialogs_submitConfirm_partialCount">Partially answered: %1$d</string>
+    <string name="attempt_dialogs_submitConfirm_flaggedCount">Flagged for review: %1$d</string>
+    <string name="attempt_dialogs_submitConfirm_partBreakdownTitle">Missing questions by section</string>
+    <string name="attempt_dialogs_submitConfirm_partMissingRow">%1$d/%2$d missing</string>
+    <string name="attempt_dialogs_submitConfirm_essaySectionTitle">Essay status</string>
+    <string name="attempt_dialogs_submitConfirm_essaySaved">%1$d words · saved</string>
+    <string name="attempt_dialogs_submitConfirm_essayUnsaved">%1$d words · unsaved</string>
+    <string name="attempt_dialogs_submitConfirm_essayUnderLimitTitle">Essays below minimum word count (you can still submit)</string>
+    <string name="attempt_dialogs_submitConfirm_essayUnderLimitItem">Question %1$d: %2$d/%3$d words — below minimum word count</string>
+    <string name="attempt_dialogs_submitConfirm_confirm">Submit exam</string>
+    <string name="attempt_dialogs_submitConfirm_cancel">Review answers</string>
+    <string name="attempt_dialogs_submitConfirm_unconfirmedTitle">Submission unconfirmed</string>
+    <string name="attempt_dialogs_submitConfirm_unconfirmedDesc">Connection was lost before the server responded, so submission is not yet confirmed. Once back online, the system checks attempt status before retrying.</string>
+    <string name="attempt_dialogs_submitConfirm_reconcile">Check attempt status</string>
+    <string name="attempt_dialogs_submitConfirm_genericError">Unable to submit exam. Please try again.</string>
+
+    <string name="attempt_dialogs_leaveConfirm_title">Leave exam screen?</string>
+    <string name="attempt_dialogs_leaveConfirm_description">Some answers have not been saved to the server yet. Your answers remain on this device and will sync when you return; the timer keeps running.</string>
+    <string name="attempt_dialogs_leaveConfirm_stay">Stay</string>
+    <string name="attempt_dialogs_leaveConfirm_leave">Leave</string>
+</resources>

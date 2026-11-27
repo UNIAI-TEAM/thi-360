@@ -77,8 +77,11 @@ class RoutePlaceholderTest {
         composeRule.onNodeWithTag(vn.unicom.thi360.feature.prepare.PrepareTestTags.SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openAttempt("att-55") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("attempt")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=att-55", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertIsDisplayed()
+        org.junit.Assert.assertEquals(
+            "att-55",
+            nav.navController.currentBackStackEntry?.arguments?.getString(AppRoute.ARG_ATTEMPT_ID),
+        )
         composeRule.runOnIdle { nav.closeAttempt() }
 
         composeRule.runOnIdle { nav.openResult("att-55") }
