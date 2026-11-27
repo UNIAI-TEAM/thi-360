@@ -17,6 +17,10 @@ final class LockUITests: XCTestCase {
         let loginBody = try Data(contentsOf: authDir.appendingPathComponent("login-200.json"))
         let refreshBody = try Data(contentsOf: authDir.appendingPathComponent("refresh-200.json"))
         let profileBody = try Data(contentsOf: apiDir.appendingPathComponent("me-profile-200.json"))
+        let meBody = try Data(contentsOf: apiDir.appendingPathComponent("me-200.json"))
+        let myExamsBody = try Data(contentsOf: apiDir.appendingPathComponent("my-exams-list-200.json"))
+        let attemptsBody = try Data(contentsOf: apiDir.appendingPathComponent("attempts-list-200.json"))
+        let catalogOptionsBody = try Data(contentsOf: apiDir.appendingPathComponent("catalog-options-200-exam.json"))
         let filtersBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-filters-200.json"))
         let productsBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-list-200.json"))
         let accessBody = try Data(contentsOf: apiDir.appendingPathComponent("exam-access-query-200.json"))
@@ -28,8 +32,20 @@ final class LockUITests: XCTestCase {
             if method == "POST", path == "/api/v1/auth/mobile/refresh" {
                 return (200, refreshBody)
             }
+            if method == "GET", path == "/api/v1/me" {
+                return (200, meBody)
+            }
             if method == "GET", path == "/api/v1/me/profile" {
                 return (200, profileBody)
+            }
+            if method == "GET", path == "/api/v1/me/exams" {
+                return (200, myExamsBody)
+            }
+            if method == "GET", path == "/api/v1/me/attempts" {
+                return (200, attemptsBody)
+            }
+            if method == "GET", path == "/api/v1/catalog/options" {
+                return (200, catalogOptionsBody)
             }
             if method == "GET", path == "/api/v1/public/storefront/filters" {
                 return (200, filtersBody)
@@ -97,7 +113,8 @@ final class LockUITests: XCTestCase {
 
         // Switch to History destination before backgrounding so we verify unlock returns to exact screen.
         openDestination(titled: "Lịch sử", identifier: "shell.dest.history", in: app)
-        XCTAssertTrue(app.staticTexts["Lịch sử"].waitForExistence(timeout: 5))
+        let historyHeading = app.staticTexts["history.heading"].firstMatch
+        XCTAssertTrue(historyHeading.waitForExistence(timeout: 8))
 
         // Background past lock timeout (2s in Dev UI test) and return to foreground.
         XCUIDevice.shared.press(.home)
@@ -113,8 +130,8 @@ final class LockUITests: XCTestCase {
         // Trigger Face ID / Touch ID match on simulator -> returns to exact prior screen (History).
         unlockButton.tap()
         SimulatorBiometricHelper.acceptFaceIDPermissionIfPresent(timeout: 1.5)
-        waitForBiometricMatch(until: app.staticTexts["Lịch sử"], timeout: 10)
-        XCTAssertTrue(app.staticTexts["Lịch sử"].exists, "Biometric unlock must restore exact screen before lock")
+        waitForBiometricMatch(until: historyHeading, timeout: 10)
+        XCTAssertTrue(historyHeading.exists, "Biometric unlock must restore exact screen before lock")
         XCTAssertFalse(app.buttons["lock.unlockBiometricButton"].exists)
     }
 
