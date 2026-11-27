@@ -144,6 +144,20 @@ describe("math dialog (mathlive mocked)", () => {
     expect(insertButton()).toBeEnabled();
   });
 
+  it("inserts a space or a wide space from the two small buttons in the corner of the visual field (UNI-2878)", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const dialog = await openDialog(user);
+    const spacing = within(dialog).getByRole("group", { name: "Insert spacing" });
+
+    expect(within(spacing).getAllByRole("button").map((button) => button.textContent)).toEqual(["Space", "Wide space"]);
+    await user.click(within(spacing).getByRole("button", { name: "Insert a space" }));
+    await user.click(within(spacing).getByRole("button", { name: "Insert a wide space to separate two formulas" }));
+
+    expect(MockMathfield.inserts.map((insert) => insert.latex)).toEqual(["\\ ", "\\quad"]);
+    expect(within(dialog).queryByRole("button", { name: /^Space$|Wide space \(/ })).toBeNull();
+  });
+
   it("disables Insert while a placeholder slot is left, then enables it once filled", async () => {
     const user = userEvent.setup();
     renderEditor();
