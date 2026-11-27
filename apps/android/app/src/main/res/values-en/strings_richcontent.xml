@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="richcontent_image_load_failed">Could not load the image. Tap to reload.</string>
+    <string name="richcontent_image_zoom_action">Zoom image</string>
+    <string name="richcontent_table_scroll_region">Data table, scroll horizontally to view all</string>
+    <string name="richcontent_formula_scroll_region">Formula, scroll horizontally to view all</string>
+    <string name="richcontent_image_loading">Loading image</string>
+</resources>

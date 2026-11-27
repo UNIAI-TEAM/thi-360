@@ -26,6 +26,7 @@ class LocalPersistenceScanTest {
      * - core/preferences/AppPreferences.kt: device-level theme & locale DataStore (Phase 1)
      * - core/appearance/AppearanceCache.kt: public appearance tokens cache (Phase 1)
      * - core/session/SessionCleanup.kt: writes/deletes pending cleanup marker during logout/startup
+     * - feature/richcontent/assets/AttemptAssetSource.kt: ephemeral viewer temp files in cacheDir/attempt-assets/ purged on close/leave/logout/start (R-177, P2-D-44)
      */
     private val allowlist = setOf(
         "core/storage/AccountScopedStore.kt",
@@ -36,6 +37,7 @@ class LocalPersistenceScanTest {
         "core/preferences/AppPreferences.kt",
         "core/appearance/AppearanceCache.kt",
         "core/session/SessionCleanup.kt",
+        "feature/richcontent/assets/AttemptAssetSource.kt",
     )
 
     private val persistencePatterns = listOf(
