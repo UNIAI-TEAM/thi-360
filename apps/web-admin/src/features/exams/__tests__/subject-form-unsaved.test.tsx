@@ -179,11 +179,11 @@ describe("Thay đổi chưa lưu gồm nhập thô (FTM R-15)", () => {
     const { server } = boot();
     openStructure("?section=sec-ly");
     const input = await typeBadValue(user);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await user.clear(input);
     await user.type(input, "2");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(JSON.stringify(putCalls(server)[0]!.body)).not.toContain("abc");
     const ly = sectionsOf(putCalls(server)[0]!.body)["sec-ly"] as { blocks: Array<{ id: string; questionCount: number }> };

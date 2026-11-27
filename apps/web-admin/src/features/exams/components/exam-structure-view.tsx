@@ -69,7 +69,7 @@ import { buildQuickCheckItems, type QuickCheckItem } from "./exam-structure-quic
 import { ExamStructureSubjectPanel } from "./exam-structure-subject-panel";
 import { ExamStructureAlertsBanner, ExamStructureStatusStrip } from "./exam-structure-summary";
 import { reviewHref } from "./exam-review-shared";
-import { StructureVersionPicker } from "./structure-version-picker";
+import { showsStructureVersion, StructureVersionPicker } from "./structure-version-picker";
 import { SubjectChoiceNav } from "./subject-choice-nav";
 import { PracticeReviewSubjectPanel } from "./practice-review-subject-panel";
 import { ScoringExamples, StrandReference } from "./scoring-examples";
@@ -569,7 +569,7 @@ function StructureEditor({
     if (item.target.quotaId) void focusExamQuotaWhenReady(item.target.quotaId);
   };
 
-  /** "Tiếp tục → Thông tin bán" (hoặc "Lưu và quay lại kiểm tra" khi đến từ bước 4): lưu toàn bộ thay đổi một lần rồi chuyển bước sau khi máy chủ xác nhận. */
+  /** "Tiếp tục: Thông tin bán" (hoặc "Lưu và quay lại kiểm tra" khi đến từ bước 4): lưu toàn bộ thay đổi một lần rồi chuyển bước sau khi máy chủ xác nhận. */
   const handleContinue = () => {
     const nextHref = fromReview
       ? hasUnsavedChanges
@@ -659,14 +659,18 @@ function StructureEditor({
   };
   const summaryLoad = summaryQuery.isPending ? "loading" : summaryQuery.data ? "ready" : "unavailable";
 
+  // SPT, SP2E bỏ khối Phiên bản cấu trúc và ghi chú của mẫu (UNI-2876); dải trên chỉ còn khi có ghi chú khác cần hiện.
+  const versionBlock = showsStructureVersion(exam.kind);
   const hasVersionPicker =
+    versionBlock &&
     matchingTemplates(templates, {
       kind: exam.kind,
       scope: exam.scope,
       partCode: exam.partCode ?? "",
       subjectCode: exam.subjectCode ?? "",
     }).length >= 2;
-  const showTopStrip = hsaNormalizing || hasVersionPicker || yearsPending || Boolean(template?.expertNote);
+  const templateNote = versionBlock ? (template?.expertNote ?? null) : null;
+  const showTopStrip = hsaNormalizing || hasVersionPicker || yearsPending || Boolean(templateNote);
   const statusNote = exam.servingVersion !== null ? t("workingNote", { version: exam.servingVersion }) : t("draftNote");
   const effectiveSummary =
     reviewMode && JSON.stringify(loadedStructure.parts) !== JSON.stringify(structure.parts)
@@ -734,7 +738,7 @@ function StructureEditor({
         />
 
         {showTopStrip && (
-          <div className="flex flex-col gap-2.5 border-b border-border bg-subtle/25 px-4 py-3 sm:px-5">
+          <div data-testid="structure-top-strip" className="flex flex-col gap-2.5 border-b border-border bg-subtle/25 px-4 py-3 sm:px-5">
             {hsaNormalizing && <HsaNormalizedNote />}
             {hasVersionPicker && (
               <StructureVersionPicker
@@ -769,10 +773,10 @@ function StructureEditor({
                 </Button>
               </p>
             )}
-            {template?.expertNote && (
+            {templateNote && (
               <p className="flex items-start gap-2 text-body text-text-secondary">
                 <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-                <span>{t("expertNote", { note: template.expertNote })}</span>
+                <span>{t("expertNote", { note: templateNote })}</span>
               </p>
             )}
           </div>

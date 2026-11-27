@@ -63,7 +63,7 @@ describe("Lỗi 422 chỉ tiêu chủ đề ở panel không có bảng chỉ ti
     await user.type(percent, "40");
     await user.clear(screen.getAllByRole("textbox", { name: /^Tỷ lệ/ })[1]!);
     await user.type(screen.getAllByRole("textbox", { name: /^Tỷ lệ/ })[1]!, "60");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
 
     const block = screen.getByRole("heading", { name: "Chỉ tiêu cấp bài" }).closest("section")!;
@@ -82,7 +82,7 @@ describe("Lỗi 422 chỉ tiêu chủ đề ở panel không có bảng chỉ ti
     open("part=part-1");
     const name = await screen.findByRole("textbox", { name: /Tên phần/ });
     await user.type(name, "x");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
 
     const panel = screen.getByRole("heading", { level: 2, name: /Part 1x/ }).closest("div.gap-5")! as HTMLElement;
@@ -115,7 +115,7 @@ describe("Lỗi 422 chỉ tiêu chủ đề khi nhóm lấy phần còn lại đ
     const user = userEvent.setup();
     open("block=blk-2");
     await user.type(await screen.findByRole("textbox", { name: "Tên nhóm" }), " x");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
 
     const alert = await screen.findByRole("alert");
@@ -131,7 +131,7 @@ describe("Lỗi 422 chỉ tiêu chủ đề khi nhóm lấy phần còn lại đ
     const user = userEvent.setup();
     open("block=blk-1");
     await user.type(await screen.findByRole("textbox", { name: "Tên nhóm" }), " x");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
 
     const alert = await screen.findByRole("alert");

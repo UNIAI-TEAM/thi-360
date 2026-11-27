@@ -33,13 +33,15 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
   it("mục chuẩn của MT và DS khớp", () => {
     expect(mt()).toBe("FITS");
     expect(mt("HSA", "LY")).toBe("FITS");
-    expect(ds("SPT", "TOAN")).toBe("FITS");
+    expect(ds("SPT", "LY")).toBe("FITS");
+    expect(mt("SP2E", "TOAN")).toBe("FITS");
+    expect(mt("SPT", "TOAN")).toBe("FITS");
   });
 
   it("COMBINED ở kỳ không có bảng kết hợp, hoặc ở nhóm; V-SAT cho ở cấp phần", () => {
     const combined = separate({ mode: "COMBINED", cells: [{ gradeCode: "GRADE_10", difficultyCode: "RECOGNITION", value: 3 }], byGrade: [] });
     expect(mt("QDA", "TOAN", { matrix: combined })).toBe("COMBINED_MATRIX");
-    expect(ds("SPT", "TOAN", [block("r")], { matrix: combined })).toBe("COMBINED_MATRIX");
+    expect(ds("SPT", "LY", [block("r")], { matrix: combined })).toBe("COMBINED_MATRIX");
     expect(ds("VSAT", "TOAN", [block("r")], { matrix: { ...combined, gradeEnforcement: "REFERENCE" } })).toBe("FITS");
     expect(ds("VSAT", "TOAN", [block("r", { matrix: combined })])).toBe("COMBINED_MATRIX");
   });
@@ -54,13 +56,16 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     expect(mt("QDA", "TOAN", { matrix: percent })).toBe("PERCENT_ENTRY");
     expect(mt("VACT", "TOAN", { matrix: percent }, [block("s", { questionCount: 12 }), setBlock("c", 1, 18, { setCount: null, setSize: null })])).toBe("FITS");
     expect(ds("THPTQG", "LY", [block("r")], { matrix: percent })).toBe("PERCENT_ENTRY");
-    expect(ds("SP2E", "TOAN", [block("r")], { matrix: percent })).toBe("FITS");
+    expect(ds("SP2E", "LY", [block("r")], { matrix: percent })).toBe("FITS");
+    // UNI-2876: Toán của SP2E, SPT là MT như HSA (không nhập %): bài cũ lưu % ở màn sửa dòng mở MD, không bị đổi.
+    expect(mt("SP2E", "TOAN", { matrix: percent })).toBe("PERCENT_ENTRY");
+    expect(mt("SPT", "TOAN", { matrix: percent })).toBe("PERCENT_ENTRY");
     expect(mt("QDA", "TOAN", { answerQuotas: { unit: "PERCENT", items: [{ answerType: "SINGLE_CHOICE", value: 100 }] } })).toBe("PERCENT_ENTRY");
     expect(mt("QDA", "TOAN", {}, [block("s", { topicQuotas: [{ id: "t", name: "t", nodeIds: [], count: 3, percent: 10, enforcement: "REQUIRED" }] })])).toBe("PERCENT_ENTRY");
   });
 
   it("đơn vị đếm khác câu ở phân bố Bắt buộc; Tham khảo được", () => {
-    expect(ds("SPT", "TOAN", [block("r")], { matrix: separate({ basis: "PROMPT", byGrade: [], byDifficulty: [{ code: "RECOGNITION", value: 4 }] }) })).toBe("COUNT_BASIS");
+    expect(ds("SPT", "LY", [block("r")], { matrix: separate({ basis: "PROMPT", byGrade: [], byDifficulty: [{ code: "RECOGNITION", value: 4 }] }) })).toBe("COUNT_BASIS");
     expect(ds("VSAT", "TOAN", [block("r")], { matrix: separate({ basis: "PROMPT", byGrade: [], byDifficulty: [{ code: "RECOGNITION", value: 4 }], difficultyEnforcement: "REFERENCE" }) })).toBe("FITS");
   });
 
@@ -72,7 +77,7 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     expect(ds("SP2E", "ECON_LAW", [block("r")], { matrix: required })).toBe("GRADE_REQUIRED_HIDDEN");
     expect(ds("VSAT", "VAN", [block("r")], { matrix: required })).toBe("GRADE_REQUIRED_HIDDEN");
     expect(ds("SPT", "ANH", [block("r")], { matrix: reference })).toBe("FITS");
-    expect(ds("SPT", "TOAN", [block("r")], { matrix: required })).toBe("FITS");
+    expect(ds("SPT", "LY", [block("r")], { matrix: required })).toBe("FITS");
     expect(ds("VSAT", "SU", [block("r")], { matrix: required })).toBe("FITS");
     expect(ds("THPTQG", "SU", [block("r", { matrix: required })])).toBe("GRADE_REQUIRED_HIDDEN");
     expect(ds("SPT", "ANH", [block("r")], { topicQuotas: [{ id: "t", name: "t", nodeIds: [], count: 2, gradeCodes: ["GRADE_12"], enforcement: "REQUIRED" }] })).toBe("GRADE_REQUIRED_HIDDEN");
@@ -134,7 +139,7 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     expect(mt("QDA", "TOAN", {}, [setBlock("c", 1, 3, { questionCount: 4 })])).toBe("SET_SIZE_MISMATCH");
     expect(mt("QDA", "TOAN", {}, [setBlock("c", 0, 3)])).toBe("SET_SIZE_MISMATCH");
     expect(mt("QDA", "TOAN", {}, [block("c", { questionType: "QUESTION_SET", setCount: -1, setSize: 3, questionCount: -3 })])).toBe("SET_SIZE_MISMATCH");
-    expect(ds("SPT", "TOAN", [setBlock("c", 2, 3, { questionCount: 5 })])).toBe("SET_SIZE_MISMATCH");
+    expect(ds("SPT", "LY", [setBlock("c", 2, 3, { questionCount: 5 })])).toBe("SET_SIZE_MISMATCH");
     const flexible = block("c", { questionType: "QUESTION_SET", setCount: null, setSize: null, questionCount: 18 });
     expect(mt("VACT", "TOAN", {}, [block("s", { questionCount: 12 }), flexible])).toBe("FITS");
     expect(ds("HSCA", "TOAN", [flexible])).toBe("FITS");
@@ -157,12 +162,24 @@ describe("Khớp biểu mẫu: một điều không khớp, một mình (FTM R-2
     expect(ds("HSA", "VAN", conditioned)).toBe("ROW_CONDITION_UNSUPPORTED");
     expect(ds("SP2E", "ANH", conditioned)).toBe("FITS");
     expect(ds("VSAT", "ANH", conditioned)).toBe("FITS");
-    expect(ds("SP2E", "TOAN", conditioned)).toBe("ROW_CONDITION_UNSUPPORTED");
+    expect(ds("SP2E", "LY", conditioned)).toBe("ROW_CONDITION_UNSUPPORTED");
   });
 
   it("DS: điều kiện có mục ở màn sửa dòng (nhãn, MAPID, phân bổ, độ khó, từng chùm) không làm rơi", () => {
     const rich = block("r", { tagCodes: ["x"], knowledgeScope: { nodeIds: ["m"] }, matrix: separate({ byGrade: [] , byDifficulty: [{ code: "RECOGNITION", value: 2 }] }), topicQuotas: [{ id: "t", name: "t", nodeIds: ["n"], count: 1, enforcement: "REFERENCE" }] });
-    expect(ds("SP2E", "TOAN", [rich, setBlock("c", 2, 5, { slots: [{ index: 1, tagCodes: ["y"] }] })])).toBe("FITS");
+    expect(ds("SP2E", "LY", [rich, setBlock("c", 2, 5, { slots: [{ index: 1, tagCodes: ["y"] }] })])).toBe("FITS");
+  });
+
+  it("UNI-2876: bài SP2E/SPT Toán cũ lưu bằng màn sửa dòng (điều kiện riêng của dòng) mở MD; chỉ phạm vi cấp môn thì vẫn ở MT", () => {
+    const rich = block("r", { tagCodes: ["x"], knowledgeScope: { nodeIds: ["m"] }, matrix: separate({ byGrade: [], byDifficulty: [{ code: "RECOGNITION", value: 2 }] }) });
+    for (const kind of ["SP2E", "SPT"]) {
+      expect(mt(kind, "TOAN", {}, [rich])).toBe("BLOCK_MATRIX");
+      expect(mt(kind, "TOAN", {}, [block("a", { knowledgeScope: { nodeIds: ["m"] } })])).toBe("BLOCK_SCOPE_OR_TAGS");
+      expect(mt(kind, "TOAN", {}, [block("a", { topicQuotas: [{ id: "t", name: "t", nodeIds: ["n"], count: 1, enforcement: "REFERENCE" }] })])).toBe("BLOCK_TOPIC_QUOTAS");
+      expect(mt(kind, "TOAN", {}, [block("a", { tagCodes: ["TOAN_DU_LIEU_TONG_HOP"] })])).toBe("BLOCK_SCOPE_OR_TAGS");
+      expect(mt(kind, "TOAN", { knowledgeScope: { nodeIds: ["m"] } }, [block("a")])).toBe("FITS");
+      expect(mt(kind, "TOAN", { mapidMode: "MATRIX" }, [block("a", { knowledgeScope: { nodeIds: ["m"] } })])).toBe("FITS");
+    }
   });
 
   it("DS: ma trận theo năng lực (byCompetency) ở mục hoặc dòng rơi về MD; mảng rỗng vẫn khớp", () => {
@@ -206,6 +223,8 @@ describe("Khớp biểu mẫu: mẫu chuẩn của fixture (plan B8, FTM AC 5)",
     console.info(`Bang phu mau (${fixtureSource.sha.slice(0, 8)}, ${fixtureSource.exportedAt}): ${standardFixtureTemplates().length} mau, ${rows.length} muc\n${coverage.join("\n")}`);
     const uncovered = listSubjectFormPairs().filter(({ kindCode, subjectCode }) => !covered.has(`${kindCode}:${subjectCode}`));
     console.info(`Cap chua co mau chuan trong fixture: ${uncovered.map(({ kindCode, subjectCode }) => `${kindCode}:${subjectCode}`).join(", ") || "khong"}`);
-    expect(failures).toEqual([]);
+    // UNI-2876: Phần II "Dữ liệu tổng hợp" của SP2E Toán 2026 là nhóm câu đơn mang tag TOAN_DU_LIEU_TONG_HOP; MT không có chỗ xem/sửa tag
+    // của nhóm câu đơn nên mục này mở MD (thiết lập đầy đủ), như mọi nhóm câu đơn có tag ở HSA, QDA, BCA.
+    expect(failures).toEqual(["SP2E_MATH_2026 (SP2E/SUBJECT/2026) TOAN @sections: BLOCK_SCOPE_OR_TAGS"]);
   });
 });

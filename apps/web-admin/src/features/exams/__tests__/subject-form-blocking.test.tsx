@@ -47,7 +47,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const { server } = boot({ parts: qdaParts({ vanR2: 0 }) });
     openStructure("?section=sec-toan");
     await dirtyToan(user);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
     expect(putCalls(server)).toHaveLength(0);
     expect(window.location.search).toBe("?section=sec-van");
@@ -79,7 +79,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await user.click(within(quick).getAllByRole("button", { name: "Đến vị trí cần sửa" })[0]!);
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
@@ -95,7 +95,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await user.type(input, "abc");
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(input).toHaveFocus());
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
@@ -115,7 +115,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     await user.type(field, "x");
     await user.click(screen.getByRole("button", { name: "Về danh sách" }));
     expect(screen.queryByRole("heading", { name: /Sửa dòng: Van dong 1/ })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r1"]')).toContainElement(document.activeElement as HTMLElement));
     expect(putCalls(server)).toHaveLength(0);
 
@@ -141,7 +141,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /TOAN/ }));
     await dirtyToan(user);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
 
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /VAN/ }));
@@ -149,7 +149,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const field = screen.getByRole("textbox", { name: /^Số câu/ });
     await user.clear(field);
     await user.type(field, "0");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(checkCalls(server)).toHaveLength(0);
     expect(putCalls(server)).toHaveLength(1);
   });
@@ -162,7 +162,7 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const input = await screen.findByRole("textbox", { name: /^Số câu/ });
     await user.clear(input);
     await user.type(input, "6");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body);
     expect((sent["sec-van"] as { blocks: Array<{ id: string; questionCount: number }> }).blocks[1]).toMatchObject({ id: "van-r2", questionCount: 6 });
@@ -178,11 +178,11 @@ describe("Chặn lưu của MT/DS (FTM R-15)", () => {
     const input = await lySetsInput();
     await user.clear(input);
     await user.type(input, "3");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await user.clear(input);
     await user.type(input, "2");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(withoutMappingDefaults(sectionsOf(putCalls(server)[0]!.body)["sec-hoa"])).toEqual(withoutMappingDefaults(wireScience("sec-hoa", "HOA")));
   });
@@ -213,7 +213,7 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     expect(putCalls(server)).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Ở lại" }));
     await waitFor(() => expect(screen.getByRole("textbox", { name: SETS_INPUT_NAME })).toHaveFocus());
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
     expect(routerMock.push).not.toHaveBeenCalled();
@@ -225,12 +225,12 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     openStructure("?section=sec-ly");
     await typeSets(user, "3");
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /HOA/ }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(window.location.search).toBe("?section=sec-ly"));
     expect(putCalls(server)).toHaveLength(0);
     await typeSets(user, "2");
     await waitFor(() => expect(screen.queryByText("Số chùm từ 1 đến 2")).toBeNull());
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body);
     expect((sent["sec-ly"]!.blocks as Wire[])[1]).toMatchObject({ setCount: 2, questionCount: 6 });
@@ -248,7 +248,7 @@ describe("Chặn lưu của MT thật: giới hạn R-12 (CR-2)", () => {
     const fill = await screen.findByRole("textbox", { name: FILL_INPUT_NAME });
     await user.clear(fill);
     await user.type(fill, "2");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body);
     expect((sent["sec-ly"]!.blocks as Wire[])[1]).toMatchObject({ setCount: 3, setSize: 3, questionCount: 9 });

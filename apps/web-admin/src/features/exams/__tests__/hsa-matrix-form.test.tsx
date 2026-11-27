@@ -210,7 +210,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     expect(header).toHaveTextContent(/Thiếu 3/);
     expect(within(structureBlock).getByText(/Thiếu 3 câu/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
   });
 
@@ -218,7 +218,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     const user = userEvent.setup();
     const hsaB = await openHsa("sec-toan", [wirePart([wireHsaMath()])]);
     await type(user, structureInput("Điền đáp án"), "12");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(hsaB.server)).toHaveLength(1));
     expect(sectionsOf(putCalls(hsaB.server)[0]!.body)["sec-toan"]!.answerQuotas).toEqual({
       unit: "COUNT",
@@ -244,7 +244,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
       ]),
     ]);
     await type(user, structureInput("Điền đáp án"), "12");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(legacy.server)).toHaveLength(1));
     expect(sectionsOf(putCalls(legacy.server)[0]!.body)["sec-toan"]!.answerQuotas).toEqual({
       unit: "COUNT",
@@ -261,7 +261,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     const { server, view } = await openHsa("sec-su", parts);
     const fill = () => structureInput("Điền đáp án");
     await type(user, fill(), "0");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const afterZero = (sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[]).find((b) => b.id === "sec-su-fill")!;
     expect(afterZero).toMatchObject({ id: "sec-su-fill", questionCount: 0, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_CUSTOM", tagCodes: [] });
@@ -270,7 +270,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     openStructure("?section=sec-su");
     await screen.findByRole("heading", { level: 3, name: MATRIX_STRUCTURE_HEADING });
     await type(user, fill(), "1");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
     const afterRestore = (sectionsOf(putCalls(server)[1]!.body)["sec-su"]!.blocks as Wire[]).find((b) => b.id === "sec-su-fill")!;
     expect(afterRestore).toMatchObject({ id: "sec-su-fill", questionCount: 1, requiredPointsPerQuestion: 1, templateGroupCode: "SU_FILL_CUSTOM", tagCodes: [] });
@@ -320,7 +320,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
 
     await type(user, structureInput("Số chùm"), "3");
     expect(await screen.findByText("Số chùm từ 1 đến 2")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
     expect(putCalls(server)).toHaveLength(0);
@@ -341,7 +341,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
     await type(user, structureInput("Số chùm"), "2");
     await type(user, structureInput("Điền đáp án"), "0");
     expect(await screen.findByText("Cần ít nhất 1 câu điền đáp án")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
     expect(putCalls(server)).toHaveLength(0);
@@ -352,7 +352,7 @@ describe("HSA MT: Cấu trúc câu, chỉ tiêu và giới hạn (CR-2H AC-1..AC
 
     await type(user, structureInput("Điền đáp án"), "1");
     await waitFor(() => expect(screen.queryByText(/Cần ít nhất 1 câu điền/)).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
 
     await user.click(within(screen.getByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /Lịch sử|SU/ }));
@@ -420,7 +420,7 @@ describe("HSA Sử & Địa lí: UNI-1723 & UNI-1724 (Cấu trúc lên đầu, �
     expect(screen.getByRole("heading", { level: 3, name: "Độ khó" })).toBeInTheDocument();
     const diffSection = screen.getByRole("heading", { level: 4, name: "Độ khó" }).closest("[data-form-field]") as HTMLElement;
     await type(user, within(diffSection).getByLabelText("Nhận biết"), "6");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect((sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix as Wire).byGrade).toEqual([
       { code: "GRADE_10", value: 2 },
@@ -551,7 +551,7 @@ describe("HSA Sử & Địa lí: UNI-1723 & UNI-1724 (Cấu trúc lên đầu, �
     await user.click(everyChild);
     expect(everyChild).not.toBeChecked();
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sentScope = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.knowledgeScope as Wire;
     expect(sentScope).not.toHaveProperty("everyChildInScope");

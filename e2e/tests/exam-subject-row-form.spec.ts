@@ -185,7 +185,7 @@ for (const scenario of [
       if (request.method() === "PUT" && request.url().endsWith(`/exams/${id}/structure`)) saves += 1;
     });
     await page.getByRole("button", { name: "Lưu nháp và thoát", exact: true }).click();
-    await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
+    await page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click();
     expect(saves).toBe(0);
     await children.nth(0).fill("1");
     await children.nth(1).fill("1");
@@ -318,7 +318,7 @@ test("rowPercentWholeSets: 25% của 40 không chia được chùm 4, chặn lư
   });
   await page.getByRole("button", { name: "Lưu nháp và thoát", exact: true }).click();
   await page.getByRole("button", { name: "Kiểm tra cấu trúc", exact: true }).click();
-  await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
+  await page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click();
   expect(sends).toBe(0);
   await expect(page.locator('[data-form-row-editor] [data-form-field="COUNT"]')).toContainText("10 câu");
 });
@@ -338,7 +338,7 @@ test("SP2E Văn: bật lại dòng Viết được lưu mà không có lỗi kh�
   await toggle.click();
   const [saved] = await Promise.all([
     page.waitForResponse((item) => item.url().endsWith(`/exams/${id}/structure`) && item.request().method() === "PUT"),
-    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
   ]);
   expect(saved.status(), await saved.text()).toBe(200);
   const after = await getStructure(admin, id);

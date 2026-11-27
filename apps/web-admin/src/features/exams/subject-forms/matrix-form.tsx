@@ -20,6 +20,8 @@ const kindSlots: Record<string, { slot: MatrixKindSlot; options: MatrixKindSlotO
   HSA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
   QDA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
   BCA: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
+  SPT: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
+  SP2E: { slot: MatrixFormHsa, options: hsaMatrixSlotOptions },
 };
 
 export function registerMatrixKindSlot(kindCode: string, slot: MatrixKindSlot, options: MatrixKindSlotOptionsResolver = {}): () => void {
@@ -81,7 +83,7 @@ export function MatrixForm(props: SubjectFormRendererProps) {
   if (!entry) return null;
   const cases = sectionCaseCounts(section, option);
   const total = section.questionCount ?? cases[0] ?? null;
-  // Khi sửa Cấu trúc câu hay bất kỳ phần nào của môn dùng quy tắc MAPID (HSA, QDA, BCA), tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
+  // Khi sửa Cấu trúc câu hay bất kỳ phần nào của môn dùng quy tắc MAPID (HSA, QDA, BCA; Toán của SPT, SP2E), tính lại các quy tắc MAPID theo % (R-5, AC-8) nhưng không đụng lúc mới mở.
   // Với môn MT ẩn khối lớp, chỉ xóa `byGrade` Tham khảo (không xóa âm thầm phân bố Bắt buộc đã lưu).
   const handleChange: MatrixBlockProps["onChange"] = (update) =>
     onChange((current) => {

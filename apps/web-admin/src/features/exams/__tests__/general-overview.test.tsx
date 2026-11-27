@@ -35,7 +35,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 const EXAM_ID = "ex-general-overview";
 const EXAM_PATH = `/api/v1/admin/exams/${EXAM_ID}`;
 const STRUCTURE_PATH = `${EXAM_PATH}/structure`;
-const SAVE = "Tiếp tục → Cấu trúc và ma trận";
+const SAVE = "Tiếp tục: Cấu trúc và ma trận";
 
 const block = (id: string, count: number): QuestionBlock => ({
   id,
@@ -611,7 +611,8 @@ describe("Thông tin chung: bảng Cấu trúc tổng quan (UNI-2751)", () => {
       expect(countOf(MATH)).toHaveValue("40");
 
       const form = screen.getByRole("form", { name: "Thông tin bài thi" });
-      const discard = within(form).getAllByRole("button", { name: "Hoàn tác" }).at(-1)!;
+      expect(form).toContainElement(screen.getByTestId("general-toolbar"));
+      const discard = within(screen.getByTestId("general-toolbar")).getByRole("button", { name: "Hoàn tác" });
       expect(discard).toBeEnabled();
       await user.click(discard);
       expect(countOf(MATH)).toHaveValue("45");

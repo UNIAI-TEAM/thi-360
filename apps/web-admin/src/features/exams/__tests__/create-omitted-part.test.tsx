@@ -154,7 +154,7 @@ describe("Tạo bài thi: phần chỉ gồm nhóm tạm bỏ qua (F5, ADV:FIX-Q
     // Mẫu SHARED chưa ghi thời lượng chung (chờ chuyên gia): người tạo nhập; đây không phải ô của Phần II.
     await user.type(screen.getByRole("textbox", { name: /^Thời lượng chung/ }), "60");
     await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), "SP2E Ngữ văn");
-    await user.click(screen.getAllByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" })[0]!);
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/structure`));
     expect(screen.queryByText(/Số câu phải là số nguyên dương/)).toBeNull();
     const body = fake.calls("POST", EXAMS_PATH)[0]!.body as Wire;

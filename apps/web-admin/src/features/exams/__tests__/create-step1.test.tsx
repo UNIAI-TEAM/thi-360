@@ -33,7 +33,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => routerMock }));
 
 const EXAMS_PATH = "/api/v1/admin/exams";
 const TEMPLATES_PATH = "/api/v1/admin/exam-templates";
-const SUBMIT = "Tiếp tục → Cấu trúc và ma trận";
+const SUBMIT = "Tiếp tục: Cấu trúc và ma trận";
 
 /** Kỳ thi chọn bằng ô chọn (không còn thẻ radio): mở danh sách rồi chọn mục có mã trong ngoặc. */
 async function pickKind(user: UserEvent, code: string) {
@@ -369,7 +369,7 @@ describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi
     expect(countInputs()[0]).toHaveValue("50");
   }, 20_000);
 
-  it("Hủy, Lưu và tiếp tục ngay dưới bảng tổng quan trong biểu mẫu, Tóm tắt đứng sau các nút (TaoBaiThi2B)", async () => {
+  it("Hủy, Lưu và tiếp tục ở hàng thao tác dính đầu biểu mẫu (trên bảng tổng quan), Tóm tắt đứng sau các nút (UNI-2876)", async () => {
     await renderPage();
     const table = screen.getByRole("table");
     const cancel = screen.getByRole("link", { name: "Hủy" });
@@ -380,7 +380,9 @@ describe("trang Tạo bài thi, bước 1: khung trang theo bản vẽ TaoBaiThi
     expect(form).toContainElement(cancel);
     expect(form).toContainElement(buttons[0]!);
     expect(form).not.toContainElement(summary());
-    expect(table.compareDocumentPosition(cancel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("general-toolbar")).toContainElement(cancel);
+    expect(screen.getByTestId("general-toolbar")).toContainElement(buttons[0]!);
+    expect(buttons[0]!.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(cancel.compareDocumentPosition(buttons[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(buttons[0]!.compareDocumentPosition(summary()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Tạo bài thi và soạn khối câu hỏi" })).toBeNull();
@@ -618,7 +620,7 @@ describe("trang Tạo bài thi, bước 1: V-ACT và THPTQG (UNI-2677)", () => {
     await user.click(screen.getByRole("radio", { name: /^By part/ }));
     await screen.findAllByRole("textbox", { name: /^Questions of/ });
     await user.type(screen.getByRole("textbox", { name: /^Exam name/ }), "V-ACT language");
-    await user.click(screen.getAllByRole("button", { name: "Continue → Structure and matrix" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: "Continue: Structure and matrix" })[0]!);
     const message = "Duration missing. Custom V-ACT exams have no default duration.";
     await screen.findByText(message, { selector: "p" });
     expect(within(screen.getByRole("region", { name: "Summary" })).getAllByText(message)).toHaveLength(1);

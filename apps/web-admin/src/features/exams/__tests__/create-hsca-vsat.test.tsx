@@ -160,7 +160,7 @@ async function renderPage(locale: "vi" | "en" = "vi", templates: Wire[] = TEMPLA
   return user;
 }
 
-const SUBMIT = /^(Tiếp tục → Cấu trúc và ma trận|Continue → Structure and matrix)$/;
+const SUBMIT = /^(Tiếp tục: Cấu trúc và ma trận|Continue: Structure and matrix)$/;
 const submitButton = () => screen.getAllByRole("button", { name: SUBMIT })[0]!;
 const nameInput = () => screen.getByRole("textbox", { name: /Tên bài thi/ });
 const sharedDuration = () => screen.getByRole("textbox", { name: /^Thời lượng chung/ });

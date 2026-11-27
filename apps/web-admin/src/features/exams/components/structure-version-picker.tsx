@@ -47,6 +47,14 @@ function rowsOf(template: ExamTemplate, currentParts: readonly ExamPart[]): Relo
   });
 }
 
+/** Kỳ thi bỏ khối "Phiên bản cấu trúc" ở bước 2 (UNI-2876, UNI-1734): bài luôn theo mẫu mặc định của kỳ. */
+const VERSION_BLOCK_HIDDEN_KINDS: ReadonlySet<string> = new Set(["SPT", "SP2E"]);
+
+/** Bước 2 có hiện khối "Phiên bản cấu trúc" (ô chọn mẫu, tóm tắt, "Nếu chọn …") và ghi chú của mẫu cho kỳ thi này không. */
+export function showsStructureVersion(kind: string): boolean {
+  return !VERSION_BLOCK_HIDDEN_KINDS.has(kind);
+}
+
 /** Tên phiên bản hiện trong ô chọn: nhãn của máy chủ (`label`), mẫu cũ chưa có nhãn dùng tên dựng theo kỳ thi và năm. */
 function versionLabel(template: ExamTemplate): string {
   return template.label?.trim() || template.name;
@@ -65,8 +73,8 @@ export function StructureVersionPicker({ exam, templates, dirty, currentParts, o
     partCode: exam.partCode ?? "",
     subjectCode: exam.subjectCode ?? "",
   });
-  // Chỉ có một phiên bản thì không có gì để chọn: ẩn ô (spec 15.2).
-  if (available.length < 2) return null;
+  // Chỉ có một phiên bản thì không có gì để chọn: ẩn ô (spec 15.2). SPT, SP2E không có khối này.
+  if (available.length < 2 || !showsStructureVersion(exam.kind)) return null;
 
   const current = available.find((template) => template.code === exam.templateCode);
   // "Nếu chọn …": phiên bản khác kèm tóm tắt của máy chủ; phiên bản chưa có tóm tắt thì không hiện (không tự dựng).

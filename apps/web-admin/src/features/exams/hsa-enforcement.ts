@@ -5,18 +5,21 @@ import { canRequire } from "./allocation";
 import { canRequireQuota } from "./exam-overview";
 import { normalizeMapidSection } from "./mapid-rules";
 import { awaitsExpert } from "./reference-distribution";
+import { subjectFormFor } from "./subject-forms/registry";
 import type { BlockMatrix, ExamPart, ExamPartOption, ExamQuota, ExamSection, QuestionBlock, QuotaBasis, QuotaEnforcement, TopicQuota } from "./types";
 
 const HSA_EXAM_KIND = "HSA";
-const MAPID_RULE_EXAM_KINDS: ReadonlySet<string> = new Set(["HSA", "QDA", "BCA"]);
 
 export function isHsaExam(kind: string | null | undefined): boolean {
   return kind === HSA_EXAM_KIND;
 }
 
-/** Các kỳ thi dùng luồng quy tắc MAPID (HSA, QDA, BCA — UNI-1729 / UNI-1731). */
-export function supportsMapidRules(kind: string | null | undefined): boolean {
-  return kind != null && MAPID_RULE_EXAM_KINDS.has(kind);
+/**
+ * Môn của kỳ thi có dùng luồng quy tắc MAPID không, theo bảng đăng ký biểu mẫu: môn MT của HSA, QDA, BCA
+ * (UNI-1729 / UNI-1731) và Toán của SPT, SP2E (UNI-2876). Môn DS của các kỳ này giữ phạm vi và chỉ tiêu kiểu cũ.
+ */
+export function supportsMapidRules(kind: string | null | undefined, subjectCode: string): boolean {
+  return kind != null && subjectFormFor(kind, subjectCode)?.mapidFlow === "HSA_RULES";
 }
 
 /** Bài đang soạn có phải HSA không; `EnforcementControl` đọc để hiện mức cố định. Ngoài trình soạn cấu trúc: không. */

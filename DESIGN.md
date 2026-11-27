@@ -246,6 +246,8 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
   - **Học viên:** Lượt thi (`/attempts`, `ATTEMPT.VIEW`).
   - Chức năng phụ vẫn là nút hoặc tab trong trang chi tiết: Cấp hàng loạt là nút trong Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền; Thông tin bán (`/exams/[id]/listing`) là tab trong khung soạn bài thi; Hồ sơ học tập (`?tab=learning`) là tab trong chi tiết tài khoản (`/users/[id]`).
 
+- **Trình soạn bài thi, hàng thao tác:** bước 2 dùng thanh công cụ dính đầu trong khung soạn; bước 1, 3, 4 dùng `EditorStepToolbar` (`sticky top-0`, viền, nền `surface/95` blur) đặt đầu vùng soạn, nên đi tiếp, lưu nháp, công bố không phải cuộn hết trang. Thứ tự nút: Quay lại → phụ (Lưu nháp và thoát, Kiểm tra) → chính. Nhãn nút chính viết "Tiếp tục: <bước sau>" kèm icon mũi tên, không ghi mũi tên trong chữ (UNI-2876).
+
 ### 5.9 Bảng (admin)
 
 - Nằm trong thẻ trắng bo góc 12px. Hàng tiêu đề nền `#FAFAFB`, chữ 13px đậm 600 màu `text-muted`.

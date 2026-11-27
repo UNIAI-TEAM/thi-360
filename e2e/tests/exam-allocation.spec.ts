@@ -43,7 +43,7 @@ test("QDA FULL: phần 3 liệt kê đủ 6 môn từ mẫu, thêm chỉ tiêu c
   const returnUrl = page.url();
   const [putRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${id}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
   ]);
   expect(putRes.status(), await putRes.text()).toBe(200);
   await page.waitForURL(/\/exams\/[^/]+\/listing/);

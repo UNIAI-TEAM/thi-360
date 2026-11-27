@@ -15,17 +15,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@thi360/ui";
-import { ArrowUp, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ArrowUp, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useOptionalPermissions } from "@/features/session/session-provider";
 import { collectCheckIssues, splitBySeverity } from "../check";
-import { RECHECK_PARAM } from "../editor-tabs";
+import { examTabHref, RECHECK_PARAM } from "../editor-tabs";
 import { useExam } from "../queries";
 import { useExamCheck, useExamVersions } from "../review-queries";
 import { examNeedsPathChoice } from "../review-scope";
 import type { ExamDetail } from "../types";
+import { EditorStepToolbar } from "./editor-step-toolbar";
 import { ExamPreviewPanel } from "./exam-preview-panel";
 import { ExamReviewCheck } from "./exam-review-check";
 import { listingErrorCount } from "./exam-review-listing";
@@ -131,18 +133,30 @@ export function ExamReviewView({ examId }: { examId: string }) {
   return (
     <>
       <Tabs value={state.tab} onValueChange={(value) => update({ ...state, tab: value as ReviewTab })}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList aria-label={t("tabs.label")}>
-            <TabsTrigger value="check">{t("tabs.check")}</TabsTrigger>
-            <TabsTrigger value="preview">{t("tabs.preview")}</TabsTrigger>
-          </TabsList>
+        <EditorStepToolbar
+          testId="review-toolbar"
+          // Đệm ngang hẹp ở màn nhỏ: hai tab tiếng Anh (~325px) phải vừa một hàng ở 390px mà không cuộn ngang.
+          className="px-2 py-2 sm:px-5"
+          start={
+            <TabsList aria-label={t("tabs.label")}>
+              <TabsTrigger value="check">{t("tabs.check")}</TabsTrigger>
+              <TabsTrigger value="preview">{t("tabs.preview")}</TabsTrigger>
+            </TabsList>
+          }
+        >
+          <Button asChild variant="secondary" size="sm">
+            <Link href={examTabHref(exam.id, "listing")}>
+              <ArrowLeft aria-hidden />
+              {t("backToListing")}
+            </Link>
+          </Button>
           {canPublishPermission && exam.status !== "DISCONTINUED" && (
-            <Button type="button" disabled={!canPublishNow} onClick={() => setPublishOpen(true)}>
+            <Button type="button" size="sm" disabled={!canPublishNow} onClick={() => setPublishOpen(true)}>
               <ArrowUp aria-hidden />
               {exam.servingVersion !== null ? t("publishUpdate") : t("publishFirst")}
             </Button>
           )}
-        </div>
+        </EditorStepToolbar>
         {/* Giữ cả hai tab trong DOM để đề vừa sinh không mất khi xem lại kết quả kiểm tra. */}
         <TabsContent value="check" forceMount className="mt-5 data-[state=inactive]:hidden">
           <ExamReviewCheck

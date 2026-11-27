@@ -54,7 +54,7 @@ describe("Danh sách dòng: màn sửa dòng", () => {
     // Mục Độ khó không có lựa chọn Kết hợp/Riêng, Số câu/Tỷ lệ, mức áp dụng (R-13).
     expect(screen.queryByRole("radio", { name: /Kết hợp|Riêng từng chiều|Tỷ lệ/ })).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = blockOf(putCalls(server)[0]!.body, "sec-van", "van-4");
     expect(saved).toMatchObject({ questionType: "QUESTION_SET", setCount: 2, setSize: 5, questionCount: 10 });
@@ -81,7 +81,7 @@ describe("Danh sách dòng: màn sửa dòng", () => {
     // R-9: HSA, QDA, BCA, THPTQG không nhập tỷ lệ, bảng chỉ tiêu không có nút Số câu / Tỷ lệ (AD-89 D2).
     expect(screen.queryByRole("radio", { name: "Tỷ lệ" })).toBeNull();
     expect(document.querySelector('[data-condition="scope"]')).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = blockOf(putCalls(server)[0]!.body, "sec-van", "van-1");
     expect(saved.topicQuotas).toHaveLength(1);
@@ -105,7 +105,7 @@ describe("Danh sách dòng: màn sửa dòng", () => {
     expect(document.querySelector('[data-condition="topicQuotas"]')).not.toBeNull();
     await user.click(screen.getByRole("button", { name: "Bỏ điều kiện MAPID (lọc)" }));
     expect(document.querySelector('[data-condition="scope"]')).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = blockOf(putCalls(server)[0]!.body, "sec-van", "r1");
     expect(saved.topicQuotas).toHaveLength(1);
@@ -127,9 +127,10 @@ describe("Danh sách dòng: màn sửa dòng", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("sp2eMathPartTwoSwitch: SP2E Toán Phần II đổi được Câu đơn ↔ Câu chùm, giữ tổng câu", async () => {
+  // Toán SP2E là MT từ UNI-2876 (Phần II "Dữ liệu tổng hợp" có tag nên mở MD); công tắc của màn sửa dòng kiểm trên một môn DS của SP2E.
+  it("sp2ePartTwoSwitch: môn DS của SP2E đổi được Câu đơn ↔ Câu chùm, giữ tổng câu", async () => {
     const user = userEvent.setup();
-    const { server } = boot({ kind: "SP2E", parts: oneSection(wireSection("sec-toan", "TOAN", [wireBlock("p2", { name: "Phan II", questionCount: 6 })])) });
+    const { server } = boot({ kind: "SP2E", parts: oneSection(wireSection("sec-toan", "LY", [wireBlock("p2", { name: "Phan II", questionCount: 6 })])) });
     openStructure("?section=sec-toan");
     await screen.findByRole("heading", { name: "Các dòng lấy câu" });
     await edit(user, "p2", "Phan II");
@@ -137,7 +138,7 @@ describe("Danh sách dòng: màn sửa dòng", () => {
     await user.click(screen.getByRole("radio", { name: "Câu đơn" }));
     expect(screen.queryByRole("textbox", { name: /Số chùm/ })).toBeNull();
     await user.click(screen.getByRole("radio", { name: "Câu chùm" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(blockOf(putCalls(server)[0]!.body, "sec-toan", "p2")).toMatchObject({ questionType: "QUESTION_SET", setCount: 1, setSize: 6, questionCount: 6 });
   });
@@ -149,9 +150,9 @@ const typeInto = async (user: UserEvent, field: HTMLElement, text: string) => {
   await user.clear(field);
   await user.type(field, text);
 };
-/** Mục 40 câu không khóa: hai dòng (20 câu đơn, 20 câu), một môn SP2E Toán. */
+/** Mục 40 câu không khóa: hai dòng (20 câu đơn, 20 câu), một môn DS của SP2E (Vật lí; Toán SP2E là MT từ UNI-2876). */
 const sp2eForty = (rows: Wire[] = [wireBlock("r1", { name: "Dong mot", questionCount: 20 }), wireBlock("r2", { name: "Dong hai", questionCount: 20 })]) =>
-  oneSection(wireSection("sec-toan", "TOAN", rows, { questionCount: 40 }));
+  oneSection(wireSection("sec-toan", "LY", rows, { questionCount: 40 }));
 
 describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM AC 30, AC 54 d–g)", () => {
   it("percentStoresCount: mục 40 câu không khóa, dòng câu đơn nhập 30% hiện '12 câu' trước khi lưu, lưu 12; GET lại và tải lại hiện số, không giữ %", async () => {
@@ -163,7 +164,7 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
     await typeInto(user, percentField(), "30");
     expect(screen.getByText("30% của 40 câu = 12 câu")).toBeInTheDocument();
     expect(countField()).toHaveValue("12");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = blockOf(putCalls(server)[0]!.body, "sec-toan", "r1");
     expect(saved.questionCount).toBe(12);
@@ -213,7 +214,7 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
     await edit(user, "r1", "Dong mot");
     await typeInto(user, percentField(), "30");
     expect(screen.getByText("30% của 40 câu = 12 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(blockOf(putCalls(server)[0]!.body, "sec-toan", "r1").questionCount).toBe(12);
   });
@@ -241,7 +242,7 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
     expect(screen.getAllByRole("textbox", { name: /Số chùm/ })[0]).toHaveValue("3");
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await user.click(screen.getByRole("button", { name: "Kiểm tra cấu trúc" }));
     await user.click(screen.getByRole("button", { name: "Lưu nháp và thoát" }));
     expect(putCalls(server)).toHaveLength(0);
@@ -256,7 +257,7 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
     expect(screen.getByText("30% của 40 câu = 12 câu")).toBeInTheDocument();
     await typeInto(user, percentField(), "20");
     expect(screen.queryByText(/không chia được thành chùm/)).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(blockOf(putCalls(server)[0]!.body, "sec-toan", "set1")).toMatchObject({ setCount: 2, setSize: 4, questionCount: 8 });
   });
@@ -270,13 +271,13 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
     await edit(user, "set1", "Chum");
     await typeInto(user, percentField(), "25");
     await user.click(screen.getByRole("button", { name: "Về danh sách" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(percentField()).toHaveValue("25"));
     await waitFor(() => expect(percentField()).toHaveFocus());
     expect(screen.getByText("Tỷ lệ này ra 10 câu, không chia được thành chùm 4 câu")).toBeInTheDocument();
     await typeInto(user, percentField(), "20");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
   });
 
@@ -291,7 +292,7 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
 
     // Đóng rồi bấm Lưu ngay trong cùng một khung hình để rAF trả focus cũ chạy sau khi mở lại ô lỗi.
     fireEvent.click(screen.getByRole("button", { name: "Về danh sách" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(percentField()).toHaveFocus());
 
@@ -309,7 +310,7 @@ describe("Danh sách dòng: nhập theo tỷ lệ ở màn sửa dòng (R-9, FTM
     await edit(user, "set1", "Chum");
     await typeInto(user, countField(), "10");
     expect(screen.getByText("10 câu không chia được thành chùm 4 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
   });
 });
@@ -326,12 +327,12 @@ describe("Danh sách dòng: giữ lỗi tách khi đóng màn sửa", () => {
     const first = screen.getByRole("textbox", { name: "Số chùm của dòng con 1" });
     await typeInto(user, first, "0");
     await user.click(screen.getByRole("button", { name: "Về danh sách" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Số chùm của dòng con 1" })).toHaveValue("0"));
     await typeInto(user, screen.getByRole("textbox", { name: "Số chùm của dòng con 1" }), "2");
     await user.click(screen.getByRole("button", { name: /^Tách$/ }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
   });
 });
@@ -350,7 +351,7 @@ describe("Danh sách dòng: tách và lưu", () => {
     expect(screen.queryByRole("option", { name: "5 dòng" })).toBeNull();
     await user.click(screen.getByRole("option", { name: "4 dòng" }));
     await user.click(screen.getByRole("button", { name: /^Tách$/ }));
-    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục: Thông tin bán$/ }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = sectionsOf(putCalls(server)[0]!.body)["sec-anh"]!;
     const blocks = saved.blocks as Wire[];
@@ -373,7 +374,7 @@ describe("Danh sách dòng: tách và lưu", () => {
     await user.click(screen.getByRole("button", { name: /^Tách$/ }));
     const count = screen.getByRole("textbox", { name: /Số chùm/ });
     await typeInto(user, count, "0");
-    await user.click(screen.getByRole("button", { name: /^Tiếp tục → Thông tin bán$/ }));
+    await user.click(screen.getByRole("button", { name: /^Tiếp tục: Thông tin bán$/ }));
     expect(putCalls(server)).toHaveLength(0);
     expect(await screen.findByText("Số câu cần lấy phải lớn hơn 0.")).toBeInTheDocument();
   });
@@ -456,7 +457,7 @@ describe("Danh sách dòng: điều kiện theo vị trí câu con (R1-1, R1-12)
     expect(screen.queryByRole("button", { name: "Bỏ điều kiện Theo vị trí câu con" })).toBeNull();
     const nameInput = screen.getByRole("textbox", { name: /Tên nhóm/ });
     await user.type(nameInput, " moi");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(blockOf(putCalls(server)[0]!.body, "sec-anh", "read-1").childConditions).toEqual(childConditions);
 
@@ -518,12 +519,12 @@ describe("Danh sách dòng: dọn nhập thô cũ khi sửa số chùm, đổi c
     await edit(user, "set1", "Chum");
     await typeInto(user, percentField(), "25");
     expect(await screen.findByText("Tỷ lệ này ra 10 câu, không chia được thành chùm 4 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
 
     await typeInto(user, screen.getByRole("textbox", { name: "Số chùm" }), "2");
     expect(screen.queryByText(/không chia được thành chùm/)).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(blockOf(putCalls(server)[0]!.body, "sec-toan", "set1")).toMatchObject({ setCount: 2, setSize: 4, questionCount: 8 });
     first.unmount();
@@ -535,7 +536,7 @@ describe("Danh sách dòng: dọn nhập thô cũ khi sửa số chùm, đổi c
     await typeInto(user, percentField(), "25");
     await user.click(screen.getByRole("radio", { name: "Câu đơn" }));
     expect(screen.queryByText(/không chia được thành chùm/)).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
     expect(blockOf(putCalls(server2)[0]!.body, "sec-toan", "set1")).toMatchObject({ questionType: "SINGLE_CHOICE", questionCount: 12 });
   });
@@ -551,7 +552,7 @@ describe("Danh sách dòng: dọn nhập thô cũ khi sửa số chùm, đổi c
     await typeInto(user, screen.getByRole("textbox", { name: "Số chùm của dòng con 1" }), "0");
     await typeInto(user, screen.getByRole("textbox", { name: "Số chùm" }), "1");
     expect(screen.queryByRole("textbox", { name: "Số chùm của dòng con 1" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(blockOf(putCalls(server)[0]!.body, "sec-anh", "read")).toMatchObject({ setCount: 1, questionCount: 10 });
     first.unmount();
@@ -565,7 +566,7 @@ describe("Danh sách dòng: dọn nhập thô cũ khi sửa số chùm, đổi c
     await typeInto(user, screen.getByRole("textbox", { name: "Số câu của dòng con 1" }), "0");
     await user.click(screen.getByRole("radio", { name: "Câu chùm" }));
     expect(screen.queryByRole("textbox", { name: "Số câu của dòng con 1" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server2)).toHaveLength(1));
     expect(blockOf(putCalls(server2)[0]!.body, "sec-anh", "s1")).toMatchObject({ questionType: "QUESTION_SET", setCount: 1, setSize: 10 });
   });
@@ -581,7 +582,7 @@ describe("Danh sách dòng: focus COUNT_FIELD và role=alert ở kỳ không nh�
     const countInput = screen.getByRole("textbox", { name: "Số câu cần lấy" });
     await typeInto(user, countInput, "0");
     await user.click(screen.getByRole("button", { name: "Về danh sách" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Số câu cần lấy" })).toHaveFocus());
     first.unmount();
@@ -596,7 +597,7 @@ describe("Danh sách dòng: focus COUNT_FIELD và role=alert ở kỳ không nh�
     expect(alert).toHaveTextContent("Số câu cần lấy phải lớn hơn 0.");
     expect(setCountInput).toHaveAccessibleDescription(alert.textContent ?? "");
     await user.click(screen.getByRole("button", { name: "Về danh sách" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(qdaServer)).toHaveLength(0);
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Số chùm" })).toHaveFocus());
   });

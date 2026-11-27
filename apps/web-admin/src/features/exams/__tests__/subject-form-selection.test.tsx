@@ -122,7 +122,7 @@ describe("Chọn trên màn: dòng chữ và ghim trong phiên (FTM R-2; CR-1 AC
     const sets = await screen.findByRole("textbox", { name: /^Số chùm/ });
     await user.clear(sets);
     await user.type(sets, "2");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     await user.click(within(await screen.findByRole("navigation", { name: "Cấu trúc" })).getByRole("button", { name: /LY/ }));
     expect(await screen.findByTestId("full-form-notice")).toBeInTheDocument();

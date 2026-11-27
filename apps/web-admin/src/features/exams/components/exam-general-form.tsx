@@ -76,6 +76,7 @@ import { ExamOverviewTable } from "./exam-overview-table";
 import { ExamName, reviewHref, richNodes } from "./exam-review-shared";
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from "@/features/shell/unsaved-changes-guard";
 import { ReloadStructureDialog } from "./reload-structure-dialog";
+import { EditorStepToolbar } from "./editor-step-toolbar";
 
 const EXAMS_HREF = "/exams";
 const CREATE_PERMISSION = "EXAM.MODIFY";
@@ -877,6 +878,70 @@ function ExamGeneralFormBody({
             onSubmit={(event) => void submitWithIntent(mode === "create" ? "continue" : fromReview ? "review" : "continue")(event)}
             className="flex min-w-0 flex-col gap-5"
           >
+            {canModify && !isDiscontinued && (
+              <EditorStepToolbar testId="general-toolbar">
+                {mode === "create" ? (
+                  <>
+                    <Button asChild size="sm" variant="secondary">
+                      <Link href={EXAMS_HREF}>{t("cancel")}</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                      loading={isBusy && activeSubmitIntent === "exit"}
+                      disabled={isBusy || templatesStatus === "loading"}
+                      onClick={handleSaveDraftAndExit}
+                    >
+                      <Save aria-hidden className="size-4" />
+                      {t("saveDraftAndExit")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="submit"
+                      loading={isBusy && activeSubmitIntent !== "exit"}
+                      disabled={templatesStatus === "loading"}
+                    >
+                      {t("continueToStructure")}
+                      <ArrowRight aria-hidden className="size-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button size="sm" type="button" variant="secondary" disabled={!hasUnsavedChanges || isBusy} onClick={onDiscard}>
+                      {tGeneral("discard")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                      loading={isBusy && activeSubmitIntent === "exit"}
+                      disabled={isBusy || templatesStatus === "loading"}
+                      onClick={handleSaveDraftAndExit}
+                    >
+                      <Save aria-hidden className="size-4" />
+                      {t("saveDraftAndExit")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      type="submit"
+                      loading={isBusy && activeSubmitIntent !== "exit"}
+                      disabled={templatesStatus === "loading"}
+                    >
+                      {fromReview ? tGeneral("saveAndReturnReview") : t("continueToStructure")}
+                      <ArrowRight aria-hidden className="size-4" />
+                    </Button>
+                  </>
+                )}
+              </EditorStepToolbar>
+            )}
+
+            {submitError && (
+              <p role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-danger">
+                {submitError}
+              </p>
+            )}
+
             <FormSection mode={mode} step={1} title={t("sections.info")}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[3fr_2fr]">
                 <div data-field="name">
@@ -1135,65 +1200,6 @@ function ExamGeneralFormBody({
               )}
             </FormSection>
 
-            {submitError && (
-              <p role="alert" className="rounded-md border border-danger/40 bg-danger-bg px-3 py-2 text-body text-danger">
-                {submitError}
-              </p>
-            )}
-
-            {canModify && !isDiscontinued && (
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {mode === "create" ? (
-                  <>
-                    <Button asChild variant="secondary">
-                      <Link href={EXAMS_HREF}>{t("cancel")}</Link>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      loading={isBusy && activeSubmitIntent === "exit"}
-                      disabled={isBusy || templatesStatus === "loading"}
-                      onClick={handleSaveDraftAndExit}
-                    >
-                      <Save aria-hidden className="size-4" />
-                      {t("saveDraftAndExit")}
-                    </Button>
-                    <Button
-                      type="submit"
-                      loading={isBusy && activeSubmitIntent !== "exit"}
-                      disabled={templatesStatus === "loading"}
-                    >
-                      {t("continueToStructure")}
-                      <ArrowRight aria-hidden className="size-4" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button type="button" variant="secondary" disabled={!hasUnsavedChanges || isBusy} onClick={onDiscard}>
-                      {tGeneral("discard")}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      loading={isBusy && activeSubmitIntent === "exit"}
-                      disabled={isBusy || templatesStatus === "loading"}
-                      onClick={handleSaveDraftAndExit}
-                    >
-                      <Save aria-hidden className="size-4" />
-                      {t("saveDraftAndExit")}
-                    </Button>
-                    <Button
-                      type="submit"
-                      loading={isBusy && activeSubmitIntent !== "exit"}
-                      disabled={templatesStatus === "loading"}
-                    >
-                      {fromReview ? tGeneral("saveAndReturnReview") : t("continueToStructure")}
-                      <ArrowRight aria-hidden className="size-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
           </form>
 
           <div className="scroll-shadows-y flex min-w-0 flex-col gap-4 @5xl:sticky @5xl:top-4 @5xl:max-h-[calc(100dvh-2rem)] @5xl:overflow-y-auto">

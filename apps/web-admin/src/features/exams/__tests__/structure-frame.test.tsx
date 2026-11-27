@@ -513,10 +513,10 @@ describe("Khung bước 2: kiểm tra cấu trúc và lưu nháp (UNI-1720)", ()
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
   });
 
-  it("'Tiếp tục → Thông tin bán': bản sạch sang thẳng bước 3 không gọi PUT; bản bẩn lưu 1 lần rồi sang bước 3", async () => {
+  it("'Tiếp tục: Thông tin bán': bản sạch sang thẳng bước 3 không gọi PUT; bản bẩn lưu 1 lần rồi sang bước 3", async () => {
     const user = userEvent.setup();
     const first = openStructure(QDA);
-    await user.click(await screen.findByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(await screen.findByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "listing"));
     expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(0);
     first.unmount();
@@ -524,7 +524,7 @@ describe("Khung bước 2: kiểm tra cấu trúc và lưu nháp (UNI-1720)", ()
     routerMock.push.mockReset();
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1));
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledWith(examTabHref(QDA, "listing")));
     expect(backend.app(QDA)?.parts.find((item) => item.id === "part-42")?.maxPoints).toBe(50);
@@ -541,7 +541,7 @@ describe("Khung bước 2: kiểm tra cấu trúc và lưu nháp (UNI-1720)", ()
     );
     await screen.findByRole("navigation", { name: "Cấu trúc" });
     const toolbar = screen.getByTestId("structure-toolbar");
-    for (const name of ["Quay lại", "Lưu nháp và thoát", "Kiểm tra cấu trúc", "Tiếp tục → Thông tin bán"]) {
+    for (const name of ["Quay lại", "Lưu nháp và thoát", "Kiểm tra cấu trúc", "Tiếp tục: Thông tin bán"]) {
       expect(within(toolbar).getByRole("button", { name })).toBeInTheDocument();
       expect(within(titleRow).queryByRole("button", { name })).not.toBeInTheDocument();
     }
@@ -555,7 +555,7 @@ describe("Khung bước 2: kiểm tra cấu trúc và lưu nháp (UNI-1720)", ()
     backend.server.hold("PUT", api(QDA, "structure"));
     openStructure(QDA, "?part=part-42");
     await user.type(await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ }), "50");
-    const nextBtn = await screen.findByRole("button", { name: "Tiếp tục → Thông tin bán" });
+    const nextBtn = await screen.findByRole("button", { name: "Tiếp tục: Thông tin bán" });
     await user.click(nextBtn);
     await waitFor(() => expect(backend.server.calls("PUT", api(QDA, "structure"))).toHaveLength(1));
     await user.click(nextBtn);

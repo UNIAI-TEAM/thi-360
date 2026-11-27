@@ -73,7 +73,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     expect(rowCountInput("Su chum")).toHaveValue("8");
     const structure = document.querySelector<HTMLElement>('[data-form-field="STRUCTURE"]')!;
     expect(within(structure).getByText("Vượt 5 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [single, set] = (sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[]) as [Wire, Wire];
     expect(single).toMatchObject({ id: "sec-su-single", questionCount: 7, templateGroupCode: "SU_SINGLE" });
@@ -84,7 +84,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     expect(screen.queryByRole("textbox", { name: "Số chùm của Su chum" })).not.toBeInTheDocument();
     expect(rowCountInput("Su chum")).not.toHaveAttribute("readonly");
     await type(user, rowCountInput("Su chum"), "3");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
     const [, flexSet] = (sectionsOf(putCalls(server)[1]!.body)["sec-su"]!.blocks as Wire[]) as [Wire, Wire];
     expect(flexSet).toMatchObject({ id: "sec-su-set", questionCount: 3, tagCodes: ["SU_TU_LIEU_LICH_SU"] });
@@ -97,14 +97,14 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     const { server } = await openSection("sec-su", [wirePart([wireBcaHistory()])], "BCA");
     await type(user, rowSetsInput("Su chum"), "0");
     expect(await screen.findByText("Ít nhất 1 chùm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(rowSetsInput("Su chum")).toHaveFocus());
 
     await type(user, rowSetsInput("Su chum"), "1");
     await type(user, rowSetSizeInput("Su chum"), "0");
     expect(await screen.findByText("Ít nhất 1 câu/chùm")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(rowSetSizeInput("Su chum")).toHaveFocus());
   });
@@ -135,7 +135,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
 
     // Đưa Bài luận mở lên trên Su chum rồi lưu kiểm tra thứ tự.
     await user.click(screen.getByRole("button", { name: "Đưa dòng Bài luận mở lên trên" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const reordered = sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.blocks as Wire[];
     expect(reordered.map((item) => item.name)).toEqual(["Su don", "Bài luận mở", "Su chum"]);
@@ -168,14 +168,14 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     expect(screen.getByRole("button", { name: "Đưa dòng Su don xuống dưới" })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "Đưa dòng Su chum lên trên" })).toHaveAttribute("aria-disabled", "true");
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.mixBlocks).toBe(true);
 
     await user.click(mixSwitch);
     expect(mixSwitch).not.toBeChecked();
     expect(banner).toHaveAttribute("data-mixed", "false");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(2));
     expect(sectionsOf(putCalls(server)[1]!.body)["sec-su"]).not.toHaveProperty("mixBlocks");
   });
@@ -184,7 +184,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     const user = userEvent.setup();
     const { server } = await openSection("sec-ly", lyParts());
     await type(user, structureInput("Điền đáp án"), "2");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body)["sec-ly"]!;
     expect(sent.answerQuotas ?? null).toBeNull();
@@ -214,7 +214,7 @@ describe("MT của QDA, BCA: Cấu trúc thành phần câu hỏi v3 (R-3, UNI-2
     );
     const { server } = await openSection("sec-toan", [wirePart([toan])]);
     await type(user, structureInput("Điền đáp án"), "12");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.answerQuotas).toEqual({
       unit: "COUNT",
@@ -237,7 +237,7 @@ describe("MT của QDA, BCA: khối lớp, độ khó và mức áp dụng (R-4,
     await type(user, difficulty().getByLabelText("Vận dụng"), "5");
     // 25 = 22 trắc nghiệm + 1 điền... số câu của môn là 25 (21 + 3 + 1); tổng khai 25/25.
     expect(await screen.findByText("Đã khai 25/25")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const matrix = sectionsOf(putCalls(server)[0]!.body)["sec-ly"]!.matrix as Wire;
     expect(matrix.byDifficulty).toEqual([
@@ -258,7 +258,7 @@ describe("MT của QDA, BCA: khối lớp, độ khó và mức áp dụng (R-4,
     await type(user, difficulty().getByLabelText("Thông hiểu"), "5");
     await type(user, difficulty().getByLabelText("Vận dụng"), "5");
     expect(await screen.findByText("Đã khai 20/25")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     expect(checkCalls(server)).toHaveLength(0);
   });
@@ -295,16 +295,16 @@ describe("MT: giới hạn Khoa học của QDA (R-12)", () => {
     const { server } = await openSection("sec-ly", parts);
     await type(user, structureInput("Số chùm"), "3");
     expect(await screen.findByText("Số chùm từ 1 đến 2")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await type(user, structureInput("Số chùm"), "2");
     await type(user, structureInput("Điền đáp án"), "0");
     expect(await screen.findByText("Cần ít nhất 1 câu điền đáp án")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await type(user, structureInput("Điền đáp án"), "1");
     await waitFor(() => expect(screen.queryByText(/Cần ít nhất 1 câu điền/)).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     // Sử cho 0 câu điền: mở môn Sử không có lỗi nào.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -315,7 +315,7 @@ describe("MT: giới hạn Khoa học của QDA (R-12)", () => {
     const parts = [wirePart([wireQdaScience("sec-ly", "LY")])];
     const { server } = await openSection("sec-ly", parts, "BCA");
     await type(user, structureInput("Số chùm"), "3");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
   });
 });
@@ -372,11 +372,52 @@ describe("MT: QDA/BCA dùng quy tắc MAPID giống HSA (UNI-1729, UNI-1731) & V
     );
     const difficulty = within(screen.getByRole("heading", { level: 4, name: "Độ khó" }).closest("[data-form-field]") as HTMLElement);
     await type(user, difficulty.getByLabelText("Nhận biết"), "3");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const saved = sectionsOf(putCalls(server)[0]!.body)["sec-su"]!.matrix as Wire;
     expect(saved.byGrade).toEqual([{ code: "GRADE_11", value: 4 }, { code: "GRADE_12", value: 6 }]);
     expect(saved.gradeEnforcement).toBe("REQUIRED");
+  });
+
+  it.each(["SP2E", "SPT"])("UNI-2876: %s Toán thiết lập như HSA: MT với quy tắc MAPID, không Nguồn chùm hay Phạm vi & chỉ tiêu chủ đề; lưu mapidMode", async (kind) => {
+    const user = userEvent.setup();
+    const toan = wireSection("sec-toan", "TOAN", [
+      wireBlock("toan-mot", { name: "Mot dap an", questionCount: 20 }),
+      wireBlock("toan-nhieu", { name: "Nhieu dap an", questionType: "MULTIPLE_CHOICE", questionCount: 5 }),
+    ]);
+    const { server } = await openSection("sec-toan", [wirePart([toan])], kind);
+    expect(document.querySelector('[data-form-kind="MATRIX"]')).not.toBeNull();
+    expect(screen.queryByText(/thiết lập đầy đủ/)).not.toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /Theo ma trận MAPID/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 4, name: "Nguồn chùm" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Các dòng lấy câu" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Theo ma trận MAPID/ }));
+    expect(await screen.findByTestId("mapid-rules-table")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
+    await waitFor(() => expect(putCalls(server)).toHaveLength(1));
+    expect(sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.mapidMode).toBe("MATRIX");
+  });
+
+  it.each(["SP2E", "SPT"])("UNI-2876: bài %s Toán cũ lưu ở màn sửa dòng mở lên không bị báo thay đổi; dòng có điều kiện riêng thì mở thiết lập đầy đủ", async (kind) => {
+    // Phạm vi cấp môn kiểu cũ: vẫn MT, hiện Phạm vi & chỉ tiêu chủ đề như QDA cũ, không tự chuyển sang mapidMode.
+    const scoped = wireSection("sec-toan", "TOAN", [wireBlock("toan-mot", { questionCount: 25 })], { knowledgeScope: { nodeIds: ["n-alg"] } });
+    const first = boot({ kind, parts: [wirePart([scoped])] });
+    const view = openStructure("?section=sec-toan");
+    expect(await screen.findByRole("heading", { level: 3, name: "Phạm vi và chỉ tiêu chủ đề" })).toBeInTheDocument();
+    expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
+    expect(putCalls(first.server)).toHaveLength(0);
+    view.unmount();
+
+    // Dòng có phân bố riêng (chỉ màn sửa dòng có): rơi về thiết lập đầy đủ, dữ liệu giữ nguyên.
+    const rowMatrix = matrixOf({ byGrade: [], byDifficulty: [{ code: "RECOGNITION", value: 5 }], difficultyEnforcement: "REFERENCE" });
+    const rich = wireSection("sec-toan", "TOAN", [wireBlock("toan-mot", { questionCount: 25, matrix: rowMatrix })]);
+    boot({ kind, parts: [wirePart([rich])] });
+    openStructure("?section=sec-toan");
+    expect(await screen.findByText(/thiết lập đầy đủ/)).toBeInTheDocument();
+    expect(document.querySelector('[data-form-kind="MATRIX"]')).toBeNull();
+    expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument();
   });
 
   it("scopeAndQuotaFlow: V-ACT Toán có Phạm vi kiến thức và nút Thêm chỉ tiêu chủ đề; chưa có dòng thì không hiện bảng, bấm mới hiện", async () => {
@@ -416,7 +457,7 @@ describe("MT: QDA/BCA dùng quy tắc MAPID giống HSA (UNI-1729, UNI-1731) & V
     await user.click(await screen.findByRole("menuitem", { name: /Nhãn nguồn/ }));
     const tag = await within(source).findAllByRole("checkbox");
     await user.click(tag[0]!);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [single, set, fill] = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[];
     const seeded = (original[0]!.sections as Wire[])[0]!.blocks as Wire[];
@@ -469,7 +510,7 @@ describe("MT: QDA/BCA dùng quy tắc MAPID giống HSA (UNI-1729, UNI-1731) & V
       expect(el.getAttribute("aria-label")).not.toMatch(/[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i);
     }
 
-    await user.click(screen.getByRole("button", { name: "Continue → Listing" }));
+    await user.click(screen.getByRole("button", { name: "Continue: Listing" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [, savedSet] = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[];
     expect(savedSet!.name).toBe("Chùm");
@@ -551,7 +592,7 @@ describe("MT: bàn phím và focus (CR-2 AC-10; R1-3, R1-6)", () => {
     const grade = within(screen.getByRole("heading", { level: 4, name: "Khối lớp" }).closest("[data-form-field]") as HTMLElement);
     await type(user, grade.getByLabelText("Lớp 12"), "abc");
     expect(await grade.findByRole("alert")).toHaveTextContent("Nhập một số không âm.");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(grade.getByLabelText("Lớp 12")).toHaveFocus());
   });

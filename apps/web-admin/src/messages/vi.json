@@ -5581,7 +5581,7 @@
       },
       "back": "Quay lại",
       "saveDraftAndExit": "Lưu nháp và thoát",
-      "continueToListing": "Tiếp tục → Thông tin bán",
+      "continueToListing": "Tiếp tục: Thông tin bán",
       "saveAndReturnReview": "Lưu và quay lại kiểm tra",
       "needsCompletionChip": "Cần hoàn thiện",
       "savedNeedsCompletion": "Đã lưu bản nháp · Cấu trúc cần hoàn thiện.",
@@ -5747,7 +5747,7 @@
       },
       "back": "Quay lại",
       "saveDraftAndExit": "Lưu nháp và thoát",
-      "continueToReview": "Tiếp tục → Kiểm tra và xem trước",
+      "continueToReview": "Tiếp tục: Kiểm tra và xem trước",
       "saveAndReturnReview": "Lưu và quay lại kiểm tra"
     },
     "review": {
@@ -6875,7 +6875,7 @@
           "pointsInvalid": "Điểm phải lớn hơn 0."
         }
       },
-      "continueToStructure": "Tiếp tục → Cấu trúc và ma trận",
+      "continueToStructure": "Tiếp tục: Cấu trúc và ma trận",
       "saveDraftAndExit": "Lưu nháp và thoát"
     },
     "matrix": {

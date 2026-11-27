@@ -80,7 +80,7 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
     expect(difficulty.getByLabelText("Thông hiểu")).toHaveValue("15");
     expect(difficulty.getByLabelText("Vận dụng")).toHaveValue("7");
     expect(await screen.findByText("Tổng tỷ lệ 100%")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const matrix = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix as Wire;
     expect(matrix.unit).toBe("PERCENT");
@@ -119,7 +119,7 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
     const difficulty = dimension("Độ khó");
     for (const name of ["Nhận biết", "Thông hiểu", "Vận dụng"]) await type(user, difficulty.getByRole("textbox", { name: `Tỷ lệ của ${name}` }), "30");
     expect(await screen.findByText("Tổng tỷ lệ 90%, cần 100%")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     expect(checkCalls(server)).toHaveLength(0);
   });
@@ -154,7 +154,7 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
     await type(user, screen.getByRole("textbox", { name: "Tỷ lệ của Toan chum" }), "70");
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Số câu của Toan don" })).toHaveValue("9"));
     expect(screen.getByRole("textbox", { name: "Số câu của Toan chum" })).toHaveValue("21");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const [single, set] = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[];
     expect(single!.questionCount).toBe(9);
@@ -167,7 +167,7 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
     const user = userEvent.setup();
     const { server } = await openToan();
     await type(user, screen.getByRole("textbox", { name: "Số câu của Toan chum" }), "15");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const set = (sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.blocks as Wire[])[1]!;
     expect(set.questionCount).toBe(15);
@@ -179,7 +179,7 @@ describe("V-ACT Toán MT: hai cột Số câu / Tỷ lệ (R-9, CR-2 AC-5)", () 
     const user = userEvent.setup();
     const { server } = await openToan();
     await user.click(dimension("Độ khó").getByRole("switch", { name: "Áp dụng khi sinh đề" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const matrix = sectionsOf(putCalls(server)[0]!.body)["sec-toan"]!.matrix as Wire;
     expect(matrix).toMatchObject({ difficultyEnforcement: "REQUIRED", gradeEnforcement: "REFERENCE" });
@@ -250,7 +250,7 @@ describe("V-ACT Tiếng Việt MT (R-4, R-6, CR-2 AC-4)", () => {
     await user.click(await screen.findByRole("menuitem", { name: "Khối lớp" }));
     const cell = await within((await screen.findByRole("heading", { level: 4, name: "Khối lớp" })).closest("[data-form-field]") as HTMLElement).findByLabelText("Lớp 12");
     await type(user, cell, "abc");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(putCalls(server)).toHaveLength(0);
     await waitFor(() => expect(dimension("Khối lớp").getByLabelText("Lớp 12")).toHaveFocus());
     expect(dimension("Khối lớp").getByRole("alert")).toBeInTheDocument();
@@ -263,7 +263,7 @@ describe("V-ACT Tiếng Việt MT (R-4, R-6, CR-2 AC-4)", () => {
     expect(singleCount).not.toHaveAttribute("readonly");
     expect((await screen.findAllByText(/Chờ mapping/)).length).toBeGreaterThanOrEqual(1);
     await type(user, singleCount, "12");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(putCalls(server)).toHaveLength(1));
     const sent = sectionsOf(putCalls(server)[0]!.body)[sectionId]!;
     const seeded = ((rawTemplate("VACT_SUBJECT_VIETNAMESE").structure.parts[0] as unknown as { sections: Wire[] }).sections[0]!.topicQuotas as Wire[]);

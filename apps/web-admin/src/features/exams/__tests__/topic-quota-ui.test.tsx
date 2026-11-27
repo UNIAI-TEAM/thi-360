@@ -167,7 +167,7 @@ describe("Lưu chỉ tiêu chủ đề, nhánh thật (H20)", () => {
     renderWithProviders(<ExamStructureView examId={EXAM_ID} />);
     const first = await screen.findByRole("textbox", { name: "Tên chủ đề của chỉ tiêu 1" });
     await user.type(first, "x");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", path)).toHaveLength(1));
     const block = screen.getByRole("region", { name: /Chỉ tiêu chủ đề của/ }).closest("section")!;
     expect(await within(block).findByRole("alert")).toHaveTextContent(/tối đa 8 chỉ tiêu chủ đề/);

@@ -40,8 +40,8 @@ describe("Phủ bảng đăng ký và chọn DS trên mọi mẫu chuẩn", () =
         ...["HSA", "QDA", "BCA"].flatMap((kind) => ["VAN", "ANH"].map((subject) => `${kind}:${subject}`)),
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `THPTQG:${subject}`),
         ...["ANH", "SCIENTIFIC_THINKING"].map((subject) => `VACT:${subject}`),
-        ...["TOAN", "VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"].map((subject) => `SP2E:${subject}`),
-        ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `SPT:${subject}`),
+        ...["VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"].map((subject) => `SP2E:${subject}`),
+        ...["LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "TECH_INDUSTRY", "TECH_AGRICULTURE", "INFORMATICS", "ANH", "VAN"].map((subject) => `SPT:${subject}`),
         ...["TOAN", "LY", "HOA", "SINH", "VAN", "ANH"].map((subject) => `HSCA:${subject}`),
         ...["TOAN", "LY", "HOA", "SINH", "SU", "DIA", "VAN", "ANH"].map((subject) => `VSAT:${subject}`),
       ].toSorted(),
@@ -51,6 +51,8 @@ describe("Phủ bảng đăng ký và chọn DS trên mọi mẫu chuẩn", () =
         ...["HSA", "QDA", "BCA"].flatMap((kind) => ["TOAN", "LY", "HOA", "SINH", "SU", "DIA"].map((subject) => `${kind}:${subject}`)),
         "VACT:TOAN",
         "VACT:VIETNAMESE",
+        "SP2E:TOAN",
+        "SPT:TOAN",
       ].toSorted(),
     );
   });
@@ -66,7 +68,7 @@ describe("Phủ bảng đăng ký và chọn DS trên mọi mẫu chuẩn", () =
     }
   });
 
-  it.each([["SP2E", "TOAN"], ["HSCA", "ANH"], ["VACT", "SCIENTIFIC_THINKING"], ["VSAT", "TOAN"]])(
+  it.each([["SP2E", "LY"], ["HSCA", "ANH"], ["VACT", "SCIENTIFIC_THINKING"], ["VSAT", "TOAN"]])(
     "bài % của %s %s mở DS",
     (kind, subject) => {
       const item = section("s", subject, [block("b")], {
