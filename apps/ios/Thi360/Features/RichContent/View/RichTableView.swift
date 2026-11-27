@@ -280,7 +280,7 @@ private struct RichTableCellView: View {
             let styledInlines: [RichInline] = cell.isHeader
                 ? inlines.map { applyBold($0) }
                 : inlines
-            RichTextKitParagraphRepresentable(
+            RichParagraphView(
                 inlines: styledInlines,
                 baseSize: 15,
                 textStyle: .callout,
@@ -290,8 +290,11 @@ private struct RichTableCellView: View {
                 tabularDigits: cell.isNumeric,
                 blankNumberStart: blankNumberStart,
                 tokens: tokens,
+                assets: assets,
+                mode: mode,
                 formulaEngine: formulaEngine,
                 slots: slots,
+                locale: locale,
                 availableWidth: innerWidth
             )
         case let .formulaBlock(formula):

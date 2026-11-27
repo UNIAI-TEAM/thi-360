@@ -14,6 +14,16 @@ final class ImageZoomUITests: XCTestCase {
         XCTAssertTrue(slotEcho.waitForExistence(timeout: 8))
         XCTAssertEqual(slotEcho.label, "giá trị gốc 99")
 
+        let slotInput = app.textFields["harness.zoom.slotInput"].firstMatch
+        XCTAssertTrue(slotInput.waitForExistence(timeout: 8), "Inline slot TextField must be mounted inside TextKit 2 paragraph")
+        slotInput.tap()
+        slotInput.typeText("XYZ\n")
+
+        let expectedTypedPredicate = NSPredicate(format: "label CONTAINS %@", "XYZ")
+        let typedExpectation = expectation(for: expectedTypedPredicate, evaluatedWith: slotEcho)
+        wait(for: [typedExpectation], timeout: 5)
+        let typedSlotValue = slotEcho.label
+
         let zoomButton = app.buttons["richContent.image.zoomable"].firstMatch
         XCTAssertTrue(
             zoomButton.waitForExistence(timeout: 8),
@@ -40,7 +50,7 @@ final class ImageZoomUITests: XCTestCase {
 
         closeButton.tap()
         XCTAssertFalse(closeButton.waitForExistence(timeout: 2), "Close button must dismiss full-screen zoom viewer")
-        XCTAssertEqual(slotEcho.label, "giá trị gốc 99", "Closing zoom viewer must preserve inline slot value")
+        XCTAssertEqual(slotEcho.label, typedSlotValue, "Closing zoom viewer must preserve edited inline slot value")
         XCTAssertEqual(zoomButton.frame.minY, frameBeforeZoom.minY, accuracy: 4.0, "Closing zoom viewer must preserve scroll position")
 
         let nonZoomImage = app.images["Ảnh không phóng to"].firstMatch

@@ -118,4 +118,93 @@ final class RichQuoteTests: XCTestCase {
         XCTAssertLessThan(bodyFrame.maxY, footerFrame.minY + 1)
         XCTAssertLessThan(footerFrame.maxY, sourceFrame.minY + 1)
     }
+
+    func testQuoteForwardsAssetsAndLocale() async throws {
+        let assetId = "9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f"
+        let png = UIGraphicsImageRenderer(size: CGSize(width: 120, height: 80)).image { ctx in
+            UIColor.systemGreen.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+        }.pngData()!
+
+        RecordingAssetURLProtocol.reset()
+        defer { RecordingAssetURLProtocol.reset() }
+        RecordingAssetURLProtocol.handler = { req in
+            let resp = HTTPURLResponse(
+                url: req.url!,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "image/png"]
+            )!
+            return (resp, png)
+        }
+
+        let tokenStore = InMemoryTokenStore(
+            initialTokens: SessionTokens(
+                accessToken: "quote-token",
+                refreshToken: "quote-refresh",
+                accessExpiresIn: 3600,
+                refreshExpiresIn: 86_400,
+                mustChangePassword: false,
+                username: "student1",
+                accountId: "acc-quote"
+            )
+        )
+        let refresher = TokenRefresher(
+            tokenStore: tokenStore,
+            refreshExecutor: { _ in throw MobileApiError.unexpectedResponse(statusCode: 401) }
+        )
+        let source = AttemptAssetSource(
+            attemptId: "55555555-5555-4555-8555-555555555555",
+            serverURL: URL(string: "https://api.thi360.test")!,
+            tokenStore: tokenStore,
+            refresher: refresher,
+            session: AttemptAssetSource.makeNoDiskCacheSession(protocolClasses: [RecordingAssetURLProtocol.self])
+        )
+        defer { source.purgeAll() }
+        _ = try await source.load(.attempt(assetId: assetId))
+
+        let validQuoteHTML = #"<blockquote class="quote" data-kind="prose" data-line-numbers="0"><p><img src="" alt="Quote illustration" data-asset-id="\#(assetId)"></p></blockquote>"#
+        let validDoc = RichHTMLParser.parse(validQuoteHTML)
+        let validView = RichContentView(document: validDoc, assets: source, locale: .en, fixedWidth: 358)
+            .padding(16)
+            .environment(\.brandPalette, .defaultLight)
+            .environment(\.statusPalette, .light)
+
+        let (w1, c1) = RecoveryViewTestHelper.host(
+            validView,
+            size: CGSize(width: 390, height: 320),
+            sizeClass: .compact,
+            themeMode: .light
+        )
+        defer { w1.isHidden = true }
+
+        let loadedImages = RecoveryViewTestHelper.findViews(ofType: UIImageView.self, in: c1.view)
+            .filter { $0.accessibilityLabel == "Quote illustration" }
+        XCTAssertFalse(loadedImages.isEmpty, "RichQuoteView must forward AttemptAssetSource so valid images render")
+
+        let blockedQuoteHTML = #"<blockquote class="quote" data-kind="prose" data-line-numbers="0"><p><img src="https://evil.example/x.png" alt="Blocked quote image"></p></blockquote>"#
+        let blockedDoc = RichHTMLParser.parse(blockedQuoteHTML)
+        let blockedView = RichContentView(document: blockedDoc, assets: source, locale: .en, fixedWidth: 358)
+            .padding(16)
+            .environment(\.brandPalette, .defaultLight)
+            .environment(\.statusPalette, .light)
+
+        let (w2, c2) = RecoveryViewTestHelper.host(
+            blockedView,
+            size: CGSize(width: 390, height: 320),
+            sizeClass: .compact,
+            themeMode: .light
+        )
+        defer { w2.isHidden = true }
+
+        let errorBtn = try XCTUnwrap(
+            RecoveryViewTestHelper.findViews(ofType: UIButton.self, in: c2.view)
+                .first { $0.accessibilityIdentifier == "richContent.image.error" }
+        )
+        let labels = RecoveryViewTestHelper.findViews(ofType: UILabel.self, in: errorBtn).compactMap(\.text)
+        XCTAssertTrue(
+            labels.contains(RichContentStrings.imageLoadError(locale: .en)),
+            "RichQuoteView must forward locale (.en) into nested image error messages"
+        )
+    }
 }

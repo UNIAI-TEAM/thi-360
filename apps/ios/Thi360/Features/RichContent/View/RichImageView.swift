@@ -45,6 +45,121 @@ private struct RichLoadedUIImageView: UIViewRepresentable {
     }
 }
 
+private struct RichImageErrorButton: UIViewRepresentable {
+    let alt: String
+    let errorMessage: String
+    let tokens: RichContentTokens
+    let targetWidth: CGFloat
+    let onRetry: () -> Void
+
+    final class Coordinator: NSObject {
+        var onRetry: () -> Void
+
+        init(onRetry: @escaping () -> Void) {
+            self.onRetry = onRetry
+        }
+
+        @objc func handleTap() {
+            onRetry()
+        }
+    }
+
+    final class ErrorCardButton: UIButton {
+        let iconView = UIImageView(image: UIImage(systemName: "photo.badge.exclamationmark"))
+        let altLabel = UILabel()
+        let messageLabel = UILabel()
+        private let stack = UIStackView()
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            layer.cornerRadius = 10
+            layer.borderWidth = 1
+            clipsToBounds = true
+
+            iconView.contentMode = .scaleAspectFit
+            iconView.preferredSymbolConfiguration = UIImage.SymbolConfiguration(textStyle: .title2)
+            iconView.isAccessibilityElement = false
+
+            altLabel.font = .preferredFont(forTextStyle: .footnote)
+            altLabel.adjustsFontForContentSizeCategory = true
+            altLabel.textAlignment = .center
+            altLabel.numberOfLines = 0
+            altLabel.isAccessibilityElement = false
+
+            messageLabel.font = .preferredFont(forTextStyle: .footnote)
+            messageLabel.adjustsFontForContentSizeCategory = true
+            messageLabel.textAlignment = .center
+            messageLabel.numberOfLines = 0
+            messageLabel.isAccessibilityElement = false
+
+            stack.axis = .vertical
+            stack.alignment = .center
+            stack.spacing = 8
+            stack.isUserInteractionEnabled = false
+            stack.translatesAutoresizingMaskIntoConstraints = false
+            stack.addArrangedSubview(iconView)
+            stack.addArrangedSubview(altLabel)
+            stack.addArrangedSubview(messageLabel)
+
+            addSubview(stack)
+            NSLayoutConstraint.activate([
+                stack.topAnchor.constraint(equalTo: topAnchor, constant: 14),
+                stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
+                stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+                stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+                heightAnchor.constraint(greaterThanOrEqualToConstant: 88)
+            ])
+
+            accessibilityIdentifier = "richContent.image.error"
+            accessibilityTraits = .button
+            isAccessibilityElement = true
+        }
+
+        required init?(coder: NSCoder) {
+            nil
+        }
+
+        func configure(alt: String, errorMessage: String, tokens: RichContentTokens) {
+            let trimmedAlt = alt.trimmingCharacters(in: .whitespacesAndNewlines)
+            backgroundColor = UIColor(hex: tokens.brand.bgSubtle)
+            layer.borderColor = UIColor(hex: tokens.brand.borderStrong).cgColor
+            iconView.tintColor = tokens.textMutedUIColor
+            altLabel.textColor = tokens.textSecondaryUIColor
+            altLabel.text = trimmedAlt
+            altLabel.isHidden = trimmedAlt.isEmpty
+            messageLabel.textColor = tokens.textMutedUIColor
+            messageLabel.text = errorMessage
+            accessibilityLabel = trimmedAlt.isEmpty ? errorMessage : "\(trimmedAlt). \(errorMessage)"
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onRetry: onRetry)
+    }
+
+    func makeUIView(context: Context) -> ErrorCardButton {
+        let button = ErrorCardButton()
+        button.configure(alt: alt, errorMessage: errorMessage, tokens: tokens)
+        button.addTarget(context.coordinator, action: #selector(Coordinator.handleTap), for: .touchUpInside)
+        return button
+    }
+
+    func updateUIView(_ uiView: ErrorCardButton, context: Context) {
+        context.coordinator.onRetry = onRetry
+        uiView.configure(alt: alt, errorMessage: errorMessage, tokens: tokens)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: ErrorCardButton, context: Context) -> CGSize? {
+        let width = max(proposal.width ?? targetWidth, 1)
+        let fitting = uiView.systemLayoutSizeFitting(
+            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        return CGSize(width: width, height: max(ceil(fitting.height), 88))
+    }
+}
+
 struct RichImageView: View {
     let imageData: RichImageData
     let widthSpec: FigureImageWidth
@@ -58,6 +173,7 @@ struct RichImageView: View {
     @State private var loadState: RichImageLoadState
     @State private var retryNonce: Int = 0
     @State private var isLoadingInFlight = false
+    @State private var isRetryQueued = false
     @State private var isPresentingZoom = false
 
     init(
@@ -178,47 +294,18 @@ struct RichImageView: View {
             }
 
         case .failed:
-            Button {
-                guard !isLoadingInFlight else { return }
-                retryNonce += 1
-            } label: {
-                VStack(spacing: 8) {
-                    Image(systemName: "photo.badge.exclamationmark")
-                        .font(.title2)
-                        .foregroundStyle(tokens.brand.textMutedColor)
-                        .accessibilityHidden(true)
-
-                    if !imageData.alt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text(imageData.alt)
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(tokens.brand.textSecondaryColor)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    Text(RichContentStrings.imageLoadError(locale: locale))
-                        .font(.footnote)
-                        .foregroundStyle(tokens.brand.textMutedColor)
-                        .multilineTextAlignment(.center)
+            RichImageErrorButton(
+                alt: imageData.alt,
+                errorMessage: RichContentStrings.imageLoadError(locale: locale),
+                tokens: tokens,
+                targetWidth: targetWidth,
+                onRetry: {
+                    guard !isLoadingInFlight, !isRetryQueued else { return }
+                    isRetryQueued = true
+                    retryNonce += 1
                 }
-                .padding(14)
-                .frame(maxWidth: .infinity, minHeight: 88)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(tokens.brand.bgSubtleColor)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(tokens.brand.borderStrongColor, lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(
-                imageData.alt.isEmpty
-                    ? RichContentStrings.imageLoadError(locale: locale)
-                    : "\(imageData.alt). \(RichContentStrings.imageLoadError(locale: locale))"
             )
-            .accessibilityIdentifier("richContent.image.error")
+            .frame(width: targetWidth)
         }
     }
 
@@ -242,6 +329,7 @@ struct RichImageView: View {
 
     @MainActor
     private func performLoad() async {
+        isRetryQueued = false
         guard !isLoadingInFlight else { return }
         if case .blocked = imageData.ref {
             loadState = .failed

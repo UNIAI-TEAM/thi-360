@@ -4,9 +4,12 @@ import UIKit
 struct RichQuoteView: View {
     let quote: RichQuote
     let tokens: RichContentTokens
+    let assets: AttemptAssetSource?
+    let mode: RichContentMode
     let slots: [String: () -> AnyView]
     let blankNumberStart: Int
     let formulaEngine: any FormulaEngine
+    let locale: AppLocale
     let availableWidth: CGFloat
 
     private var showsLineNumbers: Bool {
@@ -32,11 +35,11 @@ struct RichQuoteView: View {
                         lineSpacing: 6,
                         blankNumberStart: blankNumberStart,
                         tokens: tokens,
-                        assets: nil,
-                        mode: .answering,
+                        assets: assets,
+                        mode: mode,
                         formulaEngine: formulaEngine,
                         slots: slots,
-                        locale: .vi,
+                        locale: locale,
                         availableWidth: innerWidth
                     )
                 }
@@ -52,11 +55,11 @@ struct RichQuoteView: View {
                     lineSpacing: 4,
                     blankNumberStart: blankNumberStart,
                     tokens: tokens,
-                    assets: nil,
-                    mode: .answering,
+                    assets: assets,
+                    mode: mode,
                     formulaEngine: formulaEngine,
                     slots: slots,
-                    locale: .vi,
+                    locale: locale,
                     availableWidth: innerWidth
                 )
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -73,11 +76,11 @@ struct RichQuoteView: View {
                     lineSpacing: 3,
                     blankNumberStart: blankNumberStart,
                     tokens: tokens,
-                    assets: nil,
-                    mode: .answering,
+                    assets: assets,
+                    mode: mode,
                     formulaEngine: formulaEngine,
                     slots: slots,
-                    locale: .vi,
+                    locale: locale,
                     availableWidth: innerWidth
                 )
                 .accessibilityIdentifier("richContent.quote.source")
@@ -131,11 +134,11 @@ struct RichQuoteView: View {
                                 lineSpacing: 5,
                                 blankNumberStart: blankNumberStart,
                                 tokens: tokens,
-                                assets: nil,
-                                mode: .answering,
+                                assets: assets,
+                                mode: mode,
                                 formulaEngine: formulaEngine,
                                 slots: slots,
-                                locale: .vi,
+                                locale: locale,
                                 availableWidth: lineContentWidth
                             )
                             .frame(maxWidth: lineContentWidth, alignment: .leading)

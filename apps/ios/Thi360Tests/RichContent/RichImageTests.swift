@@ -142,6 +142,7 @@ final class RichImageTests: XCTestCase {
                 )!
                 return (resp, notFoundData)
             }
+            Thread.sleep(forTimeInterval: 0.08)
             let resp = HTTPURLResponse(
                 url: req.url!,
                 statusCode: 200,
@@ -161,7 +162,7 @@ final class RichImageTests: XCTestCase {
         </figure>
         """
         let doc = RichHTMLParser.parse(html)
-        let view = RichContentView(document: doc, assets: source, fixedWidth: 358)
+        let view = RichContentView(document: doc, assets: source, locale: .vi, fixedWidth: 358)
             .padding(16)
             .environment(\.brandPalette, .defaultLight)
             .environment(\.statusPalette, .light)
@@ -174,20 +175,141 @@ final class RichImageTests: XCTestCase {
         )
         defer { window.isHidden = true }
 
-        let waitDeadline = Date().addingTimeInterval(3)
-        while RecordingAssetURLProtocol.snapshotRequests().isEmpty && Date() < waitDeadline {
-            try await Task.sleep(nanoseconds: 50_000_000)
-        }
-        try await Task.sleep(nanoseconds: 150_000_000)
-
+        let errorButton = try await waitForErrorButton(in: controller.view, timeout: 3.0)
         XCTAssertEqual(RecordingAssetURLProtocol.snapshotRequests().count, 1)
-        let preservedText = RecoveryViewTestHelper.findViews(ofType: RichTextKitTextView.self, in: controller.view)
-        XCTAssertTrue(preservedText.contains { $0.customAccessibilityDescription.contains("Nội dung đề vẫn giữ nguyên") })
 
-        let retryData = try await source.load(.attempt(assetId: assetId))
-        XCTAssertEqual(retryData, png)
+        let errorLabels = RecoveryViewTestHelper.findViews(ofType: UILabel.self, in: errorButton)
+            .compactMap(\.text)
+        XCTAssertTrue(errorLabels.contains("Hình minh họa"), "Error frame must display image alt text")
+        XCTAssertTrue(
+            errorLabels.contains(RichContentStrings.imageLoadError(locale: .vi)),
+            "Error frame must display localized retry prompt"
+        )
+        let errorIcons = RecoveryViewTestHelper.findViews(ofType: UIImageView.self, in: errorButton)
+        XCTAssertFalse(errorIcons.isEmpty, "Error frame must display broken-image icon")
+        XCTAssertEqual(
+            errorButton.accessibilityLabel,
+            "Hình minh họa. \(RichContentStrings.imageLoadError(locale: .vi))"
+        )
+
+        let loadedBeforeRetry = RecoveryViewTestHelper.findViews(ofType: UIImageView.self, in: controller.view)
+            .filter { $0.bounds.width > 50 && !$0.isDescendant(of: errorButton) }
+        XCTAssertTrue(loadedBeforeRetry.isEmpty, "No loaded chart UIImageView should mount while in failed state")
+
+        let preservedTextBefore = RecoveryViewTestHelper.findViews(ofType: RichTextKitTextView.self, in: controller.view)
+        XCTAssertTrue(preservedTextBefore.contains { $0.customAccessibilityDescription.contains("Nội dung đề vẫn giữ nguyên") })
+
+        errorButton.sendActions(for: .touchUpInside)
+        errorButton.sendActions(for: .touchUpInside)
+
+        let loadedAfterRetry = try await waitForLoadedImageView(in: controller.view, timeout: 3.0)
+        XCTAssertEqual(loadedAfterRetry.accessibilityLabel, "Hình minh họa")
+        XCTAssertNil(findErrorButton(in: controller.view), "Error frame must clear once retry succeeds")
+
+        let requests = RecordingAssetURLProtocol.snapshotRequests()
+        XCTAssertEqual(requests.count, 2, "Rapid double-tap on retry button must dispatch only one retry request")
+        XCTAssertEqual(requests[0].url?.path, requests[1].url?.path, "Retry must call the exact same attempt asset path")
+
+        let preservedTextAfter = RecoveryViewTestHelper.findViews(ofType: RichTextKitTextView.self, in: controller.view)
+        XCTAssertTrue(preservedTextAfter.contains { $0.customAccessibilityDescription.contains("Nội dung đề vẫn giữ nguyên") })
+    }
+
+    func testOfflineErrorThenTapRetries() async throws {
+        let png = samplePNGData()
+        let lock = NSLock()
+        var attempts = 0
+        RecordingAssetURLProtocol.reset()
+        RecordingAssetURLProtocol.handler = { req in
+            lock.lock()
+            attempts += 1
+            let current = attempts
+            lock.unlock()
+
+            if current == 1 {
+                throw URLError(.notConnectedToInternet)
+            }
+            let resp = HTTPURLResponse(
+                url: req.url!,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "image/png"]
+            )!
+            return (resp, png)
+        }
+
+        let source = makeAssetSource()
+        defer { source.purgeAll() }
+
+        let html = """
+        <p>Surrounding content stays intact</p>
+        <figure class="image" data-width="medium" data-zoom="false">
+          <img src="" alt="Offline diagram" data-asset-id="\(assetId)">
+        </figure>
+        """
+        let doc = RichHTMLParser.parse(html)
+        let view = RichContentView(document: doc, assets: source, locale: .en, fixedWidth: 358)
+            .padding(16)
+            .environment(\.brandPalette, .defaultLight)
+            .environment(\.statusPalette, .light)
+
+        let (window, controller) = RecoveryViewTestHelper.host(
+            view,
+            size: CGSize(width: 390, height: 420),
+            sizeClass: .compact,
+            themeMode: .light
+        )
+        defer { window.isHidden = true }
+
+        let errorButton = try await waitForErrorButton(in: controller.view, timeout: 3.0)
+        let errorLabels = RecoveryViewTestHelper.findViews(ofType: UILabel.self, in: errorButton)
+            .compactMap(\.text)
+        XCTAssertTrue(errorLabels.contains("Offline diagram"))
+        XCTAssertTrue(errorLabels.contains(RichContentStrings.imageLoadError(locale: .en)))
+
+        errorButton.sendActions(for: .touchUpInside)
+
+        let loadedImage = try await waitForLoadedImageView(in: controller.view, timeout: 3.0)
+        XCTAssertEqual(loadedImage.accessibilityLabel, "Offline diagram")
+        XCTAssertNil(findErrorButton(in: controller.view))
+
         let requests = RecordingAssetURLProtocol.snapshotRequests()
         XCTAssertEqual(requests.count, 2)
-        XCTAssertEqual(requests[0].url?.path, requests[1].url?.path, "Retry must call the exact same attempt asset path")
+        XCTAssertEqual(requests[0].url?.path, requests[1].url?.path)
+        let preserved = RecoveryViewTestHelper.findViews(ofType: RichTextKitTextView.self, in: controller.view)
+        XCTAssertTrue(preserved.contains { $0.customAccessibilityDescription.contains("Surrounding content stays intact") })
+    }
+
+    private func findErrorButton(in root: UIView) -> UIButton? {
+        RecoveryViewTestHelper.findViews(ofType: UIButton.self, in: root)
+            .first { $0.accessibilityIdentifier == "richContent.image.error" }
+    }
+
+    private func waitForErrorButton(in root: UIView, timeout: TimeInterval) async throws -> UIButton {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            root.layoutIfNeeded()
+            if let button = findErrorButton(in: root) {
+                return button
+            }
+            try await Task.sleep(nanoseconds: 40_000_000)
+        }
+        return try XCTUnwrap(findErrorButton(in: root), "Expected richContent.image.error UIButton to appear")
+    }
+
+    private func waitForLoadedImageView(in root: UIView, timeout: TimeInterval) async throws -> UIImageView {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            root.layoutIfNeeded()
+            let errorBtn = findErrorButton(in: root)
+            let loaded = RecoveryViewTestHelper.findViews(ofType: UIImageView.self, in: root)
+                .first { view in
+                    view.bounds.width > 50 && (errorBtn == nil || !view.isDescendant(of: errorBtn!))
+                }
+            if let loaded {
+                return loaded
+            }
+            try await Task.sleep(nanoseconds: 40_000_000)
+        }
+        return try XCTUnwrap(nil, "Expected loaded chart UIImageView after tapping retry")
     }
 }

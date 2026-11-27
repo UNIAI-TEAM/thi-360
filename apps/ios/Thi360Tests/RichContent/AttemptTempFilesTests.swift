@@ -132,6 +132,85 @@ final class AttemptTempFilesTests: XCTestCase {
         XCTAssertTrue(findFilesContaining(pdfSentinel, under: sandboxRoot).isEmpty)
     }
 
+    func testPurgeAllRacingInFlightOpenForViewerLeavesZeroFilesAndNilCache() async throws {
+        let sandboxRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("thi360-race-sandbox-\(UUID().uuidString)", isDirectory: true)
+        let fakeCaches = sandboxRoot.appendingPathComponent("Caches", isDirectory: true)
+        try FileManager.default.createDirectory(at: fakeCaches, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: sandboxRoot) }
+
+        let requestStarted = DispatchSemaphore(value: 0)
+        let releaseResponse = DispatchSemaphore(value: 0)
+
+        RecordingAssetURLProtocol.reset()
+        RecordingAssetURLProtocol.handler = { req in
+            requestStarted.signal()
+            _ = releaseResponse.wait(timeout: .now() + 3.0)
+            let response = HTTPURLResponse(
+                url: req.url!,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "application/pdf"]
+            )!
+            return (response, self.pdfSentinel)
+        }
+
+        let tokenStore = InMemoryTokenStore(
+            initialTokens: SessionTokens(
+                accessToken: "race-token",
+                refreshToken: "race-refresh",
+                accessExpiresIn: 3600,
+                refreshExpiresIn: 86_400,
+                mustChangePassword: false,
+                username: "student1",
+                accountId: "acc-race"
+            )
+        )
+        let refresher = TokenRefresher(
+            tokenStore: tokenStore,
+            refreshExecutor: { _ in throw MobileApiError.unexpectedResponse(statusCode: 401) }
+        )
+        let source = AttemptAssetSource(
+            attemptId: attemptId,
+            serverURL: URL(string: "https://api.thi360.test")!,
+            tokenStore: tokenStore,
+            refresher: refresher,
+            session: AttemptAssetSource.makeNoDiskCacheSession(protocolClasses: [RecordingAssetURLProtocol.self]),
+            cachesDirectoryURL: fakeCaches
+        )
+        defer { source.purgeAll() }
+
+        let ref = AttemptAssetRef.attempt(assetId: "race-pdf-asset")
+        let viewerTask = Task {
+            try await source.openForViewer(ref, fileExtension: "pdf")
+        }
+
+        let started = await Task.detached {
+            requestStarted.wait(timeout: .now() + 3.0) == .success
+        }.value
+        XCTAssertTrue(started, "Expected openForViewer HTTP request to start")
+
+        source.purgeAll()
+        releaseResponse.signal()
+
+        do {
+            let leaked = try await viewerTask.value
+            leaked.close()
+            XCTFail("openForViewer racing purgeAll() must throw instead of returning a post-purge temp file")
+        } catch {
+            let isExpectedAbort = error is CancellationError
+                || (error as? URLError)?.code == .cancelled
+                || (error as? AttemptAssetError) == .network(.cancelled)
+            XCTAssertTrue(isExpectedAbort, "Expected cancellation after purgeAll() race, got: \(error)")
+        }
+
+        XCTAssertNil(source.cachedData(for: ref), "purgeAll() race must not repopulate memoryCache")
+        let attemptAssetsDir = fakeCaches.appendingPathComponent("AttemptAssets", isDirectory: true)
+        let remaining = (try? FileManager.default.contentsOfDirectory(atPath: attemptAssetsDir.path)) ?? []
+        XCTAssertTrue(remaining.isEmpty, "Caches/AttemptAssets/ must contain zero files after purgeAll() race, found: \(remaining)")
+        XCTAssertTrue(findFilesContaining(pdfSentinel, under: sandboxRoot).isEmpty)
+    }
+
     private func appSandboxDirectories() -> [URL] {
         let fm = FileManager.default
         var dirs: [URL] = [fm.temporaryDirectory]

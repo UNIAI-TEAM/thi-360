@@ -97,6 +97,7 @@ private struct ImageZoomHarnessView: View {
                                     AnyView(
                                         TextField("Ô 1", text: $slotValue)
                                             .textFieldStyle(.roundedBorder)
+                                            .submitLabel(.done)
                                             .frame(width: 140, height: 34)
                                             .accessibilityIdentifier("harness.zoom.slotInput")
                                     )

@@ -190,7 +190,30 @@ final class RichDynamicTypeTests: XCTestCase {
         XCTAssertEqual(offsetBefore, 120, accuracy: 2.0)
 
         let tvBefore = try XCTUnwrap(RecoveryViewTestHelper.findViews(ofType: RichTextKitTextView.self, in: controller.view).first)
+        let mountedSlotField = try XCTUnwrap(
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: tvBefore).first,
+            "SlotTextAttachmentViewProvider must mount the inline slot UITextField inside RichTextKitTextView"
+        )
+        XCTAssertNotNil(mountedSlotField.window, "Mounted inline slot UITextField must be attached to a window")
+        XCTAssertGreaterThan(mountedSlotField.bounds.width, 40, "Mounted inline slot UITextField must have non-zero width")
         let fontBefore = try XCTUnwrap(tvBefore.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
+        let rebuildCountBeforeTyping = tvBefore.attributedTextRebuildCount
+        let attributedBeforeTyping = tvBefore.attributedText
+
+        slotState.answer = "giá trị khe 42 đã sửa"
+        RunLoop.main.run(until: Date().addingTimeInterval(0.06))
+        controller.view.layoutIfNeeded()
+
+        XCTAssertEqual(
+            tvBefore.attributedTextRebuildCount,
+            rebuildCountBeforeTyping,
+            "Parent state / slot value updates must NOT rebuild attributedText or tear down active slot TextField focus"
+        )
+        XCTAssertEqual(
+            tvBefore.attributedText?.string,
+            attributedBeforeTyping?.string,
+            "UITextView.attributedText content must remain intact when only bound slot state changes"
+        )
 
         controller.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
         controller.view.setNeedsLayout()
@@ -199,15 +222,16 @@ final class RichDynamicTypeTests: XCTestCase {
 
         let tvScaled = try XCTUnwrap(RecoveryViewTestHelper.findViews(ofType: RichTextKitTextView.self, in: controller.view).first)
         let fontScaled = try XCTUnwrap(tvScaled.attributedText.attribute(.font, at: 0, effectiveRange: nil) as? UIFont)
+        XCTAssertGreaterThan(tvScaled.attributedTextRebuildCount, rebuildCountBeforeTyping, "Dynamic Type change must invalidate signature and redraw text")
         XCTAssertGreaterThan(fontScaled.pointSize, fontBefore.pointSize * 1.5, "Text must redraw at larger Dynamic Type size")
-        XCTAssertEqual(slotState.answer, "giá trị khe 42", "Slot value must stay unchanged after scaling up")
+        XCTAssertEqual(slotState.answer, "giá trị khe 42 đã sửa", "Slot value must stay unchanged after scaling up")
 
         controller.traitOverrides.preferredContentSizeCategory = .large
         controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
         RunLoop.main.run(until: Date().addingTimeInterval(0.08))
 
-        XCTAssertEqual(slotState.answer, "giá trị khe 42", "Slot value must stay unchanged after returning to default size")
+        XCTAssertEqual(slotState.answer, "giá trị khe 42 đã sửa", "Slot value must stay unchanged after returning to default size")
         XCTAssertEqual(scrollView.contentOffset.y, offsetBefore, accuracy: 4.0, "Scroll position must remain preserved after Dynamic Type rescale")
     }
 

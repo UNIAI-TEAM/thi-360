@@ -95,6 +95,7 @@ struct RichParagraphView: View {
     let textColor: UIColor
     let alignment: NSTextAlignment
     let lineSpacing: CGFloat
+    var tabularDigits: Bool = false
     let blankNumberStart: Int
     let tokens: RichContentTokens
     let assets: AttemptAssetSource?
@@ -112,6 +113,7 @@ struct RichParagraphView: View {
             baseSize: baseSize,
             style: [],
             textStyle: textStyle,
+            tabularDigits: tabularDigits,
             traitCollection: traits
         )
         let segments = RichInlineBuilder.segmentInlines(
@@ -133,8 +135,9 @@ struct RichParagraphView: View {
                         textColor: textColor,
                         alignment: alignment,
                         lineSpacing: lineSpacing,
-                        tabularDigits: false,
+                        tabularDigits: tabularDigits,
                         blankNumberStart: blankNumberStart,
+                        mode: mode,
                         tokens: tokens,
                         formulaEngine: formulaEngine,
                         slots: slots,
@@ -419,9 +422,12 @@ struct RichBlockView: View {
             RichQuoteView(
                 quote: quote,
                 tokens: tokens,
+                assets: assets,
+                mode: mode,
                 slots: slots,
                 blankNumberStart: blankNumberStart,
                 formulaEngine: formulaEngine,
+                locale: locale,
                 availableWidth: availableWidth
             )
         }

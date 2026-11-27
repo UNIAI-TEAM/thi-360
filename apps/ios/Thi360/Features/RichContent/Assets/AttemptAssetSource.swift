@@ -145,9 +145,11 @@ final class AttemptAssetSource: @unchecked Sendable {
     private let lock = NSLock()
     private var inFlightTasks: [AttemptAssetRef: Task<Data, Error>] = [:]
     private var openTempFiles: Set<URL> = []
+    private var purgeGeneration: UInt64 = 0
 
     private static let registryLock = NSLock()
     private static var activeSources: [WeakSourceBox] = []
+    private static var globalPurgeGeneration: UInt64 = 0
 
     private final class WeakSourceBox {
         weak var source: AttemptAssetSource?
@@ -232,6 +234,17 @@ final class AttemptAssetSource: @unchecked Sendable {
         return memoryCache.object(forKey: key) as Data?
     }
 
+    private func currentGenerations() -> (local: UInt64, global: UInt64) {
+        let local = lock.withLock { purgeGeneration }
+        let global = Self.registryLock.withLock { Self.globalPurgeGeneration }
+        return (local, global)
+    }
+
+    private func generationsMatch(_ expected: (local: UInt64, global: UInt64)) -> Bool {
+        let current = currentGenerations()
+        return current.local == expected.local && current.global == expected.global
+    }
+
     func load(_ ref: AttemptAssetRef) async throws -> Data {
         switch ref {
         case .blocked:
@@ -242,7 +255,10 @@ final class AttemptAssetSource: @unchecked Sendable {
             }
         }
 
+        let startGens = currentGenerations()
         if let cached = cachedData(for: ref) {
+            try Task.checkCancellation()
+            guard generationsMatch(startGens) else { throw CancellationError() }
             return cached
         }
 
@@ -260,14 +276,19 @@ final class AttemptAssetSource: @unchecked Sendable {
 
         do {
             let data = try await task.value
-            lock.withLock {
+            try Task.checkCancellation()
+            let shouldCache: Bool = lock.withLock {
                 if inFlightTasks[ref] == task {
                     inFlightTasks.removeValue(forKey: ref)
                 }
+                let globalGen = Self.registryLock.withLock { Self.globalPurgeGeneration }
+                let stillValid = !Task.isCancelled && purgeGeneration == startGens.local && globalGen == startGens.global
+                if stillValid, let key = cacheKey(for: ref) {
+                    memoryCache.setObject(data as NSData, forKey: key, cost: data.count)
+                }
+                return stillValid
             }
-            if let key = cacheKey(for: ref) {
-                memoryCache.setObject(data as NSData, forKey: key, cost: data.count)
-            }
+            guard shouldCache else { throw CancellationError() }
             return data
         } catch {
             lock.withLock {
@@ -283,9 +304,14 @@ final class AttemptAssetSource: @unchecked Sendable {
         _ ref: AttemptAssetRef,
         fileExtension: String? = nil
     ) async throws -> TempAssetFile {
+        let startGens = currentGenerations()
         let data = try await load(ref)
+        try Task.checkCancellation()
+        guard generationsMatch(startGens) else { throw CancellationError() }
+
         let dir = tempDirectoryURL
         let fileManager = FileManager.default
+        var writtenURL: URL?
 
         do {
             try fileManager.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -294,14 +320,27 @@ final class AttemptAssetSource: @unchecked Sendable {
             let filename = Self.randomFilename(fileExtension: fileExtension)
             let fileURL = dir.appendingPathComponent(filename, isDirectory: false)
             try data.write(to: fileURL, options: Self.tempFileWriteOptions)
+            writtenURL = fileURL
             try? fileManager.setAttributes(
                 [.protectionKey: Self.tempFileProtection],
                 ofItemAtPath: fileURL.path
             )
             try Self.excludeFromBackup(fileURL)
 
-            lock.withLock {
+            let committed: Bool = lock.withLock {
+                let globalGen = Self.registryLock.withLock { Self.globalPurgeGeneration }
+                guard !Task.isCancelled, purgeGeneration == startGens.local, globalGen == startGens.global else {
+                    return false
+                }
                 openTempFiles.insert(fileURL)
+                return true
+            }
+            guard committed else {
+                try? fileManager.removeItem(at: fileURL)
+                if let contents = try? fileManager.contentsOfDirectory(atPath: dir.path), contents.isEmpty {
+                    try? fileManager.removeItem(at: dir)
+                }
+                throw CancellationError()
             }
 
             return TempAssetFile(url: fileURL) { [weak self] closedURL in
@@ -309,20 +348,29 @@ final class AttemptAssetSource: @unchecked Sendable {
                     self?.openTempFiles.remove(closedURL)
                 }
             }
+        } catch is CancellationError {
+            if let writtenURL {
+                try? fileManager.removeItem(at: writtenURL)
+            }
+            throw CancellationError()
         } catch {
+            if let writtenURL {
+                try? fileManager.removeItem(at: writtenURL)
+            }
             throw AttemptAssetError.writeFailed
         }
     }
 
     func purgeAll() {
         let tasksToCancel: [Task<Data, Error>] = lock.withLock {
+            purgeGeneration &+= 1
             let tasks = Array(inFlightTasks.values)
             inFlightTasks.removeAll()
             openTempFiles.removeAll()
+            memoryCache.removeAllObjects()
             return tasks
         }
         tasksToCancel.forEach { $0.cancel() }
-        memoryCache.removeAllObjects()
         Self.removeTempDirectory(at: tempDirectoryURL)
     }
 
@@ -338,6 +386,7 @@ final class AttemptAssetSource: @unchecked Sendable {
 
     static func purgeAllGlobal(cachesDirectoryURL: URL? = nil) {
         let liveSources: [AttemptAssetSource] = registryLock.withLock {
+            globalPurgeGeneration &+= 1
             activeSources = activeSources.filter { $0.source != nil }
             return activeSources.compactMap(\.source)
         }

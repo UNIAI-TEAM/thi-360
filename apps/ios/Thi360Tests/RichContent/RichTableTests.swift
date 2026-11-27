@@ -174,4 +174,86 @@ final class RichTableTests: XCTestCase {
             in: self
         )
     }
+
+    func testPlainTableCellRendersInlineImageAndScrollsWideInlineFormula() async throws {
+        let assetId = "9b8f8b1f-9b8f-4b8f-9b8f-9b8f8b8f8b8f"
+        let png = UIGraphicsImageRenderer(size: CGSize(width: 120, height: 80)).image { ctx in
+            UIColor.systemTeal.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+        }.pngData()!
+
+        RecordingAssetURLProtocol.reset()
+        defer { RecordingAssetURLProtocol.reset() }
+        RecordingAssetURLProtocol.handler = { req in
+            let resp = HTTPURLResponse(
+                url: req.url!,
+                statusCode: 200,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "image/png"]
+            )!
+            return (resp, png)
+        }
+
+        let tokenStore = InMemoryTokenStore(
+            initialTokens: SessionTokens(
+                accessToken: "tbl-token",
+                refreshToken: "tbl-refresh",
+                accessExpiresIn: 3600,
+                refreshExpiresIn: 86_400,
+                mustChangePassword: false,
+                username: "student1",
+                accountId: "acc-tbl"
+            )
+        )
+        let refresher = TokenRefresher(
+            tokenStore: tokenStore,
+            refreshExecutor: { _ in throw MobileApiError.unexpectedResponse(statusCode: 401) }
+        )
+        let source = AttemptAssetSource(
+            attemptId: "44444444-4444-4444-8444-444444444444",
+            serverURL: URL(string: "https://api.thi360.test")!,
+            tokenStore: tokenStore,
+            refresher: refresher,
+            session: AttemptAssetSource.makeNoDiskCacheSession(protocolClasses: [RecordingAssetURLProtocol.self])
+        )
+        defer { source.purgeAll() }
+        _ = try await source.load(.attempt(assetId: assetId))
+
+        let wideTerms = (1...25).map { "x_{\($0)}" }.joined(separator: " + ")
+        let html = """
+        <table>
+          <tbody>
+            <tr>
+              <td><img src="" alt="Ảnh trong ô bảng" data-asset-id="\(assetId)"></td>
+              <td>Biểu thức rộng \\(\(wideTerms) = S\\)</td>
+            </tr>
+          </tbody>
+        </table>
+        """
+        let doc = RichHTMLParser.parse(html)
+        let view = RichContentView(document: doc, assets: source, fixedWidth: 358)
+            .padding(16)
+            .environment(\.brandPalette, .defaultLight)
+            .environment(\.statusPalette, .light)
+
+        let (window, controller) = RecoveryViewTestHelper.host(
+            view,
+            size: CGSize(width: 390, height: 320),
+            sizeClass: .compact,
+            themeMode: .light
+        )
+        defer { window.isHidden = true }
+
+        let tableImages = RecoveryViewTestHelper.findViews(ofType: UIImageView.self, in: controller.view)
+            .filter { $0.accessibilityLabel == "Ảnh trong ô bảng" }
+        XCTAssertFalse(tableImages.isEmpty, "Legacy plain <table> cell must mount UIImageView for inline <img>")
+
+        let formulaScrolls = RecoveryViewTestHelper.findViews(ofType: HorizontalFormulaScrollView.self, in: controller.view)
+        let wideCellFormulaScroll = try XCTUnwrap(
+            formulaScrolls.first,
+            "Wide inline formula inside <td> must segment into HorizontalFormulaScrollView instead of clipping"
+        )
+        XCTAssertTrue(wideCellFormulaScroll.isScrollEnabled)
+        XCTAssertGreaterThan(wideCellFormulaScroll.contentSize.width, wideCellFormulaScroll.bounds.width + 10)
+    }
 }

@@ -107,10 +107,24 @@ final class SlotTextAttachment: NSTextAttachment {
         self.referenceFont = referenceFont
         self.slotHostPool = slotHostPool
         super.init(data: Data(slotID.utf8), ofType: Self.utiType)
+        self.allowsTextAttachmentView = true
     }
 
     required init?(coder: NSCoder) {
         nil
+    }
+
+    override func viewProvider(
+        for parentView: UIView?,
+        location: any NSTextLocation,
+        textContainer: NSTextContainer?
+    ) -> NSTextAttachmentViewProvider? {
+        SlotTextAttachmentViewProvider(
+            textAttachment: self,
+            parentView: parentView,
+            textLayoutManager: textContainer?.textLayoutManager,
+            location: location
+        )
     }
 }
 
@@ -166,35 +180,73 @@ final class SlotTextAttachmentViewProvider: NSTextAttachmentViewProvider {
 }
 
 @MainActor
-final class RichSlotHostPool {
-    private var factories: [String: () -> AnyView] = [:]
-    private var controllers: [String: UIHostingController<AnyView>] = [:]
+private final class SlotHostBox: ObservableObject {
+    @Published var content: AnyView
+    init(content: AnyView) {
+        self.content = content
+    }
+}
 
-    func updateFactories(_ newFactories: [String: () -> AnyView]) {
+private struct SlotHostRootView: View {
+    @ObservedObject var box: SlotHostBox
+    var body: some View {
+        box.content
+    }
+}
+
+@MainActor
+final class RichSlotHostPool {
+    private struct Entry {
+        let box: SlotHostBox
+        let controller: UIHostingController<SlotHostRootView>
+    }
+
+    private var factories: [String: () -> AnyView] = [:]
+    private var entries: [String: Entry] = [:]
+    private var cachedSizes: [String: (widthHalfPt: Int, size: CGSize)] = [:]
+
+    func updateFactories(
+        _ newFactories: [String: () -> AnyView],
+        forceUpdateFocusedSlots: Bool = false
+    ) {
         self.factories = newFactories
-        for (id, controller) in controllers {
+        if forceUpdateFocusedSlots {
+            cachedSizes.removeAll()
+        }
+        for (id, entry) in entries {
             if let factory = newFactories[id] {
-                controller.rootView = factory()
+                if forceUpdateFocusedSlots || !Self.containsFirstResponder(entry.controller.view) {
+                    entry.box.content = factory()
+                    cachedSizes.removeValue(forKey: id)
+                }
             }
         }
-        for id in Array(controllers.keys) where newFactories[id] == nil {
-            controllers.removeValue(forKey: id)
+        for id in Array(entries.keys) where newFactories[id] == nil {
+            entries.removeValue(forKey: id)
+            cachedSizes.removeValue(forKey: id)
         }
     }
 
     func hostedView(for slotID: String) -> UIView {
-        if let existing = controllers[slotID] {
-            return existing.view
+        if let existing = entries[slotID] {
+            return existing.controller.view
         }
-        let rootView = factories[slotID]?() ?? AnyView(EmptyView())
-        let controller = UIHostingController(rootView: rootView)
+        let box = SlotHostBox(content: factories[slotID]?() ?? AnyView(EmptyView()))
+        let controller = UIHostingController(rootView: SlotHostRootView(box: box))
         controller.view.backgroundColor = .clear
-        controller.sizingOptions = .intrinsicContentSize
-        controllers[slotID] = controller
+        entries[slotID] = Entry(box: box, controller: controller)
         return controller.view
     }
 
+    func mountedViews() -> [UIView] {
+        entries.keys.sorted().compactMap { entries[$0]?.controller.view }
+    }
+
     func measure(slotID: String, maxWidth: CGFloat) -> CGSize {
+        let widthKey = Int((maxWidth * 2).rounded())
+        if let cached = cachedSizes[slotID], cached.widthHalfPt == widthKey {
+            return cached.size
+        }
         let hostView = hostedView(for: slotID)
         let target = CGSize(width: maxWidth, height: UIView.layoutFittingCompressedSize.height)
         let measured = hostView.systemLayoutSizeFitting(
@@ -202,16 +254,38 @@ final class RichSlotHostPool {
             withHorizontalFittingPriority: .fittingSizeLevel,
             verticalFittingPriority: .fittingSizeLevel
         )
-        return CGSize(
+        let size = CGSize(
             width: min(max(measured.width, 44), maxWidth),
             height: max(measured.height, 28)
         )
+        cachedSizes[slotID] = (widthKey, size)
+        return size
+    }
+
+    private static func containsFirstResponder(_ view: UIView) -> Bool {
+        if view.isFirstResponder { return true }
+        for subview in view.subviews where containsFirstResponder(subview) {
+            return true
+        }
+        return false
     }
 }
 
 final class RichTextKitTextView: UITextView {
-    var hasInteractiveSlots = false
+    var hasInteractiveSlots = false {
+        didSet {
+            isAccessibilityElement = !hasInteractiveSlots
+        }
+    }
     var customAccessibilityDescription: String = ""
+    weak var slotHostPool: RichSlotHostPool?
+    private(set) var attributedTextRebuildCount: Int = 0
+    private var lastViewportBounds: CGSize = .zero
+
+    func recordAttributedTextRebuild() {
+        attributedTextRebuildCount += 1
+        lastViewportBounds = .zero
+    }
 
     convenience init() {
         self.init(usingTextLayoutManager: true)
@@ -228,15 +302,66 @@ final class RichTextKitTextView: UITextView {
         setContentHuggingPriority(.required, for: .vertical)
     }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if hasInteractiveSlots && lastViewportBounds != bounds.size && bounds.width > 0 && bounds.height > 0 {
+            lastViewportBounds = bounds.size
+            textLayoutManager?.textViewportLayoutController.layoutViewport()
+        }
+    }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         guard hasInteractiveSlots else { return nil }
         let hit = super.hitTest(point, with: event)
         return hit === self ? nil : hit
     }
 
+    override var isAccessibilityElement: Bool {
+        get { !hasInteractiveSlots }
+        set { super.isAccessibilityElement = newValue }
+    }
+
     override var accessibilityLabel: String? {
         get { customAccessibilityDescription.isEmpty ? super.accessibilityLabel : customAccessibilityDescription }
         set { customAccessibilityDescription = newValue ?? "" }
+    }
+
+    override var accessibilityElements: [Any]? {
+        get {
+            guard hasInteractiveSlots else { return nil }
+            var elements: [Any] = []
+            if !customAccessibilityDescription.isEmpty {
+                let textElement = UIAccessibilityElement(accessibilityContainer: self)
+                textElement.accessibilityLabel = customAccessibilityDescription
+                textElement.accessibilityFrameInContainerSpace = bounds
+                textElement.accessibilityTraits = .staticText
+                elements.append(textElement)
+            }
+            if let slotViews = slotHostPool?.mountedViews() {
+                for slotView in slotViews {
+                    elements.append(contentsOf: Self.collectAccessibleElements(from: slotView))
+                }
+            }
+            return elements
+        }
+        set {
+            super.accessibilityElements = newValue
+        }
+    }
+
+    private static func collectAccessibleElements(from view: UIView) -> [Any] {
+        guard !view.isHidden, view.alpha > 0.01 else { return [] }
+        if view.isAccessibilityElement {
+            return [view]
+        }
+        if let explicit = view.accessibilityElements, !explicit.isEmpty {
+            return explicit
+        }
+        var found: [Any] = []
+        for subview in view.subviews {
+            found.append(contentsOf: collectAccessibleElements(from: subview))
+        }
+        return found.isEmpty ? [view] : found
     }
 }
 
@@ -639,6 +764,7 @@ struct RichTextKitParagraphRepresentable: UIViewRepresentable {
     let lineSpacing: CGFloat
     let tabularDigits: Bool
     let blankNumberStart: Int
+    var mode: RichContentMode = .answering
     let tokens: RichContentTokens
     let formulaEngine: any FormulaEngine
     let slots: [String: () -> AnyView]
@@ -646,9 +772,32 @@ struct RichTextKitParagraphRepresentable: UIViewRepresentable {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
+    struct RenderSignature: Equatable {
+        let inlines: [RichInline]
+        let baseSize: CGFloat
+        let textStyle: UIFont.TextStyle
+        let textColorRGBA: [CGFloat]
+        let alignment: NSTextAlignment
+        let lineSpacing: CGFloat
+        let tabularDigits: Bool
+        let blankNumberStart: Int
+        let mode: RichContentMode
+        let tokens: RichContentTokens
+        let contentSizeCategory: UIContentSizeCategory
+        let dynamicTypeSize: DynamicTypeSize
+        let userInterfaceStyle: UIUserInterfaceStyle
+        let displayScale: CGFloat
+        let widthHalfPt: Int
+        let slotKeys: [String]
+        let formulaEngineType: String
+        let formulaEngineObjectId: ObjectIdentifier?
+    }
+
     final class Coordinator {
         @MainActor let slotPool = RichSlotHostPool()
-        var lastSignature: String = ""
+        var lastSignature: RenderSignature?
+        var lastMeasuredWidthHalfPt: Int = -1
+        var lastMeasuredHeight: CGFloat = 0
     }
 
     func makeCoordinator() -> Coordinator {
@@ -660,9 +809,17 @@ struct RichTextKitParagraphRepresentable: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: RichTextKitTextView, context: Context) {
-        context.coordinator.slotPool.updateFactories(slots)
         let width = max(availableWidth, 60)
         let traits = uiView.traitCollection
+        let signature = makeSignature(width: width, traits: traits)
+        let signatureChanged = context.coordinator.lastSignature != signature
+        context.coordinator.slotPool.updateFactories(
+            slots,
+            forceUpdateFocusedSlots: signatureChanged
+        )
+        guard signatureChanged else { return }
+        context.coordinator.lastSignature = signature
+        context.coordinator.lastMeasuredWidthHalfPt = -1
 
         let built = RichInlineBuilder.buildAttributedString(
             from: inlines,
@@ -680,11 +837,53 @@ struct RichTextKitParagraphRepresentable: UIViewRepresentable {
             maxAttachmentWidth: width
         )
 
+        uiView.slotHostPool = context.coordinator.slotPool
         uiView.hasInteractiveSlots = built.hasSlots
         uiView.isUserInteractionEnabled = built.hasSlots
         uiView.customAccessibilityDescription = built.accessibilityText
         uiView.attributedText = built.attributed
+        uiView.recordAttributedTextRebuild()
         uiView.invalidateIntrinsicContentSize()
+    }
+
+    private func makeSignature(width: CGFloat, traits: UITraitCollection) -> RenderSignature {
+        let resolvedColor = textColor.resolvedColor(with: traits)
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 0
+        resolvedColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+
+        let engineObjectId: ObjectIdentifier? = {
+            if let swa = formulaEngine as? SwaTexFormulaEngine {
+                return ObjectIdentifier(swa)
+            }
+            if let fault = formulaEngine as? FaultInjectingFormulaEngine {
+                return ObjectIdentifier(fault)
+            }
+            return nil
+        }()
+
+        return RenderSignature(
+            inlines: inlines,
+            baseSize: baseSize,
+            textStyle: textStyle,
+            textColorRGBA: [r, g, b, a],
+            alignment: alignment,
+            lineSpacing: lineSpacing,
+            tabularDigits: tabularDigits,
+            blankNumberStart: blankNumberStart,
+            mode: mode,
+            tokens: tokens,
+            contentSizeCategory: traits.preferredContentSizeCategory,
+            dynamicTypeSize: dynamicTypeSize,
+            userInterfaceStyle: traits.userInterfaceStyle,
+            displayScale: traits.displayScale,
+            widthHalfPt: Int((width * 2).rounded()),
+            slotKeys: slots.keys.sorted(),
+            formulaEngineType: String(reflecting: type(of: formulaEngine)),
+            formulaEngineObjectId: engineObjectId
+        )
     }
 
     func sizeThatFits(
@@ -694,7 +893,16 @@ struct RichTextKitParagraphRepresentable: UIViewRepresentable {
     ) -> CGSize? {
         let targetWidth = proposal.width ?? max(availableWidth, 60)
         let clampedWidth = max(targetWidth, 1)
+        let widthHalfPt = Int((clampedWidth * 2).rounded())
+        if context.coordinator.lastMeasuredWidthHalfPt == widthHalfPt,
+           context.coordinator.lastMeasuredHeight > 0
+        {
+            return CGSize(width: clampedWidth, height: context.coordinator.lastMeasuredHeight)
+        }
         let measured = uiView.sizeThatFits(CGSize(width: clampedWidth, height: .greatestFiniteMagnitude))
-        return CGSize(width: clampedWidth, height: max(ceil(measured.height), 1))
+        let height = max(ceil(measured.height), 1)
+        context.coordinator.lastMeasuredWidthHalfPt = widthHalfPt
+        context.coordinator.lastMeasuredHeight = height
+        return CGSize(width: clampedWidth, height: height)
     }
 }

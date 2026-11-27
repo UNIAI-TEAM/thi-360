@@ -169,17 +169,24 @@ final class RichHTMLParserTests: XCTestCase {
     }
 
     func testSlotMarkersExtractedWhenEnabledOnly() {
-        let html = "<p>Điền [[b1]] và [[b2]]</p>"
+        let html = "<p>Điền [[b1]], [[ b2 ]], [[ô_1]], [[blank:1]], [[câu 1]] và [[   ]]</p>"
         let withoutSlots = RichHTMLParser.parse(html, options: RichParseOptions(slotMarkers: false))
-        XCTAssertEqual(extractAllText(from: withoutSlots), "Điền [[b1]] và [[b2]]")
+        XCTAssertEqual(extractAllText(from: withoutSlots), "Điền [[b1]], [[ b2 ]], [[ô_1]], [[blank:1]], [[câu 1]] và [[   ]]")
 
         let withSlots = RichHTMLParser.parse(html, options: RichParseOptions(slotMarkers: true))
         if case let .paragraph(inlines) = withSlots.blocks.first {
             XCTAssertEqual(inlines, [
                 .text("Điền ", style: []),
                 .slot(id: "b1"),
-                .text(" và ", style: []),
-                .slot(id: "b2")
+                .text(", ", style: []),
+                .slot(id: "b2"),
+                .text(", ", style: []),
+                .slot(id: "ô_1"),
+                .text(", ", style: []),
+                .slot(id: "blank:1"),
+                .text(", ", style: []),
+                .slot(id: "câu 1"),
+                .text(" và [[   ]]", style: [])
             ])
         } else {
             XCTFail("Expected paragraph with slots")

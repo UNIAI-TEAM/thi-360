@@ -30,7 +30,7 @@ enum RichHTMLParser {
         pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
         options: .caseInsensitive
     )
-    private static let slotMarkerRegex = try! NSRegularExpression(pattern: "\\[\\[([A-Za-z0-9_.-]+)\\]\\]")
+    private static let slotMarkerRegex = try! NSRegularExpression(pattern: "\\[\\[([^\\[\\]]+)\\]\\]")
     private static let maxRecursionDepth = 512
 
     static func parse(_ html: String, options: RichParseOptions = RichParseOptions()) -> RichDocument {
@@ -161,20 +161,33 @@ enum RichHTMLParser {
             let idRange = match.range(at: 1)
             if fullRange.location > cursor {
                 let prefix = nsText.substring(with: NSRange(location: cursor, length: fullRange.location - cursor))
-                if !prefix.isEmpty {
-                    result.append(.text(prefix, style: style))
-                }
+                appendMergedText(prefix, style: style, into: &result)
             }
-            let slotId = nsText.substring(with: idRange)
-            result.append(.slot(id: slotId))
+            let trimmedId = nsText.substring(with: idRange).trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedId.isEmpty {
+                appendMergedText(nsText.substring(with: fullRange), style: style, into: &result)
+            } else {
+                result.append(.slot(id: trimmedId))
+            }
             cursor = fullRange.location + fullRange.length
         }
 
         if cursor < nsText.length {
             let suffix = nsText.substring(from: cursor)
-            if !suffix.isEmpty {
-                result.append(.text(suffix, style: style))
-            }
+            appendMergedText(suffix, style: style, into: &result)
+        }
+    }
+
+    private static func appendMergedText(
+        _ text: String,
+        style: RichTextStyle,
+        into result: inout [RichInline]
+    ) {
+        guard !text.isEmpty else { return }
+        if case let .text(prev, prevStyle) = result.last, prevStyle == style {
+            result[result.count - 1] = .text(prev + text, style: style)
+        } else {
+            result.append(.text(text, style: style))
         }
     }
 
