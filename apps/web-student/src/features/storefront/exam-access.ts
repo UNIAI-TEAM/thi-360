@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { components } from "@thi360/api-client";
 import type { OptionalSessionLoader } from "@/features/session/api";
 import { useOptionalSession } from "@/features/session/use-optional-session";
@@ -59,6 +59,8 @@ export function useExamAccess(
     queryKey: ["exam-access", ...codes],
     queryFn: () => loadAccess(codes),
     enabled: isStudent && codes.length > 0,
+    // Danh mục nối thêm trang khi cuộn (UNI-2888): giữ quyền của các thẻ đang hiện trong lúc tải lại cho cả danh sách.
+    placeholderData: keepPreviousData,
   });
 
   function view(code: string): AccessView {
@@ -69,7 +71,10 @@ export function useExamAccess(
     if (access.isError) return { kind: "error" };
     if (!access.data) return { kind: "loading" };
     if (access.data.kind === "forbidden") return { kind: "admin" };
-    return { kind: "ready", row: access.data.rows.find((row) => row.code === code) ?? noAccess(code) };
+    const row = access.data.rows.find((item) => item.code === code);
+    // Thẻ mới nối vào chưa có trong dữ liệu cũ đang giữ tạm: chờ, không vội hiện "Mua".
+    if (!row && access.isPlaceholderData) return { kind: "loading" };
+    return { kind: "ready", row: row ?? noAccess(code) };
   }
 
   function reload() {

@@ -140,20 +140,21 @@ test.describe("Danh mục ở trang giới thiệu", () => {
     await expect(page.getByRole("heading", { name: "Không tìm thấy bài thi phù hợp" })).toBeHidden();
   });
 
-  test("AC-3: chuyển trang giữ điều kiện; bấm thẻ mở đúng /exams/<code>", async ({ page }) => {
+  test("AC-3 / UNI-2888: cuộn hết dải thì tự tải trang kế theo điều kiện; bấm thẻ mở đúng /exams/<code>", async ({ page }) => {
     // Bộ DS có hơn một trang bài đang bán (đếm từ tệp json): trang 2 phải có, không bỏ qua.
     expect(ON_SALE_COUNT, "bộ DS phải có hơn một trang bài đang bán").toBeGreaterThan(CATALOG_PAGE_SIZE);
     const catalog = await readCatalog(`size=${CATALOG_PAGE_SIZE}`);
     expect(catalog.totalPages, "danh mục công khai phải có trang 2").toBeGreaterThanOrEqual(2);
 
     await page.goto(`${WEB_URL}/?sort=PRICE_ASC`);
-    await page.getByRole("button", { name: "Trang 2" }).click();
-    await expect(page).toHaveURL(/sort=PRICE_ASC/);
-    await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByRole("button", { name: "Trang 2" })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: "Phân trang danh mục" })).toHaveCount(0);
+    const carousel = page.getByRole("region", { name: "Danh sách bài thi" });
+    await carousel.evaluate((el) => el.scrollTo({ left: el.scrollWidth }));
 
     const second = await readCatalog("sort=PRICE_ASC&page=1&size=12");
     const open = second.items[0]!;
+    await expect(cardFor(page, open.name)).toBeVisible();
+    await expect(page).not.toHaveURL(/page=/);
     await cardFor(page, open.name).getByRole("heading").getByRole("link").click();
     await expect(page).toHaveURL(`${WEB_URL}/exams/${open.code}`);
     await expect(page.getByRole("heading", { level: 1, name: open.name })).toBeVisible();

@@ -112,6 +112,42 @@ export function AccessAction({
     <p className="w-full text-field-label text-text-secondary">{t("attemptsLeft", { count: row.attemptsLeft })}</p>
   );
 
+  // Thẻ danh mục đã mua giữ đúng khung thẻ chưa mua (UNI-2888): một nút chính (kèm số lượt còn lại trong nút) và một
+  // hàng phụ chia đôi Mua thêm lượt | Xem chi tiết, để các thẻ cạnh nhau không lệch hàng giá và hàng nút.
+  if (variant === "card" && (row.state === "CAN_START" || row.state === "IN_PROGRESS")) {
+    const inProgress = row.state === "IN_PROGRESS";
+    const href = inProgress
+      ? row.activeAttemptId
+        ? `/attempts/${row.activeAttemptId}`
+        : "/home"
+      : row.entitlementId
+        ? `/prepare/${row.entitlementId}`
+        : "/home";
+    return (
+      <div className={wrapper}>
+        <Button asChild variant="exam" size={primarySize} className={grow}>
+          <Link href={href} prefetch={false}>
+            {inProgress ? t("continue") : t("enter")}
+            {!inProgress && (
+              <span className="font-normal opacity-85">{" · "}{t("attemptsLeft", { count: row.attemptsLeft })}</span>
+            )}
+          </Link>
+        </Button>
+        {pendingNote}
+        <div className={cn("grid gap-2", row.hasPendingFulfillment ? "grid-cols-1" : "grid-cols-2")}>
+          {!row.hasPendingFulfillment && (
+            <Button asChild variant="outline" className="h-11 w-full px-2">
+              <Link href={checkout} prefetch={false}>{t("buyMore")}</Link>
+            </Button>
+          )}
+          <Button asChild variant="secondary" className="h-11 w-full px-2">
+            <Link href={detailHref}>{t("viewDetail")}</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   switch (row.state) {
     case "IN_PROGRESS":
       return (

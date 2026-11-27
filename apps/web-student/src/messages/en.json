@@ -1873,6 +1873,9 @@
     },
     "catalog": {
       "carouselHint": "Swipe or drag horizontally to view more",
+      "loadingMore": "Loading more exams",
+      "loadMoreError": "Could not load more exams.",
+      "loadMoreRetry": "Retry",
       "carouselLabel": "Exam list",
       "clearFilters": "Clear filters",
       "emptyTitle": "No exams are on sale right now",
@@ -1887,7 +1890,6 @@
       "loading": "Loading catalog",
       "noResultsDescription": "Try another keyword or remove some filters.",
       "noResultsTitle": "No matching exams found",
-      "paginationLabel": "Catalog pagination",
       "partAll": "All sections, subjects",
       "partLabel": "Section/subject",
       "scrollNext": "Scroll list right",
