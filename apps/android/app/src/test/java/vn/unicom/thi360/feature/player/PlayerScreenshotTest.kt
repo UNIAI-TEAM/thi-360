@@ -114,42 +114,42 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun phoneLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture("player_phone_light", PlayerTestFixtures.activeEngineState(attempt), themeMode = ThemeMode.LIGHT)
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun phoneDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture("player_phone_dark", PlayerTestFixtures.activeEngineState(attempt), themeMode = ThemeMode.DARK)
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w360dp-h640dp-xhdpi")
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
     fun phoneNarrowLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture("player_phone_narrow_light", PlayerTestFixtures.activeEngineState(attempt))
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w360dp-h640dp-xhdpi")
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
     fun phoneFont130() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture("player_phone_font130", PlayerTestFixtures.activeEngineState(attempt), fontScale = 1.3f)
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w360dp-h640dp-xhdpi")
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
     fun phoneFont200() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture("player_phone_font200", PlayerTestFixtures.activeEngineState(attempt), fontScale = 2.0f)
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w840dp-h720dp-xhdpi")
+    @Config(qualifiers = "w840dp-h720dp-xhdpi")
     fun foldThreeColumnLight() {
         val attempt = foldQuestionSetAttempt()
         val state = PlayerTestFixtures.activeEngineState(
@@ -162,7 +162,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w840dp-h720dp-xhdpi")
+    @Config(qualifiers = "w840dp-h720dp-xhdpi")
     fun foldThreeColumnDark() {
         val attempt = foldQuestionSetAttempt()
         val state = PlayerTestFixtures.activeEngineState(
@@ -175,21 +175,21 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w1280dp-h800dp-xhdpi")
+    @Config(qualifiers = "w1280dp-h800dp-xhdpi")
     fun tabletLight() {
         val attempt = foldQuestionSetAttempt()
         capture("player_tablet_light", PlayerTestFixtures.activeEngineState(attempt), themeMode = ThemeMode.LIGHT)
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w1280dp-h800dp-xhdpi")
+    @Config(qualifiers = "w1280dp-h800dp-xhdpi")
     fun tabletDark() {
         val attempt = foldQuestionSetAttempt()
         capture("player_tablet_dark", PlayerTestFixtures.activeEngineState(attempt), themeMode = ThemeMode.DARK)
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun partChoiceLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("awaiting-choice"))
         val metadata = PlayerTestFixtures.partChoiceMetadata("per-part")
@@ -206,7 +206,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun partChoiceDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("awaiting-choice"))
         val metadata = PlayerTestFixtures.partChoiceMetadata("per-part")
@@ -223,7 +223,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun gridSheetLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -235,7 +235,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun gridSheetDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -247,7 +247,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun generatingLight() {
         val generating = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("generating"))
         val metadata = PlayerTestFixtures.partChoiceMetadata("per-part")
@@ -255,7 +255,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun generatingDark() {
         val generating = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("generating"))
         val metadata = PlayerTestFixtures.partChoiceMetadata("per-part")
@@ -263,7 +263,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun generationFailedLight() {
         val failed = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("generation-failed"))
         val metadata = PlayerTestFixtures.partChoiceMetadata("per-part")
@@ -271,7 +271,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun generationFailedDark() {
         val failed = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("generation-failed"))
         val metadata = PlayerTestFixtures.partChoiceMetadata("per-part")
@@ -279,7 +279,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogTakeoverLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -293,7 +293,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogTakeoverDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -307,7 +307,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogFinishLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -319,7 +319,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogFinishDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -331,7 +331,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogSubmitLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -343,7 +343,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogSubmitDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -355,7 +355,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogLeaveLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -367,7 +367,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun dialogLeaveDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -379,7 +379,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun closedLight() {
         val closed = PlayerTestFixtures.attemptState("closed-time-up")
         capture(
@@ -394,7 +394,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun closedDark() {
         val closed = PlayerTestFixtures.attemptState("closed-time-up")
         capture(
@@ -409,7 +409,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun evictedLight() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(
@@ -423,7 +423,7 @@ class PlayerScreenshotTest {
     }
 
     @Test
-    @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
+    @Config(qualifiers = "w412dp-h915dp-xhdpi")
     fun evictedDark() {
         val attempt = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
         capture(

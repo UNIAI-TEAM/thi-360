@@ -19,7 +19,7 @@ import vn.unicom.thi360.core.theme.Thi360Theme
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w360dp-h560dp-xhdpi")
+@Config(qualifiers = "w360dp-h560dp-xhdpi")
 class QuestionGridScreenshotTest {
 
     @get:Rule
