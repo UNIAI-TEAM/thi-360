@@ -57,7 +57,9 @@ final class ContractFixturesTests: XCTestCase {
         Operations.verifyVnpayReturn.id,
         Operations.getStorefrontFilters.id,
         Operations.listStorefrontProducts.id,
-        Operations.getStorefrontProduct.id
+        Operations.getStorefrontProduct.id,
+        Operations.checkMyAccountDeletion.id,
+        Operations.deleteMyAccount.id
     ]
 
     private static let requiredPhase1Paths: Set<String> = [
@@ -470,6 +472,10 @@ final class ContractFixturesTests: XCTestCase {
                 try verifyDecodes(Components.Schemas.PageResponseProductCard.self, from: data, decoder: decoder)
             case (Operations.getStorefrontProduct.id, 200):
                 try verifyDecodes(Components.Schemas.ProductDetail.self, from: data, decoder: decoder)
+            case (Operations.checkMyAccountDeletion.id, 200):
+                try verifyDecodes(Components.Schemas.AccountDeletionCheckResponse.self, from: data, decoder: decoder)
+            case (Operations.deleteMyAccount.id, 409):
+                try verifyDecodes(Components.Schemas.AccountDeletionBlockedResponse.self, from: data, decoder: decoder)
             case (Operations.createMyOrder.id, 409),
                  (Operations.payMyOrder.id, 409),
                  (Operations.cancelMyOrder.id, 409),
