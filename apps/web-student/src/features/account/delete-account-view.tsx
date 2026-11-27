@@ -155,6 +155,7 @@ export function DeleteAccountView({
   const errorsT = useTranslations("errors");
   const router = useRouter();
   const queryClient = useQueryClient();
+  const titleId = useId();
   const acknowledgeId = useId();
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
   const inFlightRef = useRef(false);
@@ -308,8 +309,14 @@ export function DeleteAccountView({
   return (
     <div className="min-h-screen bg-page text-text">
       <StudentHeader account={account} />
-      <main className="mx-auto flex max-w-[720px] flex-col gap-6 px-4 py-10 sm:px-6">
-        <h1 className="text-h1 font-bold text-text">{t("title")}</h1>
+      <main
+        tabIndex={-1}
+        aria-labelledby={titleId}
+        className="mx-auto flex max-w-[720px] flex-col gap-6 px-4 py-10 outline-hidden sm:px-6"
+      >
+        <h1 id={titleId} className="text-h1 font-bold text-text">
+          {t("title")}
+        </h1>
 
         {(state.kind === "checking" || state.kind === "deleted") && (
           <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-4">
@@ -458,22 +465,22 @@ export function DeleteAccountView({
                 </Button>
               </div>
             </form>
-
-            <ConfirmDialog
-              open={state.kind === "confirming" || state.kind === "deleting"}
-              onOpenChange={(open) => {
-                if (!open) handleCancelConfirm();
-              }}
-              title={t("confirmTitle")}
-              description={t("acknowledge")}
-              confirmLabel={t("confirmAction")}
-              cancelLabel={t("confirmCancel")}
-              tone="danger"
-              loading={state.kind === "deleting"}
-              onConfirm={() => void handleConfirmDelete()}
-            />
           </>
         )}
+
+        <ConfirmDialog
+          open={state.kind === "confirming" || state.kind === "deleting"}
+          onOpenChange={(open) => {
+            if (!open) handleCancelConfirm();
+          }}
+          title={t("confirmTitle")}
+          description={t("acknowledge")}
+          confirmLabel={t("confirmAction")}
+          cancelLabel={t("confirmCancel")}
+          tone="danger"
+          loading={state.kind === "deleting"}
+          onConfirm={() => void handleConfirmDelete()}
+        />
       </main>
     </div>
   );

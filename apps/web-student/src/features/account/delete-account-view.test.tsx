@@ -443,6 +443,7 @@ describe("DeleteAccountView", () => {
     expect(screen.queryByLabelText(/Mật khẩu hiện tại/)).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(clearSessionMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole("main")).toHaveFocus());
   });
 
   it.each([
