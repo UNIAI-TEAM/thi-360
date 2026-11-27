@@ -1874,6 +1874,9 @@
     },
     "catalog": {
       "carouselHint": "Vuốt hoặc kéo ngang để xem thêm",
+      "loadingMore": "Đang tải thêm bài thi",
+      "loadMoreError": "Chưa tải được thêm bài thi.",
+      "loadMoreRetry": "Tải lại",
       "carouselLabel": "Danh sách bài thi",
       "clearFilters": "Xóa bộ lọc",
       "emptyTitle": "Hiện chưa có bài thi nào đang mở bán",
@@ -1888,7 +1891,6 @@
       "loading": "Đang tải danh mục",
       "noResultsDescription": "Thử từ khóa khác hoặc bỏ bớt bộ lọc.",
       "noResultsTitle": "Không tìm thấy bài thi phù hợp",
-      "paginationLabel": "Phân trang danh mục",
       "partAll": "Tất cả phần, môn",
       "partLabel": "Phần/môn",
       "scrollNext": "Cuộn danh sách sang phải",

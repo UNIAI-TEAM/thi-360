@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, cn, EmptyState, focusRing, Input, Pagination, Select, type SelectOption, Skeleton } from "@thi360/ui";
+import { Button, cn, EmptyState, focusRing, Input, Select, type SelectOption, Skeleton } from "@thi360/ui";
 import { pickName } from "@thi360/web-kit/i18n";
 import { ChevronLeft, ChevronRight, FileText, Search, SearchX, TriangleAlert } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -14,17 +14,18 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from "react";
+import { createBrowserApiClient } from "@/lib/api/client";
 import { touchFieldText } from "@/lib/styles";
 import { AccessAction } from "./access-action";
 import {
   CATALOG_ANCHOR_ID,
   CATALOG_FORMATS,
-  CATALOG_PAGE_SIZE,
   CATALOG_SORTS,
   type CatalogQuery,
   catalogSearch,
   EMPTY_CATALOG_QUERY,
   hasActiveFilters,
+  toApiQuery,
 } from "./catalog-query";
 import { useExamAccess } from "./exam-access";
 import { isBundleProduct } from "./format";
@@ -72,19 +73,43 @@ function CatalogSkeleton({ label }: { label: string }) {
   );
 }
 
+/** Tải một trang danh mục ở trình duyệt (cùng API công khai với máy chủ), dùng khi cuộn tới gần cuối dải thẻ. */
+export async function loadCatalogPage(query: CatalogQuery, page: number): Promise<ProductPage> {
+  const { data, response } = await createBrowserApiClient().GET("/api/v1/public/storefront/products", {
+    params: { query: toApiQuery({ ...query, page }) },
+  });
+  if (!response.ok || !data) throw new Error(`storefront: catalog page ${page} failed (${response.status})`);
+  return data;
+}
+
+/** Còn cách mép phải ít hơn chừng này (khoảng hai thẻ) thì tải trang kế. */
+const LOAD_AHEAD_PX = 720;
+/** Kéo chuột vượt mép cuối thêm chừng này thì vòng về đầu. */
+const WRAP_DRAG_PX = 80;
+
+/**
+ * Dải thẻ cuộn ngang không phân trang (UNI-2888): bắt đầu từ trang trên URL, cuộn gần hết thì tự tải trang kế và nối
+ * vào cuối. Đã tải hết thì đi tiếp (nút →, phím →, kéo chuột vượt mép cuối) vòng về thẻ đầu; ← ở đầu nhảy tới cuối.
+ */
 function CatalogCarousel({
   page,
-  showingText,
-  currentPage,
-  onPageChange,
+  query,
+  loadPage = loadCatalogPage,
 }: {
   page: ProductPage;
-  showingText: string;
-  currentPage: number;
-  onPageChange: (page: number) => void;
+  query: CatalogQuery;
+  loadPage?: (query: CatalogQuery, page: number) => Promise<ProductPage>;
 }) {
   const t = useTranslations("storefront.catalog");
-  const access = useExamAccess(page.items.map((item) => item.code));
+  const [items, setItems] = useState(page.items);
+  const [nextPage, setNextPage] = useState(page.page + 2);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const loadingRef = useRef(false);
+  // Trang kế đọc qua ref: lệnh hẹn giờ (requestAnimationFrame) của lần dựng cũ không được tải lại trang đã có.
+  const nextPageRef = useRef(nextPage);
+  const hasMore = nextPage <= page.totalPages;
+  const access = useExamAccess(items.map((item) => item.code));
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ active: boolean; startX: number; scrollLeft: number }>({
     active: false,
@@ -92,23 +117,57 @@ function CatalogCarousel({
     scrollLeft: 0,
   });
   const [scrollUi, setScrollUi] = useState({
-    canPrev: false,
-    canNext: false,
     hasOverflow: false,
     thumbWidthPct: 100,
     thumbLeftPct: 0,
   });
 
+  // Điều kiện lọc đổi thì máy chủ trả trang mới: bỏ các trang đã nối và về đầu dải.
+  const [shownPage, setShownPage] = useState(page);
+  if (shownPage !== page) {
+    setShownPage(page);
+    setItems(page.items);
+    setNextPage(page.page + 2);
+    setLoadError(false);
+  }
+  useEffect(() => {
+    nextPageRef.current = page.page + 2;
+    if (scrollerRef.current) scrollerRef.current.scrollLeft = 0;
+  }, [page]);
+
+  const loadMore = useCallback(async () => {
+    const pageToLoad = nextPageRef.current;
+    if (loadingRef.current || pageToLoad > page.totalPages) return;
+    loadingRef.current = true;
+    setLoadingMore(true);
+    setLoadError(false);
+    try {
+      const next = await loadPage(query, pageToLoad);
+      setItems((current) => {
+        const seen = new Set(current.map((item) => item.code));
+        return [...current, ...next.items.filter((item) => !seen.has(item.code))];
+      });
+      nextPageRef.current = pageToLoad + 1;
+      setNextPage(pageToLoad + 1);
+    } catch {
+      setLoadError(true);
+    } finally {
+      loadingRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [loadPage, page.totalPages, query]);
+
   const updateScrollUi = useCallback(() => {
     const el = scrollerRef.current;
     if (!el) return;
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    if (hasMore && !loadError && maxScroll - el.scrollLeft < LOAD_AHEAD_PX) void loadMore();
     const hasOverflow = maxScroll > 4;
     if (!hasOverflow || el.scrollWidth <= 0) {
       setScrollUi((prev) =>
-        !prev.canPrev && !prev.canNext && !prev.hasOverflow && prev.thumbWidthPct === 100
+        !prev.hasOverflow && prev.thumbWidthPct === 100
           ? prev
-          : { canPrev: false, canNext: false, hasOverflow: false, thumbWidthPct: 100, thumbLeftPct: 0 },
+          : { hasOverflow: false, thumbWidthPct: 100, thumbLeftPct: 0 },
       );
       return;
     }
@@ -116,19 +175,12 @@ function CatalogCarousel({
     const progress = Math.max(0, Math.min(1, el.scrollLeft / maxScroll));
     const thumbWidthPct = Number((visibleRatio * 100).toFixed(1));
     const thumbLeftPct = Number((progress * (100 - thumbWidthPct)).toFixed(1));
-    setScrollUi({
-      canPrev: el.scrollLeft > 4,
-      canNext: el.scrollLeft < maxScroll - 4,
-      hasOverflow: true,
-      thumbWidthPct,
-      thumbLeftPct,
-    });
-  }, []);
+    setScrollUi({ hasOverflow: true, thumbWidthPct, thumbLeftPct });
+  }, [hasMore, loadError, loadMore]);
 
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
-    el.scrollLeft = 0;
     const raf = window.requestAnimationFrame(updateScrollUi);
     const onResize = () => updateScrollUi();
     window.addEventListener("resize", onResize);
@@ -142,10 +194,23 @@ function CatalogCarousel({
       window.removeEventListener("resize", onResize);
       observer?.disconnect();
     };
-  }, [page.items, updateScrollUi]);
+  }, [items, updateScrollUi]);
 
   function scrollByStep(direction: -1 | 1) {
-    scrollerRef.current?.scrollBy({ left: direction * SCROLL_STEP_PX, behavior: "smooth" });
+    const el = scrollerRef.current;
+    if (!el) return;
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    if (direction === 1 && el.scrollLeft >= maxScroll - 4) {
+      // Ở cuối: còn trang thì tải tiếp, hết rồi thì vòng về đầu.
+      if (hasMore) void loadMore();
+      else el.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+    if (direction === -1 && el.scrollLeft <= 4) {
+      el.scrollTo({ left: maxScroll, behavior: "smooth" });
+      return;
+    }
+    el.scrollBy({ left: direction * SCROLL_STEP_PX, behavior: "smooth" });
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -170,42 +235,48 @@ function CatalogCarousel({
     const el = scrollerRef.current;
     if (!el || !dragRef.current.active) return;
     event.preventDefault();
-    el.scrollLeft = dragRef.current.scrollLeft - (event.pageX - dragRef.current.startX) * 1.15;
+    const target = dragRef.current.scrollLeft - (event.pageX - dragRef.current.startX) * 1.15;
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    if (!hasMore && maxScroll > 4 && target > maxScroll + WRAP_DRAG_PX) {
+      dragRef.current.active = false;
+      el.scrollTo({ left: 0, behavior: "smooth" });
+      return;
+    }
+    el.scrollLeft = target;
   }
 
   function stopDrag() {
     dragRef.current.active = false;
   }
 
+  const navClass = cn(
+    "inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface/90 text-text shadow-xs backdrop-blur-xs transition-colors enabled:hover:border-primary-fill enabled:hover:bg-primary-fill enabled:hover:text-on-primary disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
+    focusRing,
+  );
+
   return (
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p role="status" className="text-field-label font-medium text-text-secondary tabular-nums">
-          {showingText}
+          {t("showing", { from: 1, to: items.length, total: page.totalItems })}
         </p>
         <div className="flex items-center gap-2">
           <span className="hidden text-caption text-text-muted sm:inline">{t("carouselHint")}</span>
           <button
             type="button"
             aria-label={t("scrollPrev")}
-            disabled={!scrollUi.canPrev}
+            disabled={!scrollUi.hasOverflow}
             onClick={() => scrollByStep(-1)}
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface/90 text-text shadow-xs backdrop-blur-xs transition-colors enabled:hover:border-primary-fill enabled:hover:bg-primary-fill enabled:hover:text-on-primary disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-              focusRing,
-            )}
+            className={navClass}
           >
             <ChevronLeft aria-hidden className="size-4.5" />
           </button>
           <button
             type="button"
             aria-label={t("scrollNext")}
-            disabled={!scrollUi.canNext}
+            disabled={!scrollUi.hasOverflow && !hasMore}
             onClick={() => scrollByStep(1)}
-            className={cn(
-              "inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface/90 text-text shadow-xs backdrop-blur-xs transition-colors enabled:hover:border-primary-fill enabled:hover:bg-primary-fill enabled:hover:text-on-primary disabled:opacity-40 pointer-coarse:min-h-11 pointer-coarse:min-w-11",
-              focusRing,
-            )}
+            className={navClass}
           >
             <ChevronRight aria-hidden className="size-4.5" />
           </button>
@@ -216,6 +287,7 @@ function CatalogCarousel({
         ref={scrollerRef}
         role="region"
         aria-label={t("carouselLabel")}
+        aria-busy={loadingMore || undefined}
         tabIndex={0}
         onScroll={updateScrollUi}
         onKeyDown={handleKeyDown}
@@ -228,7 +300,7 @@ function CatalogCarousel({
           focusRing,
         )}
       >
-        {page.items.map((product) => (
+        {items.map((product) => (
           <div key={product.code} className={cardSlotClass}>
             <ProductCard
               product={product}
@@ -248,34 +320,41 @@ function CatalogCarousel({
             />
           </div>
         ))}
+        {/* Ô chờ chỉ hiện khi đang tải hoặc lỗi, để màn không bị coi là chưa tải xong. */}
+        {hasMore && (loadingMore || loadError) && (
+          <div className={cardSlotClass}>
+            {loadError ? (
+              <div className="flex min-h-[26rem] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-danger/30 bg-danger-bg p-4 text-center text-danger">
+                <TriangleAlert aria-hidden className="size-5" />
+                <span className="text-field-label">{t("loadMoreError")}</span>
+                <Button variant="secondary" className="h-11" onClick={() => void loadMore()}>
+                  {t("loadMoreRetry")}
+                </Button>
+              </div>
+            ) : (
+              <div
+                role="status"
+                aria-label={t("loadingMore")}
+                className="flex min-h-[26rem] w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface/90"
+              >
+                <Skeleton className="aspect-video w-full rounded-none" />
+                <div className="flex flex-1 flex-col gap-3 p-4">
+                  <Skeleton className="h-5 w-1/2" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="mt-auto h-11 w-full rounded-lg" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {(scrollUi.hasOverflow || page.totalPages > 1) && (
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
-          {scrollUi.hasOverflow ? (
-            <div aria-hidden="true" className="relative h-1 w-44 rounded-full bg-border-strong/65">
-              <div
-                className="absolute top-0 h-full rounded-full bg-primary-600 transition-[left] duration-150 ease-out motion-reduce:transition-none"
-                style={{
-                  width: `${scrollUi.thumbWidthPct}%`,
-                  left: `${scrollUi.thumbLeftPct}%`,
-                }}
-              />
-            </div>
-          ) : (
-            <span />
-          )}
-
-          {page.totalPages > 1 && (
-            <Pagination
-              className="justify-center"
-              page={currentPage}
-              pageSize={page.size || CATALOG_PAGE_SIZE}
-              total={page.totalItems}
-              onPageChange={onPageChange}
-              labels={{ nav: t("paginationLabel"), range: () => "" }}
-            />
-          )}
+      {scrollUi.hasOverflow && (
+        <div aria-hidden="true" className="relative h-1 w-44 rounded-full bg-border-strong/65">
+          <div
+            className="absolute top-0 h-full rounded-full bg-primary-600 transition-[left] duration-150 ease-out motion-reduce:transition-none"
+            style={{ width: `${scrollUi.thumbWidthPct}%`, left: `${scrollUi.thumbLeftPct}%` }}
+          />
         </div>
       )}
     </div>
@@ -287,14 +366,15 @@ export function CatalogResults({
   view,
   onRetry,
   onClearFilters,
-  onPageChange,
-  currentPage,
+  query,
+  loadPage,
 }: {
   view: CatalogView;
   onRetry: () => void;
   onClearFilters: () => void;
-  onPageChange: (page: number) => void;
-  currentPage: number;
+  /** Điều kiện đang lọc: dải thẻ tải trang kế theo đúng điều kiện này. */
+  query: CatalogQuery;
+  loadPage?: (query: CatalogQuery, page: number) => Promise<ProductPage>;
 }) {
   const t = useTranslations("storefront.catalog");
   const common = useTranslations("common");
@@ -331,19 +411,8 @@ export function CatalogResults({
           }
         />
       );
-    case "ready": {
-      const { page } = view;
-      const from = Math.min(page.page * page.size + 1, page.totalItems);
-      const to = Math.min((page.page + 1) * page.size, page.totalItems);
-      return (
-        <CatalogCarousel
-          page={page}
-          showingText={t("showing", { from, to, total: page.totalItems })}
-          currentPage={currentPage}
-          onPageChange={onPageChange}
-        />
-      );
-    }
+    case "ready":
+      return <CatalogCarousel page={view.page} query={query} loadPage={loadPage} />;
   }
 }
 
@@ -359,10 +428,13 @@ export function CatalogSection({
   query,
   filters,
   products,
+  loadPage,
 }: {
   query: CatalogQuery;
   filters: Loaded<StorefrontFilters>;
   products: Loaded<ProductPage>;
+  /** Tải trang kế khi cuộn; mặc định gọi API công khai (thay được trong test). */
+  loadPage?: (query: CatalogQuery, page: number) => Promise<ProductPage>;
 }) {
   const t = useTranslations("storefront.catalog");
   const formatT = useTranslations("storefront.format");
@@ -469,11 +541,6 @@ export function CatalogSection({
     pushedSearch.current = "";
     setSearch("");
     go(EMPTY_CATALOG_QUERY);
-  }
-
-  function changePage(page: number) {
-    go({ ...query, page }, "push");
-    document.getElementById(CATALOG_ANCHOR_ID)?.scrollIntoView({ block: "start" });
   }
 
   const chipClass = (active: boolean) =>
@@ -612,10 +679,10 @@ export function CatalogSection({
 
       <CatalogResults
         view={view}
-        currentPage={query.page}
+        query={query}
+        loadPage={loadPage}
         onRetry={() => startTransition(() => router.refresh())}
         onClearFilters={clearFilters}
-        onPageChange={changePage}
       />
     </section>
   );

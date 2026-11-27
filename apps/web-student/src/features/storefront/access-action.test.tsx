@@ -156,14 +156,25 @@ describe("AccessAction · bảng nút TM 11.3", () => {
     }
   });
 
-  it("thẻ danh mục (variant=card): CAN_START hiển thị dạng Đã mua gồm 3 nút xếp dọc Vào bài thi, Mua thêm lượt, Xem chi tiết (UNI-2797)", () => {
+  it("thẻ danh mục (variant=card): CAN_START cùng khung thẻ chưa mua — nút chính kèm số lượt, hàng phụ chia đôi Mua thêm lượt | Xem chi tiết (UNI-2888)", () => {
     renderAction(ready({ state: "CAN_START", attemptsLeft: 3, entitlementId: "ent-1" }), "card");
 
-    expect(screen.getByText("Còn 3 lượt")).toBeInTheDocument();
     const links = screen.getAllByRole("link");
-    expect(links.map((el) => el.textContent)).toEqual(["Vào bài thi", "Mua thêm lượt", "Xem chi tiết"]);
-    for (const el of links) {
-      expect(el).toHaveClass("w-full");
-    }
+    expect(links.map((el) => el.textContent)).toEqual(["Vào bài thi · Còn 3 lượt", "Mua thêm lượt", "Xem chi tiết"]);
+    expect(links[0]).toHaveAttribute("href", "/prepare/ent-1");
+    expect(links[1]).toHaveAttribute("href", CHECKOUT);
+    expect(links[1]?.parentElement).toBe(links[2]?.parentElement);
+    expect(links[1]?.parentElement).toHaveClass("grid-cols-2");
+    // Không còn dòng chữ riêng phía trên nút: thẻ đã mua không cao hơn thẻ chưa mua.
+    expect(screen.queryByText("Còn 3 lượt", { selector: "p" })).toBeNull();
+  });
+
+  it("thẻ danh mục (variant=card): IN_PROGRESS nút chính Tiếp tục, không có dòng ghi chú riêng (UNI-2888)", () => {
+    renderAction(ready({ state: "IN_PROGRESS", attemptsLeft: 0, activeAttemptId: "att-1" }), "card");
+
+    const links = screen.getAllByRole("link");
+    expect(links.map((el) => el.textContent)).toEqual(["Tiếp tục", "Mua thêm lượt", "Xem chi tiết"]);
+    expect(links[0]).toHaveAttribute("href", "/attempts/att-1");
+    expect(screen.queryByText("Bạn có một lượt đang làm dở.")).toBeNull();
   });
 });

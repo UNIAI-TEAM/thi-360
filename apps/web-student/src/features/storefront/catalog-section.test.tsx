@@ -46,7 +46,7 @@ beforeEach(() => {
 });
 
 describe("CatalogResults · bốn trạng thái (AC-10)", () => {
-  const handlers = { onRetry: vi.fn(), onClearFilters: vi.fn(), onPageChange: vi.fn(), currentPage: 1 };
+  const handlers = { onRetry: vi.fn(), onClearFilters: vi.fn(), query: EMPTY_CATALOG_QUERY };
 
   it("đang tải: khung thẻ có kích thước cố định, báo trạng thái bận", () => {
     renderWithProviders(<CatalogResults view={{ kind: "loading" }} {...handlers} />);
@@ -83,17 +83,19 @@ describe("CatalogResults · bốn trạng thái (AC-10)", () => {
 });
 
 describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)", () => {
-  it("có dữ liệu: dòng tóm tắt, dải cuộn ngang 1 dòng có tên truy cập, thẻ bài thi, phân trang (UNI-2810)", () => {
-    renderWithProviders(<CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page()} />);
+  it("có dữ liệu: dòng tóm tắt, dải cuộn ngang 1 dòng có tên truy cập, thẻ bài thi, không còn phân trang (UNI-2810, UNI-2888)", () => {
+    renderWithProviders(
+      <CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page()} loadPage={() => new Promise(() => {})} />,
+    );
 
-    expect(screen.getByText(/Hiển thị 1–12/)).toHaveTextContent("Hiển thị 1–12 trong 30 bài thi đang mở bán");
+    expect(screen.getByText(/Hiển thị 1–2/)).toHaveTextContent("Hiển thị 1–2 trong 30 bài thi đang mở bán");
     const carousel = screen.getByRole("region", { name: "Danh sách bài thi" });
     expect(carousel).toHaveAttribute("tabindex", "0");
     expect(carousel).toHaveClass("flex-nowrap", "overflow-x-auto");
     expect(within(carousel).getAllByRole("article")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Cuộn danh sách sang trái" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cuộn danh sách sang phải" })).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Phân trang danh mục" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Phân trang danh mục" })).toBeNull();
   });
 
   it("dải chip Kỳ thi hiển thị theo catalogKinds của danh mục EXAM và bấm chip ghi kind lên URL, về trang 1 (UNI-2810)", async () => {
@@ -125,14 +127,64 @@ describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)",
     expect(router.replace).toHaveBeenCalledWith("/?kind=VSAT", { scroll: false });
   });
 
-  it("chuyển trang giữ điều kiện và ghi lên URL; thẻ không mất bộ lọc", async () => {
+  it("cuộn gần cuối thì tải trang kế theo đúng điều kiện và nối vào cuối dải, không ghi URL (UNI-2888)", async () => {
+    const query = { ...EMPTY_CATALOG_QUERY, kind: "HSA", sort: "PRICE_ASC" as const };
+    const third = { ...FULL_CARD, code: "HSA-THIRD", name: "Bai thu ba" };
+    const loadPage = vi.fn(async () => ({ items: [PART_CARD, third], page: 1, size: 12, totalItems: 3, totalPages: 2 }));
     renderWithProviders(
-      <CatalogSection query={{ ...EMPTY_CATALOG_QUERY, kind: "HSA", sort: "PRICE_ASC" }} filters={FILTERS} products={page()} />,
+      <CatalogSection query={query} filters={FILTERS} products={page({ totalItems: 3, totalPages: 2 })} loadPage={loadPage} />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Trang 2" }));
+    const carousel = screen.getByRole("region", { name: "Danh sách bài thi" });
+    // jsdom không đo kích thước: dải "đã ở gần cuối" ngay từ đầu nên trang 2 được tải luôn.
+    await waitFor(() => expect(within(carousel).getAllByRole("article")).toHaveLength(3));
+    expect(loadPage).toHaveBeenCalledTimes(1);
+    expect(loadPage).toHaveBeenCalledWith(query, 2);
+    expect(screen.getByText("Hiển thị 1–3 trong 3 bài thi đang mở bán")).toBeInTheDocument();
+    expect(within(carousel).queryByRole("status", { name: "Đang tải thêm bài thi" })).toBeNull();
+    expect(router.push).not.toHaveBeenCalled();
+  });
 
-    expect(router.push).toHaveBeenCalledWith("/?kind=HSA&sort=PRICE_ASC&page=2", { scroll: false });
+  it("tải trang kế lỗi thì hiện thẻ báo lỗi có nút Thử lại (UNI-2888)", async () => {
+    const loadPage = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValue({ items: [{ ...FULL_CARD, code: "HSA-THIRD" }], page: 1, size: 12, totalItems: 3, totalPages: 2 });
+    renderWithProviders(
+      <CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page({ totalItems: 3, totalPages: 2 })} loadPage={loadPage} />,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Tải lại" }));
+
+    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(3));
+    // Một lần lỗi, một lần Tải lại: không gọi trùng trang đã có.
+    expect(loadPage.mock.calls.map((call) => call[1])).toEqual([2, 2]);
+  });
+
+  it("đã tải hết: → ở cuối dải vòng về thẻ đầu, ← ở đầu dải nhảy tới cuối (UNI-2888)", async () => {
+    const width = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(2000);
+    const client = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+    const scrollTo = vi.fn();
+    try {
+      renderWithProviders(
+        <CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page({ totalItems: 2, totalPages: 1 })} />,
+      );
+      const carousel = screen.getByRole("region", { name: "Danh sách bài thi" });
+      carousel.scrollTo = scrollTo as unknown as typeof carousel.scrollTo;
+      const next = screen.getByRole("button", { name: "Cuộn danh sách sang phải" });
+      await waitFor(() => expect(next).toBeEnabled());
+
+      carousel.scrollLeft = 1400;
+      await userEvent.click(next);
+      expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: "smooth" });
+
+      carousel.scrollLeft = 0;
+      await userEvent.click(screen.getByRole("button", { name: "Cuộn danh sách sang trái" }));
+      expect(scrollTo).toHaveBeenLastCalledWith({ left: 1400, behavior: "smooth" });
+    } finally {
+      width.mockRestore();
+      client.mockRestore();
+    }
   });
 
   it("đổi điều kiện thì về trang 1", async () => {
@@ -239,12 +291,13 @@ describe("CatalogSection · điều kiện nằm trên URL (AC-2, AC-3, AC-10)",
     expect(screen.queryByRole("search")).toBeNull();
   });
 
-  it("một trang kết quả thì không hiện phân trang", () => {
+  it("một trang kết quả: không có thẻ đang tải thêm, không phân trang", () => {
     renderWithProviders(
       <CatalogSection query={EMPTY_CATALOG_QUERY} filters={FILTERS} products={page({ totalItems: 2, totalPages: 1 })} />,
     );
 
     expect(screen.queryByRole("navigation", { name: "Phân trang danh mục" })).toBeNull();
+    expect(screen.queryByRole("status", { name: "Đang tải thêm bài thi" })).toBeNull();
   });
 
 
