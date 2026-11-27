@@ -2,6 +2,7 @@ package vn.unicom.thi360.feature.myexams
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -92,12 +93,13 @@ class CheckingCardTest {
         val calls = AtomicInteger(0)
 
         server.respondDynamic("GET", "/api/v1/me/exams") {
-            if (calls.incrementAndGet() == 1) {
-                ContractFakeServer.jsonResponse(200, MyExamsTestFixtures.encodeResponse(listOf(checkingCard)))
-            } else {
-                reloadArrived.countDown()
-                reloadGate.await(5, TimeUnit.SECONDS)
-                ContractFakeServer.jsonResponse(200, MyExamsTestFixtures.encodeResponse(listOf(grantedCard)))
+            when (calls.incrementAndGet()) {
+                1, 2 -> ContractFakeServer.jsonResponse(200, MyExamsTestFixtures.encodeResponse(listOf(checkingCard)))
+                else -> {
+                    reloadArrived.countDown()
+                    reloadGate.await(5, TimeUnit.SECONDS)
+                    ContractFakeServer.jsonResponse(200, MyExamsTestFixtures.encodeResponse(listOf(grantedCard)))
+                }
             }
         }
 
@@ -153,12 +155,19 @@ class CheckingCardTest {
             checkNotNull(capturedNavController).currentBackStackEntry?.arguments?.getString(AppRoute.ARG_ORDER_CODE),
         )
         composeRule.runOnIdle { checkNotNull(capturedNavController).popBackStack() }
-        composeRule.waitForIdle()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            server.requestCount("GET", "/api/v1/me/exams") == 2 &&
+                runCatching {
+                    composeRule.onNodeWithTag(MyExamsTestTags.checkingReloadButton("CHK-01")).assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+        }
 
+        composeRule.onNodeWithTag(MyExamsTestTags.checkingReloadButton("CHK-01")).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) { reloadArrived.count == 0L }
         composeRule.onNodeWithTag(MyExamsTestTags.checkingReloadButton("CHK-01")).assertIsNotEnabled()
         composeRule.onNodeWithTag(MyExamsTestTags.checkingReloadButton("CHK-01")).performClick()
-        assertEquals(2, server.requestCount("GET", "/api/v1/me/exams"))
+        assertEquals(3, server.requestCount("GET", "/api/v1/me/exams"))
 
         reloadGate.countDown()
         composeRule.waitUntil(timeoutMillis = 5_000) {

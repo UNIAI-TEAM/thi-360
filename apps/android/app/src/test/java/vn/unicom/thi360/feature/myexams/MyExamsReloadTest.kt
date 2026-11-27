@@ -1,14 +1,20 @@
 package vn.unicom.thi360.feature.myexams
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
@@ -38,6 +44,7 @@ import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.shell.routes.AppNavigator
 import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
@@ -204,6 +211,74 @@ class MyExamsReloadTest {
                 composeRule.onNodeWithText("Bài lần chạy 2").assertIsDisplayed()
                 true
             }.getOrDefault(false)
+        }
+    }
+
+    @Test
+    fun foregroundResumeDoesNotAutoReloadButExplicitSwitchTabReloadDoes() {
+        val cards = listOf(MyExamsTestFixtures.makeCard(code = "BG-1", name = "Bài nền A26"))
+        server.respondJson("GET", "/api/v1/me/exams", 200, MyExamsTestFixtures.encodeResponse(cards))
+
+        val stack = createActiveStack()
+        AppSessionContainer.setTestStack(app, stack)
+        val owner = object : LifecycleOwner {
+            val registry = LifecycleRegistry(this).apply {
+                currentState = Lifecycle.State.RESUMED
+            }
+            override val lifecycle: Lifecycle get() = registry
+        }
+        var capturedNavController: NavHostController? = null
+        var capturedNavigator: AppNavigator? = null
+
+        composeRule.setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                val navController = rememberNavController()
+                val navigator = remember(navController) { AppNavigator(navController) }
+                capturedNavController = navController
+                capturedNavigator = navigator
+                AppRoot(
+                    preferences = AppPreferences(locale = AppLocale.VI),
+                    onSelectLocale = {},
+                    onSelectThemeMode = {},
+                    navController = navController,
+                    navigator = navigator,
+                    sessionManager = stack.sessionManager,
+                    validateOnLaunch = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithText("Bài nền A26").assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        assertEquals(1, server.requestCount("GET", "/api/v1/me/exams"))
+
+        composeRule.runOnIdle {
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+            assertEquals(
+                Lifecycle.State.CREATED,
+                checkNotNull(capturedNavController).currentBackStackEntry?.lifecycle?.currentState,
+            )
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+            assertEquals(
+                Lifecycle.State.RESUMED,
+                checkNotNull(capturedNavController).currentBackStackEntry?.lifecycle?.currentState,
+            )
+        }
+        composeRule.waitForIdle()
+        assertEquals(1, server.requestCount("GET", "/api/v1/me/exams"))
+
+        composeRule.runOnIdle {
+            checkNotNull(capturedNavigator).switchTab(Destination.MyExams, reload = true)
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            server.requestCount("GET", "/api/v1/me/exams") == 2
         }
     }
 

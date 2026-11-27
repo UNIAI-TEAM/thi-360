@@ -1,15 +1,11 @@
 package vn.unicom.thi360.shell.routes
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
@@ -90,29 +86,17 @@ private fun MyExamsRoute(
     val sessionState by sessionStack.sessionManager.state.collectAsStateWithLifecycle()
     val isActiveSession = sessionState is SessionState.Active
     val sessionGeneration by sessionStack.sessionManager.sessionGeneration.collectAsStateWithLifecycle()
+    val reloadCounters by navigator.reloadCounters.collectAsStateWithLifecycle()
+    val myExamsReloadCounter = reloadCounters[Destination.MyExams] ?: 0L
     val feedState by memory.myExamsFeed.state.collectAsStateWithLifecycle()
     val greetingIdentity by memory.greetingIdentity.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
     val clickGuard = remember { NavigationClickGuard() }
 
-    LaunchedEffect(memory, isActiveSession, sessionGeneration) {
+    LaunchedEffect(memory, isActiveSession, sessionGeneration, myExamsReloadCounter) {
         memory.syncAccountScope()
         if (isActiveSession) {
             memory.ensureGreetingIdentityLoaded()
-        }
-    }
-
-    DisposableEffect(lifecycleOwner, memory, isActiveSession) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && isActiveSession) {
-                memory.syncAccountScope()
-                memory.ensureGreetingIdentityLoaded()
-                memory.myExamsFeed.onAppear()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
+            memory.myExamsFeed.onAppear()
         }
     }
 
@@ -142,7 +126,10 @@ private fun MyExamsRoute(
         onContinueAttempt = { attemptId -> navigator.openAttempt(attemptId) },
         onStartPrepare = { entitlementId -> navigator.openPrepare(entitlementId) },
         onOpenResult = { attemptId -> navigator.openResult(attemptId) },
-        onOpenHistoryReset = { navigator.switchTab(Destination.History, reload = true) },
+        onOpenHistoryReset = {
+            memory.historyFeed.requestFilterReset()
+            navigator.switchTab(Destination.History, reload = true)
+        },
         onOpenCheckout = { code -> navigator.openCheckout(code) },
         clickGuard = clickGuard,
     )
@@ -176,28 +163,24 @@ private fun HistoryRoute(
     val reloadCounters by navigator.reloadCounters.collectAsStateWithLifecycle()
     val historyReloadCounter = reloadCounters[Destination.History] ?: 0L
     val resetFilters = backStackEntry.arguments?.getBoolean(AppRoute.ARG_RESET_FILTERS) ?: false
-    val resetKey = "${backStackEntry.id}:$historyReloadCounter"
     val feedState by memory.historyFeed.state.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
     val clickGuard = remember { NavigationClickGuard() }
 
-    LaunchedEffect(memory, isActiveSession, sessionGeneration) {
+    LaunchedEffect(
+        memory,
+        isActiveSession,
+        sessionGeneration,
+        backStackEntry.id,
+        resetFilters,
+        historyReloadCounter,
+    ) {
         memory.syncAccountScope()
-    }
-
-    DisposableEffect(lifecycleOwner, memory, isActiveSession, resetFilters, resetKey) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME && isActiveSession) {
-                memory.syncAccountScope()
-                memory.historyFeed.onAppear(
-                    resetFilters = resetFilters,
-                    resetKey = resetKey,
-                )
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
+        if (isActiveSession) {
+            memory.historyFeed.onAppear(
+                resetFilters = resetFilters,
+                backStackEntryId = backStackEntry.id,
+                reloadCounter = historyReloadCounter,
+            )
         }
     }
 

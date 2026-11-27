@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -245,10 +246,11 @@ fun MyExamsScreen(
                                         .testTag(MyExamsTestTags.CHECKING_SECTION),
                                 )
                             }
-                            items(
+                            val checkingKeys = buildUniqueCheckingKeys(data.checking)
+                            itemsIndexed(
                                 items = data.checking,
-                                key = { card -> myExamStableKey(card) },
-                            ) { card ->
+                                key = { index, _ -> checkingKeys[index] },
+                            ) { _, card ->
                                 CheckingExamCardItem(
                                     card = card,
                                     supportContact = supportContact,

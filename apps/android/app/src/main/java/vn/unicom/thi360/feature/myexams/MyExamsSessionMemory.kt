@@ -2,7 +2,9 @@ package vn.unicom.thi360.feature.myexams
 
 import java.util.WeakHashMap
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,9 +58,10 @@ class MyExamsSessionMemory(
     private val _greetingIdentity = MutableStateFlow(initialIdentity())
     val greetingIdentity: StateFlow<LearnerGreetingIdentity> = _greetingIdentity.asStateFlow()
 
+    private val identityLock = Any()
     private var lastGeneration: Long = sessionManager.sessionGeneration.value
     private var lastAccountId: String? = sessionManager.currentAccountIdOrNull()
-    private var identityFetchInFlight = false
+    private var identityFetchJob: Job? = null
 
     fun syncAccountScope() {
         val currentGeneration = sessionManager.sessionGeneration.value
@@ -79,34 +82,48 @@ class MyExamsSessionMemory(
 
     fun ensureGreetingIdentityLoaded() {
         syncAccountScope()
-        if (_greetingIdentity.value.fetchedFromMe || identityFetchInFlight) return
         if (sessionManager.state.value !is SessionState.Active) return
-        identityFetchInFlight = true
-        val expectedGeneration = lastGeneration
-        scope.launch {
-            try {
-                when (val result = safeApiCall { sessionStack.authenticatedAuthApi.me() }) {
-                    is ApiResult.Success -> {
-                        if (sessionManager.sessionGeneration.value == expectedGeneration) {
-                            _greetingIdentity.value = LearnerGreetingIdentity(
-                                fullName = result.data.fullName,
-                                username = result.data.username,
-                                fetchedFromMe = true,
-                            )
+        val jobToStart = synchronized(identityLock) {
+            if (_greetingIdentity.value.fetchedFromMe || identityFetchJob?.isActive == true) {
+                return
+            }
+            val expectedGeneration = lastGeneration
+            val job = scope.launch(start = CoroutineStart.LAZY) {
+                val currentJob = coroutineContext[Job]
+                try {
+                    when (val result = safeApiCall { sessionStack.authenticatedAuthApi.me() }) {
+                        is ApiResult.Success -> {
+                            if (sessionManager.sessionGeneration.value == expectedGeneration) {
+                                _greetingIdentity.value = LearnerGreetingIdentity(
+                                    fullName = result.data.fullName,
+                                    username = result.data.username,
+                                    fetchedFromMe = true,
+                                )
+                            }
+                        }
+                        else -> Unit
+                    }
+                } finally {
+                    synchronized(identityLock) {
+                        if (identityFetchJob === currentJob) {
+                            identityFetchJob = null
                         }
                     }
-                    else -> Unit
                 }
-            } finally {
-                identityFetchInFlight = false
             }
+            identityFetchJob = job
+            job
         }
+        jobToStart.start()
     }
 
     fun clear() {
         myExamsFeed.clear()
         historyFeed.clear()
-        identityFetchInFlight = false
+        synchronized(identityLock) {
+            identityFetchJob?.cancel()
+            identityFetchJob = null
+        }
         _greetingIdentity.value = initialIdentity()
     }
 

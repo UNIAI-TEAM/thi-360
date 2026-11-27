@@ -121,11 +121,11 @@ class HistoryAuthTest {
     @Test
     fun forbidden403RoutesToLoginWhenRefreshRejected() {
         server.respondIndexed("listHistory", 403)
-        server.respondJson(
+        server.respondAuthFixture(
             "POST",
             "/api/v1/auth/mobile/refresh",
             401,
-            """{"code":"UNAUTHORIZED","message":"expired"}""",
+            "refresh-401-session-revoked.json",
         )
 
         val stack = createActiveStack()

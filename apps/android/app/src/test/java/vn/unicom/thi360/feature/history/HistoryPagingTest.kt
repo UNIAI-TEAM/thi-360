@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ApplicationProvider
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -261,6 +262,75 @@ class HistoryPagingTest {
         dedupFeed.loadNextPage()
         testScope.runCurrent()
         assertEquals(callCountBeforeExtraScroll, dedupCalls.size)
+    }
+
+    @Test
+    fun pageOneFailureShowsStaleBannerWithoutAutoRetryAndRetriesPageOneOnTap() {
+        val allItems = (1..45).map { idx ->
+            HistoryTestFixtures.makeAttempt(idSeed = "pf-$idx", examName = "Đề phân trang $idx")
+        }
+        val page1Calls = AtomicInteger(0)
+
+        server.respondDynamic("GET", "/api/v1/me/attempts") { req ->
+            val page = req.requestUrl?.queryParameter("page")?.toInt() ?: 0
+            if (page == 0) {
+                ContractFakeServer.jsonResponse(
+                    200,
+                    HistoryTestFixtures.encodePage(allItems.subList(0, 20), page = 0, size = 20, totalItems = 45, totalPages = 3),
+                )
+            } else if (page == 1 && page1Calls.incrementAndGet() == 1) {
+                ContractFakeServer.jsonResponse(500, """{"code":"INTERNAL_ERROR"}""")
+            } else {
+                val start = page * 20
+                val end = minOf(start + 20, allItems.size)
+                val slice = if (start < allItems.size) allItems.subList(start, end) else emptyList()
+                ContractFakeServer.jsonResponse(
+                    200,
+                    HistoryTestFixtures.encodePage(slice, page = page, size = 20, totalItems = 45, totalPages = 3),
+                )
+            }
+        }
+
+        val stack = createActiveStack()
+        AppSessionContainer.setTestStack(app, stack)
+        val memory = MyExamsSessionMemory.forSession(stack, app.connectivityMonitor)
+
+        composeRule.setContent {
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+            )
+        }
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            (memory.historyFeed.state.value.loadState as? LoadState.Loaded)?.value?.items?.size == 20
+        }
+
+        composeRule.onNodeWithTag(HistoryTestTags.LIST).performScrollToIndex(21)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            (memory.historyFeed.state.value.loadState as? LoadState.Loaded)?.stale == true
+        }
+        composeRule.waitForIdle()
+        composeRule.mainClock.advanceTimeBy(1_000L)
+        composeRule.waitForIdle()
+        assertEquals(2, server.requestCount("GET", "/api/v1/me/attempts"))
+
+        composeRule.onNodeWithTag(HistoryTestTags.LIST).performScrollToIndex(0)
+        composeRule.onNodeWithTag(HistoryTestTags.STALE_BANNER).assertIsDisplayed()
+        composeRule.onNodeWithTag(HistoryTestTags.STALE_RETRY_BUTTON).performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            val loaded = memory.historyFeed.state.value.loadState as? LoadState.Loaded
+            loaded != null && !loaded.stale && loaded.value.items.size == 40
+        }
+        assertEquals(3, server.requestCount("GET", "/api/v1/me/attempts"))
+        val retryReq = server.lastRequest("GET", "/api/v1/me/attempts")!!.requestUrl!!
+        assertEquals("1", retryReq.queryParameter("page"))
+        assertEquals("20", retryReq.queryParameter("size"))
     }
 
     private fun createActiveStack() = Thi360ApiFactory.createSessionStack(

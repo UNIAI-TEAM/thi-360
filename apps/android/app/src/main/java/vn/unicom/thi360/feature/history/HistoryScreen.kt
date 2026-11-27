@@ -125,9 +125,12 @@ fun HistoryScreen(
     val listState = rememberLazyListState()
     var activeDatePicker by remember { mutableStateOf<ActiveDatePickerField?>(null) }
 
-    val loadedPage = (feedState.loadState as? LoadState.Loaded)?.value
+    val loadedState = feedState.loadState as? LoadState.Loaded
+    val loadedPage = loadedState?.value
     val loadedItems = loadedPage?.items.orEmpty()
+    val isStale = loadedState?.stale == true
     val canLoadMore = !feedState.isOfflineBlock &&
+        !isStale &&
         loadedPage != null &&
         loadedPage.hasMore &&
         !feedState.isLoadingMore &&

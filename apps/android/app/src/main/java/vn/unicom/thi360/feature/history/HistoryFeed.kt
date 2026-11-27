@@ -70,15 +70,34 @@ class HistoryFeed(
     private var searchDebounceJob: Job? = null
     private var activeFetchJob: Job? = null
     private var lastFailedRequest: FailedRequest? = null
-    private var lastConsumedResetKey: String? = null
+    private var pendingFilterReset: Boolean = false
+    private var lastConsumedReloadCounter: Long = 0L
+    private var lastConsumedEntryId: String? = null
 
-    fun onAppear(resetFilters: Boolean = false, resetKey: String? = null) {
+    fun requestFilterReset() {
+        synchronized(lock) {
+            pendingFilterReset = true
+        }
+    }
+
+    fun onAppear(
+        resetFilters: Boolean = false,
+        backStackEntryId: String? = null,
+        reloadCounter: Long = 0L,
+    ) {
         val shouldReset = synchronized(lock) {
-            if (resetFilters && (resetKey == null || resetKey != lastConsumedResetKey)) {
-                lastConsumedResetKey = resetKey
-                true
-            } else {
-                false
+            val fromPendingReset = pendingFilterReset
+            pendingFilterReset = false
+            val fromSwitchTabReload = reloadCounter != lastConsumedReloadCounter
+            lastConsumedReloadCounter = reloadCounter
+            val isNewEntry = backStackEntryId != null && backStackEntryId != lastConsumedEntryId
+            if (backStackEntryId != null) {
+                lastConsumedEntryId = backStackEntryId
+            }
+            when {
+                fromPendingReset -> true
+                resetFilters && !fromSwitchTabReload && (backStackEntryId == null || isNewEntry) -> true
+                else -> false
             }
         }
 
@@ -181,7 +200,7 @@ class HistoryFeed(
         val current = _state.value
         val loaded = current.loadState as? LoadState.Loaded ?: return
         val pageData = loaded.value
-        if (!pageData.hasMore || current.isLoadingMore || current.isFilterRefreshing || current.isOfflineBlock) {
+        if (loaded.stale || !pageData.hasMore || current.isLoadingMore || current.isFilterRefreshing || current.isOfflineBlock) {
             return
         }
         startPageRequest(
@@ -211,7 +230,9 @@ class HistoryFeed(
             requestSequence += 1L
             activeRequestKey = null
             lastFailedRequest = null
-            lastConsumedResetKey = null
+            pendingFilterReset = false
+            lastConsumedReloadCounter = 0L
+            lastConsumedEntryId = null
             searchDebounceJob?.cancel()
             searchDebounceJob = null
             activeFetchJob?.cancel()
@@ -297,7 +318,7 @@ class HistoryFeed(
         }
 
         _state.update { current ->
-            val keepOld = hasLoadedPage(current.loadState) && !current.isOfflineBlock
+            val keepOld = hasLoadedPage(current.loadState) && (page > 0 || !current.isOfflineBlock)
             current.copy(
                 loadState = if (keepOld) current.loadState else LoadState.Loading,
                 isOfflineBlock = false,

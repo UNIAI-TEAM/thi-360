@@ -291,6 +291,16 @@ fun myExamStableKey(card: MyExamCard): String =
     card.entitlementId?.toString()
         ?: "checking:${card.pendingOrderCode?.trim().orEmpty()}:${card.code}"
 
+fun buildUniqueCheckingKeys(cards: List<MyExamCard>): List<String> {
+    val seenCounts = HashMap<String, Int>(cards.size)
+    return cards.map { card ->
+        val baseKey = myExamStableKey(card)
+        val occurrence = seenCounts[baseKey] ?: 0
+        seenCounts[baseKey] = occurrence + 1
+        if (occurrence == 0) baseKey else "$baseKey#dup$occurrence"
+    }
+}
+
 class NavigationClickGuard(
     private val minIntervalMillis: Long = DEFAULT_GUARD_INTERVAL_MS,
     private val clockMillis: () -> Long = { System.nanoTime() / 1_000_000L },

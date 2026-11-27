@@ -1,5 +1,6 @@
 package vn.unicom.thi360.feature.history
 
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -38,6 +39,7 @@ import vn.unicom.thi360.feature.myexams.NavigationClickGuard
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.shell.routes.AppNavigator
 import vn.unicom.thi360.shell.routes.AppRoute
 import vn.unicom.thi360.testing.ContractFakeServer
 
@@ -262,5 +264,101 @@ class HistoryNavigationTest {
         now = 1_100L
         composeRule.onNodeWithTag(HistoryTestTags.rowViewResultButton(id)).performClick()
         assertEquals(listOf(id), opened)
+    }
+
+    @Test
+    fun switchTabWithReloadPreservesExistingFilters() {
+        val scored = HistoryTestFixtures.makeAttempt(
+            idSeed = "sw-reload",
+            examName = "Đề theo môn",
+            scope = "SUBJECT",
+            state = AttemptHistoryItem.State.SCORED,
+            action = AttemptHistoryItem.Action.VIEW_RESULT,
+        )
+        val myExamCard = MyExamsTestFixtures.makeCard(
+            code = "EX-RES",
+            name = "Bài có kết quả",
+            state = MyExamCard.State.CAN_START,
+            resultAttemptId = scored.attemptId,
+            actions = listOf(MyExamCard.Actions.VIEW_RESULT),
+        )
+        server.respondJson("GET", "/api/v1/me/exams", 200, MyExamsTestFixtures.encodeResponse(listOf(myExamCard)))
+        server.respondDynamic("GET", "/api/v1/me/attempts") {
+            ContractFakeServer.jsonResponse(200, HistoryTestFixtures.encodePage(listOf(scored)))
+        }
+
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/"),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(
+                Tokens("access", "refresh", 300, 604800, false, "hv01", "acc-1"),
+            ),
+            localeProvider = { AppLocale.VI },
+        )
+        AppSessionContainer.setTestStack(app, stack)
+        val memory = MyExamsSessionMemory.forSession(stack, app.connectivityMonitor)
+        var capturedNavigator: AppNavigator? = null
+
+        composeRule.setContent {
+            val navController = rememberNavController()
+            val navigator = remember(navController) { AppNavigator(navController) }
+            capturedNavigator = navigator
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                navController = navController,
+                navigator = navigator,
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+            )
+        }
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            server.requestCount("GET", "/api/v1/me/attempts") == 1
+        }
+
+        composeRule.onNodeWithTag(HistoryTestTags.SCOPE_DROPDOWN).performClick()
+        composeRule.onNodeWithTag(HistoryTestTags.scopeOption(HistoryScope.SUBJECT)).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            memory.historyFeed.state.value.filter.scope == HistoryScope.SUBJECT &&
+                server.requestCount("GET", "/api/v1/me/attempts") == 2
+        }
+
+        val nav = checkNotNull(capturedNavigator)
+        composeRule.runOnIdle { nav.openResult(scored.attemptId.toString()) }
+        composeRule.waitForIdle()
+        val callsBeforeHistoryResultReturn = server.requestCount("GET", "/api/v1/me/attempts")
+        composeRule.runOnIdle { nav.switchTab(Destination.History, reload = true) }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            server.requestCount("GET", "/api/v1/me/attempts") > callsBeforeHistoryResultReturn
+        }
+        assertEquals(HistoryScope.SUBJECT, memory.historyFeed.state.value.filter.scope)
+        val afterHistoryResultUrl = server.lastRequest("GET", "/api/v1/me/attempts")!!.requestUrl!!
+        assertEquals("0", afterHistoryResultUrl.queryParameter("page"))
+        assertEquals("20", afterHistoryResultUrl.queryParameter("size"))
+        assertEquals("SUBJECT", afterHistoryResultUrl.queryParameter("scope"))
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            runCatching {
+                composeRule.onNodeWithTag(MyExamsTestTags.examCardViewResult("EX-RES")).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag(MyExamsTestTags.examCardViewResult("EX-RES")).performClick()
+        composeRule.waitForIdle()
+
+        val callsBeforeMyExamsResultReturn = server.requestCount("GET", "/api/v1/me/attempts")
+        composeRule.runOnIdle { nav.switchTab(Destination.History, reload = true) }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            server.requestCount("GET", "/api/v1/me/attempts") > callsBeforeMyExamsResultReturn
+        }
+        assertEquals(HistoryScope.SUBJECT, memory.historyFeed.state.value.filter.scope)
+        val afterMyExamsResultUrl = server.lastRequest("GET", "/api/v1/me/attempts")!!.requestUrl!!
+        assertEquals("0", afterMyExamsResultUrl.queryParameter("page"))
+        assertEquals("20", afterMyExamsResultUrl.queryParameter("size"))
+        assertEquals("SUBJECT", afterMyExamsResultUrl.queryParameter("scope"))
     }
 }

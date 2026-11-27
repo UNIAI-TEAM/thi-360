@@ -95,4 +95,21 @@ class MyExamsLayoutTest {
         assertTrue(grouped.bundleGroups.isEmpty())
         assertTrue(grouped.standalone.isEmpty())
     }
+
+    @Test
+    fun buildUniqueCheckingKeysDisambiguatesDuplicateNullOrderKeys() {
+        val first = MyExamsTestFixtures.makeCard(
+            code = "CHK-DUP",
+            entitlementId = null,
+            state = MyExamCard.State.CHECKING,
+            pendingOrderCode = null,
+        )
+        val second = first.copy(pendingOrderCode = "  ")
+        val withOrder = first.copy(pendingOrderCode = "DH999")
+
+        assertEquals(
+            listOf("checking::CHK-DUP", "checking::CHK-DUP#dup1", "checking:DH999:CHK-DUP"),
+            buildUniqueCheckingKeys(listOf(first, second, withOrder)),
+        )
+    }
 }

@@ -119,11 +119,11 @@ class MyExamsAuthTest {
     @Test
     fun forbidden403RoutesToLoginWhenRefreshReturns401() {
         server.respondIndexed("listMyExams", 403)
-        server.respondJson(
+        server.respondAuthFixture(
             "POST",
             "/api/v1/auth/mobile/refresh",
             401,
-            """{"code":"UNAUTHORIZED","message":"expired"}""",
+            "refresh-401-session-revoked.json",
         )
 
         val stack = createActiveStack()

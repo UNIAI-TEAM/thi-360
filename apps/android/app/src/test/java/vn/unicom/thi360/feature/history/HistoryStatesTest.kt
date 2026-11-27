@@ -7,6 +7,13 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import java.time.Instant
 import java.util.TimeZone
@@ -314,6 +321,78 @@ class HistoryStatesTest {
         composeRule.onNodeWithText(
             "Không tải lại được dữ liệu; đang hiện bản đã tải trước đó.",
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun foregroundResumeDoesNotAutoReloadOrResetPagination() {
+        val allItems = (1..45).map { idx ->
+            HistoryTestFixtures.makeAttempt(idSeed = "fg-$idx", examName = "Lượt nền $idx")
+        }
+        server.respondDynamic("GET", "/api/v1/me/attempts") { req ->
+            val page = req.requestUrl?.queryParameter("page")?.toInt() ?: 0
+            val start = page * 20
+            val end = minOf(start + 20, allItems.size)
+            val slice = if (start < allItems.size) allItems.subList(start, end) else emptyList()
+            ContractFakeServer.jsonResponse(
+                200,
+                HistoryTestFixtures.encodePage(slice, page = page, size = 20, totalItems = 45, totalPages = 3),
+            )
+        }
+
+        val stack = createActiveStack()
+        AppSessionContainer.setTestStack(app, stack)
+        val memory = MyExamsSessionMemory.forSession(stack, app.connectivityMonitor)
+        val owner = object : LifecycleOwner {
+            val registry = LifecycleRegistry(this).apply {
+                currentState = Lifecycle.State.RESUMED
+            }
+            override val lifecycle: Lifecycle get() = registry
+        }
+        var capturedNavController: NavHostController? = null
+
+        composeRule.setContent {
+            CompositionLocalProvider(LocalLifecycleOwner provides owner) {
+                val navController = rememberNavController()
+                capturedNavController = navController
+                AppRoot(
+                    preferences = AppPreferences(locale = AppLocale.VI),
+                    onSelectLocale = {},
+                    onSelectThemeMode = {},
+                    navController = navController,
+                    sessionManager = stack.sessionManager,
+                    validateOnLaunch = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            (memory.historyFeed.state.value.loadState as? LoadState.Loaded)?.value?.items?.size == 20
+        }
+
+        composeRule.onNodeWithTag(HistoryTestTags.LIST).performScrollToIndex(21)
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            (memory.historyFeed.state.value.loadState as? LoadState.Loaded)?.value?.items?.size == 40
+        }
+        assertEquals(2, server.requestCount("GET", "/api/v1/me/attempts"))
+
+        composeRule.runOnIdle {
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+            assertEquals(
+                Lifecycle.State.CREATED,
+                checkNotNull(capturedNavController).currentBackStackEntry?.lifecycle?.currentState,
+            )
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+            owner.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+            assertEquals(
+                Lifecycle.State.RESUMED,
+                checkNotNull(capturedNavController).currentBackStackEntry?.lifecycle?.currentState,
+            )
+        }
+        composeRule.waitForIdle()
+        assertEquals(2, server.requestCount("GET", "/api/v1/me/attempts"))
+        assertEquals(40, (memory.historyFeed.state.value.loadState as LoadState.Loaded).value.items.size)
     }
 
     private fun createActiveStack() = Thi360ApiFactory.createSessionStack(
