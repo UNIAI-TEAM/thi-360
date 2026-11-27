@@ -43,7 +43,6 @@ import vn.unicom.thi360.feature.richcontent.ui.LocalFormulaEngine
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.routes.AppNavigator
-import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
@@ -342,11 +341,7 @@ class PrepareStateRestorationTest {
         composeRule.onNodeWithTag(PrepareTestTags.BUY_MORE_BUTTON).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             ShadowLooper.idleMainLooper()
-            runCatching {
-                composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME)
-                    .assertTextContains("checkout")
-                true
-            }.getOrDefault(false)
+            checkNotNull(currentNavigator).navController.currentDestination?.route?.contains("checkout/") == true
         }
         assertEquals(1, PrepareSessionMemory.activeEntryCountForTesting())
 
