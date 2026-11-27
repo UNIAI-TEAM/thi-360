@@ -48,30 +48,50 @@ final class SaveErrorTests: XCTestCase {
         )
 
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
-        let s1 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 1 }
+        let s1 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 1 && engine.state.save == .unsaved(.rateLimited(1))
+        }
         XCTAssertTrue(s1)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         XCTAssertEqual(engine.state.save, .unsaved(.rateLimited(1)))
 
         await clock.advance(by: .seconds(1))
-        let s2 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 2 }
+        let s2 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 2 && engine.state.save == .unsaved(.rateLimited(1))
+        }
         XCTAssertTrue(s2)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         XCTAssertEqual(engine.state.save, .unsaved(.rateLimited(1)))
 
         await clock.advance(by: .seconds(1))
-        let s3 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 3 }
+        let s3 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 3 && engine.state.save == .unsaved(.rateLimited(5))
+        }
         XCTAssertTrue(s3)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         XCTAssertEqual(engine.state.save, .unsaved(.rateLimited(5)))
 
         await clock.advance(by: .seconds(4))
         XCTAssertEqual(server.callCount(for: .saveAnswers), 3)
         await clock.advance(by: .seconds(1))
-        let s4 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 4 }
+        let s4 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 4 && engine.state.save == .unsaved(.rateLimited(1))
+        }
         XCTAssertTrue(s4)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         XCTAssertEqual(engine.state.save, .unsaved(.rateLimited(1)))
 
         await clock.advance(by: .seconds(1))
-        let s5 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 5 }
+        let s5 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 5 && engine.state.save == .unsaved(.rateLimited(2))
+        }
         XCTAssertTrue(s5)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         XCTAssertEqual(engine.state.save, .unsaved(.rateLimited(2)))
 
         await clock.advance(by: .seconds(1))
@@ -106,8 +126,13 @@ final class SaveErrorTests: XCTestCase {
         ]
 
         for (index, (expectedReason, delaySec)) in expected.enumerated() {
-            let arrived = await clock.waitUntil { server.callCount(for: .saveAnswers) == index + 1 }
+            let arrived = await clock.waitUntil {
+                server.callCount(for: .saveAnswers) == index + 1
+                    && engine.state.save == .unsaved(expectedReason)
+            }
             XCTAssertTrue(arrived)
+            await engine.waitForIdleForTesting()
+            await clock.settle()
             XCTAssertEqual(engine.state.save, .unsaved(expectedReason), "Step \(index)")
             if delaySec > 1 {
                 await clock.advance(by: .seconds(delaySec - 1))
@@ -125,6 +150,8 @@ final class SaveErrorTests: XCTestCase {
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
         let resetErr = await clock.waitUntil { server.callCount(for: .saveAnswers) == 1 && engine.state.save == .unsaved(.serverError) }
         XCTAssertTrue(resetErr)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         await clock.advance(by: .seconds(1))
         let resetOk = await clock.waitUntil { server.callCount(for: .saveAnswers) == 2 && engine.state.save == .saved }
         XCTAssertTrue(resetOk)

@@ -220,9 +220,10 @@ final class SubmitCommandTests: XCTestCase {
 
         engine.submit()
         let done = await clock.waitUntil {
-            engine.state.closed == .submitted
+            engine.state.closed == .submitted && engine.state.command == .idle
         }
         XCTAssertTrue(done)
+        await engine.waitForIdleForTesting()
 
         let call = try XCTUnwrap(server.calls(for: .submit).first)
         let body = try XCTUnwrap(call.decodedJSON())
@@ -268,8 +269,10 @@ final class SubmitCommandTests: XCTestCase {
 
         let refused = await clock.waitUntil {
             engine.state.command == .refused(code: "TIME_UP")
+                && server.callCount(for: .getState) > getsBefore409
         }
         XCTAssertTrue(refused)
+        await engine.waitForIdleForTesting()
         XCTAssertGreaterThan(server.callCount(for: .getState), getsBefore409)
 
         var sawSessionLost = false
@@ -323,12 +326,14 @@ final class SubmitCommandTests: XCTestCase {
             engine.state.command == .unconfirmed(.submit)
         }
         XCTAssertTrue(unconfirmed1)
+        await engine.waitForIdleForTesting()
 
         engine.reconcile()
         let idle1 = await clock.waitUntil {
             engine.state.command == .idle
         }
         XCTAssertTrue(idle1)
+        await engine.waitForIdleForTesting()
 
         server.enqueue(.submit, try .serverError(statusCode: 503))
         engine.submit()
@@ -336,12 +341,14 @@ final class SubmitCommandTests: XCTestCase {
             engine.state.command == .unconfirmed(.submit)
         }
         XCTAssertTrue(unconfirmed2)
+        await engine.waitForIdleForTesting()
 
         engine.reconcile()
         let idle2 = await clock.waitUntil {
             engine.state.command == .idle
         }
         XCTAssertTrue(idle2)
+        await engine.waitForIdleForTesting()
 
         engine.submit()
         let done = await clock.waitUntil {

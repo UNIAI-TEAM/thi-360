@@ -1,4 +1,5 @@
 import Foundation
+import os
 import XCTest
 @testable import Thi360
 
@@ -25,7 +26,7 @@ final class PartChoiceCommandTests: XCTestCase {
             }
         )
 
-        var keyCounter = 0
+        let keyCounter = OSAllocatedUnfairLock(initialState: 0)
         let engine = AttemptEngine(
             attemptId: server.attemptId,
             accountId: "account-A",
@@ -34,8 +35,11 @@ final class PartChoiceCommandTests: XCTestCase {
             clock: clock,
             connectivity: connectivity,
             idempotencyKeyGenerator: {
-                keyCounter += 1
-                return "idem-key-\(keyCounter)"
+                let next = keyCounter.withLock { value in
+                    value += 1
+                    return value
+                }
+                return "idem-key-\(next)"
             }
         )
         defer { engine.dispose() }
@@ -46,13 +50,21 @@ final class PartChoiceCommandTests: XCTestCase {
 
         server.enqueue(.confirmPartChoice, .networkError(.timedOut))
         engine.choosePart(partId: choicePartId, optionCode: "SCI", subjectCodes: ["LY", "HOA", "SINH"])
-        let asyncAssertResult2 = await clock.waitUntil { server.callCount(for: .confirmPartChoice) == 1 && engine.state.command == .refused(code: "NETWORK_ERROR") }
+        let asyncAssertResult2 = await clock.waitUntil {
+            server.callCount(for: .confirmPartChoice) == 1
+                && engine.state.command == .refused(code: "NETWORK_ERROR")
+        }
         XCTAssertTrue(asyncAssertResult2)
+        await engine.waitForIdleForTesting()
 
         server.enqueue(.confirmPartChoice, .networkError(.timedOut))
         engine.choosePart(partId: choicePartId, optionCode: "SCI", subjectCodes: ["LY", "HOA", "SINH"])
-        let asyncAssertResult3 = await clock.waitUntil { server.callCount(for: .confirmPartChoice) == 2 }
+        let asyncAssertResult3 = await clock.waitUntil {
+            server.callCount(for: .confirmPartChoice) == 2
+                && engine.state.command == .refused(code: "NETWORK_ERROR")
+        }
         XCTAssertTrue(asyncAssertResult3)
+        await engine.waitForIdleForTesting()
 
         let callsChoice = server.calls(for: .confirmPartChoice)
         XCTAssertEqual(callsChoice[0].idempotencyKeyHeader, callsChoice[1].idempotencyKeyHeader, "Same choice retry must keep Idempotency-Key")
@@ -64,8 +76,10 @@ final class PartChoiceCommandTests: XCTestCase {
             server.callCount(for: .confirmPartChoice) == 3
                 && engine.state.command == .idle
                 && engine.state.attempt?.parts?.first(where: { $0.partId == choicePartId })?.state == .GENERATING
+                && clock.recordedSleepCount(for: .milliseconds(1500)) >= 1
         }
         XCTAssertTrue(asyncAssertResult4)
+        await engine.waitForIdleForTesting()
         XCTAssertNotEqual(
             server.calls(for: .confirmPartChoice)[2].idempotencyKeyHeader,
             callsChoice[0].idempotencyKeyHeader,
@@ -73,13 +87,20 @@ final class PartChoiceCommandTests: XCTestCase {
         )
 
         let getsBeforeGenPoll = server.callCount(for: .getState)
+        let genSleepsBefore = clock.recordedSleepCount(for: .milliseconds(1500))
         await clock.advance(by: .milliseconds(1499))
         XCTAssertEqual(server.callCount(for: .getState), getsBeforeGenPoll)
         await clock.advance(by: .milliseconds(1))
-        let asyncAssertResult5 = await clock.waitUntil { server.callCount(for: .getState) == getsBeforeGenPoll + 1 }
+        let asyncAssertResult5 = await clock.waitUntil {
+            server.callCount(for: .getState) == getsBeforeGenPoll + 1
+                && clock.recordedSleepCount(for: .milliseconds(1500)) >= genSleepsBefore + 1
+        }
         XCTAssertTrue(asyncAssertResult5)
         await clock.advance(by: .milliseconds(1500))
-        let asyncAssertResult6 = await clock.waitUntil { server.callCount(for: .getState) == getsBeforeGenPoll + 2 }
+        let asyncAssertResult6 = await clock.waitUntil {
+            server.callCount(for: .getState) == getsBeforeGenPoll + 2
+                && clock.recordedSleepCount(for: .milliseconds(1500)) >= genSleepsBefore + 2
+        }
         XCTAssertTrue(asyncAssertResult6)
 
         server.mutateState { json in
@@ -102,13 +123,20 @@ final class PartChoiceCommandTests: XCTestCase {
 
         server.enqueue(.retryPartGeneration, try .serverError(statusCode: 503))
         engine.retryGeneration(partId: choicePartId)
-        let asyncAssertResult8 = await clock.waitUntil { server.callCount(for: .retryPartGeneration) == 1 }
+        let asyncAssertResult8 = await clock.waitUntil {
+            server.callCount(for: .retryPartGeneration) == 1
+                && engine.state.command == .refused(code: "SERVICE_UNAVAILABLE")
+        }
         XCTAssertTrue(asyncAssertResult8)
+        await engine.waitForIdleForTesting()
         let keyRetry1 = server.calls(for: .retryPartGeneration)[0].idempotencyKeyHeader
 
         engine.retryGeneration(partId: choicePartId)
-        let asyncAssertResult9 = await clock.waitUntil { server.callCount(for: .retryPartGeneration) == 2 && engine.state.command == .idle }
+        let asyncAssertResult9 = await clock.waitUntil {
+            server.callCount(for: .retryPartGeneration) == 2 && engine.state.command == .idle
+        }
         XCTAssertTrue(asyncAssertResult9)
+        await engine.waitForIdleForTesting()
         let keyRetry2 = server.calls(for: .retryPartGeneration)[1].idempotencyKeyHeader
         XCTAssertEqual(keyRetry1, keyRetry2, "Retry after 5xx must reuse Idempotency-Key")
 
@@ -124,6 +152,7 @@ final class PartChoiceCommandTests: XCTestCase {
                 && server.callCount(for: .getState) > reloadsBeforePartGen
         }
         XCTAssertTrue(asyncAssertResult10)
+        await engine.waitForIdleForTesting()
         XCTAssertNotEqual(server.calls(for: .retryPartGeneration)[2].idempotencyKeyHeader, keyRetry2)
 
         let timeoutClock = TestEngineClock()
@@ -166,19 +195,30 @@ final class PartChoiceCommandTests: XCTestCase {
                 && timeoutServer.callCount(for: .getState) > reloadsBeforeLocked
         }
         XCTAssertTrue(asyncAssertResult12)
+        await timeoutEngine.waitForIdleForTesting()
 
         let getsBeforeTimeout = timeoutServer.callCount(for: .getState)
         await timeoutClock.advance(by: .seconds(5))
+        let pollScheduled = await timeoutClock.waitUntil {
+            timeoutClock.recordedSleepCount(for: .milliseconds(500)) >= 1
+        }
+        XCTAssertTrue(pollScheduled)
         XCTAssertEqual(timeoutServer.callCount(for: .getState), getsBeforeTimeout)
 
         await timeoutClock.advance(by: .milliseconds(500))
-        let asyncAssertResult13 = await timeoutClock.waitUntil { timeoutServer.callCount(for: .getState) == getsBeforeTimeout + 1 }
+        let asyncAssertResult13 = await timeoutClock.waitUntil {
+            timeoutServer.callCount(for: .getState) == getsBeforeTimeout + 1
+                && timeoutClock.recordedSleepCount(for: .seconds(2)) >= 1
+        }
         XCTAssertTrue(asyncAssertResult13)
 
         await timeoutClock.advance(by: .milliseconds(1999))
         XCTAssertEqual(timeoutServer.callCount(for: .getState), getsBeforeTimeout + 1)
         await timeoutClock.advance(by: .milliseconds(1))
-        let asyncAssertResult14 = await timeoutClock.waitUntil { timeoutServer.callCount(for: .getState) == getsBeforeTimeout + 2 }
+        let asyncAssertResult14 = await timeoutClock.waitUntil {
+            timeoutServer.callCount(for: .getState) == getsBeforeTimeout + 2
+                && timeoutClock.recordedSleepCount(for: .seconds(2)) >= 2
+        }
         XCTAssertTrue(asyncAssertResult14)
 
         try timeoutServer.setState(variant: "closed-choice-timeout")

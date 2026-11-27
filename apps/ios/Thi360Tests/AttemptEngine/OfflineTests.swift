@@ -39,11 +39,19 @@ final class OfflineTests: XCTestCase {
             try .serverError(statusCode: 503)
         ])
         engine.answer(itemId: items[0], value: .singleChoice(optionId: "a"))
-        let err1 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 1 }
+        let err1 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 1 && engine.state.save == .unsaved(.serverError)
+        }
         XCTAssertTrue(err1)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         await clock.advance(by: .seconds(1))
-        let err2 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 2 }
+        let err2 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 2 && engine.state.save == .unsaved(.serverError)
+        }
         XCTAssertTrue(err2)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
 
         connectivity.applyUpdate(false)
         await clock.settle()
@@ -83,8 +91,12 @@ final class OfflineTests: XCTestCase {
         server.resetCalls()
         server.enqueue(.saveAnswers, try .serverError(statusCode: 500))
         engine.answer(itemId: items[0], value: .singleChoice(optionId: "c"))
-        let errAfterOnline = await clock.waitUntil { server.callCount(for: .saveAnswers) == 1 }
+        let errAfterOnline = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 1 && engine.state.save == .unsaved(.serverError)
+        }
         XCTAssertTrue(errAfterOnline)
+        await engine.waitForIdleForTesting()
+        await clock.settle()
         await clock.advance(by: .seconds(1))
         let recoveredAt1s = await clock.waitUntil { server.callCount(for: .saveAnswers) == 2 && engine.state.save == .saved }
         XCTAssertTrue(recoveredAt1s)

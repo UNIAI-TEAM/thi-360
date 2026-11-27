@@ -66,7 +66,9 @@ final class SaveQueueBatchingTests: XCTestCase {
         }
         connectivity.applyUpdate(true)
         await clock.advance(by: .seconds(3))
-        let asyncAssertResult2 = await clock.waitUntil { engine.state.save == .saved }
+        let asyncAssertResult2 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) >= 1 && engine.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult2)
 
         let sentEmptyBody = try XCTUnwrap(server.calls(for: .saveAnswers).last?.decodedJSON())

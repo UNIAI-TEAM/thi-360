@@ -418,12 +418,17 @@ final class ForegroundTests: XCTestCase {
         await clock.settle()
 
         let heartbeatsBeforeReconnect = server.callCount(for: .heartbeat)
+        let hbSleepsBeforeReconnect = clock.recordedSleepCount(for: .seconds(30))
         netObserver.emit(true)
         let immediateHeartbeat = await clock.waitUntil {
             server.callCount(for: .heartbeat) >= heartbeatsBeforeReconnect + 1
         }
         XCTAssertTrue(immediateHeartbeat, "Reconnecting in foreground after background-offline must run foreground heartbeat")
         await engine.waitForIdleForTesting()
+        let periodicScheduled = await clock.waitUntil {
+            clock.recordedSleepCount(for: .seconds(30)) >= hbSleepsBeforeReconnect + 1
+        }
+        XCTAssertTrue(periodicScheduled)
 
         let countAfterReconnect = server.callCount(for: .heartbeat)
         await clock.advance(by: .seconds(30))
@@ -470,6 +475,7 @@ final class ForegroundTests: XCTestCase {
         server.enqueue(.getState, try .serverError(statusCode: 503))
         let heartbeatsBefore = server.callCount(for: .heartbeat)
         let getsBefore = server.callCount(for: .getState)
+        let hbSleepsBeforeReturn = clock.recordedSleepCount(for: .seconds(30))
 
         engine.setForeground(true)
         let returnHandled = await clock.waitUntil {
@@ -478,6 +484,10 @@ final class ForegroundTests: XCTestCase {
         }
         XCTAssertTrue(returnHandled)
         await engine.waitForIdleForTesting()
+        let returnLoopScheduled = await clock.waitUntil {
+            clock.recordedSleepCount(for: .seconds(30)) >= hbSleepsBeforeReturn + 1
+        }
+        XCTAssertTrue(returnLoopScheduled)
 
         let remainingBeforeTick = try XCTUnwrap(engine.state.clock.remainingSecondsCeil)
         await clock.advance(by: .seconds(5))

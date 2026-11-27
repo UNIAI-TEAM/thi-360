@@ -110,11 +110,18 @@ final class EditSessionTests: XCTestCase {
         let partId = server.partId(at: 0)
 
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
-        let asyncAssertResult2 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 1 }
+        let asyncAssertResult2 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 1 && engine.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult2)
+        await engine.waitForIdleForTesting()
 
+        let hbSleepsBefore = clock.recordedSleepCount(for: .seconds(30))
         await clock.advance(by: .seconds(30))
-        let asyncAssertResult3 = await clock.waitUntil { server.callCount(for: .heartbeat) >= 1 }
+        let asyncAssertResult3 = await clock.waitUntil {
+            server.callCount(for: .heartbeat) >= 1
+                && clock.recordedSleepCount(for: .seconds(30)) >= hbSleepsBefore + 1
+        }
         XCTAssertTrue(asyncAssertResult3)
 
         server.mutateState { json in
@@ -126,10 +133,14 @@ final class EditSessionTests: XCTestCase {
         engine.refresh()
         let asyncAssertResult4 = await clock.waitUntil { engine.state.attempt?.parts?.first?.state == .AWAITING_CHOICE }
         XCTAssertTrue(asyncAssertResult4)
+        await engine.waitForIdleForTesting()
 
         engine.choosePart(partId: partId, optionCode: "SCI", subjectCodes: ["LY", "HOA", "SINH"])
-        let asyncAssertResult5 = await clock.waitUntil { server.callCount(for: .confirmPartChoice) == 1 }
+        let asyncAssertResult5 = await clock.waitUntil {
+            server.callCount(for: .confirmPartChoice) == 1 && engine.state.command == .idle
+        }
         XCTAssertTrue(asyncAssertResult5)
+        await engine.waitForIdleForTesting()
 
         server.mutateState { json in
             if var parts = json["parts"] as? [[String: Any]] {
@@ -140,10 +151,14 @@ final class EditSessionTests: XCTestCase {
         engine.refresh()
         let asyncAssertResult6 = await clock.waitUntil { engine.state.attempt?.parts?.first?.state == .GENERATION_FAILED }
         XCTAssertTrue(asyncAssertResult6)
+        await engine.waitForIdleForTesting()
 
         engine.retryGeneration(partId: partId)
-        let asyncAssertResult7 = await clock.waitUntil { server.callCount(for: .retryPartGeneration) == 1 }
+        let asyncAssertResult7 = await clock.waitUntil {
+            server.callCount(for: .retryPartGeneration) == 1 && engine.state.command == .idle
+        }
         XCTAssertTrue(asyncAssertResult7)
+        await engine.waitForIdleForTesting()
 
         server.mutateState { json in
             if var parts = json["parts"] as? [[String: Any]] {
@@ -154,10 +169,14 @@ final class EditSessionTests: XCTestCase {
         engine.refresh()
         let asyncAssertResult8 = await clock.waitUntil { engine.state.attempt?.parts?.first?.state == .OPEN }
         XCTAssertTrue(asyncAssertResult8)
+        await engine.waitForIdleForTesting()
 
         engine.finishPart(partId: partId)
-        let asyncAssertResult9 = await clock.waitUntil { server.callCount(for: .finishPart) == 1 }
+        let asyncAssertResult9 = await clock.waitUntil {
+            server.callCount(for: .finishPart) == 1 && engine.state.command == .idle
+        }
         XCTAssertTrue(asyncAssertResult9)
+        await engine.waitForIdleForTesting()
 
         server.mutateState { json in
             json["state"] = "IN_PROGRESS"
@@ -166,13 +185,24 @@ final class EditSessionTests: XCTestCase {
                 json["parts"] = parts
             }
         }
+        let getsBeforeSubmitRefresh = server.callCount(for: .getState)
         engine.refresh()
-        let asyncAssertResult10 = await clock.waitUntil { engine.state.attempt?.state == .IN_PROGRESS }
+        let asyncAssertResult10 = await clock.waitUntil {
+            server.callCount(for: .getState) > getsBeforeSubmitRefresh
+                && engine.state.attempt?.state == .IN_PROGRESS
+                && engine.state.attempt?.parts?.first?.state == .OPEN
+        }
         XCTAssertTrue(asyncAssertResult10)
+        await engine.waitForIdleForTesting()
 
         engine.submit()
-        let asyncAssertResult11 = await clock.waitUntil { server.callCount(for: .submit) == 1 }
+        let asyncAssertResult11 = await clock.waitUntil {
+            server.callCount(for: .submit) == 1
+                && engine.state.command == .idle
+                && engine.state.closed != nil
+        }
         XCTAssertTrue(asyncAssertResult11)
+        await engine.waitForIdleForTesting()
 
         for endpoint in [
             FakeAttemptServer.Endpoint.saveAnswers,
@@ -266,8 +296,13 @@ final class EditSessionTests: XCTestCase {
         )
         defer { engine.dispose() }
 
-        let asyncAssertResult12 = await clock.waitUntil { server.callCount(for: .claimSession) == 1 }
+        let asyncAssertResult12 = await clock.waitUntil {
+            server.callCount(for: .claimSession) == 1
+                && engine.state.session == .acquiring
+                && engine.state.save == .unsaved(.networkError)
+        }
         XCTAssertTrue(asyncAssertResult12)
+        await clock.settle()
         XCTAssertEqual(engine.state.session, .acquiring)
         XCTAssertEqual(engine.state.save, .unsaved(.networkError))
 
@@ -278,17 +313,30 @@ final class EditSessionTests: XCTestCase {
         XCTAssertEqual(server.callCount(for: .submit), 0)
         XCTAssertEqual(server.callCount(for: .saveAnswers), 0)
 
-        let expectedDelays = [1, 2, 4, 8, 16, 30, 30]
-        for (idx, delaySec) in expectedDelays.enumerated() {
+        let expectedSteps: [(delaySec: Int, nextSleep: Duration, expectedSave: SaveStatus)] = [
+            (1, .seconds(2), .unsaved(.serverError)),
+            (2, .seconds(4), .unsaved(.serverError)),
+            (4, .seconds(8), .unsaved(.serverError)),
+            (8, .seconds(16), .unsaved(.serverError)),
+            (16, .seconds(30), .unsaved(.serverError)),
+            (30, .seconds(30), .unsaved(.serverError)),
+            (30, .seconds(30), .unsaved(.networkError))
+        ]
+        for (idx, step) in expectedSteps.enumerated() {
             let before = server.callCount(for: .claimSession)
-            if delaySec > 1 {
-                await clock.advance(by: .seconds(delaySec - 1))
-                XCTAssertEqual(server.callCount(for: .claimSession), before, "Must not retry before \(delaySec)s at step \(idx)")
+            let nextSleepsBefore = clock.recordedSleepCount(for: step.nextSleep)
+            if step.delaySec > 1 {
+                await clock.advance(by: .seconds(step.delaySec - 1))
+                XCTAssertEqual(server.callCount(for: .claimSession), before, "Must not retry before \(step.delaySec)s at step \(idx)")
                 await clock.advance(by: .seconds(1))
             } else {
                 await clock.advance(by: .seconds(1))
             }
-            let asyncAssertResult13 = await clock.waitUntil { server.callCount(for: .claimSession) == before + 1 }
+            let asyncAssertResult13 = await clock.waitUntil {
+                server.callCount(for: .claimSession) == before + 1
+                    && engine.state.save == step.expectedSave
+                    && clock.recordedSleepCount(for: step.nextSleep) >= nextSleepsBefore + 1
+            }
             XCTAssertTrue(asyncAssertResult13)
             if idx < 6 {
                 XCTAssertEqual(engine.state.save, .unsaved(.serverError))

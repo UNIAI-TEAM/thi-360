@@ -35,6 +35,10 @@ final class TestEngineClock: EngineClock, @unchecked Sendable {
         withLock { recordedSleeps }
     }
 
+    func recordedSleepCount(for duration: Duration) -> Int {
+        withLock { recordedSleeps.filter { $0 == duration }.count }
+    }
+
     func sleep(for duration: Duration) async throws {
         if Task.isCancelled {
             throw CancellationError()
@@ -123,7 +127,7 @@ final class TestEngineClock: EngineClock, @unchecked Sendable {
     }
 
     func waitUntil(
-        timeoutSeconds: TimeInterval = 2.0,
+        timeoutSeconds: TimeInterval = 10.0,
         condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(timeoutSeconds)

@@ -209,6 +209,7 @@ final class FinishPartCommandTests: XCTestCase {
             server.callCount(for: .finishPart) == 1 && engine.state.command == .idle
         }
         XCTAssertTrue(sent)
+        await engine.waitForIdleForTesting()
 
         let call = try XCTUnwrap(server.calls(for: .finishPart).first)
         let body = try XCTUnwrap(call.decodedJSON())
@@ -256,10 +257,11 @@ final class FinishPartCommandTests: XCTestCase {
         engine.finishPart(partId: part1Id)
 
         let refused = await clock.waitUntil {
-            if case .refused = engine.state.command { return true }
-            return false
+            engine.state.command == .refused(code: "PART_CLOSED")
+                && server.callCount(for: .getState) > getsBefore409
         }
         XCTAssertTrue(refused)
+        await engine.waitForIdleForTesting()
         XCTAssertEqual(engine.state.command, .refused(code: "PART_CLOSED"))
         XCTAssertGreaterThan(server.callCount(for: .getState), getsBefore409, "4xx != 401 must reload attempt state")
 
@@ -274,8 +276,10 @@ final class FinishPartCommandTests: XCTestCase {
         engine.finishPart(partId: part1Id)
         let refused400 = await clock.waitUntil {
             engine.state.command == .refused(code: "INVALID_PART_STATE")
+                && server.callCount(for: .getState) > getsBefore400
         }
         XCTAssertTrue(refused400)
+        await engine.waitForIdleForTesting()
         XCTAssertGreaterThan(server.callCount(for: .getState), getsBefore400)
 
         var sawSessionLost = false

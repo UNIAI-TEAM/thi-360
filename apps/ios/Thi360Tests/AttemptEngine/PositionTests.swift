@@ -38,8 +38,11 @@ final class PositionTests: XCTestCase {
         await clock.advance(by: .milliseconds(399))
         XCTAssertEqual(server.callCount(for: .saveAnswers), 0)
         await clock.advance(by: .milliseconds(1))
-        let asyncAssertResult2 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 1 }
+        let asyncAssertResult2 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 1 && engineA.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult2)
+        await engineA.waitForIdleForTesting()
 
         let sentPos = server.calls(for: .saveAnswers).last?.decodedJSON()?["position"] as? [String: Any]
         XCTAssertEqual(sentPos?["partId"] as? String, partId)
@@ -85,7 +88,9 @@ final class PositionTests: XCTestCase {
         server.resetCalls()
         engineB.position(partId: partId, itemId: items[2])
         await clock.advance(by: .milliseconds(500))
-        let asyncAssertResult6 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 1 }
+        let asyncAssertResult6 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == 1 && engineB.state.save == .saved
+        }
         XCTAssertTrue(
             asyncAssertResult6,
             "Expected 1 saveAnswers call after closed-part position, got \(server.callCount(for: .saveAnswers)), session=\(engineB.state.session), save=\(engineB.state.save)"

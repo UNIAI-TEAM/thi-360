@@ -56,7 +56,9 @@ final class SaveQueueTimingTests: XCTestCase {
         ] {
             let before = server.callCount(for: .saveAnswers)
             engine.answer(itemId: items[idx], value: val)
-            let asyncAssertResult3 = await clock.waitUntil { server.callCount(for: .saveAnswers) == before + 1 }
+            let asyncAssertResult3 = await clock.waitUntil {
+                server.callCount(for: .saveAnswers) == before + 1 && engine.state.save == .saved
+            }
             XCTAssertTrue(asyncAssertResult3)
         }
 
@@ -70,7 +72,9 @@ final class SaveQueueTimingTests: XCTestCase {
         await clock.advance(by: .milliseconds(700))
         XCTAssertEqual(server.callCount(for: .saveAnswers), countBeforeShort)
         await clock.advance(by: .milliseconds(100))
-        let asyncAssertResult4 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeShort + 1 }
+        let asyncAssertResult4 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == countBeforeShort + 1 && engine.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult4)
 
         let countBeforeCloze = server.callCount(for: .saveAnswers)
@@ -78,7 +82,9 @@ final class SaveQueueTimingTests: XCTestCase {
         await clock.advance(by: .milliseconds(799))
         XCTAssertEqual(server.callCount(for: .saveAnswers), countBeforeCloze)
         await clock.advance(by: .milliseconds(1))
-        let asyncAssertResult5 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeCloze + 1 }
+        let asyncAssertResult5 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == countBeforeCloze + 1 && engine.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult5)
 
         let essayItem = items[6]
@@ -87,7 +93,9 @@ final class SaveQueueTimingTests: XCTestCase {
         await clock.advance(by: .milliseconds(1999))
         XCTAssertEqual(server.callCount(for: .saveAnswers), countBeforeEssay)
         await clock.advance(by: .milliseconds(1))
-        let asyncAssertResult6 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeEssay + 1 }
+        let asyncAssertResult6 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == countBeforeEssay + 1 && engine.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult6)
 
         let countBeforeCeiling = server.callCount(for: .saveAnswers)
@@ -100,14 +108,19 @@ final class SaveQueueTimingTests: XCTestCase {
                 await clock.advance(by: .seconds(1))
             }
         }
-        let asyncAssertResult7 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeCeiling + 1 }
+        let asyncAssertResult7 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == countBeforeCeiling + 1 && engine.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult7)
 
         let flagItem = items[7]
         let countBeforeFlag = server.callCount(for: .saveAnswers)
         engine.flag(itemId: flagItem, flagged: true)
-        let asyncAssertResult8 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeFlag + 1 }
+        let asyncAssertResult8 = await clock.waitUntil {
+            server.callCount(for: .saveAnswers) == countBeforeFlag + 1 && engine.state.save == .saved
+        }
         XCTAssertTrue(asyncAssertResult8)
+        await engine.waitForIdleForTesting()
         let flagCallBody = server.calls(for: .saveAnswers).last?.decodedJSON()
         let sentFlags = flagCallBody?["flags"] as? [[String: Any]]
         XCTAssertEqual(sentFlags?.first?["itemId"] as? String, flagItem)

@@ -53,7 +53,9 @@ final class HeartbeatTests: XCTestCase {
         )
         await clock.advance(by: .seconds(1))
         let hb1 = await clock.waitUntil {
-            server.callCount(for: .heartbeat) == 1 && engine.state.clock.remainingSecondsCeil == 560
+            server.callCount(for: .heartbeat) == 1
+                && engine.state.clock.remainingSecondsCeil == 560
+                && clock.recordedSleepCount(for: .seconds(30)) >= 2
         }
         XCTAssertTrue(hb1)
         XCTAssertEqual(engine.state.clock.remainingSecondsCeil, 560)
@@ -64,13 +66,19 @@ final class HeartbeatTests: XCTestCase {
         ])
 
         await clock.advance(by: .seconds(30))
-        let hb2 = await clock.waitUntil { server.callCount(for: .heartbeat) == 2 }
+        let hb2 = await clock.waitUntil {
+            server.callCount(for: .heartbeat) == 2
+                && clock.recordedSleepCount(for: .seconds(30)) >= 3
+        }
         XCTAssertTrue(hb2)
         XCTAssertEqual(engine.state.save, .saved)
         XCTAssertNotNil(engine.state.activeSessionId)
 
         await clock.advance(by: .seconds(30))
-        let hb3 = await clock.waitUntil { server.callCount(for: .heartbeat) == 3 }
+        let hb3 = await clock.waitUntil {
+            server.callCount(for: .heartbeat) == 3
+                && clock.recordedSleepCount(for: .seconds(30)) >= 4
+        }
         XCTAssertTrue(hb3)
         XCTAssertEqual(engine.state.save, .saved)
         XCTAssertNotNil(engine.state.activeSessionId)

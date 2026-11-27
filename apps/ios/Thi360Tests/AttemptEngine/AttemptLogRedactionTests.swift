@@ -82,7 +82,8 @@ final class AttemptLogRedactionTests: XCTestCase {
         XCTAssertTrue(saved)
 
         await clock.advance(by: .seconds(30))
-        XCTAssertGreaterThanOrEqual(server.callCount(for: .heartbeat), 1)
+        let heartbeatSent = await clock.waitUntil { server.callCount(for: .heartbeat) >= 1 }
+        XCTAssertTrue(heartbeatSent)
 
         engine.answer(itemId: item2, value: .shortAnswer(text: finalAnswerSentinel))
         engine.submit()
