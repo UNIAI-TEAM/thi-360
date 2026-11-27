@@ -12,6 +12,7 @@ struct Thi360App: App {
     @State private var connectivityMonitor: ConnectivityMonitor
     private let sessionCleanup: SessionCleanup
     private let imageLoader: ImageLoader
+    private let attemptDataCleanup: AttemptDataCleanup
     private let catalogOptionsCache: CatalogOptionsCache
 
     init() {
@@ -51,6 +52,7 @@ struct Thi360App: App {
         _connectivityMonitor = State(initialValue: connectivityMonitor)
         self.sessionCleanup = sessionCleanup
         self.imageLoader = imageLoader
+        self.attemptDataCleanup = AttemptDataCleanup(storeProvider: storeProvider)
         self.catalogOptionsCache = catalogOptionsCache
     }
 
@@ -58,7 +60,7 @@ struct Thi360App: App {
         WindowGroup {
             StartupCleanupGateView(
                 sessionCleanup: sessionCleanup,
-                participants: [imageLoader]
+                participants: [imageLoader, attemptDataCleanup]
             ) {
                 AppRootView(
                     router: router,

@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class AttemptTokenRefreshTests: XCTestCase {
-    // AC-10: concurrent 401 across save, heartbeat, and refresh/position triggers TokenRefresher strictly ONCE,
-    // all calls retry with refreshed token and succeed, and engine.state.save stays .saving (never .unsaved).
     func testThreeConcurrent401sCoalesceIntoSingleRefreshAndKeepSavingStatus() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -74,13 +72,11 @@ final class AttemptTokenRefreshTests: XCTestCase {
         let itemId = server.firstLeafItemId()
         let partId = server.partId(at: 0)
 
-        // Fire all 3 simultaneously before refresh completes: save + position, getState, and 30s heartbeat
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
         engine.position(partId: partId, itemId: itemId)
         engine.refresh()
         await clock.advance(by: .seconds(30))
 
-        // Wait until all 3 endpoints have received 401 and coalesced onto the single in-flight refresh
         let allThreeHit401 = await clock.waitUntil {
             server.callCount(for: .saveAnswers) >= 1
                 && server.callCount(for: .heartbeat) >= 1
@@ -88,7 +84,6 @@ final class AttemptTokenRefreshTests: XCTestCase {
         }
         XCTAssertTrue(allThreeHit401)
         await refreshGate.waitUntilEntered()
-        // While refresh is in-flight, save status must remain .saving (NOT .unsaved)
         XCTAssertEqual(engine.state.save, .saving)
 
         await refreshGate.releaseAll()

@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class EvictionTests: XCTestCase {
-    // AC-5: 409 ATTEMPT_SESSION_REVOKED (and ATTEMPT_OPEN_ELSEWHERE per A6) across all 6 commands + reportSessionRevoked()
-    // -> session = Evicted, command = Idle, emits SessionLost, zero further calls; takeover works from Evicted.
     func testEvictionAcrossAllSixCommandsAndReportSessionRevoked() async throws {
         enum Trigger {
             case heartbeatRevoked
@@ -122,7 +120,6 @@ final class EvictionTests: XCTestCase {
             }
             XCTAssertTrue(evicted, "Expected Evicted + SessionLost for trigger \(trigger)")
 
-            // No more calls allowed after eviction
             let callsAfterEviction = server.allCalls.count
             engine.answer(itemId: itemId, value: .singleChoice(optionId: "b"))
             engine.flag(itemId: itemId, flagged: true)
@@ -131,8 +128,6 @@ final class EvictionTests: XCTestCase {
         }
     }
 
-    // AC-5: external takeover at time t -> evicted before t + 30s; takeover occurring while save is in-flight;
-    // takeover() from Evicted recovers cleanly.
     func testExternalTakeoverDetectedWithin30sDuringInFlightSaveAndRecoverable() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -153,7 +148,6 @@ final class EvictionTests: XCTestCase {
         let asyncAssertResult3 = await clock.waitUntil { engine.state.activeSessionId != nil }
         XCTAssertTrue(asyncAssertResult3)
 
-        // Takeover at t = 12s -> heartbeat at t = 30s detects it within <= 30s (18s after takeover).
         await clock.advance(by: .seconds(12))
         server.simulateExternalTakeover(newSessionId: "device-B-session")
         await clock.advance(by: .seconds(18))
@@ -161,7 +155,6 @@ final class EvictionTests: XCTestCase {
         let asyncAssertResult4 = await clock.waitUntil { engine.state.session == .evicted }
         XCTAssertTrue(asyncAssertResult4)
 
-        // Recover via takeover() from Evicted
         engine.takeover()
         let asyncAssertResult5 = await clock.waitUntil {
             if case .editing = engine.state.session {
@@ -171,14 +164,12 @@ final class EvictionTests: XCTestCase {
         }
         XCTAssertTrue(asyncAssertResult5)
 
-        // Takeover occurs WHILE a PUT .../answers call is in-flight
         let saveGate = AttemptTestGate()
         server.setGate(saveGate, for: .saveAnswers)
         let itemId = server.firstLeafItemId()
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
         await saveGate.waitUntilEntered()
 
-        // External takeover happens before server finishes handling the save request
         server.simulateExternalTakeover(newSessionId: "device-C-session")
         server.setGate(nil, for: .saveAnswers)
         await saveGate.releaseAll()

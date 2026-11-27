@@ -306,6 +306,10 @@ final class AttemptAPI: AttemptAPIClient, Sendable {
         )
     }
 
+    convenience init(apiClient: MobileAPIClient) {
+        self.init(client: apiClient.makeAuthenticatedClient(leadingMiddlewares: [AttemptWireMiddleware()]))
+    }
+
     init(client: Client) {
         self.client = client
     }

@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class DraftReconcileTests: XCTestCase {
-    // AC-12: draft seq > serverSeq wins & sends after claim; draft seq == / < serverSeq -> server wins & draft deleted;
-    // draft flag != serverFlag -> used & sent, equal -> not sent; closed part (including expired while offline) -> server wins & drafts discarded.
     func testDraftReconcileMatrixOnOpenAndAfterOfflineExpiry() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -22,7 +20,6 @@ final class DraftReconcileTests: XCTestCase {
         let itemFlagSame = items[4]
         let partId = server.partId(at: 0)
 
-        // Seed server state with existing answers & flags
         server.mutateState { json in
             guard var parts = json["parts"] as? [[String: Any]],
                   var partItems = parts[0]["items"] as? [[String: Any]]
@@ -48,7 +45,6 @@ final class DraftReconcileTests: XCTestCase {
             json["parts"] = parts
         }
 
-        // Seed drafts directly into AccountScopedStore
         let draftStore = DraftStore(store: store)
         try await draftStore.saveDraft(
             ItemDraftRecord(itemId: itemDraftWins, partId: partId, seq: 4, answer: .singleChoice(optionId: "b"), flagged: false, dirtyAnswer: true, dirtyFlag: false),
@@ -85,7 +81,6 @@ final class DraftReconcileTests: XCTestCase {
         defer { engine.dispose() }
 
         await claimGate.waitUntilEntered()
-        // Before claim completes: verify reconciled state
         XCTAssertEqual(engine.state.answers[itemDraftWins]?.value, .singleChoice(optionId: "b"))
         XCTAssertEqual(engine.state.answers[itemDraftWins]?.seq, 4)
         XCTAssertEqual(engine.state.answers[itemDraftWins]?.sync, .pending)
@@ -102,7 +97,6 @@ final class DraftReconcileTests: XCTestCase {
         XCTAssertEqual(engine.state.answers[itemFlagSame]?.flagged, true)
         XCTAssertEqual(engine.state.answers[itemFlagSame]?.sync, .saved)
 
-        // Release claim -> only itemDraftWins (answer) and itemFlagDiff (flag) are sent!
         server.setGate(nil, for: .claimSession)
         await claimGate.releaseAll()
         let asyncAssertResult1 = await clock.waitUntil {
@@ -116,7 +110,6 @@ final class DraftReconcileTests: XCTestCase {
         XCTAssertEqual(sentChanges.map { $0["itemId"] as? String }, [itemDraftWins])
         XCTAssertEqual(sentFlags.map { $0["itemId"] as? String }, [itemFlagDiff])
 
-        // Equal & older drafts were deleted from store
         let asyncAssertResult2 = await store.read(namespace: "attempt", key: "draft:\(server.attemptId):\(itemEqualSeq)")
         XCTAssertNil(asyncAssertResult2)
         let asyncAssertResult3 = await store.read(namespace: "attempt", key: "draft:\(server.attemptId):\(itemOlderSeq)")
@@ -124,7 +117,6 @@ final class DraftReconcileTests: XCTestCase {
         let asyncAssertResult4 = await store.read(namespace: "attempt", key: "draft:\(server.attemptId):\(itemFlagSame)")
         XCTAssertNil(asyncAssertResult4)
 
-        // Offline expiry: edit item while offline, server closes part/attempt while offline -> reconnect discards draft & adopts server!
         connectivity.applyUpdate(false)
         await clock.settle()
         engine.answer(itemId: itemDraftWins, value: .singleChoice(optionId: "d"))

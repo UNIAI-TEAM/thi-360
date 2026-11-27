@@ -4,9 +4,6 @@ import XCTest
 
 @MainActor
 final class PositionTests: XCTestCase {
-    // AC-15: position() writes locally immediately & sends after 400ms, or flushes immediately when dirty changes exist;
-    // initial part uses server lastPosition > local position (if OPEN or unopened active incl. GENERATION_FAILED) > R-84 fallback;
-    // device A at item 12 -> device B takeover opens at item 12; position after part closed ignored cleanly.
     func testPositionDebounceFlushInitialSelectionTakeoverAndClosedPart() async throws {
         let clock = TestEngineClock()
         let (_, storeA, dirA) = try AttemptEngineTestHarness.makeStore(accountId: "account-A")
@@ -32,7 +29,6 @@ final class PositionTests: XCTestCase {
         let partId = server.partId(at: 0)
         let item12 = items[11]
 
-        // 1. position() writes locally immediately & debounces 400ms when no unsaved changes
         engineA.position(partId: partId, itemId: item12)
         await engineA.waitForIdleForTesting()
         let storedPos = await DraftStore(store: storeA).readPosition(attemptId: server.attemptId)
@@ -49,7 +45,6 @@ final class PositionTests: XCTestCase {
         XCTAssertEqual(sentPos?["partId"] as? String, partId)
         XCTAssertEqual(sentPos?["itemId"] as? String, item12)
 
-        // 2. Device B takes over -> opens directly at question 12 from server lastPosition!
         let (_, storeB, dirB) = try AttemptEngineTestHarness.makeStore(accountId: "account-A")
         defer { try? FileManager.default.removeItem(at: dirB) }
         let engineB = AttemptEngine(
@@ -72,7 +67,6 @@ final class PositionTests: XCTestCase {
         XCTAssertTrue(asyncAssertResult4)
         XCTAssertEqual(engineB.state.position, Position(partId: partId, itemId: item12))
 
-        // 3. With unsaved answer pending (e.g. debounced short answer), position() flushes ALL immediately without waiting 400ms
         server.resetCalls()
         engineB.answer(itemId: items[0], value: .shortAnswer(text: "99"))
         XCTAssertEqual(server.callCount(for: .saveAnswers), 0)
@@ -82,7 +76,6 @@ final class PositionTests: XCTestCase {
         let comboBody = try XCTUnwrap(server.calls(for: .saveAnswers).first?.decodedJSON())
         XCTAssertEqual((comboBody["position"] as? [String: Any])?["itemId"] as? String, items[1])
 
-        // 4. Position sent after part closed is ignored cleanly without error
         server.mutateState { json in
             if var parts = json["parts"] as? [[String: Any]] {
                 parts[0]["state"] = "CLOSED"
@@ -99,7 +92,6 @@ final class PositionTests: XCTestCase {
         )
         XCTAssertEqual(engineB.state.save, .saved)
 
-        // 5. Pure PartSelection.initial & afterClose rules including GENERATION_FAILED
         let genFailedData = try AttemptFixtureCatalog.loadData(
             operationId: Operations.getState.id,
             status: 200,
@@ -112,7 +104,6 @@ final class PositionTests: XCTestCase {
         let failedPartId = try XCTUnwrap(genFailedAttempt.parts?.first { $0.state == .GENERATION_FAILED }?.partId)
         let closedPartId = try XCTUnwrap(genFailedAttempt.parts?.first { $0.state == .CLOSED }?.partId)
 
-        // Local/server position pointing at GENERATION_FAILED is kept
         let keptFailed = PartSelection.initial(
             attempt: genFailedAttempt,
             serverPosition: nil,
@@ -120,7 +111,6 @@ final class PositionTests: XCTestCase {
         )
         XCTAssertEqual(keptFailed?.partId, failedPartId)
 
-        // Position pointing at CLOSED falls back to R-84 afterClose (picks GENERATION_FAILED)
         let fromClosed = PartSelection.initial(
             attempt: genFailedAttempt,
             serverPosition: Position(partId: closedPartId, itemId: nil),

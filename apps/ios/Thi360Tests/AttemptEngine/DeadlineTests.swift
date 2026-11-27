@@ -185,7 +185,6 @@ final class DeadlineTests: XCTestCase {
     }
 
     func testClosedElsewhereDetectedByHeartbeatWithin30sAndImmediatelyOnNextSave() async throws {
-        // Case A: Closed remotely -> detected before/at next 30s heartbeat
         do {
             let clock = TestEngineClock()
             let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)
@@ -221,7 +220,6 @@ final class DeadlineTests: XCTestCase {
             XCTAssertTrue(detected, "Remote closure must be detected on next <=30s heartbeat")
         }
 
-        // Case B: Closed remotely -> detected immediately on next save call without server accepting answer
         do {
             let clock = TestEngineClock()
             let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)

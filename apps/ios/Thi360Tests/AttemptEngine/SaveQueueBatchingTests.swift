@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class SaveQueueBatchingTests: XCTestCase {
-    // AC-8: latest seq, empty values of all 7 question types never null, 50 vs 51 changes & flags split with position only on last batch,
-    // 30 rapid selections in 10s with slow server never create overlapping PUTs and coalesce cleanly.
     func testEmptyValuesBatchSplit50And51AndNoOverlappingPuts() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -52,7 +50,6 @@ final class SaveQueueBatchingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(items.count, 51)
         let partId = server.partId(at: 0)
 
-        // 1. All 7 empty AnswerValue shapes serialize verbatim and NEVER contain null answer
         let emptyValues: [AnswerValue] = [
             .singleChoice(optionId: nil),
             .multipleChoice(optionIds: []),
@@ -81,7 +78,6 @@ final class SaveQueueBatchingTests: XCTestCase {
             XCTAssertNotNil(ans?["type"] as? String)
         }
 
-        // 2. Boundary: exactly 50 changes & 50 flags -> 1 PUT call
         server.resetCalls()
         connectivity.applyUpdate(false)
         await clock.settle()
@@ -98,8 +94,6 @@ final class SaveQueueBatchingTests: XCTestCase {
         XCTAssertEqual((batch50Body["flags"] as? [[String: Any]])?.count, 50)
         XCTAssertNotNil(batch50Body["position"])
 
-        // 3. Boundary: 51 changes & 51 flags -> 2 PUT calls (50 + 1), position ONLY on last batch!
-        // First ensure item[50] is flagged=true on server so toggling 0..<51 to false produces 51 dirty flags.
         engine.flag(itemId: items[50], flagged: true)
         let seededFlag51 = await clock.waitUntil { engine.state.save == .saved && engine.state.answers[items[50]]?.flagged == true }
         XCTAssertTrue(seededFlag51)
@@ -127,7 +121,6 @@ final class SaveQueueBatchingTests: XCTestCase {
         XCTAssertNotNil(secondBody["position"])
         XCTAssertEqual(server.maxConcurrency(for: .saveAnswers), 1)
 
-        // 4. Concurrency: 30 rapid selections in 10s against slow server (1.2s delay) -> NEVER overlapping PUTs, latest seq saved
         server.resetCalls()
         server.setDelay(.milliseconds(1200), for: .saveAnswers)
         let rapidItem = items[0]

@@ -58,7 +58,6 @@ final class ForegroundTests: XCTestCase {
         await clock.advance(by: .seconds(120))
         XCTAssertEqual(server.callCount(for: .heartbeat), heartbeatsBefore, "No heartbeats while in background")
 
-        // Verify GENERATING part does not poll while in background
         let clock2 = TestEngineClock()
         let genServer = try FakeAttemptServer(initialStateVariant: "generating", clock: clock2)
         let (_, store2, rootURL2) = try AttemptEngineTestHarness.makeStore()
@@ -145,12 +144,10 @@ final class ForegroundTests: XCTestCase {
         let heartbeatsBefore = server.callCount(for: .heartbeat)
         let getsBefore = server.callCount(for: .getState)
 
-        // App returns to foreground behind biometric lock: hook stays queued until unlocked
         await router.notifyScenePhaseChanged(.active, sessionState: .locked)
         await clock.settle()
         XCTAssertEqual(server.callCount(for: .heartbeat), heartbeatsBefore, "Must wait for biometric unlock before resuming")
 
-        // Biometric unlock transitions session back to .active and fires InboundLinkRouter.onForeground hook
         await router.notifySessionStateChanged(.active)
 
         let synced = await clock.waitUntil {
@@ -168,7 +165,6 @@ final class ForegroundTests: XCTestCase {
     }
 
     func testExpiredInBackgroundClosesOrAdvancesPartWithZeroAcceptedSaves() async throws {
-        // Case A: SHARED attempt expires while in background -> closed on foreground return, zero saves
         do {
             let clock = TestEngineClock()
             let baseNow = FlexibleISO8601DateTranscoder.parse("2026-11-20T10:00:00Z")!
@@ -221,7 +217,6 @@ final class ForegroundTests: XCTestCase {
             XCTAssertEqual(server.callCount(for: .saveAnswers), savesBeforeReturn, "No save accepted after bg expiry")
         }
 
-        // Case B: PER_PART expires part 1 in background -> advances to part 2 and drops part 1 draft
         do {
             let clock = TestEngineClock()
             let baseNow = FlexibleISO8601DateTranscoder.parse("2026-11-20T10:00:00Z")!

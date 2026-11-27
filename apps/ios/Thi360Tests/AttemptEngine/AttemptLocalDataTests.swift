@@ -4,10 +4,7 @@ import XCTest
 
 @MainActor
 final class AttemptLocalDataTests: XCTestCase {
-    // AC-13: closed/submitted removes draft, position, sessionId, AND startContext:{attemptId};
-    // ABORTED removes draft, position, sessionId while KEEPING startContext:{attemptId} across restart.
     func testCleanupOnClose() async throws {
-        // Case 1: Submitted / closed removes all 4 keys including startContext:{attemptId}
         do {
             let clock = TestEngineClock()
             let (_, store, dir) = try AttemptEngineTestHarness.makeStore(accountId: "account-A")
@@ -17,7 +14,6 @@ final class AttemptLocalDataTests: XCTestCase {
             let itemId = server.firstLeafItemId()
             let partId = server.partId(at: 0)
 
-            // Pre-seed startContext:{attemptId} (written by IOS-PREP per B1.12)
             try await store.write(
                 Data(#"{"entitlementId":"ent-1"}"#.utf8),
                 namespace: "attempt",
@@ -67,7 +63,6 @@ final class AttemptLocalDataTests: XCTestCase {
             XCTAssertNil(ctxAfter)
         }
 
-        // Case 2: ABORTED deletes draft, position, sessionId, and KEEPS startContext:{attemptId} even after process restart!
         do {
             let clock = TestEngineClock()
             let (_, store, dir) = try AttemptEngineTestHarness.makeStore(accountId: "account-A")
@@ -101,7 +96,6 @@ final class AttemptLocalDataTests: XCTestCase {
             XCTAssertTrue(abortedClosed)
             await engine.waitForIdleForTesting()
 
-            // Re-open AccountScopedStore from same root directory (simulating process restart)
             let restartedProvider = AccountScopedStoreProvider(rootDirectoryURL: dir)
             let restartedStore = try XCTUnwrap(restartedProvider.store(for: "account-A"))
 
@@ -120,12 +114,6 @@ final class AttemptLocalDataTests: XCTestCase {
         }
     }
 
-    // AC-14: Account A/B isolation matrix with real AccountScopedStore, SessionCleanup, and SessionStore:
-    // 1. Account B cannot read or send Account A's draft, position, sessionId, or startContext.
-    // 2. Account A logout (Account tab & Lock screen 'other account') wipes A's attempt namespace (including crash-recovery on start),
-    //    preserves B's data, and makes zero extra save calls.
-    // 3. Lock screen 'Enter password' signing into B preserves A's data and hides it from B.
-    // 4. Token refresh failure (.expired) preserves A's data; when A signs back in and reopens attempt, drafts reconcile & send.
     func testAccountIsolationMatrix() async throws {
         let rootDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("thi360-isolation-matrix-\(UUID().uuidString)", isDirectory: true)
@@ -141,7 +129,6 @@ final class AttemptLocalDataTests: XCTestCase {
         let storeA = try XCTUnwrap(provider.store(for: "account-A"))
         let storeB = try XCTUnwrap(provider.store(for: "account-B"))
 
-        // Seed Account A and Account B data
         let draftStoreA = DraftStore(store: storeA)
         let draftStoreB = DraftStore(store: storeB)
         try await draftStoreA.saveDraft(
@@ -158,7 +145,6 @@ final class AttemptLocalDataTests: XCTestCase {
         )
         try await storeB.write(Data("ctx-B".utf8), namespace: "attempt", key: "startContext:\(server.attemptId)")
 
-        // 1. Account B engine MUST NOT read or send Account A's draft, position, sessionId, or startContext
         let engineB = AttemptEngine(
             attemptId: server.attemptId,
             accountId: "account-B",
@@ -178,7 +164,6 @@ final class AttemptLocalDataTests: XCTestCase {
         XCTAssertNotEqual(server.calls(for: .claimSession).first?.decodedJSON()?["sessionId"] as? String, "session-A-uuid")
         engineB.dispose()
 
-        // 2. Lock screen "Enter password" (reauthenticateFromLock) into Account B preserves A's data & hides from B
         let lockDir = rootDir.appendingPathComponent("lock-password", isDirectory: true)
         let lockProvider = AccountScopedStoreProvider(rootDirectoryURL: lockDir)
         let lockCleanup = SessionCleanup(storeProvider: lockProvider)
@@ -215,7 +200,6 @@ final class AttemptLocalDataTests: XCTestCase {
         let bReadsADraft = await lockProvider.read(accountId: "account-B", namespace: "attempt", key: "draft:\(server.attemptId):\(itemId)")
         XCTAssertNil(bReadsADraft, "Account B must never see Account A's drafts")
 
-        // 3. Token refresh failure (.expired) preserves Account A's drafts; when A logs back in, drafts reconcile & send!
         let expDir = rootDir.appendingPathComponent("expired", isDirectory: true)
         let expProvider = AccountScopedStoreProvider(rootDirectoryURL: expDir)
         let expCleanup = SessionCleanup(storeProvider: expProvider)
@@ -258,8 +242,6 @@ final class AttemptLocalDataTests: XCTestCase {
         }
         XCTAssertTrue(reopenedSaved)
 
-        // 4. Account A logout (Account tab & Lock screen 'other account') wipes A's attempt namespace, preserves B, zero extra saves;
-        //    and interrupted logout completes on cold app start!
         for (idx, viaLockScreen) in [false, true].enumerated() {
             let logoutDir = rootDir.appendingPathComponent("logout-\(idx)", isDirectory: true)
             let lProvider = AccountScopedStoreProvider(rootDirectoryURL: logoutDir)
@@ -322,7 +304,6 @@ final class AttemptLocalDataTests: XCTestCase {
             )
         }
 
-        // Interrupted logout completes on next app start
         let crashDir = rootDir.appendingPathComponent("crash-logout", isDirectory: true)
         let crashProvider = AccountScopedStoreProvider(rootDirectoryURL: crashDir)
         let crashStoreA = try XCTUnwrap(crashProvider.store(for: "account-A"))

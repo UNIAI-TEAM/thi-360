@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class HeartbeatTests: XCTestCase {
-    // AC-4: 30s periodic heartbeat while editing & foreground; each response re-anchors clock;
-    // network/5xx does not change save/session and keeps schedule; non-IN_PROGRESS stops loop, reloads, emits AttemptClosed.
     func testHeartbeatCadenceReanchorTransientErrorsAndNonInProgressClose() async throws {
         let clock = TestEngineClock()
         let baseNow = FlexibleISO8601DateTranscoder.parse("2026-11-20T10:00:00Z")!
@@ -42,11 +40,9 @@ final class HeartbeatTests: XCTestCase {
         }
         defer { eventTask.cancel() }
 
-        // Before 30s: zero heartbeats
         await clock.advance(by: .seconds(29))
         XCTAssertEqual(server.callCount(for: .heartbeat), 0)
 
-        // At 30s: first heartbeat, server shifts serverNow forward by +10s to verify re-anchor
         let shiftedNow = baseNow.addingTimeInterval(40)
         server.enqueue(
             .heartbeat,
@@ -62,7 +58,6 @@ final class HeartbeatTests: XCTestCase {
         XCTAssertTrue(hb1)
         XCTAssertEqual(engine.state.clock.remainingSecondsCeil, 560)
 
-        // Next two heartbeats fail with network error then 503 -> save stays .saved, session stays .editing, schedule continues!
         server.enqueue(.heartbeat, responses: [
             .networkError(.timedOut),
             try .serverError(statusCode: 503)
@@ -80,7 +75,6 @@ final class HeartbeatTests: XCTestCase {
         XCTAssertEqual(engine.state.save, .saved)
         XCTAssertNotNil(engine.state.activeSessionId)
 
-        // Next heartbeat returns GRADING -> stops heartbeat, reloads state, emits AttemptClosed
         server.enqueue(
             .heartbeat,
             try .fixture(operationId: Operations.heartbeat.id, status: 200, variant: "") { obj in
@@ -103,7 +97,6 @@ final class HeartbeatTests: XCTestCase {
         }
         XCTAssertTrue(hb4Closed)
 
-        // Advance another 90s -> heartbeat must have stopped completely
         await clock.advance(by: .seconds(90))
         XCTAssertEqual(server.callCount(for: .heartbeat), 4)
     }

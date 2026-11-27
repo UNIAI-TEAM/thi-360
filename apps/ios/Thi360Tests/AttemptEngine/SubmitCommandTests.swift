@@ -359,7 +359,6 @@ final class SubmitCommandTests: XCTestCase {
     }
 
     func testSubmitCrashMidFlightReopenHandlesBothSubmittedAndStillOpen() async throws {
-        // Case A: crash mid-submit while server already finalized attempt -> reopen sees closed & clears drafts.
         do {
             let clock = TestEngineClock()
             let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)
@@ -416,7 +415,6 @@ final class SubmitCommandTests: XCTestCase {
             XCTAssertNil(draftAfter)
         }
 
-        // Case B: crash mid-submit while server stayed IN_PROGRESS -> reopen restores session & drafts and continues.
         do {
             let clock = TestEngineClock()
             let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)

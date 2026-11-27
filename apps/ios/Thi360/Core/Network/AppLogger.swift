@@ -65,7 +65,8 @@ struct RedactingAppLogger: Sendable {
         "cookie",
         "set-cookie",
         "x-api-key",
-        "x-xsrf-token"
+        "x-xsrf-token",
+        "x-attempt-session"
     ]
 
     private static let sensitiveQueryKeys: Set<String> = [
@@ -87,9 +88,11 @@ struct RedactingAppLogger: Sendable {
     ]
 
     private static let redactionPatterns: [(NSRegularExpression, String)] = {
-        let sensitiveFieldNames = "password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode|voucherCode|voucher_code|vnp_[A-Za-z0-9_]+"
+        let sensitiveFieldNames = "password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode|voucherCode|voucher_code|vnp_[A-Za-z0-9_]+|x-attempt-session|answer|finalAnswers|html|text"
         let definitions: [(String, String)] = [
             (#"(?i)(Bearer\s+)[^\s,;"')]+"#, "$1<redacted>"),
+            (#"(?i)("finalAnswers"\s*:\s*)\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]"#, "$1\"<redacted>\""),
+            (#"(?i)("answer"\s*:\s*)\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}"#, "$1\"<redacted>\""),
             ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*\")[^\"]*(\")", "$1<redacted>$2"),
             ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*)(?!\"|null\\b)[^\\s,}\\]]+", "$1\"<redacted>\""),
             ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\(\")[^\"]*(\"\\))", "$1$2<redacted>$3"),

@@ -415,27 +415,24 @@ final class FakeAttemptServer: @unchecked Sendable {
         locale: AppLocale = .vi
     ) -> AttemptAPI {
         let logger = RedactingAppLogger(environment: environment, sink: logSink)
-        let resolvedRefresher: TokenRefresher
         if let refresher {
-            resolvedRefresher = refresher
-        } else {
-            let apiClient = MobileAPIClient(
+            return AttemptAPI(
                 serverURL: URL(string: "https://api.thi360.test")!,
                 tokenStore: tokenStore,
+                refresher: refresher,
                 transport: transport,
                 logger: logger,
                 localeProvider: { locale }
             )
-            resolvedRefresher = apiClient.refresher
         }
-        return AttemptAPI(
+        let apiClient = MobileAPIClient(
             serverURL: URL(string: "https://api.thi360.test")!,
             tokenStore: tokenStore,
-            refresher: resolvedRefresher,
             transport: transport,
             logger: logger,
             localeProvider: { locale }
         )
+        return AttemptAPI(apiClient: apiClient)
     }
 
     static func isoString(_ date: Date) -> String {

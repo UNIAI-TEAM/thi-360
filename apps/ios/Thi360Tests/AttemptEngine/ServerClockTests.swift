@@ -4,20 +4,15 @@ import XCTest
 
 @MainActor
 final class ServerClockTests: XCTestCase {
-    // AC-6: SHARED vs PER_PART vs no deadline; re-anchor on state/claim/heartbeat/save;
-    // monotonic between anchors (wall-clock / timezone +/-1h shift causes <= 1s drift);
-    // after load, remaining matches deadlineAt - serverNow within <= 1s.
     func testSharedPerPartNoDeadlineAndMonotonicImmunityToWallClockShift() async throws {
         let clock = TestEngineClock()
         let baseNow = FlexibleISO8601DateTranscoder.parse("2026-11-20T10:00:00Z")!
 
-        // Pure ServerClock immunity to wall clock & timezone shifts +/- 1 hour
         var serverClock = ServerClock()
         serverClock.reanchor(serverNow: baseNow, at: clock.now)
         let deadline = baseNow.addingTimeInterval(1200)
         XCTAssertEqual(serverClock.remaining(until: deadline, at: clock.now), .seconds(1200))
 
-        // Simulate advancing monotonic clock 15s (wall clock/timezone irrelevant because ServerClock never reads Date())
         await clock.advance(by: .seconds(15))
         let remAfter15s = serverClock.remaining(until: deadline, at: clock.now)
         XCTAssertEqual(remAfter15s, .seconds(1185))
@@ -27,7 +22,6 @@ final class ServerClockTests: XCTestCase {
             accuracy: 1.0
         )
 
-        // Check +/- 1 hour shifted Date compared against ServerClock anchor: ServerClock tracks monotonic elapsed only.
         let shiftedDeviceDate = baseNow.addingTimeInterval(3600)
         XCTAssertNotEqual(shiftedDeviceDate, serverClock.estimatedServerNow(at: clock.now))
         XCTAssertEqual(
@@ -36,7 +30,6 @@ final class ServerClockTests: XCTestCase {
             accuracy: 0.01
         )
 
-        // SHARED timing counts down to attempt.deadlineAt and re-anchors on state, claim, save, heartbeat
         let (_, store1, dir1) = try AttemptEngineTestHarness.makeStore()
         defer { try? FileManager.default.removeItem(at: dir1) }
         let (conn1, _) = AttemptEngineTestHarness.makeConnectivity()
@@ -70,10 +63,8 @@ final class ServerClockTests: XCTestCase {
         let asyncAssertResult1 = await clock.waitUntil { sharedEngine.state.activeSessionId != nil }
         XCTAssertTrue(asyncAssertResult1)
         XCTAssertEqual(sharedEngine.state.clock.target, .attempt)
-        // Re-anchored by claimSession (+10s -> 890s remaining)
         XCTAssertEqual(sharedEngine.state.clock.remainingSecondsCeil, 890)
 
-        // Re-anchor via saveAnswers (+30s -> 870s remaining)
         let itemId = sharedServer.firstLeafItemId()
         sharedServer.enqueue(
             .saveAnswers,
@@ -87,7 +78,6 @@ final class ServerClockTests: XCTestCase {
         XCTAssertTrue(asyncAssertResult2)
         XCTAssertEqual(sharedEngine.state.clock.remainingSecondsCeil, 870)
 
-        // PER_PART timing counts down to active OPEN part's deadlineAt, and .none when no deadline
         let (_, store2, dir2) = try AttemptEngineTestHarness.makeStore()
         defer { try? FileManager.default.removeItem(at: dir2) }
         let (conn2, _) = AttemptEngineTestHarness.makeConnectivity()
@@ -119,7 +109,6 @@ final class ServerClockTests: XCTestCase {
         XCTAssertEqual(perPartEngine.state.clock.target, .part(partId))
         XCTAssertEqual(perPartEngine.state.clock.remainingSecondsCeil, 300)
 
-        // No deadline -> .none
         perPartServer.mutateState { json in
             json["deadlineAt"] = NSNull()
             if var parts = json["parts"] as? [[String: Any]] {

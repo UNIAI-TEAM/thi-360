@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class SaveErrorTests: XCTestCase {
-    // AC-10: 429 Retry-After 0, 1, n, missing; 5xx -> ServerError; 4xx != 401/409/429 & online network -> NetworkError;
-    // backoff 1,2,4,8,16,30,30 & reset on success/online; 409 TIME_UP/ATTEMPT_NOT_OPEN/PART_CLOSED reload; 409 session -> SessionConflict + Evicted.
     func testRateLimitRetryAfterBoundariesAndExponentialBackoff() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -27,22 +25,19 @@ final class SaveErrorTests: XCTestCase {
 
         let itemId = server.firstLeafItemId()
 
-        // 1. 429 Retry-After: 0 -> clamps delay to max(0, 1) = 1s, does not advance backoff
         server.enqueue(
             .saveAnswers,
             try .fixture(operationId: Operations.saveAnswers.id, status: 429, variant: "rate-limited", headers: ["Retry-After": "0"])
         )
-        // 2. 429 Retry-After: 1 -> waits 1s
         server.enqueue(
             .saveAnswers,
             try .fixture(operationId: Operations.saveAnswers.id, status: 429, variant: "rate-limited", headers: ["Retry-After": "1"])
         )
-        // 3. 429 Retry-After: 5 -> waits 5s
         server.enqueue(
             .saveAnswers,
             try .fixture(operationId: Operations.saveAnswers.id, status: 429, variant: "rate-limited", headers: ["Retry-After": "5"])
         )
-        // 4. 429 missing Retry-After (A6 documented header omission on certified fixture) -> backoff step 1 = 1s, step 2 = 2s
+        // Plan A6 documented header omission on certified 429 fixture (missing Retry-After).
         server.enqueue(
             .saveAnswers,
             try .fixture(operationId: Operations.saveAnswers.id, status: 429, variant: "rate-limited", headers: [:])
@@ -85,7 +80,6 @@ final class SaveErrorTests: XCTestCase {
         let s6 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 6 && engine.state.save == .saved }
         XCTAssertTrue(s6)
 
-        // 5. Full exponential backoff 1, 2, 4, 8, 16, 30, 30 across 5xx, 400, and online network error, then reset on success
         server.resetCalls()
         server.enqueue(.saveAnswers, responses: [
             try .serverError(statusCode: 503),
@@ -123,7 +117,6 @@ final class SaveErrorTests: XCTestCase {
         let s8 = await clock.waitUntil { server.callCount(for: .saveAnswers) == 8 && engine.state.save == .saved }
         XCTAssertTrue(s8)
 
-        // Verify backoff reset back to 1s after success
         server.resetCalls()
         server.enqueue(.saveAnswers, try .serverError(statusCode: 500))
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
@@ -133,7 +126,6 @@ final class SaveErrorTests: XCTestCase {
         let resetOk = await clock.waitUntil { server.callCount(for: .saveAnswers) == 2 && engine.state.save == .saved }
         XCTAssertTrue(resetOk)
 
-        // 6. 409 TIME_UP reloads state and closes
         server.enqueue(
             .saveAnswers,
             try .fixture(operationId: Operations.finishPart.id, status: 409, variant: "time-up")

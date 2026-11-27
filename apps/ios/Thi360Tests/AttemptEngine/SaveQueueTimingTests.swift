@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class SaveQueueTimingTests: XCTestCase {
-    // AC-7: optimistic state + draft before first send even with 3s server delay; immediate for SC/MC/TF/MATCHING;
-    // 800ms debounce for SHORT_ANSWER/CLOZE; 2s debounce & 15s maxWait ceiling for ESSAY; flag immediate + cancel on toggle back.
     func testOptimisticImmediateDraftAndPerQuestionTypeSchedulesAndFlags() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -28,7 +26,6 @@ final class SaveQueueTimingTests: XCTestCase {
         let items = server.leafItemIds()
         XCTAssertGreaterThanOrEqual(items.count, 10)
 
-        // 1. Optimistic update + draft persisted BEFORE first PUT arrives even with 3s simulated server delay
         let saveGate = AttemptTestGate()
         server.setGate(saveGate, for: .saveAnswers)
         server.setDelay(.seconds(3), for: .saveAnswers)
@@ -36,7 +33,6 @@ final class SaveQueueTimingTests: XCTestCase {
         let scItem = items[0]
         engine.answer(itemId: scItem, value: .singleChoice(optionId: "a"))
 
-        // Immediately visible synchronously before server finishes
         XCTAssertEqual(engine.state.answers[scItem]?.value, .singleChoice(optionId: "a"))
         XCTAssertEqual(engine.state.answers[scItem]?.seq, 1)
         XCTAssertEqual(engine.state.answers[scItem]?.sync, .pending)
@@ -53,7 +49,6 @@ final class SaveQueueTimingTests: XCTestCase {
         let asyncAssertResult2 = await clock.waitUntil { engine.state.save == .saved && engine.state.answers[scItem]?.sync == .saved }
         XCTAssertTrue(asyncAssertResult2)
 
-        // 2. Immediate send for MULTIPLE_CHOICE, TRUE_FALSE, MATCHING
         for (idx, val) in [
             (1, AnswerValue.multipleChoice(optionIds: ["a", "b"])),
             (2, AnswerValue.trueFalse(statements: ["s1": true])),
@@ -65,7 +60,6 @@ final class SaveQueueTimingTests: XCTestCase {
             XCTAssertTrue(asyncAssertResult3)
         }
 
-        // 3. SHORT_ANSWER & CLOZE: 800ms debounce after last edit
         let shortItem = items[4]
         let clozeItem = items[5]
         let countBeforeShort = server.callCount(for: .saveAnswers)
@@ -87,7 +81,6 @@ final class SaveQueueTimingTests: XCTestCase {
         let asyncAssertResult5 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeCloze + 1 }
         XCTAssertTrue(asyncAssertResult5)
 
-        // 4. ESSAY: 2s debounce after idle AND 15s maxWait ceiling while continuously typing every 1s
         let essayItem = items[6]
         let countBeforeEssay = server.callCount(for: .saveAnswers)
         engine.answer(itemId: essayItem, value: .essay(html: "<p>a</p>"))
@@ -97,7 +90,6 @@ final class SaveQueueTimingTests: XCTestCase {
         let asyncAssertResult6 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeEssay + 1 }
         XCTAssertTrue(asyncAssertResult6)
 
-        // Continuous typing every 1s for 15s -> must flush at 15s ceiling despite debounce resetting!
         let countBeforeCeiling = server.callCount(for: .saveAnswers)
         for sec in 0..<15 {
             engine.answer(itemId: essayItem, value: .essay(html: "<p>word \(sec)</p>"))
@@ -111,7 +103,6 @@ final class SaveQueueTimingTests: XCTestCase {
         let asyncAssertResult7 = await clock.waitUntil { server.callCount(for: .saveAnswers) == countBeforeCeiling + 1 }
         XCTAssertTrue(asyncAssertResult7)
 
-        // 5. Flag sends immediately; toggling flag on then off before send results in zero flag changes
         let flagItem = items[7]
         let countBeforeFlag = server.callCount(for: .saveAnswers)
         engine.flag(itemId: flagItem, flagged: true)
@@ -122,7 +113,6 @@ final class SaveQueueTimingTests: XCTestCase {
         XCTAssertEqual(sentFlags?.first?["itemId"] as? String, flagItem)
         XCTAssertEqual(sentFlags?.first?["flagged"] as? Bool, true)
 
-        // Toggle off then on while offline (before send) -> reverts to serverFlagged (true) -> no dirty flag!
         connectivity.applyUpdate(false)
         await clock.settle()
         engine.flag(itemId: flagItem, flagged: false)

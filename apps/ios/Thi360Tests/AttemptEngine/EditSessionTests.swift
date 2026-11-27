@@ -4,8 +4,6 @@ import XCTest
 
 @MainActor
 final class EditSessionTests: XCTestCase {
-    // AC-1: sessionId UUID generated and persisted BEFORE POST .../session; reused across retries and process recreation;
-    // no save/heartbeat/finish/submit/choice/retry while acquiring; changes made while waiting flush immediately after claim.
     func testClaimPersistsBeforeCall() async throws {
         let clock = TestEngineClock()
         let (provider, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -32,12 +30,10 @@ final class EditSessionTests: XCTestCase {
 
         await claimGate.waitUntilEntered()
 
-        // sessionId must already be persisted in AccountScopedStore BEFORE POST .../session completes.
         let persistedData = await store.read(namespace: "attempt", key: "session:\(server.attemptId)")
         XCTAssertEqual(persistedData.flatMap { String(data: $0, encoding: .utf8) }, expectedSessionId)
         XCTAssertEqual(engine.state.session, .acquiring)
 
-        // While acquiring, answers go into draft only; no save/heartbeat/finish/submit/choice/retry calls fire.
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
         engine.finishPart(partId: partId)
         engine.submit()
@@ -56,7 +52,6 @@ final class EditSessionTests: XCTestCase {
         let draftData = await store.read(namespace: "attempt", key: "draft:\(server.attemptId):\(itemId)")
         XCTAssertNotNil(draftData, "Answer edited while acquiring must be persisted in AccountScopedStore")
 
-        // Release claim -> session transitions to .editing and queued answer flushes immediately with X-Attempt-Session.
         server.setGate(nil, for: .claimSession)
         await claimGate.releaseAll()
         let flushed = await clock.waitUntil {
@@ -67,7 +62,6 @@ final class EditSessionTests: XCTestCase {
         XCTAssertTrue(flushed)
         XCTAssertEqual(server.calls(for: .saveAnswers).first?.sessionHeader, expectedSessionId)
 
-        // Recreate engine (process restart) on same AccountScopedStore -> reuses stored sessionId, does NOT enter OpenElsewhere.
         engine.dispose()
         let freshStore = try XCTUnwrap(provider.store(for: "account-A"))
         let reopened = AttemptEngine(
@@ -90,7 +84,6 @@ final class EditSessionTests: XCTestCase {
         XCTAssertNil(lastClaimBody?["takeover"])
     }
 
-    // AC-1: every post-claim command carries X-Attempt-Session.
     func testHeaderOnEveryCommand() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -124,7 +117,6 @@ final class EditSessionTests: XCTestCase {
         let asyncAssertResult3 = await clock.waitUntil { server.callCount(for: .heartbeat) >= 1 }
         XCTAssertTrue(asyncAssertResult3)
 
-        // Switch part state to AWAITING_CHOICE for choice command, then GENERATION_FAILED for retry, then OPEN for finish + submit.
         server.mutateState { json in
             if var parts = json["parts"] as? [[String: Any]] {
                 parts[0]["state"] = "AWAITING_CHOICE"
@@ -167,7 +159,6 @@ final class EditSessionTests: XCTestCase {
         let asyncAssertResult9 = await clock.waitUntil { server.callCount(for: .finishPart) == 1 }
         XCTAssertTrue(asyncAssertResult9)
 
-        // Reopen state for submit verification
         server.mutateState { json in
             json["state"] = "IN_PROGRESS"
             if var parts = json["parts"] as? [[String: Any]] {
@@ -199,10 +190,7 @@ final class EditSessionTests: XCTestCase {
         }
     }
 
-    // AC-2: 409 TIME_UP / ATTEMPT_NOT_OPEN -> reload & closed != nil; network/5xx -> Acquiring, Unsaved/Offline,
-    // finishPart/submit ignored, retry with same sessionId at 1,2,4,8,16,30,30...s and immediately on reconnect.
     func testClaimFailures() async throws {
-        // Subcase A: 409 TIME_UP & ATTEMPT_NOT_OPEN
         for (variant, expectedClosed) in [
             ("time-up", ClosedReason.timeUp),
             ("attempt-not-open", ClosedReason.notOpen)
@@ -247,7 +235,6 @@ final class EditSessionTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(server.callCount(for: .getState), 2)
         }
 
-        // Subcase B: Network & 5xx backoff schedule 1, 2, 4, 8, 16, 30, 30 and immediate retry on reconnect
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -284,7 +271,6 @@ final class EditSessionTests: XCTestCase {
         XCTAssertEqual(engine.state.session, .acquiring)
         XCTAssertEqual(engine.state.save, .unsaved(.networkError))
 
-        // Answer while acquiring, verify finishPart & submit are ignored
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "b"))
         engine.finishPart(partId: partId)
         engine.submit()
@@ -309,7 +295,6 @@ final class EditSessionTests: XCTestCase {
             }
         }
 
-        // Go offline -> save = .offline; back online -> immediate retry (without waiting 30s) succeeds and flushes unsaved answer!
         connectivity.applyUpdate(false)
         await clock.settle()
         XCTAssertEqual(engine.state.save, .offline)
@@ -322,14 +307,11 @@ final class EditSessionTests: XCTestCase {
         }
         XCTAssertTrue(recovered)
 
-        // Every single claim retry used the exact same persisted sessionId
         for call in server.calls(for: .claimSession) {
             XCTAssertEqual(call.decodedJSON()?["sessionId"] as? String, expectedSessionId)
         }
     }
 
-    // AC-3: 409 ATTEMPT_OPEN_ELSEWHERE -> stays OpenElsewhere forever (no auto takeover); answer/flag/choosePart ignored;
-    // takeover() sends takeover: true with stored sessionId, single in-flight, persists new sessionId, reloads, enters Editing.
     func testOpenElsewhereAndTakeover() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -359,12 +341,10 @@ final class EditSessionTests: XCTestCase {
         }
         XCTAssertTrue(asyncAssertResult14)
 
-        // Waiting 10 minutes must never auto-takeover
         await clock.advance(by: .seconds(600))
         XCTAssertEqual(server.callCount(for: .claimSession), 1)
         XCTAssertEqual(engine.state.session, .openElsewhere(lastSeenAt: otherLastSeen))
 
-        // answer, flag, choosePart must be complete no-ops in OpenElsewhere
         let itemId = server.firstLeafItemId()
         let partId = server.partId(at: 0)
         engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
@@ -377,7 +357,6 @@ final class EditSessionTests: XCTestCase {
         XCTAssertEqual(server.callCount(for: .saveAnswers), 0)
         XCTAssertEqual(server.callCount(for: .confirmPartChoice), 0)
 
-        // Single in-flight takeover()
         let takeoverGate = AttemptTestGate()
         server.setGate(takeoverGate, for: .claimSession)
         engine.takeover()

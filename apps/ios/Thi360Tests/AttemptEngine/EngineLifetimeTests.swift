@@ -93,7 +93,6 @@ final class EngineLifetimeTests: XCTestCase {
         engine1.position(partId: part1Id, itemId: item2)
         await engine1.waitForIdleForTesting()
 
-        // Simulate OS reclaiming process memory
         engine1.dispose()
 
         let (connectivity2, _) = AttemptEngineTestHarness.makeConnectivity(initialOnline: true)
@@ -143,7 +142,6 @@ final class EngineLifetimeTests: XCTestCase {
         engine.answer(itemId: item1, value: .singleChoice(optionId: "force-quit-choice"))
         await gate.waitUntilEntered(count: 1)
 
-        // Simulate user force-quitting app while save is still in-flight
         engine.dispose()
         await gate.releaseAll()
 

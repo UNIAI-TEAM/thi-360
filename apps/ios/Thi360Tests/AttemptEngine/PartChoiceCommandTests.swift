@@ -4,11 +4,6 @@ import XCTest
 
 @MainActor
 final class PartChoiceCommandTests: XCTestCase {
-    // AC-16: choosePart sends Idempotency-Key + X-Attempt-Session + {optionCode, subjectCodes?};
-    // same choice retains key on network error, changed choice rotates key;
-    // CHOICE_WINDOW_CLOSED/CHOICE_LOCKED/PART_NOT_AWAITING/PART_GENERATING reload & Refused(code);
-    // choiceDeadlineAt == 0 polls 500ms then 2s; GENERATING polls 1.5s; GENERATION_FAILED never auto-polls;
-    // retryGeneration rotates key per tap and retains key on network/408/429/5xx.
     func testChoosePartIdempotencyRefusalsPollingAndRetryGeneration() async throws {
         let clock = TestEngineClock()
         let baseNow = FlexibleISO8601DateTranscoder.parse("2026-11-20T10:00:00Z")!
@@ -49,7 +44,6 @@ final class PartChoiceCommandTests: XCTestCase {
         XCTAssertTrue(asyncAssertResult1)
         let choicePartId = try XCTUnwrap(engine.state.attempt?.parts?.first { $0.state == .AWAITING_CHOICE }?.partId)
 
-        // 1. Network failure retains Idempotency-Key for same choice; changing choice uses new key
         server.enqueue(.confirmPartChoice, .networkError(.timedOut))
         engine.choosePart(partId: choicePartId, optionCode: "SCI", subjectCodes: ["LY", "HOA", "SINH"])
         let asyncAssertResult2 = await clock.waitUntil { server.callCount(for: .confirmPartChoice) == 1 && engine.state.command == .refused(code: "NETWORK_ERROR") }
@@ -65,7 +59,6 @@ final class PartChoiceCommandTests: XCTestCase {
         XCTAssertEqual(callsChoice[0].decodedJSON()?["optionCode"] as? String, "SCI")
         XCTAssertEqual(callsChoice[0].decodedJSON()?["subjectCodes"] as? [String], ["LY", "HOA", "SINH"])
 
-        // Change choice -> new Idempotency-Key -> succeeds -> reloads into GENERATING
         engine.choosePart(partId: choicePartId, optionCode: "ENG", subjectCodes: nil)
         let asyncAssertResult4 = await clock.waitUntil {
             server.callCount(for: .confirmPartChoice) == 3
@@ -79,7 +72,6 @@ final class PartChoiceCommandTests: XCTestCase {
             "Changed choice must rotate Idempotency-Key"
         )
 
-        // 2. GENERATING polls every 1.5s
         let getsBeforeGenPoll = server.callCount(for: .getState)
         await clock.advance(by: .milliseconds(1499))
         XCTAssertEqual(server.callCount(for: .getState), getsBeforeGenPoll)
@@ -90,7 +82,6 @@ final class PartChoiceCommandTests: XCTestCase {
         let asyncAssertResult6 = await clock.waitUntil { server.callCount(for: .getState) == getsBeforeGenPoll + 2 }
         XCTAssertTrue(asyncAssertResult6)
 
-        // 3. GENERATION_FAILED does NOT auto-poll (A-88), and retryGeneration sends new key per tap & retains on 5xx/429/network
         server.mutateState { json in
             if var parts = json["parts"] as? [[String: Any]] {
                 for idx in parts.indices where parts[idx]["partId"] as? String == choicePartId {
@@ -109,7 +100,6 @@ final class PartChoiceCommandTests: XCTestCase {
         await clock.advance(by: .seconds(15))
         XCTAssertEqual(server.callCount(for: .getState), getsWhileFailed, "GENERATION_FAILED must never auto-poll")
 
-        // Retry fails with 503 -> retains key -> next retry succeeds with SAME key -> subsequent tap uses NEW key
         server.enqueue(.retryPartGeneration, try .serverError(statusCode: 503))
         engine.retryGeneration(partId: choicePartId)
         let asyncAssertResult8 = await clock.waitUntil { server.callCount(for: .retryPartGeneration) == 1 }
@@ -122,7 +112,6 @@ final class PartChoiceCommandTests: XCTestCase {
         let keyRetry2 = server.calls(for: .retryPartGeneration)[1].idempotencyKeyHeader
         XCTAssertEqual(keyRetry1, keyRetry2, "Retry after 5xx must reuse Idempotency-Key")
 
-        // Next fresh retry tap gets a brand new key (and handles 409 PART_GENERATING -> Refused + reload)
         server.enqueue(
             .retryPartGeneration,
             try .fixture(operationId: Operations.retryPartGeneration.id, status: 409, variant: "part-generating")
@@ -137,7 +126,6 @@ final class PartChoiceCommandTests: XCTestCase {
         XCTAssertTrue(asyncAssertResult10)
         XCTAssertNotEqual(server.calls(for: .retryPartGeneration)[2].idempotencyKeyHeader, keyRetry2)
 
-        // 4. CHOICE_WINDOW_CLOSED reloads and records choiceTimeout reason; choice deadline reaching 0 polls 500ms then 2s
         let timeoutClock = TestEngineClock()
         let (_, store2, dir2) = try AttemptEngineTestHarness.makeStore()
         defer { try? FileManager.default.removeItem(at: dir2) }
@@ -179,7 +167,6 @@ final class PartChoiceCommandTests: XCTestCase {
         }
         XCTAssertTrue(asyncAssertResult12)
 
-        // Advance to choiceDeadlineAt == 0 (5s) -> polls after 500ms, then every 2s until server closes attempt
         let getsBeforeTimeout = timeoutServer.callCount(for: .getState)
         await timeoutClock.advance(by: .seconds(5))
         XCTAssertEqual(timeoutServer.callCount(for: .getState), getsBeforeTimeout)
@@ -194,7 +181,6 @@ final class PartChoiceCommandTests: XCTestCase {
         let asyncAssertResult14 = await timeoutClock.waitUntil { timeoutServer.callCount(for: .getState) == getsBeforeTimeout + 2 }
         XCTAssertTrue(asyncAssertResult14)
 
-        // Server transitions to closed-choice-timeout -> stops polling and sets closed = .choiceTimeout
         try timeoutServer.setState(variant: "closed-choice-timeout")
         await timeoutClock.advance(by: .seconds(2))
         let asyncAssertResult15 = await timeoutClock.waitUntil { timeoutEngine.state.closed == .choiceTimeout }

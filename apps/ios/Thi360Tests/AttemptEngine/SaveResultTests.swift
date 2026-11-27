@@ -4,9 +4,6 @@ import XCTest
 
 @MainActor
 final class SaveResultTests: XCTestCase {
-    // AC-9: SAVED latest deletes draft -> Saved; SAVED older stays Pending & resends latest; STALE reloads & server wins when >=;
-    // REJECTED INVALID_ANSWER/NOT_IN_SCOPE stops resending & Unsaved(Rejected) until edit/save;
-    // REJECTED TIME_UP/PART_CLOSED locks item, emits PartClosed/AttemptClosed, reloads.
     func testSavedOlderSeqStaleAndRejectedResults() async throws {
         let clock = TestEngineClock()
         let (_, store, dir) = try AttemptEngineTestHarness.makeStore()
@@ -30,12 +27,10 @@ final class SaveResultTests: XCTestCase {
         let item1 = items[0]
         let item2 = items[1]
 
-        // 1. SAVED for older seq while user edits again -> stays Pending & sends newer seq -> Saved & draft deleted
         let gate = AttemptTestGate()
         server.setGate(gate, for: .saveAnswers)
         engine.answer(itemId: item1, value: .singleChoice(optionId: "a"))
         await gate.waitUntilEntered()
-        // Edit again while seq 1 is in-flight -> local seq becomes 2
         engine.answer(itemId: item1, value: .singleChoice(optionId: "b"))
         XCTAssertEqual(engine.state.answers[item1]?.seq, 2)
         server.setGate(nil, for: .saveAnswers)
@@ -50,7 +45,6 @@ final class SaveResultTests: XCTestCase {
         let draftAfterSave = await store.read(namespace: "attempt", key: "draft:\(server.attemptId):\(item1)")
         XCTAssertNil(draftAfterSave, "Draft must be deleted once latest seq is SAVED")
 
-        // 2. STALE -> reloads state and adopts server answer when serverSeq >= localSeq
         server.mutateState { json in
             if var parts = json["parts"] as? [[String: Any]],
                var partItems = parts[0]["items"] as? [[String: Any]]
@@ -79,7 +73,6 @@ final class SaveResultTests: XCTestCase {
         }
         XCTAssertTrue(asyncAssertResult3)
 
-        // 3. REJECTED INVALID_ANSWER -> stops resending until edited, save = Unsaved(Rejected) until next edit/save
         server.enqueue(
             .saveAnswers,
             try .fixture(operationId: Operations.saveAnswers.id, status: 200, variant: "rejected-invalid-answer") { obj in
@@ -95,14 +88,12 @@ final class SaveResultTests: XCTestCase {
         await clock.advance(by: .seconds(10))
         XCTAssertEqual(server.callCount(for: .saveAnswers), callsAfterReject, "Rejected item must NOT be retried until edited")
 
-        // Editing item2 again clears rejected and saves successfully
         engine.answer(itemId: item2, value: .singleChoice(optionId: "b"))
         let asyncAssertResult5 = await clock.waitUntil {
             engine.state.answers[item2]?.sync == .saved && engine.state.save == .saved
         }
         XCTAssertTrue(asyncAssertResult5)
 
-        // 4. REJECTED PART_CLOSED -> locks item, emits PartClosed, reloads state
         var events: [EngineEvent] = []
         let eventStream = engine.events
         let eventTask = Task {
@@ -135,7 +126,6 @@ final class SaveResultTests: XCTestCase {
         }
         XCTAssertTrue(asyncAssertResult6)
 
-        // 5. REJECTED TIME_UP -> locks item, emits AttemptClosed, reloads state
         let timeUpServer = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)
         let (_, store2, dir2) = try AttemptEngineTestHarness.makeStore()
         defer { try? FileManager.default.removeItem(at: dir2) }
