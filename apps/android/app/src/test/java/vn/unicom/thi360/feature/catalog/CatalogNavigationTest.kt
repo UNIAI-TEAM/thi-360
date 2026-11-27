@@ -21,10 +21,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.feature.payment.ui.PaymentTestTags
+import vn.unicom.thi360.feature.prepare.PrepareTestTags
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
 import vn.unicom.thi360.shell.routes.AppNavigator
+import vn.unicom.thi360.shell.routes.AppRoute
 import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
 import vn.unicom.thi360.testing.PortalTestHarness
@@ -165,20 +168,23 @@ class CatalogNavigationTest {
 
             composeRule.onNodeWithTag(CatalogTestTags.productPrimaryAction("EX-NONE")).performClick()
             composeRule.waitForIdle()
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("checkout")
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)
-                .assertTextContains("code=EX-NONE", substring = true)
-                .assertTextContains("seenVersionNo=3", substring = true)
-                .assertTextContains("seenPrice=175000", substring = true)
+            composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_SCREEN).assertIsDisplayed()
+            val checkoutArgs = navigatorRef!!.navController.currentBackStackEntry?.arguments
+            assertEquals("EX-NONE", checkoutArgs?.getString(AppRoute.ARG_CODE))
+            assertEquals("3", checkoutArgs?.getString(AppRoute.ARG_SEEN_VERSION_NO))
+            assertEquals("175000", checkoutArgs?.getString(AppRoute.ARG_SEEN_PRICE))
             composeRule.runOnIdle { navigatorRef!!.back() }
             now.addAndGet(1_000L)
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EX-START")
             composeRule.onNodeWithTag(CatalogTestTags.productPrimaryAction("EX-START")).performClick()
             composeRule.waitForIdle()
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("prepare")
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)
-                .assertTextContains("entitlementId=00000000-0000-7000-8000-000000000011", substring = true)
+            composeRule.onNodeWithTag(PrepareTestTags.SCREEN).assertIsDisplayed()
+            val prepareArgs = navigatorRef!!.navController.currentBackStackEntry?.arguments
+            assertEquals(
+                "00000000-0000-7000-8000-000000000011",
+                prepareArgs?.getString(AppRoute.ARG_ENTITLEMENT_ID),
+            )
             composeRule.runOnIdle { navigatorRef!!.back() }
             now.addAndGet(1_000L)
 
