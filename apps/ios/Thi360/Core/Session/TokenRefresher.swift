@@ -70,13 +70,15 @@ actor TokenRefresher {
         let startEpoch = sessionEpoch
         let refreshToken = currentTokens.refreshToken
         let storedUsername = currentTokens.username
+        let storedAccountId = currentTokens.accountId
 
         // Wrap the full actor-isolated commit so coalesced followers receive mergedTokens after persistence and event delivery.
         let task = Task<SessionTokens, Error> {
             try await self.performRefresh(
                 startEpoch: startEpoch,
                 refreshToken: refreshToken,
-                storedUsername: storedUsername
+                storedUsername: storedUsername,
+                storedAccountId: storedAccountId
             )
         }
         inFlightTask = task
@@ -95,7 +97,8 @@ actor TokenRefresher {
     private func performRefresh(
         startEpoch: UInt64,
         refreshToken: String,
-        storedUsername: String?
+        storedUsername: String?,
+        storedAccountId: String?
     ) async throws -> SessionTokens {
         do {
             let newTokens = try await refreshExecutor(refreshToken)
@@ -116,6 +119,7 @@ actor TokenRefresher {
                 refreshExpiresIn: newTokens.refreshExpiresIn,
                 mustChangePassword: newTokens.mustChangePassword,
                 username: newTokens.username ?? storedUsername,
+                accountId: newTokens.accountId ?? storedAccountId,
                 issuedAt: newTokens.issuedAt
             )
             try tokenStore.write(mergedTokens)

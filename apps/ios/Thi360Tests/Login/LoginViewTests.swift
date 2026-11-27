@@ -27,9 +27,7 @@ final class LoginViewTests: XCTestCase {
             .phoneTwoPaneBook
         )
 
-        let (sessionStore, _, _, preferences) = SessionTestFactory.makeStack { _ in
-            MockClientTransport.emptyResponse(statusCode: 500)
-        }
+        let (sessionStore, _, _, preferences) = try SessionTestFactory.makeContractStack()
         XCTAssertEqual(sessionStore.state, .signedOut(reason: .none))
 
         let router = AppRouter()
@@ -86,10 +84,8 @@ final class LoginViewTests: XCTestCase {
         try renderAndVerifyLoginSnapshots()
     }
 
-    func testValidation() async {
-        let (sessionStore, _, transport, _) = SessionTestFactory.makeStack { _ in
-            MockClientTransport.emptyResponse(statusCode: 500)
-        }
+    func testValidation() async throws {
+        let (sessionStore, _, transport, _) = try SessionTestFactory.makeContractStack()
 
         let viewModel = LoginViewModel(sessionStore: sessionStore)
         await viewModel.submit()
@@ -133,11 +129,15 @@ final class LoginViewTests: XCTestCase {
 
     func testSubmitsOnce() async throws {
         let loginFixture = try ContractFixtureLoader.loadAuthFixture("login-200.json")
+        let meFixture = try ContractFixtureLoader.loadApiFixture("me-200.json")
         let gate = AsyncGate()
 
-        let (sessionStore, _, transport, _) = SessionTestFactory.makeStack { _ in
-            await gate.markEnteredAndWait()
-            return MockClientTransport.jsonResponse(statusCode: 200, data: loginFixture)
+        let (sessionStore, _, transport, _) = try SessionTestFactory.makeContractStack { transport in
+            transport.register(method: .post, path: "/api/v1/auth/mobile/login") { _ in
+                await gate.markEnteredAndWait()
+                return ContractFakeTransport.jsonResponse(statusCode: 200, data: loginFixture)
+            }
+            transport.registerJSON(method: .get, path: "/api/v1/me", statusCode: 200, data: meFixture)
         }
 
         let viewModel = LoginViewModel(sessionStore: sessionStore)
@@ -156,13 +156,17 @@ final class LoginViewTests: XCTestCase {
         }
         await secondTask.value
 
-        XCTAssertEqual(transport.recordedRequests.count, 1, "Second submit while in flight must be ignored")
+        XCTAssertEqual(
+            transport.callCount(method: .post, path: "/api/v1/auth/mobile/login"),
+            1,
+            "Second submit while in flight must be ignored"
+        )
 
         await gate.release()
         await firstTask.value
 
         XCTAssertFalse(viewModel.isSubmitting)
-        XCTAssertEqual(transport.recordedRequests.count, 1)
+        XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/mobile/login"), 1)
         XCTAssertEqual(sessionStore.state, .active)
         XCTAssertEqual(viewModel.password, "")
     }
@@ -222,8 +226,13 @@ final class LoginViewTests: XCTestCase {
                 bodyData = Data(try XCTUnwrap(errorCase.customJSON).utf8)
             }
 
-            let (sessionStore, tokenStore, _, _) = SessionTestFactory.makeStack { _ in
-                MockClientTransport.jsonResponse(statusCode: errorCase.statusCode, data: bodyData)
+            let (sessionStore, tokenStore, _, _) = try SessionTestFactory.makeContractStack { transport in
+                transport.registerJSON(
+                    method: .post,
+                    path: "/api/v1/auth/mobile/login",
+                    statusCode: errorCase.statusCode,
+                    data: bodyData
+                )
             }
 
             let viewModel = LoginViewModel(sessionStore: sessionStore)
@@ -264,9 +273,7 @@ final class LoginViewTests: XCTestCase {
         for spec in specs {
             var renderedPNGs: [ThemeMode: Data] = [:]
             for mode in ThemeMode.allCases {
-                let (sessionStore, _, _, preferences) = SessionTestFactory.makeStack { _ in
-                    MockClientTransport.emptyResponse(statusCode: 500)
-                }
+                let (sessionStore, _, _, preferences) = try SessionTestFactory.makeContractStack()
                 preferences.themeMode = mode
 
                 let rootView = AppRootView(

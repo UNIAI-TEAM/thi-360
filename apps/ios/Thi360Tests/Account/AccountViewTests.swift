@@ -24,10 +24,10 @@ final class AccountViewTests: XCTestCase {
             """.utf8
         )
 
-        let stack = AccountTestFactory.makeStack(
+        let stack = AccountTestFactory.makeContractStack(
             initialTokens: AccountTestFactory.sampleTokens()
-        ) { _ in
-            MockClientTransport.jsonResponse(statusCode: 200, data: verifiedData)
+        ) { transport in
+            transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: verifiedData)
         }
         defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
 
@@ -70,9 +70,7 @@ final class AccountViewTests: XCTestCase {
         let editableFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
         XCTAssertTrue(editableFields.isEmpty, "Account profile details must be read-only with zero text fields")
 
-        stack.transport.setHandler { _ in
-            MockClientTransport.jsonResponse(statusCode: 200, data: unverifiedData)
-        }
+        stack.transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: unverifiedData)
         await viewModel.loadProfile()
         guard case let .loaded(unverifiedProfile) = viewModel.profileState else {
             return XCTFail("Expected unverified profile")
@@ -80,9 +78,7 @@ final class AccountViewTests: XCTestCase {
         XCTAssertEqual(unverifiedProfile.trimmedEmail, "chau@thi360.vn")
         XCTAssertFalse(unverifiedProfile.emailVerified)
 
-        stack.transport.setHandler { _ in
-            MockClientTransport.jsonResponse(statusCode: 200, data: noEmailData)
-        }
+        stack.transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: noEmailData)
         await viewModel.loadProfile()
         guard case let .loaded(noEmailProfile) = viewModel.profileState else {
             return XCTFail("Expected no-email profile")
@@ -97,12 +93,14 @@ final class AccountViewTests: XCTestCase {
         let verifiedData = try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
         let gate = TestAsyncGate()
 
-        let stack = AccountTestFactory.makeStack(
+        let stack = AccountTestFactory.makeContractStack(
             initialTokens: AccountTestFactory.sampleTokens(),
             capability: .faceIDAvailable
-        ) { _ in
-            await gate.enterAndWait()
-            return MockClientTransport.emptyResponse(statusCode: 500)
+        ) { transport in
+            transport.register(method: .get, path: "/api/v1/me/profile") { _ in
+                await gate.enterAndWait()
+                return ContractFakeTransport.emptyResponse(statusCode: 500)
+            }
         }
         defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
 
@@ -121,7 +119,6 @@ final class AccountViewTests: XCTestCase {
         await loadTask.value
         XCTAssertEqual(viewModel.profileState, .error)
 
-        // Local settings (language, theme, biometric) remain usable even when profile fetch failed.
         stack.preferences.locale = .en
         stack.preferences.themeMode = .dark
         await viewModel.setBiometricEnabled(true, locale: .en)
@@ -129,18 +126,14 @@ final class AccountViewTests: XCTestCase {
         XCTAssertEqual(stack.preferences.themeMode, .dark)
         XCTAssertTrue(viewModel.isBiometricSwitchOn)
 
-        stack.transport.setHandler { _ in
-            throw URLError(.notConnectedToInternet)
-        }
+        stack.transport.registerNetworkError(method: .get, path: "/api/v1/me/profile", code: .notConnectedToInternet)
         await viewModel.loadProfile()
         XCTAssertEqual(viewModel.profileState, .offline)
 
         await viewModel.setBiometricEnabled(false, locale: .en)
         XCTAssertFalse(viewModel.isBiometricSwitchOn)
 
-        stack.transport.setHandler { _ in
-            MockClientTransport.jsonResponse(statusCode: 200, data: verifiedData)
-        }
+        stack.transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: verifiedData)
         await viewModel.loadProfile()
         guard case let .loaded(profile) = viewModel.profileState else {
             return XCTFail("Retry after offline must load profile")
@@ -186,13 +179,13 @@ final class AccountViewTests: XCTestCase {
         for item in cases {
             var pngs: [ThemeMode: Data] = [:]
             for mode in ThemeMode.allCases {
-                let stack = AccountTestFactory.makeStack(
+                let stack = AccountTestFactory.makeContractStack(
                     initialTokens: AccountTestFactory.sampleTokens(),
                     capability: item.capability,
                     initialEnrolled: true,
                     themeMode: mode
-                ) { _ in
-                    MockClientTransport.jsonResponse(statusCode: 200, data: verifiedData)
+                ) { transport in
+                    transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: verifiedData)
                 }
                 defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
                 stack.sessionStore.unlockSession()

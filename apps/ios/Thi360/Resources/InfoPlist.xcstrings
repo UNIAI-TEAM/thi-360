@@ -7,13 +7,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thi 360 uses Face ID to unlock the app quickly and securely."
+            "value" : "Thi360 uses Face ID to unlock the app quickly and securely."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thi 360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn."
+            "value" : "Thi360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn."
           }
         }
       }

@@ -81,15 +81,21 @@ struct RedactingAppLogger: Sendable {
         "code",
         "otp",
         "otpcode",
-        "verificationcode"
+        "verificationcode",
+        "vouchercode",
+        "voucher_code"
     ]
 
     private static let redactionPatterns: [(NSRegularExpression, String)] = {
+        let sensitiveFieldNames = "password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode|voucherCode|voucher_code|vnp_[A-Za-z0-9_]+"
         let definitions: [(String, String)] = [
             (#"(?i)(Bearer\s+)[^\s,;"')]+"#, "$1<redacted>"),
-            (#"(?i)("(?:password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode)"\s*:\s*")[^"]*(")"#, "$1<redacted>$2"),
-            (#"(?i)\b(password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode)(\s*:\s*")[^"]*(")"#, "$1$2<redacted>$3"),
-            (#"(?i)\b(password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode)(\s*=\s*)[^\s&,;)"'\]\}]+"#, "$1$2<redacted>")
+            ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*\")[^\"]*(\")", "$1<redacted>$2"),
+            ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*)(?!\"|null\\b)[^\\s,}\\]]+", "$1\"<redacted>\""),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\(\")[^\"]*(\"\\))", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\()(?!\"|nil\\))[^)]+(\\))", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*\")[^\"]*(\")", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*=\\s*)[^\\s&,;)\"'\\]\\}]+", "$1$2<redacted>")
         ]
         return definitions.compactMap { pattern, replacement in
             guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
@@ -147,13 +153,18 @@ struct RedactingAppLogger: Sendable {
         sensitiveHeaderNames.contains(name.lowercased())
     }
 
+    static func isSensitiveQueryKey(_ name: String) -> Bool {
+        let lowered = name.lowercased()
+        return sensitiveQueryKeys.contains(lowered) || lowered.hasPrefix("vnp_")
+    }
+
     static func sanitizePath(_ rawPath: String) -> String {
         guard var components = URLComponents(string: rawPath) else {
             return redact(rawPath)
         }
         if let queryItems = components.queryItems, !queryItems.isEmpty {
             components.queryItems = queryItems.map { item in
-                if sensitiveQueryKeys.contains(item.name.lowercased()) {
+                if isSensitiveQueryKey(item.name) {
                     return URLQueryItem(name: item.name, value: redactedToken)
                 }
                 return item

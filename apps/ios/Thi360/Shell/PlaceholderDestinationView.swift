@@ -2,24 +2,9 @@ import SwiftUI
 
 struct BrandWordmarkHeader: View {
     let locale: AppLocale
-    @Environment(\.brandPalette) private var palette
 
     var body: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(palette.primaryFillColor)
-                    .frame(width: 30, height: 30)
-                Image(systemName: "checkmark.circle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(palette.onPrimaryColor)
-            }
-            .accessibilityHidden(true)
-
-            Text(ShellStrings.text("shell.app.name", locale: locale))
-                .font(.headline.weight(.bold))
-                .foregroundStyle(palette.textColor)
-        }
+        BrandMark(markSize: 30, locale: locale)
     }
 }
 

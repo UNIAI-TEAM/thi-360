@@ -93,9 +93,13 @@ final class AccessibilityAuditUITests: XCTestCase {
         scrollUntilHittable(termsCheckbox, in: app)
         assertInteractiveTarget(termsCheckbox, context: "Register termsCheckbox")
 
-        let viewTermsButton = app.buttons["register.viewTermsButton"].firstMatch
-        scrollUntilHittable(viewTermsButton, in: app)
-        assertInteractiveTarget(viewTermsButton, context: "Register viewTermsButton")
+        let termsLink = app.buttons["register.termsLinkTerms"].firstMatch
+        scrollUntilHittable(termsLink, in: app)
+        assertInteractiveTarget(termsLink, context: "Register termsLinkTerms")
+
+        let privacyLink = app.buttons["register.termsLinkPrivacy"].firstMatch
+        scrollUntilHittable(privacyLink, in: app)
+        assertInteractiveTarget(privacyLink, context: "Register termsLinkPrivacy")
 
         let registerSubmit = app.buttons["register.submitButton"].firstMatch
         scrollUntilHittable(registerSubmit, in: app)

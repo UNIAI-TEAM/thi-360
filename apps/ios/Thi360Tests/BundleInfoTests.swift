@@ -5,13 +5,67 @@ final class BundleInfoTests: XCTestCase {
     func testBundleIdentityAndMinimumDeploymentTarget() {
         let bundle = Bundle.main
         XCTAssertEqual(bundle.bundleIdentifier, "vn.unicom.thi360")
-        XCTAssertEqual(bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String, "Thi 360")
-        XCTAssertEqual(bundle.object(forInfoDictionaryKey: "MinimumOSVersion") as? String, "17.0")
+        XCTAssertEqual(bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String, "Thi360")
+        XCTAssertEqual(bundle.object(forInfoDictionaryKey: "MinimumOSVersion") as? String, "18.0")
         XCTAssertEqual(bundle.object(forInfoDictionaryKey: "CFBundleDevelopmentRegion") as? String, "vi")
+
+        let faceIDUsage = bundle.object(forInfoDictionaryKey: "NSFaceIDUsageDescription") as? String ?? ""
+        XCTAssertTrue(faceIDUsage.contains("Thi360"), "NSFaceIDUsageDescription must reference Thi360")
+        XCTAssertFalse(faceIDUsage.contains("Thi 360"), "NSFaceIDUsageDescription must not contain Thi 360")
 
         let localizations = bundle.object(forInfoDictionaryKey: "CFBundleLocalizations") as? [String] ?? []
         XCTAssertTrue(localizations.contains("vi"))
         XCTAssertTrue(localizations.contains("en"))
+    }
+
+    func testNoNewPrivacyKeys() throws {
+        let resourcesURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Thi360/Resources", isDirectory: true)
+
+        let allowedKeys: Set<String> = [
+            "CFBundleDevelopmentRegion",
+            "CFBundleDisplayName",
+            "CFBundleExecutable",
+            "CFBundleIdentifier",
+            "CFBundleInfoDictionaryVersion",
+            "CFBundleLocalizations",
+            "CFBundleName",
+            "CFBundlePackageType",
+            "CFBundleShortVersionString",
+            "CFBundleVersion",
+            "LSRequiresIPhoneOS",
+            "NSAppTransportSecurity",
+            "NSFaceIDUsageDescription",
+            "THI360_API_BASE_URL",
+            "THI360_ENV",
+            "THI360_SUPPORT_EMAIL",
+            "THI360_SUPPORT_HOURS",
+            "THI360_SUPPORT_PHONE",
+            "THI360_WEB_BASE_URL",
+            "UIApplicationSceneManifest",
+            "UIApplicationSupportsIndirectInputEvents",
+            "UILaunchScreen",
+            "UIRequiresFullScreen",
+            "UISupportedInterfaceOrientations",
+            "UISupportedInterfaceOrientations~ipad"
+        ]
+
+        for filename in ["Info-Dev.plist", "Info-Demo.plist"] {
+            let plistURL = resourcesURL.appendingPathComponent(filename)
+            let data = try Data(contentsOf: plistURL)
+            let plist = try XCTUnwrap(
+                PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+                "Failed to parse \(filename)"
+            )
+            let actualKeys = Set(plist.keys)
+            let unexpected = actualKeys.subtracting(allowedKeys).sorted()
+            XCTAssertTrue(unexpected.isEmpty, "\(filename) added unexpected Info.plist keys: \(unexpected)")
+
+            let privacyKeys = actualKeys.filter { $0.hasPrefix("NS") && $0.hasSuffix("UsageDescription") }
+            XCTAssertEqual(privacyKeys, ["NSFaceIDUsageDescription"], "\(filename) must not declare extra privacy keys")
+        }
     }
 
     func testDefaultBrandPaletteContainsSeventeenWebTokens() {

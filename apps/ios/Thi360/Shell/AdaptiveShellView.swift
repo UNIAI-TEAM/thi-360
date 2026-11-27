@@ -8,6 +8,8 @@ struct AdaptiveShellView: View {
     var sessionStore: SessionStore? = nil
     var accountViewModel: AccountViewModel? = nil
     var serverDefaultThemeMode: ThemeMode = .light
+    var legalRepository: LegalRepository = LegalRepository()
+    var webBaseURL: URL = AppEnvironment.current.webBaseURL
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.brandPalette) private var palette
@@ -24,15 +26,23 @@ struct AdaptiveShellView: View {
     }
 
     var body: some View {
-        Group {
-            switch layoutMode {
-            case .compactTabBar:
-                compactTabShell
-            case .iPadSidebar:
-                iPadSidebarShell
-            case .phoneTwoPaneBook:
-                phoneTwoPaneBookShell
+        GeometryReader { proxy in
+            let widthClass = ShellWidth.resolve(
+                horizontalSizeClass: effectiveSizeClass,
+                layoutMode: layoutMode,
+                availableWidth: proxy.size.width
+            )
+            Group {
+                switch layoutMode {
+                case .compactTabBar:
+                    compactTabShell
+                case .iPadSidebar:
+                    iPadSidebarShell
+                case .phoneTwoPaneBook:
+                    phoneTwoPaneBookShell(totalWidth: proxy.size.width, fullWidthClass: widthClass)
+                }
             }
+            .environment(\.shellWidth, widthClass)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(layoutMode.accessibilityIdentifier)
@@ -47,8 +57,19 @@ struct AdaptiveShellView: View {
     private var compactTabShell: some View {
         TabView(selection: $router.selectedDestination) {
             ForEach(Destination.allCases) { destination in
-                NavigationStack {
+                NavigationStack(path: router.pathBinding(for: destination)) {
                     destinationContent(for: destination, showsBrandHeader: destination == .home)
+                        .id(router.reloadCount(for: destination))
+                        .navigationDestination(for: AppRoute.self) { route in
+                            AppRouteView(
+                                route: route,
+                                destination: destination,
+                                router: router,
+                                preferences: preferences,
+                                legalRepository: legalRepository,
+                                webBaseURL: webBaseURL
+                            )
+                        }
                 }
                 .tabItem {
                     Label(
@@ -118,46 +139,144 @@ struct AdaptiveShellView: View {
             .accessibilityLabel(ShellStrings.text("shell.nav.label", locale: preferences.locale))
             .accessibilityIdentifier("shell.ipad.sidebar")
         } detail: {
-            NavigationStack {
+            NavigationStack(path: router.pathBinding(for: router.selectedDestination)) {
                 destinationContent(for: router.selectedDestination, showsBrandHeader: false)
+                    .id(router.reloadCount(for: router.selectedDestination))
+                    .navigationDestination(for: AppRoute.self) { route in
+                        AppRouteView(
+                            route: route,
+                            destination: router.selectedDestination,
+                            router: router,
+                            preferences: preferences,
+                            legalRepository: legalRepository,
+                            webBaseURL: webBaseURL
+                        )
+                    }
             }
         }
         .navigationSplitViewStyle(.balanced)
     }
 
-    private var phoneTwoPaneBookShell: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                NavigationStack {
-                    leftBookPaneContent
+    private func destinationSpansBothPanesOnPhoneBook(_ destination: Destination) -> Bool {
+        switch destination {
+        case .home:
+            CatalogRoutes.spansBothPanesOnPhoneBook
+        case .myExams:
+            MyExamsRoutes.myExamsSpansBothPanesOnPhoneBook
+        case .history:
+            MyExamsRoutes.historySpansBothPanesOnPhoneBook
+        case .account:
+            false
+        }
+    }
+
+    static func phoneBookHalfPaneWidth(totalWidth: CGFloat) -> CGFloat {
+        max(0, (totalWidth - 1) / 2)
+    }
+
+    static func phoneBookHalfPaneShellWidth(
+        horizontalSizeClass: UserInterfaceSizeClass?,
+        layoutMode: ShellLayoutMode,
+        totalWidth: CGFloat
+    ) -> ShellWidth {
+        let halfWidth = phoneBookHalfPaneWidth(totalWidth: totalWidth)
+        guard halfWidth > 0 else { return .wide }
+        return ShellWidth.resolve(
+            horizontalSizeClass: horizontalSizeClass,
+            layoutMode: layoutMode,
+            availableWidth: halfWidth
+        )
+    }
+
+    @ViewBuilder
+    private func phoneTwoPaneBookShell(totalWidth: CGFloat, fullWidthClass: ShellWidth) -> some View {
+        let halfWidth = Self.phoneBookHalfPaneWidth(totalWidth: totalWidth)
+        let halfWidthClass = Self.phoneBookHalfPaneShellWidth(
+            horizontalSizeClass: effectiveSizeClass,
+            layoutMode: layoutMode,
+            totalWidth: totalWidth
+        )
+
+        if destinationSpansBothPanesOnPhoneBook(router.selectedDestination) {
+            NavigationStack(path: router.pathBinding(for: router.selectedDestination)) {
+                destinationContent(for: router.selectedDestination, showsBrandHeader: true)
+                    .id(router.reloadCount(for: router.selectedDestination))
+                    .navigationDestination(for: AppRoute.self) { route in
+                        AppRouteView(
+                            route: route,
+                            destination: router.selectedDestination,
+                            router: router,
+                            preferences: preferences,
+                            legalRepository: legalRepository,
+                            webBaseURL: webBaseURL
+                        )
+                    }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if router.path(for: router.selectedDestination).isEmpty {
+                    HStack(spacing: 0) {
+                        duoLeftTabBar
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 12)
+                            .frame(width: halfWidth)
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(palette.bgPageColor.ignoresSafeArea())
+            .environment(\.shellWidth, fullWidthClass)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("shell.duo.fullSpanPane")
+        } else {
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    NavigationStack {
+                        leftBookPaneContent
+                            .id(router.reloadCount(for: router.selectedDestination))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    duoLeftTabBar
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
+                        .background(palette.bgPageColor)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(palette.bgPageColor)
+                .environment(\.shellWidth, halfWidthClass)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("shell.duo.leftPane")
 
-                duoLeftTabBar
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
-                    .background(palette.bgPageColor)
+                Rectangle()
+                    .fill(palette.borderColor)
+                    .frame(width: 1)
+                    .ignoresSafeArea()
+
+                NavigationStack(path: router.pathBinding(for: router.selectedDestination)) {
+                    rightBookPaneContent
+                        .id(router.reloadCount(for: router.selectedDestination))
+                        .navigationDestination(for: AppRoute.self) { route in
+                            AppRouteView(
+                                route: route,
+                                destination: router.selectedDestination,
+                                router: router,
+                                preferences: preferences,
+                                legalRepository: legalRepository,
+                                webBaseURL: webBaseURL
+                            )
+                        }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(palette.bgPageColor)
+                .environment(\.shellWidth, halfWidthClass)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("shell.duo.rightPane")
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.bgPageColor)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("shell.duo.leftPane")
-
-            Rectangle()
-                .fill(palette.borderColor)
-                .frame(width: 1)
-                .ignoresSafeArea()
-
-            NavigationStack {
-                rightBookPaneContent
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.bgPageColor)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("shell.duo.rightPane")
+            .background(palette.bgPageColor.ignoresSafeArea())
         }
-        .background(palette.bgPageColor.ignoresSafeArea())
     }
 
     @ViewBuilder
@@ -184,39 +303,8 @@ struct AdaptiveShellView: View {
                 )
             }
         case .home, .myExams, .history:
-            duoLeftOverviewPane(for: router.selectedDestination)
+            destinationContent(for: router.selectedDestination, showsBrandHeader: true)
         }
-    }
-
-    private func duoLeftOverviewPane(for destination: Destination) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                BrandWordmarkHeader(locale: preferences.locale)
-
-                Text(ShellStrings.text(destination.titleKey, locale: preferences.locale))
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(palette.textColor)
-                    .accessibilityAddTraits(.isHeader)
-
-                if let descriptionKey = destination.placeholderDescriptionKey {
-                    Text(ShellStrings.text(descriptionKey, locale: preferences.locale))
-                        .font(.subheadline)
-                        .foregroundStyle(palette.textMutedColor)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(palette.bgSurfaceColor)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(palette.borderColor, lineWidth: 1)
-                        )
-                }
-            }
-            .padding(20)
-        }
-        .background(palette.bgPageColor.ignoresSafeArea())
     }
 
     @ViewBuilder
@@ -237,22 +325,27 @@ struct AdaptiveShellView: View {
                     effectiveSizeClass: effectiveSizeClass
                 )
             }
-        case .home, .myExams, .history:
-            PlaceholderDestinationView(
-                destination: router.selectedDestination,
-                locale: preferences.locale,
-                showsBrandHeader: false
-            )
+        case .home:
+            CatalogRoutes.homeEmptyDetail(router: router, preferences: preferences)
+        case .myExams:
+            MyExamsRoutes.myExamsEmptyDetail(router: router, preferences: preferences)
+        case .history:
+            MyExamsRoutes.historyEmptyDetail(router: router, preferences: preferences)
         }
     }
 
     @ViewBuilder
     private func destinationContent(for destination: Destination, showsBrandHeader: Bool) -> some View {
         switch destination {
-        case .home, .myExams, .history:
-            PlaceholderDestinationView(
-                destination: destination,
-                locale: preferences.locale,
+        case .home:
+            CatalogRoutes.homeRoot(router: router, preferences: preferences, showsBrandHeader: showsBrandHeader)
+        case .myExams:
+            MyExamsRoutes.myExamsRoot(router: router, preferences: preferences, showsBrandHeader: showsBrandHeader)
+        case .history:
+            MyExamsRoutes.historyRoot(
+                resetFilters: router.historyResetFilters,
+                router: router,
+                preferences: preferences,
                 showsBrandHeader: showsBrandHeader
             )
         case .account:

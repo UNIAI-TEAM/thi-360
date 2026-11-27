@@ -1701,53 +1701,19 @@
         }
       }
     },
-    "recovery.register.termsBody" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[TERMS OF USE TEXT, DRAFT PENDING CONFIRMATION BY THE OPERATOR]"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "[NỘI DUNG ĐIỀU KHOẢN SỬ DỤNG, BẢN TẠM CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]"
-          }
-        }
-      }
-    },
-    "recovery.register.termsDraft" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Draft text, pending confirmation by the operator."
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bản tạm, chờ đơn vị vận hành xác nhận."
-          }
-        }
-      }
-    },
     "recovery.register.termsLabel" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I have read and agree to the Terms of Use of Thi 360."
+            "value" : "I have read and agree to the <terms>General Transaction Terms</terms> and <privacy>Information Privacy Policy</privacy> of Thi360."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tôi đã đọc và đồng ý với Điều khoản sử dụng của Thi 360."
+            "value" : "Tôi đã đọc và đồng ý với <terms>Điều kiện giao dịch chung</terms> và <privacy>Chính sách bảo mật thông tin</privacy> của Thi360."
           }
         }
       }
@@ -1758,47 +1724,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You must agree to the Terms of Use to register."
+            "value" : "You must agree to the General Transaction Terms and Information Privacy Policy to register."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bạn cần đồng ý với Điều khoản sử dụng để đăng ký."
-          }
-        }
-      }
-    },
-    "recovery.register.termsTitle" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terms of Use"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Điều khoản sử dụng"
-          }
-        }
-      }
-    },
-    "recovery.register.termsView" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View the Terms of Use"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Xem Điều khoản sử dụng"
+            "value" : "Bạn cần đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin để đăng ký."
           }
         }
       }

@@ -26,7 +26,7 @@ final class StateRestorationTests: XCTestCase {
         XCTAssertTrue(textField.waitForExistence(timeout: 5), "Probe text field should exist on Account screen")
 
         textField.tap()
-        let sampleText = "Thi 360 state check"
+        let sampleText = "Thi360 state check"
         textField.typeText(sampleText)
         XCTAssertEqual(textField.value as? String, sampleText)
 
