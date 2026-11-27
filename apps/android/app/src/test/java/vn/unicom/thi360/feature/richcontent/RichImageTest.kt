@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import okhttp3.mockwebserver.MockResponse
@@ -193,6 +195,83 @@ class RichImageTest {
             }
             assertEquals(2, hits.get())
             composeRule.onNodeWithContentDescription("Nội dung câu hỏi giữ nguyên").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp-xhdpi")
+    fun doubleTapOnErrorCardSendsSingleRetryRequest() {
+        val assetId = "22345678-1234-4234-8234-1234567890ab"
+        val attemptId = "att-retry-double-tap"
+        val html = """<figure class="image" data-width="full" data-zoom="false"><img src="" data-asset-id="$assetId" alt="Đồ thị hàm số"></figure>"""
+        val doc = RichHtmlParser.parse(html)
+        val notFoundFixture = ContractFixtureIndex.find("downloadAttemptAsset", 404)
+        val hits = AtomicInteger(0)
+        val retryEntered = CountDownLatch(1)
+        val releaseRetry = CountDownLatch(1)
+
+        PortalTestHarness.create(initialTokens = testTokens()) {
+            respondDynamic("GET", "/api/v1/me/attempts/$attemptId/assets/$assetId") {
+                val n = hits.incrementAndGet()
+                if (n == 1) {
+                    MockResponse()
+                        .setResponseCode(404)
+                        .addHeader("Content-Type", "application/json")
+                        .setBody(notFoundFixture.file.readText(Charsets.UTF_8))
+                } else {
+                    retryEntered.countDown()
+                    releaseRetry.await(5, TimeUnit.SECONDS)
+                    MockResponse()
+                        .setResponseCode(200)
+                        .addHeader("Content-Type", "image/png")
+                        .setBody(Buffer().write(samplePng))
+                }
+            }
+        }.use { harness ->
+            val assetSource = AttemptAssetSource(
+                attemptId = attemptId,
+                baseUrl = harness.server.url("/"),
+                client = harness.stack.authenticatedOkHttpClient,
+                cacheDir = cacheDir,
+            )
+
+            composeRule.setContent {
+                Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
+                    CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
+                        RichContentView(document = doc, assets = assetSource)
+                    }
+                }
+            }
+
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(RichContentTestTags.IMAGE_ERROR).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+            assertEquals(1, hits.get())
+
+            composeRule.mainClock.autoAdvance = false
+            try {
+                composeRule.onNodeWithTag(RichContentTestTags.IMAGE_ERROR).performClick()
+                composeRule.onNodeWithTag(RichContentTestTags.IMAGE_ERROR).performClick()
+                composeRule.mainClock.advanceTimeByFrame()
+                composeRule.onNodeWithTag(RichContentTestTags.IMAGE_LOADING).assertIsDisplayed()
+                composeRule.onNodeWithTag(RichContentTestTags.IMAGE_ERROR).assertDoesNotExist()
+            } finally {
+                composeRule.mainClock.autoAdvance = true
+            }
+
+            assertTrue("Expected retry request to reach server", retryEntered.await(5, TimeUnit.SECONDS))
+            releaseRetry.countDown()
+
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(RichContentTestTags.IMAGE_CONTENT).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+            assertEquals("Double-tapping error card must send strictly 1 retry request (total 2)", 2, hits.get())
         }
     }
 }

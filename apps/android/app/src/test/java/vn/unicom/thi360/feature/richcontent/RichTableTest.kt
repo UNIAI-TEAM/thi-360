@@ -31,11 +31,17 @@ import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.theme.Thi360Theme
 import vn.unicom.thi360.feature.richcontent.formula.SourceBoxFormulaEngine
+import vn.unicom.thi360.feature.richcontent.model.RichBlock
+import vn.unicom.thi360.feature.richcontent.model.RichInline
+import vn.unicom.thi360.feature.richcontent.model.RichTable
+import vn.unicom.thi360.feature.richcontent.model.RichTableCell
+import vn.unicom.thi360.feature.richcontent.model.RichTableRow
 import vn.unicom.thi360.feature.richcontent.parser.RichHtmlParser
 import vn.unicom.thi360.feature.richcontent.ui.LocalFormulaEngine
 import vn.unicom.thi360.feature.richcontent.ui.RaTeXSpan
 import vn.unicom.thi360.feature.richcontent.ui.RichContentTestTags
 import vn.unicom.thi360.feature.richcontent.ui.RichContentView
+import vn.unicom.thi360.feature.richcontent.ui.TableGridLayoutPlanner
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -172,5 +178,58 @@ class RichTableTest {
             "8-column 7-digit table content ($totalCellsWidth px) must exceed 360dp ($viewportPx px) so it scrolls inside its own frame",
             totalCellsWidth > viewportPx,
         )
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun extremeColspanAndRowspanAreBoundedAndRenderWithoutCrash() {
+        val html = """
+            <figure class="data-table">
+                <table>
+                    <tbody>
+                        <tr><td colspan="999999" rowspan="999999">x</td></tr>
+                        <tr><td colspan="4500000">y</td></tr>
+                    </tbody>
+                </table>
+            </figure>
+        """.trimIndent()
+        val parsed = RichHtmlParser.parseWithViolations(html)
+        assertTrue("Valid numeric span attributes should not raise sanitize violations", parsed.violations.isEmpty())
+
+        val programmatic = RichTable(
+            rows = listOf(
+                RichTableRow(
+                    cells = listOf(
+                        RichTableCell(
+                            isHeader = false,
+                            scope = null,
+                            isNumeric = false,
+                            colspan = Int.MAX_VALUE,
+                            rowspan = Int.MAX_VALUE,
+                            blocks = listOf(RichBlock.Paragraph(listOf(RichInline.Text("z")))),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val plan = TableGridLayoutPlanner.plan(programmatic)
+        assertEquals(TableGridLayoutPlanner.MAX_COLSPAN, plan.colCount)
+        assertEquals(1, plan.rowCount)
+
+        composeRule.setContent {
+            Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
+                CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
+                    Box(modifier = Modifier.width(360.dp)) {
+                        RichContentView(document = parsed.document, assets = null)
+                    }
+                }
+            }
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(RichContentTestTags.TABLE_SCROLL).assertIsDisplayed()
+        val tvs = collectTextViews(composeRule.activity.window.decorView)
+        assertTrue(tvs.any { it.text.toString() == "x" })
+        assertTrue(tvs.any { it.text.toString() == "y" })
     }
 }

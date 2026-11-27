@@ -50,6 +50,9 @@ internal data class TableGridPlan(
 )
 
 internal object TableGridLayoutPlanner {
+    internal const val MAX_COLSPAN = 64
+    internal const val MAX_ROWSPAN = 200
+
     fun plan(table: RichTable): TableGridPlan {
         val occupied = mutableMapOf<Pair<Int, Int>, Boolean>()
         val placements = mutableListOf<PlacedTableCell>()
@@ -58,12 +61,14 @@ internal object TableGridLayoutPlanner {
 
         table.rows.forEachIndexed { rowIdx, row ->
             var colIdx = 0
+            val remainingRows = (table.rows.size - rowIdx).coerceAtLeast(1)
+            val maxRowSpan = minOf(remainingRows, MAX_ROWSPAN)
             for (cell in row.cells) {
                 while (occupied[rowIdx to colIdx] == true) {
                     colIdx++
                 }
-                val cSpan = cell.colspan.coerceAtLeast(1)
-                val rSpan = cell.rowspan.coerceAtLeast(1)
+                val cSpan = cell.colspan.coerceIn(1, MAX_COLSPAN)
+                val rSpan = cell.rowspan.coerceIn(1, maxRowSpan)
                 placements += PlacedTableCell(
                     row = rowIdx,
                     col = colIdx,
@@ -86,6 +91,21 @@ internal object TableGridLayoutPlanner {
             colCount = maxCol,
             placements = placements,
         )
+    }
+}
+
+private const val MAX_COMPOSE_LAYOUT_PX = 200_000
+
+private fun clampTrackSizes(tracks: IntArray, maxTotal: Int) {
+    val sum = tracks.sumOf { it.toLong() }
+    if (sum <= maxTotal.toLong() || tracks.isEmpty()) return
+    val scale = maxTotal.toDouble() / sum.toDouble()
+    var running = 0
+    for (i in tracks.indices) {
+        val remaining = (maxTotal - running).coerceAtLeast(0)
+        val scaled = (tracks[i] * scale).toInt().coerceIn(0, remaining)
+        tracks[i] = scaled
+        running += scaled
     }
 }
 
@@ -171,12 +191,17 @@ internal fun RichTableView(
             val naturalWidths = IntArray(grid.placements.size)
             grid.placements.forEachIndexed { index, placed ->
                 val rawIntrinsic = measurables[index].maxIntrinsicWidth(Constraints.Infinity)
+                val minSpanW = (minColPx.toLong() * placed.colspan)
+                    .coerceAtMost(MAX_COMPOSE_LAYOUT_PX.toLong())
+                    .toInt()
                 val cap = if (placed.cell.isNumeric || placed.cell.isHeader) {
-                    Int.MAX_VALUE
+                    MAX_COMPOSE_LAYOUT_PX
                 } else {
-                    maxSingleColProsePx * placed.colspan
+                    (maxSingleColProsePx.toLong() * placed.colspan)
+                        .coerceIn(minSpanW.toLong(), MAX_COMPOSE_LAYOUT_PX.toLong())
+                        .toInt()
                 }
-                val natW = rawIntrinsic.coerceIn(minColPx * placed.colspan, cap)
+                val natW = rawIntrinsic.coerceIn(minSpanW, max(minSpanW, cap))
                 naturalWidths[index] = natW
                 if (placed.colspan == 1) {
                     colWidths[placed.col] = max(colWidths[placed.col], natW)
@@ -185,22 +210,26 @@ internal fun RichTableView(
 
             grid.placements.forEachIndexed { index, placed ->
                 if (placed.colspan > 1) {
-                    var spanSum = 0
+                    var spanSum = 0L
                     for (c in placed.col until placed.col + placed.colspan) {
                         spanSum += colWidths[c]
                     }
-                    if (naturalWidths[index] > spanSum) {
-                        val extra = naturalWidths[index] - spanSum
+                    if (naturalWidths[index].toLong() > spanSum) {
+                        val extra = naturalWidths[index].toLong() - spanSum
                         val perCol = ceil(extra.toDouble() / placed.colspan).toInt()
                         for (c in placed.col until placed.col + placed.colspan) {
-                            colWidths[c] += perCol
+                            colWidths[c] = (colWidths[c].toLong() + perCol)
+                                .coerceAtMost(MAX_COMPOSE_LAYOUT_PX.toLong())
+                                .toInt()
                         }
                     }
                 }
             }
 
-            val rawTotalWidth = colWidths.sum()
-            if (availableWidthPx > 0 && rawTotalWidth < availableWidthPx) {
+            clampTrackSizes(colWidths, MAX_COMPOSE_LAYOUT_PX)
+
+            val rawTotalWidth = colWidths.sumOf { it.toLong() }
+            if (availableWidthPx > 0 && rawTotalWidth > 0L && rawTotalWidth < availableWidthPx.toLong()) {
                 val scale = availableWidthPx.toDouble() / rawTotalWidth.toDouble()
                 var assigned = 0
                 for (c in 0 until grid.colCount) {
@@ -220,7 +249,8 @@ internal fun RichTableView(
             grid.placements.forEachIndexed { index, placed ->
                 var spanW = 0
                 for (c in placed.col until placed.col + placed.colspan) spanW += colWidths[c]
-                val intrinsicH = measurables[index].minIntrinsicHeight(spanW).coerceAtLeast(1)
+                val intrinsicH = measurables[index].minIntrinsicHeight(spanW)
+                    .coerceIn(1, MAX_COMPOSE_LAYOUT_PX)
                 cellHeights[index] = intrinsicH
                 if (placed.rowspan == 1) {
                     rowHeights[placed.row] = max(rowHeights[placed.row], intrinsicH)
@@ -229,17 +259,21 @@ internal fun RichTableView(
 
             grid.placements.forEachIndexed { index, placed ->
                 if (placed.rowspan > 1) {
-                    var spanH = 0
+                    var spanH = 0L
                     for (r in placed.row until placed.row + placed.rowspan) spanH += rowHeights[r]
-                    if (cellHeights[index] > spanH) {
-                        val extra = cellHeights[index] - spanH
+                    if (cellHeights[index].toLong() > spanH) {
+                        val extra = cellHeights[index].toLong() - spanH
                         val perRow = ceil(extra.toDouble() / placed.rowspan).toInt()
                         for (r in placed.row until placed.row + placed.rowspan) {
-                            rowHeights[r] += perRow
+                            rowHeights[r] = (rowHeights[r].toLong() + perRow)
+                                .coerceAtMost(MAX_COMPOSE_LAYOUT_PX.toLong())
+                                .toInt()
                         }
                     }
                 }
             }
+
+            clampTrackSizes(rowHeights, MAX_COMPOSE_LAYOUT_PX)
 
             val finalPlaceables = grid.placements.mapIndexed { index, placed ->
                 var spanW = 0

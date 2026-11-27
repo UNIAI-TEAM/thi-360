@@ -93,6 +93,7 @@ data class AndroidRichTextSample(
     val valid: Boolean,
     val html: String,
     val description: String = "",
+    val allowImages: Boolean = true,
 )
 
 @Serializable

@@ -57,6 +57,8 @@ object RichHtmlParser {
     private val SLOT_MARKER_PATTERN = Regex("""\[\[([^\]]+)\]\]""")
 
     private const val MAX_WALK_DEPTH = 512
+    private const val MAX_TABLE_COLSPAN = 64
+    private const val MAX_TABLE_ROWSPAN = 200
 
     fun parse(
         html: String,
@@ -767,8 +769,8 @@ object RichHtmlParser {
             null
         }
         val isNumeric = !isHeader && cellEl.attr("class").trim() == "num"
-        val colspan = cellEl.attr("colspan").trim().toIntOrNull()?.coerceAtLeast(1) ?: 1
-        val rowspan = cellEl.attr("rowspan").trim().toIntOrNull()?.coerceAtLeast(1) ?: 1
+        val colspan = parseBoundedSpan(cellEl.attr("colspan"), MAX_TABLE_COLSPAN)
+        val rowspan = parseBoundedSpan(cellEl.attr("rowspan"), MAX_TABLE_ROWSPAN)
         val blocks = buildBlocksFromContainer(cellEl, options, depth + 1)
         return RichTableCell(
             isHeader = isHeader,
@@ -778,6 +780,13 @@ object RichHtmlParser {
             rowspan = rowspan,
             blocks = blocks,
         )
+    }
+
+    private fun parseBoundedSpan(raw: String, max: Int): Int {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty() || !trimmed.all { it.isDigit() }) return 1
+        val parsed = trimmed.toLongOrNull() ?: return max
+        return parsed.coerceIn(1L, max.toLong()).toInt()
     }
 
     private fun collectInlines(

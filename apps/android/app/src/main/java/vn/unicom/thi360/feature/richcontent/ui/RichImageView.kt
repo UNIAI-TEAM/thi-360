@@ -230,7 +230,10 @@ internal fun RichImageView(
                         .background(palette.quoteBackground)
                         .border(1.dp, palette.border, RoundedCornerShape(8.dp))
                         .clickable(role = Role.Button) {
-                            retryToken++
+                            if (loadState is RichImageLoadState.Failed) {
+                                loadState = RichImageLoadState.Loading
+                                retryToken++
+                            }
                         }
                         .padding(horizontal = 12.dp, vertical = 12.dp)
                         .testTag(RichContentTestTags.IMAGE_ERROR),

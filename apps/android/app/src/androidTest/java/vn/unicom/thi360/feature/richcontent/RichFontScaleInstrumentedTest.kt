@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
+import android.text.Spanned
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,6 +56,7 @@ import vn.unicom.thi360.feature.richcontent.parser.RichHtmlParser
 import vn.unicom.thi360.feature.richcontent.ui.LocalFormulaEngine
 import vn.unicom.thi360.feature.richcontent.ui.RichContentTestTags
 import vn.unicom.thi360.feature.richcontent.ui.RichContentView
+import vn.unicom.thi360.feature.richcontent.ui.RichScriptSpan
 
 @RunWith(AndroidJUnit4::class)
 class RichFontScaleInstrumentedTest {
@@ -88,7 +90,9 @@ class RichFontScaleInstrumentedTest {
 
         composeRule.setContent {
             val sample = validSamples[activeIndex.intValue]
-            val doc = remember(sample.name) { RichHtmlParser.parse(sample.html) }
+            val doc = remember(sample.name, sample.allowImages) {
+                RichHtmlParser.parse(sample.html, RichParseOptions(allowImages = sample.allowImages))
+            }
             Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
                 WithFontScale(2.0f) {
                     CompositionLocalProvider(LocalFormulaEngine provides engine) {
@@ -128,6 +132,32 @@ class RichFontScaleInstrumentedTest {
                                 "TextView height (${tv.height}) must fit its layout (${layout.height}) for ${sample.name}",
                                 tv.height + 2 >= layout.height,
                             )
+                            val spanned = tv.text as? Spanned
+                            if (spanned != null) {
+                                val scriptSpans = spanned.getSpans(0, spanned.length, RichScriptSpan::class.java)
+                                for (span in scriptSpans) {
+                                    val spanStart = spanned.getSpanStart(span).coerceAtLeast(0)
+                                    val line = layout.getLineForOffset(spanStart)
+                                    when (span.kind) {
+                                        RichScriptSpan.Kind.SUB -> {
+                                            val needed = RichScriptSpan.requiredDescentPx(tv.textSize)
+                                            val actual = layout.getLineBottom(line) - layout.getLineBaseline(line)
+                                            assertTrue(
+                                                "Subscript line bottom clearance ($actual px) must cover required ($needed px) for ${sample.name}",
+                                                actual >= needed - 1,
+                                            )
+                                        }
+                                        RichScriptSpan.Kind.SUP -> {
+                                            val needed = RichScriptSpan.requiredAscentPx(tv.textSize)
+                                            val actual = layout.getLineBaseline(line) - layout.getLineTop(line)
+                                            assertTrue(
+                                                "Superscript line top clearance ($actual px) must cover required ($needed px) for ${sample.name}",
+                                                actual >= needed - 1,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

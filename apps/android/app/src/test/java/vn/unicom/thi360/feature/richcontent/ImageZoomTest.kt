@@ -1,11 +1,13 @@
 package vn.unicom.thi360.feature.richcontent
 
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.runBlocking
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -122,14 +124,21 @@ class ImageZoomTest {
             )
             var currentMode by mutableStateOf(RichContentMode.Answering)
             var latestSlotValue = ""
+            lateinit var scrollStateRef: ScrollState
 
             composeRule.setContent {
                 val scrollState = rememberScrollState()
+                scrollStateRef = scrollState
                 var slotText by remember { mutableStateOf("") }
                 latestSlotValue = slotText
                 Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
                     CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
-                        Column(modifier = Modifier.verticalScroll(scrollState)) {
+                        Column(
+                            modifier = Modifier
+                                .height(480.dp)
+                                .verticalScroll(scrollState),
+                        ) {
+                            Spacer(modifier = Modifier.height(80.dp))
                             RichContentView(
                                 document = doc,
                                 assets = assetSource,
@@ -161,6 +170,12 @@ class ImageZoomTest {
             composeRule.waitForIdle()
             assertEquals("42", latestSlotValue)
 
+            composeRule.runOnIdle {
+                runBlocking { scrollStateRef.scrollTo(120) }
+            }
+            composeRule.waitForIdle()
+            assertEquals(120, scrollStateRef.value)
+
             for (mode in listOf(RichContentMode.Answering, RichContentMode.Locked, RichContentMode.Review)) {
                 currentMode = mode
                 composeRule.waitForIdle()
@@ -174,6 +189,7 @@ class ImageZoomTest {
                 composeRule.waitForIdle()
                 composeRule.onNodeWithTag(RichContentTestTags.IMAGE_ZOOM_DIALOG).assertDoesNotExist()
                 assertEquals("Slot value must stay intact after closing zoom dialog in mode $mode", "42", latestSlotValue)
+                assertEquals("Scroll offset must stay intact after closing zoom dialog in mode $mode", 120, scrollStateRef.value)
             }
         }
     }

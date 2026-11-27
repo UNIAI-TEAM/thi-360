@@ -37,6 +37,7 @@ import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.theme.Thi360Theme
 import vn.unicom.thi360.feature.richcontent.assets.AttemptAssetSource
 import vn.unicom.thi360.feature.richcontent.formula.RaTeXFormulaEngine
+import vn.unicom.thi360.feature.richcontent.model.RichParseOptions
 import vn.unicom.thi360.feature.richcontent.parser.RichHtmlParser
 import vn.unicom.thi360.feature.richcontent.ui.LocalFormulaEngine
 import vn.unicom.thi360.feature.richcontent.ui.RichContentView
@@ -51,6 +52,15 @@ class RichSamplesScreenshotInstrumentedTest {
     fun renderAllFortyThreeSamplesInLightAndDarkModes() {
         val samples = RichContentAndroidTestSupport.loadRichTextSamples()
         assertEquals("Expected 43 samples (12 valid + 31 invalid)", 43, samples.size)
+        val imagesOffSample = samples.first { it.name == "bad-image-figure-when-images-off" }
+        assertEquals(false, imagesOffSample.allowImages)
+        assertTrue(
+            "bad-image-figure-when-images-off must drop img and figure when allowImages=false",
+            RichHtmlParser.parse(
+                imagesOffSample.html,
+                RichParseOptions(allowImages = imagesOffSample.allowImages),
+            ).blocks.isEmpty(),
+        )
 
         val pngBytes = createSyntheticChartPng()
         val server = ServerSocket(0)
@@ -93,7 +103,9 @@ class RichSamplesScreenshotInstrumentedTest {
 
             composeRule.setContent {
                 val sample = samples[activeIndex.intValue]
-                val doc = remember(sample.name) { RichHtmlParser.parse(sample.html) }
+                val doc = remember(sample.name, sample.allowImages) {
+                    RichHtmlParser.parse(sample.html, RichParseOptions(allowImages = sample.allowImages))
+                }
                 Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = activeTheme.value)) {
                     CompositionLocalProvider(LocalFormulaEngine provides engine) {
                         Box(

@@ -7,12 +7,12 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.SpannableStringBuilder
 import android.text.Spanned
-import android.text.style.RelativeSizeSpan
+import android.text.TextPaint
+import android.text.style.LineHeightSpan
+import android.text.style.MetricAffectingSpan
 import android.text.style.ReplacementSpan
 import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
-import android.text.style.SubscriptSpan
-import android.text.style.SuperscriptSpan
 import android.text.style.UnderlineSpan
 import androidx.compose.ui.graphics.toArgb
 import kotlin.math.ceil
@@ -275,6 +275,68 @@ class LabeledUnderlineSpan(
         val labelFm = labelPaint.fontMetrics
         val labelBaseline = lineY + 2f * density - labelFm.ascent
         canvas.drawText(labelStr, x + spanWidth / 2f, labelBaseline, labelPaint)
+    }
+}
+
+class RichScriptSpan(
+    val kind: Kind,
+) : MetricAffectingSpan() {
+    enum class Kind { SUB, SUP }
+
+    override fun updateMeasureState(tp: TextPaint) {
+        applyMetrics(tp)
+    }
+
+    override fun updateDrawState(tp: TextPaint) {
+        applyMetrics(tp)
+    }
+
+    private fun applyMetrics(tp: TextPaint) {
+        val baseSize = tp.textSize
+        tp.textSize = baseSize * SCALE
+        tp.baselineShift += when (kind) {
+            Kind.SUB -> (baseSize * SUB_SHIFT_RATIO).roundToInt()
+            Kind.SUP -> -(baseSize * SUP_SHIFT_RATIO).roundToInt()
+        }
+    }
+
+    companion object {
+        const val SCALE = 0.75f
+        const val SUB_SHIFT_RATIO = 0.28f
+        const val SUP_SHIFT_RATIO = 0.34f
+
+        fun requiredDescentPx(baseTextSizePx: Float): Int =
+            ceil((baseTextSizePx * (SUB_SHIFT_RATIO + 0.24f * SCALE)).toDouble()).toInt() + 2
+
+        fun requiredAscentPx(baseTextSizePx: Float): Int =
+            ceil((baseTextSizePx * (SUP_SHIFT_RATIO + 0.93f * SCALE)).toDouble()).toInt() + 2
+    }
+}
+
+class ScriptLineHeightSpan(
+    private val baseTextSizePx: Float,
+) : LineHeightSpan {
+    override fun chooseHeight(
+        text: CharSequence,
+        start: Int,
+        end: Int,
+        spanstartv: Int,
+        lineHeight: Int,
+        fm: Paint.FontMetricsInt,
+    ) {
+        val spanned = text as? Spanned ?: return
+        val scripts = spanned.getSpans(start, end, RichScriptSpan::class.java)
+        if (scripts.isEmpty()) return
+        if (scripts.any { it.kind == RichScriptSpan.Kind.SUB }) {
+            val neededDescent = RichScriptSpan.requiredDescentPx(baseTextSizePx)
+            if (fm.descent < neededDescent) fm.descent = neededDescent
+            if (fm.bottom < fm.descent) fm.bottom = fm.descent
+        }
+        if (scripts.any { it.kind == RichScriptSpan.Kind.SUP }) {
+            val neededAscent = -RichScriptSpan.requiredAscentPx(baseTextSizePx)
+            if (fm.ascent > neededAscent) fm.ascent = neededAscent
+            if (fm.top > fm.ascent) fm.top = fm.ascent
+        }
     }
 }
 
@@ -556,6 +618,15 @@ internal object RichInlineLayoutPlanner {
             appendInline(inline, idx)
         }
 
+        if (sb.isNotEmpty() && sb.getSpans(0, sb.length, RichScriptSpan::class.java).isNotEmpty()) {
+            sb.setSpan(
+                ScriptLineHeightSpan(textSizePx),
+                0,
+                sb.length,
+                Spanned.SPAN_INCLUSIVE_EXCLUSIVE,
+            )
+        }
+
         return BuiltSpannable(
             spannable = sb,
             accessibleText = accessible.toString(),
@@ -585,12 +656,10 @@ internal object RichInlineLayoutPlanner {
             sb.setSpan(StrikethroughSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         if (RichTextStyle.Sub in styles) {
-            sb.setSpan(SubscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.setSpan(RelativeSizeSpan(0.75f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(RichScriptSpan(RichScriptSpan.Kind.SUB), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         if (RichTextStyle.Sup in styles) {
-            sb.setSpan(SuperscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.setSpan(RelativeSizeSpan(0.75f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(RichScriptSpan(RichScriptSpan.Kind.SUP), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
 

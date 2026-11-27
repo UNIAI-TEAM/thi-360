@@ -4,8 +4,6 @@ import android.graphics.Typeface
 import android.text.Spanned
 import android.text.style.StrikethroughSpan
 import android.text.style.StyleSpan
-import android.text.style.SubscriptSpan
-import android.text.style.SuperscriptSpan
 import android.text.style.UnderlineSpan
 import android.view.View
 import android.view.ViewGroup
@@ -40,6 +38,8 @@ import vn.unicom.thi360.feature.richcontent.formula.SourceBoxFormulaEngine
 import vn.unicom.thi360.feature.richcontent.parser.RichHtmlParser
 import vn.unicom.thi360.feature.richcontent.ui.LocalFormulaEngine
 import vn.unicom.thi360.feature.richcontent.ui.RichContentView
+import vn.unicom.thi360.feature.richcontent.ui.RichScriptSpan
+import vn.unicom.thi360.feature.richcontent.ui.ScriptLineHeightSpan
 
 internal fun collectTextViews(root: View): List<TextView> {
     val result = mutableListOf<TextView>()
@@ -111,8 +111,10 @@ class RichContentViewTest {
         val styledTv = tvs.first { it.text.toString().contains("H2O") }
         val spanned = styledTv.text as Spanned
 
-        assertTrue(spanned.getSpans(0, spanned.length, SubscriptSpan::class.java).isNotEmpty())
-        assertTrue(spanned.getSpans(0, spanned.length, SuperscriptSpan::class.java).isNotEmpty())
+        val scriptSpans = spanned.getSpans(0, spanned.length, RichScriptSpan::class.java)
+        assertTrue(scriptSpans.any { it.kind == RichScriptSpan.Kind.SUB })
+        assertTrue(scriptSpans.any { it.kind == RichScriptSpan.Kind.SUP })
+        assertTrue(spanned.getSpans(0, spanned.length, ScriptLineHeightSpan::class.java).isNotEmpty())
         val styleSpans = spanned.getSpans(0, spanned.length, StyleSpan::class.java)
         assertTrue(styleSpans.any { it.style == Typeface.BOLD })
         assertTrue(styleSpans.any { it.style == Typeface.ITALIC })
@@ -154,5 +156,44 @@ class RichContentViewTest {
             "Long 300-char word must wrap across multiple lines, got lineCount=${longTv.lineCount}",
             longTv.lineCount > 1,
         )
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h640dp-xhdpi")
+    fun subscriptAndSuperscriptReserveVerticalLineClearanceWithoutClipping() {
+        val doc = RichHtmlParser.parse("<p>H<sub>2</sub>O</p><p>x<sup>2</sup></p>")
+
+        composeRule.setContent {
+            Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
+                CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
+                    Box(modifier = Modifier.width(360.dp)) {
+                        RichContentView(document = doc, assets = null)
+                    }
+                }
+            }
+        }
+        composeRule.waitForIdle()
+
+        val tvs = collectTextViews(composeRule.activity.window.decorView)
+        val subTv = tvs.first { it.text.toString() == "H2O" }
+        val supTv = tvs.first { it.text.toString() == "x2" }
+
+        val subLayout = requireNotNull(subTv.layout)
+        val subBottomClearance = subLayout.getLineBottom(0) - subLayout.getLineBaseline(0)
+        val expectedSubDescent = RichScriptSpan.requiredDescentPx(subTv.textSize)
+        assertTrue(
+            "Single-line H2O bottom clearance ($subBottomClearance px) must cover required subscript descent ($expectedSubDescent px)",
+            subBottomClearance >= expectedSubDescent - 1,
+        )
+        assertTrue("H2O TextView height (${subTv.height}) must fit layout (${subLayout.height})", subTv.height >= subLayout.height)
+
+        val supLayout = requireNotNull(supTv.layout)
+        val supTopClearance = supLayout.getLineBaseline(0) - supLayout.getLineTop(0)
+        val expectedSupAscent = RichScriptSpan.requiredAscentPx(supTv.textSize)
+        assertTrue(
+            "Single-line x2 top clearance ($supTopClearance px) must cover required superscript ascent ($expectedSupAscent px)",
+            supTopClearance >= expectedSupAscent - 1,
+        )
+        assertTrue("x2 TextView height (${supTv.height}) must fit layout (${supLayout.height})", supTv.height >= supLayout.height)
     }
 }
