@@ -26,6 +26,7 @@ import vn.unicom.thi360.core.storage.AccountScopedStoreProvider
 import vn.unicom.thi360.feature.recovery.ResetLink
 import vn.unicom.thi360.shell.routes.InboundLinkRouter
 import vn.unicom.thi360.shell.routes.PaymentReturnLinkStore
+import vn.unicom.thi360.shell.routes.registerPaymentHooks
 
 class Thi360Application : Application(), SingletonImageLoader.Factory {
     val preferencesRepository: AppPreferencesRepository by lazy {
@@ -106,6 +107,7 @@ class Thi360Application : Application(), SingletonImageLoader.Factory {
         runBlocking(Dispatchers.IO) {
             sessionCleanup.onAppStart()
         }
+        registerPaymentHooks(this)
     }
 
     @VisibleForTesting

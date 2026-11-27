@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_heading">Confirm purchase</string>
+    <string name="checkout_pageTitle">Confirm purchase</string>
+    <string name="checkout_subtitle">Review your account, exam details, and payment breakdown before continuing.</string>
+    <string name="checkout_backToExam">Back to exam</string>
+    <string name="checkout_backToCatalog">Back to exam catalog</string>
+
+    <string name="checkout_notFound_title">Exam not found</string>
+    <string name="checkout_notFound_description">The requested exam does not exist or is no longer listed.</string>
+    <string name="checkout_gone_title">This exam is no longer on sale</string>
+    <string name="checkout_gone_description">%1$s has been discontinued and is no longer available for purchase.</string>
+    <string name="checkout_loadError_title">Unable to load checkout details</string>
+    <string name="checkout_loadError_description">Please check your internet connection and try again.</string>
+
+    <string name="checkout_account_title">Account receiving exam</string>
+    <string name="checkout_account_grantNotice">Once completed, the exam will be granted to account %1$s.</string>
+    <string name="checkout_account_switchAccount">Sign in with another account</string>
+    <string name="checkout_account_changedTitle">Signed-in account changed</string>
+    <string name="checkout_account_changedDescription">You opened this page with account %1$s, while the active session is now %2$s. Please review the account before paying.</string>
+    <string name="checkout_account_continueAsCurrent">Continue as %1$s</string>
+
+    <string name="checkout_priceChanged_title">Price or benefits changed</string>
+    <string name="checkout_priceChanged_description">Price or benefits have been updated to the latest version (%1$s). Please review before paying.</string>
+    <string name="checkout_priceChanged_descriptionWithSeen">Price or benefits updated to %1$s (previously shown %2$s). Please review before paying.</string>
+
+    <string name="checkout_accessBanner_buyMore">Buy more attempts</string>
+    <string name="checkout_accessBanner_checkingTitle">Checking order %1$s</string>
+    <string name="checkout_accessBanner_checkingDescription">An order for this exam is currently awaiting payment verification. You do not need to place a new order or pay again.</string>
+    <string name="checkout_accessBanner_viewPaymentStatus">View payment status</string>
+    <string name="checkout_accessBanner_enterExam">Go to exam</string>
+    <string name="checkout_accessBanner_continueAttempt">Continue</string>
+    <plurals name="checkout_accessBanner_existingTitle">
+        <item quantity="one">You currently have %1$d attempt for this exam</item>
+        <item quantity="other">You currently have %1$d attempts for this exam</item>
+    </plurals>
+    <plurals name="checkout_accessBanner_existingInProgressTitle">
+        <item quantity="one">You have an attempt in progress (%1$d attempt for this exam)</item>
+        <item quantity="other">You have an attempt in progress (%1$d attempts for this exam)</item>
+    </plurals>
+    <string name="checkout_accessBanner_loadErrorTitle">Unable to verify exam access</string>
+    <string name="checkout_accessBanner_loadErrorDescription">Could not verify your current access to this exam. Please try again before continuing.</string>
+
+    <string name="checkout_product_sectionTitle">Exam summary</string>
+    <string name="checkout_product_version">Version v%1$d</string>
+    <plurals name="checkout_product_attemptsGranted">
+        <item quantity="one">%1$d attempt</item>
+        <item quantity="other">%1$d attempts</item>
+    </plurals>
+
+    <string name="checkout_refund_title">Refund policy</string>
+    <string name="checkout_refund_body">Exam access is granted immediately after completion and cannot be refunded once activated.</string>
+    <string name="checkout_refund_supportLabel">Payment support:</string>
+
+    <string name="checkout_voucher_sectionTitle">Voucher code</string>
+    <string name="checkout_voucher_label">Enter voucher code</string>
+    <string name="checkout_voucher_placeholder">Example: SAVE20</string>
+    <string name="checkout_voucher_apply">Apply</string>
+    <string name="checkout_voucher_remove">Remove</string>
+    <string name="checkout_voucher_emptyInput">Please enter a voucher code.</string>
+    <string name="checkout_voucher_applied">Applied voucher %1$s (-%2$s).</string>
+    <string name="checkout_voucher_appliedCombined">Applied voucher %1$s (-%2$s) together with the auto promotion.</string>
+    <string name="checkout_voucher_appliedReplacedPromo">Applied voucher %1$s (-%2$s). Replaced the auto promotion because this voucher saves more.</string>
+    <string name="checkout_voucher_notBetter">Code %1$s does not beat the active auto promotion, so the best price is kept.</string>
+    <string name="checkout_voucher_errors_RATE_LIMITED">Too many voucher checks. Please try again in a few minutes.</string>
+    <string name="checkout_voucher_errors_VOUCHER_EXHAUSTED">This voucher code has reached its usage limit.</string>
+    <string name="checkout_voucher_errors_VOUCHER_EXPIRED">This voucher code has expired.</string>
+    <string name="checkout_voucher_errors_VOUCHER_INVALID">This voucher code does not exist or is invalid.</string>
+    <string name="checkout_voucher_errors_VOUCHER_NOT_APPLICABLE">This voucher code is not applicable to this exam.</string>
+    <string name="checkout_voucher_errors_VOUCHER_NOT_APPLICABLE_BUNDLE">This voucher code only applies to selected exams, not to exam bundles.</string>
+    <string name="checkout_voucher_errors_VOUCHER_NOT_ELIGIBLE">Your account is not eligible for this voucher.</string>
+    <string name="checkout_voucher_errors_VOUCHER_USER_LIMIT">You have reached your personal usage limit for this voucher.</string>
+    <string name="checkout_voucher_errors_generic">Unable to apply voucher code. Please try again.</string>
+
+    <string name="checkout_summary_title">Payment summary</string>
+    <string name="checkout_summary_listPrice">List price</string>
+    <string name="checkout_summary_promotion">Auto promotion (%1$s)</string>
+    <string name="checkout_summary_promotionFallback">Auto promotion</string>
+    <string name="checkout_summary_voucherDiscount">Voucher (%1$s)</string>
+    <string name="checkout_summary_totalDue">Total due</string>
+    <string name="checkout_summary_freeVoucher">0 VND (voucher applied)</string>
+    <string name="checkout_summary_ctaVnpay">Pay with VNPAY</string>
+    <string name="checkout_summary_ctaFree">Apply voucher &amp; get exam</string>
+    <string name="checkout_summary_ctaFreeNoVoucher">Get free exam</string>
+    <string name="checkout_summary_errorGeneric">Unable to create order. Please try again.</string>
+    <string name="checkout_summary_errorRateLimited">Too many requests. Please wait a moment and try again.</string>
+
+    <string name="checkout_resultPageTitle">Payment result</string>
+    <string name="checkout_result_buyAgain">Buy exam again</string>
+    <string name="checkout_result_checkAgain">Check again</string>
+    <string name="checkout_result_checkingBadge">Checking</string>
+    <string name="checkout_result_checkingHeading">Awaiting payment confirmation</string>
+    <string name="checkout_result_checkingPending">Confirming VNPAY transaction status for order %1$s. Please wait a moment.</string>
+    <string name="checkout_result_checkingTimeoutHeading">Checking payment</string>
+    <string name="checkout_result_checkingTimeoutBody">Verification has taken longer than 60 seconds for order %1$s. Status remains Checking — please do not pay again.</string>
+    <string name="checkout_result_checkingTimeoutSupport">If the exam does not appear in a few minutes, contact support via %1$s with order code %2$s.</string>
+    <string name="checkout_result_noResultHeading">Payment result not received yet</string>
+    <string name="checkout_result_noResultBody">If you completed payment on VNPAY, the status of order %1$s will update shortly. If you closed the payment page, the order price is held until %2$s.</string>
+    <string name="checkout_result_noResultBodyNoExpiry">If you completed payment on VNPAY, the status of order %1$s will update shortly. If you closed the payment page, you can continue payment below.</string>
+    <string name="checkout_result_closedHeading">Order closed</string>
+    <string name="checkout_result_closedBody">Order %1$s is no longer awaiting payment.</string>
+    <string name="checkout_result_failedHeading">Payment unsuccessful</string>
+    <string name="checkout_result_failedBody">Transaction for order %1$s did not complete.</string>
+    <string name="checkout_result_invalidSignatureHeading">Could not verify payment response</string>
+    <string name="checkout_result_invalidSignatureBody">The VNPAY response signature is invalid or corrupted. Please check My orders before retrying payment.</string>
+    <string name="checkout_result_loadErrorHeading">Unable to check payment result</string>
+    <string name="checkout_result_loadErrorBody">Could not load order details right now. Please try again.</string>
+    <string name="checkout_result_missingOrderHeading">Missing transaction details</string>
+    <string name="checkout_result_missingOrderBody">No valid order code or payment return parameters were found in this link.</string>
+    <string name="checkout_result_notOwnedHeading">Order not found in the signed-in account</string>
+    <string name="checkout_result_notOwnedBody">Order %1$s was not found in account %2$s. You may be signed in with a different account.</string>
+    <string name="checkout_result_pollErrorNotice">Could not refresh the latest order status right now. Checking will continue automatically.</string>
+    <string name="checkout_result_pollErrorTimeoutNotice">Could not refresh order status right now. Click Check again or contact support.</string>
+    <string name="checkout_result_retryPay">Retry payment</string>
+    <string name="checkout_result_successHeading">Exam granted</string>
+    <string name="checkout_result_successBody">Order %1$s has been confirmed. Exam access is now active in your account.</string>
+    <string name="checkout_result_successFreeBody">Order %1$s used a free voucher and exam access has been granted immediately.</string>
+    <string name="checkout_result_txnRefLabel">Transaction ref:</string>
+    <string name="checkout_result_verifyNotFoundBody">No order was found for this payment response.</string>
+    <string name="checkout_result_viewMyExams">Go to My exams</string>
+    <string name="checkout_result_viewOrder">View order details</string>
+    <string name="checkout_result_viewOrders">View my orders</string>
+
+    <string name="bundle_checkout_backToBundle">Back to bundle</string>
+    <string name="bundle_checkout_existingNote">For exams you already own, newly purchased attempts are added to your remaining balance. Benefits apply per grant.</string>
+    <plurals name="bundle_checkout_grantNotice">
+        <item quantity="one">Once completed, all %1$d exam in the bundle will be granted to account %2$s.</item>
+        <item quantity="other">Once completed, all %1$d exams in the bundle will be granted to account %2$s.</item>
+    </plurals>
+    <string name="bundle_checkout_itemsTitle">Included exams (%1$d)</string>
+    <string name="bundle_checkout_pendingExamOrder">Order %1$s for %2$s is being checked. You do not need to pay again.</string>
+    <string name="bundle_checkout_pendingExamOrderNoCode">An order for %1$s is being checked. You do not need to pay again.</string>
+    <string name="bundle_checkout_refundBody">Exams in the bundle are granted immediately after completion and cannot be refunded once any attempt is activated.</string>
+    <string name="bundle_checkout_sectionTitle">Selected bundle</string>
+    <string name="bundle_checkout_subtitle">Review the included exams, access rights, and receiving account before paying.</string>
+    <string name="bundle_checkout_summaryLabel">Bundle summary</string>
+    <string name="bundle_checkout_tableCaption">Exams in this bundle and granted attempts</string>
+    <string name="bundle_checkout_unavailableActionBack">Back to bundle</string>
+    <string name="bundle_checkout_unavailableBody">One exam in this bundle has just been discontinued. No amount has been charged.</string>
+    <string name="bundle_checkout_unavailableTitle">This bundle is temporarily unavailable.</string>
+
+    <string name="orders_pageTitle">My orders</string>
+    <string name="orders_detailPageTitle">Order details</string>
+    <string name="orders_backToList">My orders</string>
+    <string name="orders_bundleBadge">Bundle</string>
+    <string name="orders_subtitle">Exam orders for account %1$s, newest first. Include your order code when contacting support.</string>
+    <string name="orders_tableLabel">My orders table</string>
+    <string name="orders_emptyTitle">You have no orders yet</string>
+    <string name="orders_emptyDescription">When you purchase an exam, your orders will appear here.</string>
+    <string name="orders_exploreExams">Explore exams</string>
+    <string name="orders_errorTitle">Unable to load orders</string>
+    <string name="orders_errorDescription">Check your internet connection and try again.</string>
+    <string name="orders_staleTitle">Data may be out of date.</string>
+    <string name="orders_staleDescription">Could not refresh data; showing the version loaded at %1$s.</string>
+    <string name="orders_staleDescriptionNoTime">Could not refresh data; showing the previously loaded version.</string>
+    <string name="orders_pendingHoldUntil">Price held until %1$s</string>
+    <string name="orders_replacedBy">Replaced by order %1$s</string>
+    <string name="orders_paidChecking">Payment received for order %1$s. The exam is being granted to your account.</string>
+    <string name="orders_paidCheckingSupport">If it takes too long, contact support via %1$s and include order code %2$s.</string>
+    <string name="orders_paidCheckingSupportPending">If it takes too long, contact support and include order code %1$s. %2$s</string>
+    <string name="orders_stateSubtext_PAID">Payment received, granting exam</string>
+
+    <string name="orders_actions_cancel">Cancel order</string>
+    <string name="orders_actions_continuePayment">Continue payment</string>
+    <string name="orders_actions_createNew">Create new order</string>
+    <string name="orders_actions_goMyExams">Go to My exams</string>
+    <string name="orders_actions_toCatalog">Back to the exam catalog</string>
+    <string name="orders_actions_viewDetail">View details</string>
+    <string name="orders_actions_viewReplacement">View replacement order %1$s</string>
+
+    <string name="orders_amount_discountSummary">%1$s off</string>
+    <string name="orders_amount_free">Free</string>
+    <string name="orders_amount_freeAmount">0 VND</string>
+    <string name="orders_amount_freeVoucher">0 VND (voucher applied)</string>
+    <string name="orders_amount_freeVoucherNote">Free with voucher</string>
+    <string name="orders_amount_vnpay">VNPAY</string>
+
+    <string name="orders_cancelDialog_title">Cancel order %1$s?</string>
+    <string name="orders_cancelDialog_description">Pending order %1$s will be cancelled. Any discount code used on this order will be released.</string>
+    <string name="orders_cancelDialog_confirm">Cancel order</string>
+    <string name="orders_cancelDialog_keep">Keep order</string>
+    <string name="orders_cancelDialog_success">Order %1$s cancelled.</string>
+
+    <string name="orders_notFound_title">Order not found</string>
+    <string name="orders_notFound_description">Order not found in the signed-in account. Please check that you are signed in with the account used to purchase.</string>
+    <string name="orders_notFound_otherAccount">Sign in with another account</string>
+    <string name="orders_notFound_backToOrders">Back to My orders</string>
+
+    <string name="orders_states_CANCELLED">Cancelled</string>
+    <string name="orders_states_EXPIRED">Expired</string>
+    <string name="orders_states_FULFILLED">Exam granted</string>
+    <string name="orders_states_PAID">Checking</string>
+    <string name="orders_states_PENDING_PAYMENT">Awaiting payment</string>
+    <string name="orders_states_REFUNDED">Refunded</string>
+    <string name="orders_states_REPLACED">Replaced</string>
+
+    <string name="orders_errors_ORDER_EXPIRED">This order has expired. Please create a new order at the current price.</string>
+    <string name="orders_errors_ORDER_NOT_FOUND">Order not found in the signed-in account. Please check that you are signed in with the account used to purchase.</string>
+    <string name="orders_errors_ORDER_NOT_PENDING">This order is no longer awaiting payment.</string>
+    <string name="orders_errors_PAYMENT_ATTEMPTS_EXCEEDED">This order has exceeded the maximum payment attempts. Please create a new order.</string>
+    <string name="orders_errors_PRODUCT_DISCONTINUED">This exam is no longer on sale. Payment cannot continue for this order.</string>
+    <string name="orders_errors_PRODUCT_NOT_FOUND">The exam for this order could not be found.</string>
+    <string name="orders_errors_RATE_LIMITED">Too many requests. Please wait a moment and try again.</string>
+    <string name="orders_errors_generic">Unable to complete the action. Please try again or create a new order.</string>
+
+    <string name="orders_detail_heading">Order %1$s</string>
+    <string name="orders_detail_errorTitle">Unable to load order details</string>
+    <string name="orders_detail_snapshotTitle">Order summary</string>
+    <string name="orders_detail_itemsTitle">Exams in order (%1$d)</string>
+    <string name="orders_detail_selectPrompt">Select an order to view details.</string>
+    <plurals name="orders_detail_attemptsValue">
+        <item quantity="one">%1$d attempt</item>
+        <item quantity="other">%1$d attempts</item>
+    </plurals>
+    <string name="orders_detail_fields_buyer">Buyer account</string>
+    <string name="orders_detail_fields_product">Product</string>
+    <string name="orders_detail_fields_version">Purchased version</string>
+    <string name="orders_detail_fields_listPrice">List price</string>
+    <string name="orders_detail_fields_promotion">Automatic promotion</string>
+    <string name="orders_detail_fields_voucher">Discount code</string>
+    <string name="orders_detail_fields_amountDue">Amount due</string>
+    <string name="orders_detail_fields_attempts">Attempts granted</string>
+    <string name="orders_detail_fields_createdAt">Created at</string>
+    <string name="orders_detail_fields_expiresAt">Price held until</string>
+    <string name="orders_detail_fields_paidAt">Paid at</string>
+    <string name="orders_detail_fields_fulfilledAt">Granted at</string>
+    <string name="orders_detail_fields_benefits">Benefits</string>
+    <string name="orders_detail_benefits_resultView">Result view</string>
+    <string name="orders_detail_benefits_ai">AI explanations</string>
+    <string name="orders_detail_benefits_strengths">Strengths and weaknesses</string>
+    <string name="orders_detail_benefits_practice">Extra practice</string>
+    <string name="orders_detail_benefits_yes">Yes</string>
+    <string name="orders_detail_benefits_no">No</string>
+
+    <string name="orders_detail_payments_title">Payment attempts</string>
+    <string name="orders_detail_payments_empty">Free order; no VNPAY payment attempts.</string>
+    <string name="orders_detail_payments_emptyVnpay">No payment attempts yet.</string>
+    <string name="orders_detail_payments_amount">Amount</string>
+    <string name="orders_detail_payments_attemptSeq">Attempt</string>
+    <string name="orders_detail_payments_bank">Bank</string>
+    <string name="orders_detail_payments_createdAt">Time</string>
+    <string name="orders_detail_payments_duplicate">Duplicate</string>
+    <string name="orders_detail_payments_reason">Details</string>
+    <string name="orders_detail_payments_status">Status</string>
+    <string name="orders_detail_payments_txnRef">Reference</string>
+    <string name="orders_detail_payments_states_CREATED">Created</string>
+    <string name="orders_detail_payments_states_FAILED">Failed</string>
+    <string name="orders_detail_payments_states_SUCCEEDED">Succeeded</string>
+    <string name="orders_detail_payments_states_UNKNOWN">Unknown</string>
+
+    <string name="orders_detail_history_title">Order history</string>
+    <string name="orders_detail_history_empty">No history events yet.</string>
+    <string name="orders_detail_history_created">Order created</string>
+    <string name="orders_detail_history_transition">%1$s → %2$s</string>
+    <string name="orders_detail_history_actors_ADMIN">Administrator</string>
+    <string name="orders_detail_history_actors_LEARNER">Learner</string>
+    <string name="orders_detail_history_actors_SYSTEM">System</string>
+    <string name="orders_detail_history_actors_VNPAY_IPN">VNPAY gateway</string>
+    <string name="orders_detail_history_actors_unknown">System</string>
+    <string name="orders_detail_history_reasons_AUTO_EXCESS_AFTER_COUNTED">Transaction %1$s automatically recorded as excess after counted payment</string>
+    <string name="orders_detail_history_reasons_CANCELLED_BY_USER">Cancelled by learner</string>
+    <string name="orders_detail_history_reasons_DOUBLE_CHARGE_REPLACED_ORDER">Duplicate charge flagged on replacement order chain (%1$s)</string>
+    <string name="orders_detail_history_reasons_DOUBLE_CHARGE_REVIEW">Duplicate charge pending review (%1$s)</string>
+    <string name="orders_detail_history_reasons_EXCESS_AFTER_COUNTED">Excess payment %1$s received after order was already paid</string>
+    <string name="orders_detail_history_reasons_EXPIRED">Order payment window expired</string>
+    <string name="orders_detail_history_reasons_FREE_ORDER_PAID">Zero-amount order confirmed immediately</string>
+    <string name="orders_detail_history_reasons_FULFILLED">Exam access granted</string>
+    <string name="orders_detail_history_reasons_LATE_PAYMENT_RECLAIMED">Late payment %1$s received and reconciled for fulfillment</string>
+    <string name="orders_detail_history_reasons_LATE_PAYMENT_REPLACED_DOUBLE_CHARGE">Late payment %1$s on replaced order (duplicate charge review)</string>
+    <string name="orders_detail_history_reasons_LATE_PAYMENT_REPLACED_RECLAIMED">Late payment %1$s received on replaced order</string>
+    <string name="orders_detail_history_reasons_LATE_SUCCESS_PENDING_REVIEW">Late success on transaction %1$s, pending review</string>
+    <string name="orders_detail_history_reasons_ORDER_CREATED">Created order awaiting payment</string>
+    <string name="orders_detail_history_reasons_PAYMENT_ATTEMPT_CREATED">Created payment attempt %1$s</string>
+    <string name="orders_detail_history_reasons_PAYMENT_SUCCEEDED">Payment succeeded for transaction %1$s</string>
+    <string name="orders_detail_history_reasons_REFUNDED">Order refunded</string>
+    <string name="orders_detail_history_reasons_REPLACED_BY">Replaced by order %1$s</string>
+    <string name="orders_detail_history_reasons_REUSE_PENDING_PAYMENT">Reused pending order with payment attempt %1$s</string>
+    <string name="orders_detail_history_reasons_unknown">Order status updated</string>
+
+    <string name="orders_vnpayReasons_07">Amount deducted, but the transaction is flagged for review.</string>
+    <string name="orders_vnpayReasons_09">Your card or account is not registered for Internet Banking.</string>
+    <string name="orders_vnpayReasons_10">Card or account authentication failed more than 3 times.</string>
+    <string name="orders_vnpayReasons_11">The payment session timed out.</string>
+    <string name="orders_vnpayReasons_12">Your card or account is locked.</string>
+    <string name="orders_vnpayReasons_13">You entered an incorrect authentication password (OTP).</string>
+    <string name="orders_vnpayReasons_24">You cancelled the payment on VNPAY.</string>
+    <string name="orders_vnpayReasons_51">Insufficient bank balance for this payment.</string>
+    <string name="orders_vnpayReasons_65">Your account has exceeded the daily transaction limit.</string>
+    <string name="orders_vnpayReasons_75">The payment bank is under maintenance.</string>
+    <string name="orders_vnpayReasons_79">Authentication failed too many times.</string>
+    <string name="orders_vnpayReasons_99">Final result from the payment gateway is not available yet.</string>
+    <string name="orders_vnpayReasons_generic">The bank or VNPAY declined the transaction.</string>
+
+    <string name="payment_price">%1$s VND</string>
+    <string name="payment_units_questions_range">%1$s questions</string>
+    <string name="payment_units_minutes_range">%1$s minutes</string>
+    <string name="payment_detail_maxScore">%1$s points</string>
+    <string name="payment_detail_resultViews_SCORE">Score only</string>
+    <string name="payment_detail_resultViews_SCORE_AND_ANSWERS">Score and answers</string>
+    <string name="payment_detail_resultViews_FULL_SOLUTION">Score, answers and solutions</string>
+    <string name="payment_detail_rights_ai">AI explanations</string>
+    <string name="payment_detail_rights_strengths">Strengths and weaknesses report</string>
+    <string name="payment_detail_rights_practice">Extra practice</string>
+    <string name="payment_detail_rights_yes">Yes</string>
+    <string name="payment_detail_rights_no">No</string>
+    <string name="payment_bundle_detail_unavailableBody">An exam in this bundle is currently being updated. You can still purchase individual exams.</string>
+    <plurals name="payment_bundle_examCountValue">
+        <item quantity="one">%1$d exam</item>
+        <item quantity="other">%1$d exams</item>
+    </plurals>
+    <plurals name="payment_bundle_existingEntitlement">
+        <item quantity="one">You already have %1$d attempt for %2$s; buying this bundle adds more attempts</item>
+        <item quantity="other">You already have %1$d attempts for %2$s; buying this bundle adds more attempts</item>
+    </plurals>
+    <plurals name="payment_access_attemptsLeft">
+        <item quantity="one">%1$d attempt left</item>
+        <item quantity="other">%1$d attempts left</item>
+    </plurals>
+    <string name="payment_back">Back</string>
+</resources>

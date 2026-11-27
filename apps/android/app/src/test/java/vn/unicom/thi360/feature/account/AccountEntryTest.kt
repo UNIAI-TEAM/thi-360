@@ -3,6 +3,7 @@ package vn.unicom.thi360.feature.account
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -25,10 +26,10 @@ import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.feature.payment.ui.PaymentTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
-import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
@@ -98,9 +99,7 @@ class AccountEntryTest {
         composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_SINGLE_PANE).assertIsDisplayed()
 
         composeRule.onNodeWithTag(AccountTestTags.ORDERS_ROW).performScrollTo().performClick()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME)
-            .assertIsDisplayed()
-            .assertTextContains("orders")
+        composeRule.onNodeWithTag(PaymentTestTags.ORDERS_SCREEN).assertIsDisplayed()
     }
 
     @Test
@@ -141,11 +140,11 @@ class AccountEntryTest {
 
         composeRule.onNodeWithTag(AccountTestTags.PROFILE_LOADING).assertIsDisplayed()
         composeRule.onNodeWithTag(AccountTestTags.ORDERS_ROW).performClick()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("orders")
+        composeRule.onNodeWithTag(PaymentTestTags.ORDERS_SCREEN).assertIsDisplayed()
 
         mode = 1
         gate.complete(ApiResult.HttpFailure(500, ApiError(code = "INTERNAL_ERROR")))
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.BACK_BUTTON).performClick()
+        composeRule.onNodeWithContentDescription("Quay lại").performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             runCatching {

@@ -27,8 +27,8 @@
     <plurals name="storefront_units_attemptsPerExam">
         <item quantity="other">%1$d lượt mỗi bài</item>
     </plurals>
-    <string name="storefront_units_minutes">%1$d phút</string>
-    <string name="storefront_units_questions">%1$d câu</string>
+    <string name="storefront_units_minutes">%1$s phút</string>
+    <string name="storefront_units_questions">%1$s câu</string>
 
     <string name="account_deletion_deletedNotice">Tài khoản của bạn đã được xóa.</string>
     <string name="common_close">Đóng</string>

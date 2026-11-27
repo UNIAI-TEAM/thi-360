@@ -452,6 +452,8 @@ dependencies {
     // AND-RICH: Pinned RaTeX LaTeX engine (0.1.16) and Jsoup HTML tree parser.
     implementation(libs.ratex.android)
     implementation(libs.jsoup)
+    // AND-PAY: Custom Tabs browser launcher for VNPAY checkout (R-39, Spec 7.1, B1.13).
+    implementation(libs.androidx.browser)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

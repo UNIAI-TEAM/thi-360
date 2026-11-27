@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="question_type_singleChoice">Chọn một đáp án</string>
+    <string name="question_type_multipleChoice">Chọn một hoặc nhiều đáp án</string>
+    <string name="question_type_shortAnswer">Trả lời ngắn</string>
+    <string name="question_type_cloze">Điền khuyết</string>
+    <string name="question_type_clozeCount">Điền khuyết · %1$s</string>
+    <string name="question_type_questionSet">Bộ câu hỏi</string>
+    <string name="question_type_trueFalse">Đúng/Sai</string>
+    <string name="question_type_matching">Ghép đôi</string>
+    <string name="question_type_essay">Tự luận</string>
+
+    <string name="question_outcome_correct">Đúng</string>
+    <string name="question_outcome_partial">Đúng một phần</string>
+    <string name="question_outcome_wrong">Sai</string>
+    <string name="question_outcome_blank">Bỏ trống</string>
+    <string name="question_outcome_pendingReview">Chờ chấm</string>
+
+    <string name="question_regrading">Đang chấm lại</string>
+    <string name="question_flagForReview">Đánh dấu xem lại</string>
+    <string name="question_flagRemove">Bỏ đánh dấu</string>
+    <string name="question_manualGrading">Chấm tay</string>
+    <string name="question_chooseSingle">Chọn một đáp án</string>
+    <string name="question_chooseMultiple">Chọn các phương án đúng</string>
+
+    <string name="question_answerLabel">Đáp số</string>
+    <string name="question_answerPlaceholder">Nhập đáp số</string>
+    <string name="question_shortAnswerNote">Đáp số được so khớp đúng cách viết, nên hãy viết theo hướng dẫn nhập ở trên.</string>
+    <string name="question_hintPrefix">Hướng dẫn nhập:</string>
+
+    <string name="question_clozeHelp">Gõ đáp án vào từng ô trong đoạn văn. Mỗi ô là một câu riêng trong danh sách câu hỏi.</string>
+    <string name="question_clozeFilled">Đã điền %1$s/%2$s ô</string>
+    <string name="question_clozeBlankNote">Ô bỏ trống tính là chưa trả lời; các ô được chấm riêng.</string>
+    <string name="question_clozeBlankAria">Câu %1$s, ô trống %2$s</string>
+    <string name="question_clozePlaceholder">Ô %1$s</string>
+
+    <string name="question_trueOption">Đúng</string>
+    <string name="question_falseOption">Sai</string>
+    <string name="question_trueFalseHelp">Chọn Đúng hoặc Sai cho từng ý</string>
+
+    <string name="question_leftColumn">Cột trái</string>
+    <string name="question_rightColumn">Cột phải</string>
+    <string name="question_matchExclusive">Chọn lựa chọn cho từng mục trong danh sách. Mỗi lựa chọn chỉ dùng một lần: lựa chọn đã ghép bị làm mờ trong danh sách của các mục khác; bỏ ghép để dùng lại.</string>
+    <string name="question_matchReusable">Một lựa chọn ở cột phải có thể ghép với nhiều mục.</string>
+    <string name="question_matchWith">Ghép với</string>
+    <string name="question_matchPlaceholder">Chọn…</string>
+    <string name="question_matchClear">Bỏ ghép mục %1$s</string>
+    <string name="question_matchDone">Đã ghép %1$s/%2$s mục</string>
+    <string name="question_matchDoneNote">Mục chưa ghép tính là chưa trả lời; các cặp được chấm riêng.</string>
+    <string name="question_matchPickLeft">Mục %1$s</string>
+
+    <string name="question_essayEditorLabel">Bài viết của bạn</string>
+    <string name="question_essayPlaceholder">Viết bài của bạn tại đây</string>
+    <string name="question_wordsNeeded">Còn %1$s chữ nữa để đạt yêu cầu.</string>
+    <string name="question_wordLimitMet">Đã đạt yêu cầu số chữ</string>
+    <string name="question_essayNote">Bài viết chỉ nhận chữ và định dạng chữ (đậm, nghiêng, gạch chân, danh sách), không chèn ảnh. Nội dung được lưu tự động trong lúc bạn viết.</string>
+    <string name="question_pendingReviewNote">Câu này do người chấm chấm sau khi bạn nộp bài. Điểm tổng của lượt hiện khi người chấm chấm xong.</string>
+    <string name="question_essayWordCount">%1$s chữ</string>
+    <string name="question_essayWordCountMin">%1$s / tối thiểu %2$s chữ</string>
+
+    <string name="question_setPassageCaption">Ngữ liệu chung cho câu %1$s–%2$s</string>
+    <string name="question_points">%1$s / %2$s điểm</string>
+    <string name="question_pointsSuffix">điểm</string>
+    <string name="question_noPointsYet">Chưa có điểm</string>
+    <string name="question_maxPoints">tối đa %1$s điểm</string>
+    <string name="question_solutionLabel">Lời giải</string>
+    <string name="question_correctAnswerTag">Đáp án đúng</string>
+    <string name="question_yourPickTag">Bạn chọn</string>
+    <string name="question_yourPickWrongTag">Bạn chọn · Sai</string>
+    <string name="question_notPickedTag">Bạn không chọn</string>
+    <string name="question_correctAnswerPrefix">Đáp án:</string>
+    <string name="question_notAnswered">Chưa trả lời</string>
+    <string name="question_notMatched">Chưa ghép</string>
+    <string name="question_yourEssayLabel">Bài viết của bạn</string>
+    <string name="question_showFullEssay">Xem toàn bộ bài viết</string>
+    <string name="question_hideFullEssay">Thu gọn bài viết</string>
+    <string name="question_gradingCommentLabel">Nhận xét của người chấm</string>
+    <string name="question_criteriaLabel">Điểm theo tiêu chí</string>
+    <string name="question_criterionCol">Tiêu chí</string>
+    <string name="question_pointsCol">Điểm</string>
+    <string name="question_itemCol">Mục</string>
+    <string name="question_youChoseCol">Bạn chọn</string>
+    <string name="question_answerCol">Đáp án</string>
+    <string name="question_acceptedCol">Đáp án được chấp nhận</string>
+    <string name="question_blankFilledTag">bỏ trống</string>
+    <string name="question_countTableSummary">Đúng %1$s/%2$s ý → %3$s điểm</string>
+    <string name="question_label">Câu %1$s</string>
+    <string name="question_rangeLabel">Câu %1$s–%2$s</string>
+
+    <string name="question_symbolInput_groupLabel">Thanh chèn ký hiệu</string>
+    <string name="question_symbolInput_symbolNames_plus">Dấu cộng (+)</string>
+    <string name="question_symbolInput_symbolNames_minus">Dấu trừ (-)</string>
+    <string name="question_symbolInput_symbolNames_lparen">Mở ngoặc (</string>
+    <string name="question_symbolInput_symbolNames_rparen">Đóng ngoặc )</string>
+    <string name="question_symbolInput_symbolNames_charge2plus">Điện tích 2+</string>
+    <string name="question_symbolInput_symbolNames_charge3plus">Điện tích 3+</string>
+    <string name="question_symbolInput_symbolNames_charge2minus">Điện tích 2-</string>
+    <string name="question_symbolInput_symbolNames_charge3minus">Điện tích 3-</string>
+    <string name="question_symbolInput_symbolNames_sub2">Chỉ số dưới 2</string>
+    <string name="question_symbolInput_symbolNames_sub3">Chỉ số dưới 3</string>
+    <string name="question_symbolInput_symbolNames_sub4">Chỉ số dưới 4</string>
+    <string name="question_symbolInput_symbolNames_arrowRight">Mũi tên phản ứng (-&gt;)</string>
+
+    <string name="question_numericInput_groupLabel">Phím bổ sung</string>
+    <string name="question_numericInput_slash">Dấu gạch chéo</string>
+    <string name="question_numericInput_comma">Dấu phẩy</string>
+    <string name="question_numericInput_dot">Dấu chấm</string>
+
+    <string name="attempt_editor_bold">In đậm</string>
+    <string name="attempt_editor_italic">In nghiêng</string>
+    <string name="attempt_editor_bulletList">Danh sách dấu đầu dòng</string>
+    <string name="attempt_editor_orderedList">Danh sách đánh số</string>
+    <string name="attempt_editor_undo">Hoàn tác</string>
+    <string name="attempt_editor_redo">Làm lại</string>
+    <string name="attempt_editor_toolbarLabel">Định dạng bài viết</string>
+    <string name="attempt_editor_loading">Đang tải trình soạn bài viết…</string>
+</resources>
