@@ -42,7 +42,12 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertEqual(profileFields.count, 2, "Default iPad Account detail must be Profile (fullName + phone)")
 
         accountVM.selectDetail(.orders)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.1)
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
+            return !ids.contains("profile.info.fullNameField")
+                && (ids.contains("account.detail.orders") || ids.contains("orders.screen") || ids.contains("payment.orders.screen"))
+                && RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count != 2
+        }
         XCTAssertEqual(accountVM.selectedDetail, .orders)
         let ordersIDs = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
         XCTAssertFalse(ordersIDs.contains("profile.info.fullNameField"), "Orders route rendered in detail pane must replace Profile form")
@@ -53,7 +58,9 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertNotEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 2)
 
         accountVM.selectDetail(.changePassword)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.1)
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 3
+        }
         XCTAssertEqual(accountVM.selectedDetail, .changePassword)
         XCTAssertEqual(
             RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count,
@@ -97,7 +104,12 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 2)
 
         accountVM.selectDetail(.orders)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.1)
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
+            return !ids.contains("profile.info.fullNameField")
+                && (ids.contains("account.detail.orders") || ids.contains("orders.screen") || ids.contains("payment.orders.screen"))
+                && RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count != 2
+        }
         XCTAssertEqual(accountVM.selectedDetail, .orders)
         let duoOrdersIDs = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
         XCTAssertFalse(duoOrdersIDs.contains("profile.info.fullNameField"))
@@ -108,7 +120,9 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertNotEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 2)
 
         accountVM.selectDetail(.changePassword)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.1)
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 3
+        }
         XCTAssertEqual(accountVM.selectedDetail, .changePassword)
         XCTAssertEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 3)
     }

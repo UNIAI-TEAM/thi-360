@@ -53,7 +53,13 @@ final class NoLinkReturnTests: XCTestCase {
             clock: harness.clock
         )
         await vm.startIfNeeded()
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        let timeoutDeadline = Date().addingTimeInterval(2.0)
+        while Date() < timeoutDeadline {
+            if case let .noResultYet(_, timedOut, _, _) = vm.state, timedOut {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
 
         if case let .noResultYet(order, timedOut, _, _) = vm.state {
             XCTAssertEqual(order.code, "DH261126000001")

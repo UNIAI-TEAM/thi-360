@@ -13,6 +13,7 @@ struct AdaptiveShellView: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.brandPalette) private var palette
+    @Environment(\.accountInspector) private var accountInspector
 
     private var effectiveSizeClass: UserInterfaceSizeClass? {
         if router.stateProbeEnabled, let forced = router.forcedSizeClassForUITest {
@@ -165,6 +166,7 @@ struct AdaptiveShellView: View {
                         )
                     }
             }
+            .environment(\.accountInspector, accountInspector)
         }
         .navigationSplitViewStyle(.balanced)
     }
