@@ -145,6 +145,7 @@ function ProfileContent({
   onProfileChange: (next: ProfileResponse) => void;
 }) {
   const t = useTranslations("account.profile");
+  const deletionT = useTranslations("account.deletion");
 
   return (
     <>
@@ -182,6 +183,21 @@ function ProfileContent({
             </div>
             <Button asChild variant="secondary">
               <Link href="/change-password?source=account-menu">{t("password.change")}</Link>
+            </Button>
+          </section>
+          <section
+            aria-labelledby="profile-delete-account-title"
+            className={cn(CARD_CLASS, "mt-2 flex-row flex-wrap items-center justify-between border-danger/30")}
+          >
+            <h2 id="profile-delete-account-title" className="text-h3 font-bold text-danger">
+              {deletionT("title")}
+            </h2>
+            <Button
+              asChild
+              variant="secondary"
+              className="border-danger/30 text-danger hover:bg-danger-bg"
+            >
+              <Link href="/account/delete">{deletionT("title")}</Link>
             </Button>
           </section>
         </div>

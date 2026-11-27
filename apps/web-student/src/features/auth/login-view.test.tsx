@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   callbackUrl: null as string | null,
   reason: null as string | null,
   reset: null as string | null,
+  deleted: null as string | null,
   loginWithPassword: vi.fn(),
   navigate: vi.fn(),
   refresh: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock("next/navigation", () => ({
       ...(mocks.callbackUrl ? { callbackUrl: mocks.callbackUrl } : {}),
       ...(mocks.reason ? { reason: mocks.reason } : {}),
       ...(mocks.reset ? { reset: mocks.reset } : {}),
+      ...(mocks.deleted ? { deleted: mocks.deleted } : {}),
     }),
 }));
 
@@ -45,6 +47,7 @@ beforeEach(() => {
   mocks.callbackUrl = null;
   mocks.reason = null;
   mocks.reset = null;
+  mocks.deleted = null;
 });
 
 afterEach(() => {
@@ -257,5 +260,46 @@ describe("LoginView", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Đã đặt lại mật khẩu. Hãy đăng nhập bằng mật khẩu mới.");
     expect(screen.getByLabelText(/Tên đăng nhập hoặc email/)).toHaveValue("");
     expect(mocks.loginWithPassword).not.toHaveBeenCalled();
+  });
+
+  it("#deletedNotice: có ?deleted=1 hiện thông báo đã xóa tài khoản ở cả tiếng Việt và tiếng Anh (AC-7)", () => {
+    mocks.deleted = "1";
+    const { unmount } = renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Tài khoản của bạn đã được xóa.");
+    expect(screen.getByLabelText(/Tên đăng nhập hoặc email/)).toHaveValue("");
+    expect(mocks.loginWithPassword).not.toHaveBeenCalled();
+
+    unmount();
+
+    render(
+      <NextIntlClientProvider locale="en" messages={en_messages} timeZone="Asia/Ho_Chi_Minh">
+        <LoginView navigate={mocks.navigate} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Your account has been deleted.");
+  });
+
+  it("đăng nhập với callbackUrl=/account/delete gửi callbackUrl và quay về /account/delete (AC-4)", async () => {
+    mocks.callbackUrl = "/account/delete";
+    mocks.loginWithPassword.mockResolvedValue({
+      redirectTo: "/account/delete",
+      mustChangePassword: false,
+    });
+
+    renderWithProviders(<LoginView navigate={mocks.navigate} />);
+
+    await userEvent.type(screen.getByLabelText(/Tên đăng nhập hoặc email/), "student01");
+    await userEvent.type(screen.getByLabelText(/Mật khẩu/), "Thi360@dev");
+    await userEvent.click(screen.getByRole("button", { name: "Đăng nhập" }));
+
+    await waitFor(() =>
+      expect(mocks.loginWithPassword).toHaveBeenCalledWith({
+        identifier: "student01",
+        password: "Thi360@dev",
+        callbackUrl: "/account/delete",
+      }),
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith("/account/delete");
   });
 });
