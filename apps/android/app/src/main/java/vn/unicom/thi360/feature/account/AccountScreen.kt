@@ -185,29 +185,37 @@ fun AccountScreen(
     val effectiveShowSinglePaneChangePassword =
         showSinglePaneChangePassword || foldedFromChangePasswordWithDraft
 
+    var pendingOpenProfileOnFold by rememberSaveable { mutableStateOf(false) }
     val foldedFromProfileWithDraft = previousTwoPaneWidth &&
         !isTwoPaneWidth &&
         selectedPane == AccountDetailPane.PROFILE &&
         (profileDeps?.draftStore?.hasAnyDraft == true)
 
-    LaunchedEffect(foldedFromProfileWithDraft, rootNavigator) {
-        if (foldedFromProfileWithDraft) {
-            if (rootNavigator != null) {
-                rootNavigator.openProfile()
-            } else {
-                showSinglePaneProfileFallback = true
-            }
-        }
-    }
-
     SideEffect {
         if (foldedFromChangePasswordWithDraft) {
             onShowSinglePaneChangePassword(true)
         }
+        if (foldedFromProfileWithDraft) {
+            if (rootNavigator != null) {
+                pendingOpenProfileOnFold = true
+            } else {
+                showSinglePaneProfileFallback = true
+            }
+        }
         if (isTwoPaneWidth && showSinglePaneProfileFallback) {
             showSinglePaneProfileFallback = false
         }
+        if (isTwoPaneWidth && pendingOpenProfileOnFold) {
+            pendingOpenProfileOnFold = false
+        }
         previousTwoPaneWidth = isTwoPaneWidth
+    }
+
+    LaunchedEffect(pendingOpenProfileOnFold, rootNavigator) {
+        if (pendingOpenProfileOnFold && rootNavigator != null) {
+            pendingOpenProfileOnFold = false
+            rootNavigator.openProfile()
+        }
     }
 
     if (!isTwoPaneWidth && effectiveShowSinglePaneChangePassword) {
@@ -254,6 +262,7 @@ fun AccountScreen(
         },
         onOrdersClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.ORDERS)
                 paneReselectTick++
@@ -262,6 +271,9 @@ fun AccountScreen(
             }
         },
         onChangePasswordClick = {
+            if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
+            }
             onSelectPane(AccountDetailPane.CHANGE_PASSWORD)
             if (isTwoPaneWidth) {
                 paneReselectTick++
@@ -308,6 +320,7 @@ fun AccountScreen(
         },
         onLanguageRowClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.LANGUAGE)
                 paneReselectTick++
@@ -317,6 +330,7 @@ fun AccountScreen(
         },
         onThemeRowClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.THEME)
                 paneReselectTick++
@@ -325,6 +339,7 @@ fun AccountScreen(
         onSelectThemeMode = onSelectThemeMode,
         onLegalTermsClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.LEGAL_TERMS)
                 paneReselectTick++
@@ -334,6 +349,7 @@ fun AccountScreen(
         },
         onLegalPrivacyClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.LEGAL_PRIVACY)
                 paneReselectTick++
@@ -348,6 +364,7 @@ fun AccountScreen(
         },
         onDeleteAccountClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.DELETE_ACCOUNT)
                 paneReselectTick++
@@ -365,8 +382,10 @@ fun AccountScreen(
                 onSelectThemeMode = onSelectThemeMode,
                 recoveryGateway = recoveryGateway,
                 legalRepository = legalRepository ?: remember(context) { LegalRepository.create(context) },
+                onOpenVerifyEmail = rootNavigator?.let { nav -> { nav.openProfileVerifyEmail() } },
                 onOpenMyExams = { rootNavigator?.switchTab(Destination.MyExams) },
                 onOpenOrders = {
+                    profileDeps?.draftStore?.clear()
                     onSelectPane(AccountDetailPane.ORDERS)
                     paneReselectTick++
                 },
@@ -421,6 +440,7 @@ private fun AccountTwoPaneDetailNavHost(
     onSelectThemeMode: (ThemeMode) -> Unit,
     recoveryGateway: RecoveryGateway,
     legalRepository: LegalRepository,
+    onOpenVerifyEmail: (() -> Unit)?,
     onOpenMyExams: () -> Unit,
     onOpenOrders: () -> Unit,
 ) {
@@ -509,6 +529,7 @@ private fun AccountTwoPaneDetailNavHost(
                 tab = Destination.Account,
                 navigator = detailNavigator,
                 embeddedInPane = true,
+                onOpenVerifyEmail = onOpenVerifyEmail,
                 onOpenMyExams = onOpenMyExams,
                 onOpenOrders = onOpenOrders,
             )

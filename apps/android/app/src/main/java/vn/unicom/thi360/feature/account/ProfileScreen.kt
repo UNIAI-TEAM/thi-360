@@ -1,6 +1,7 @@
 package vn.unicom.thi360.feature.account
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -150,6 +151,11 @@ fun ProfileScreen(
         if (loadedProfile != null) {
             deps.draftStore.syncWithProfile(loadedProfile)
         }
+    }
+
+    BackHandler(enabled = !embeddedInPane) {
+        deps.draftStore.clear()
+        onBack()
     }
 
     var avatarBusy by remember { mutableStateOf(false) }

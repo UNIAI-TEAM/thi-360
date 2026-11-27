@@ -35,6 +35,7 @@ class ProfileDraftStore {
     var newEmail by mutableStateOf("")
     var changeEmailPassword by mutableStateOf("")
     var pendingCode by mutableStateOf("")
+    private var preserveNextExitFlag: Boolean = false
 
     val hasActiveInfoDraft: Boolean
         get() = baselineUsername != null && (fullName != baselineFullName || phone != baselinePhone)
@@ -43,6 +44,16 @@ class ProfileDraftStore {
         get() = hasActiveInfoDraft ||
             (isChangeEmailOpen && (newEmail.isNotEmpty() || changeEmailPassword.isNotEmpty())) ||
             pendingCode.isNotEmpty()
+
+    fun preserveNextExit() {
+        preserveNextExitFlag = true
+    }
+
+    fun consumePreserveNextExit(): Boolean {
+        val current = preserveNextExitFlag
+        preserveNextExitFlag = false
+        return current
+    }
 
     fun syncWithProfile(profile: UserProfile, forceReset: Boolean = false) {
         val serverFullName = profile.fullName
@@ -74,6 +85,7 @@ class ProfileDraftStore {
         newEmail = ""
         changeEmailPassword = ""
         pendingCode = ""
+        preserveNextExitFlag = false
     }
 }
 

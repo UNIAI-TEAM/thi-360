@@ -16,6 +16,7 @@ fun NavGraphBuilder.profileGraph(
     tab: Destination,
     navigator: AppNavigator,
     embeddedInPane: Boolean = false,
+    onOpenVerifyEmail: (() -> Unit)? = null,
     onOpenMyExams: (() -> Unit)? = null,
     onOpenOrders: (() -> Unit)? = null,
 ) {
@@ -24,6 +25,7 @@ fun NavGraphBuilder.profileGraph(
         val deps = LocalProfileDependencies.current
         if (!embeddedInPane && shellWidth == ShellWidth.TwoColumn) {
             LaunchedEffect(shellWidth) {
+                deps?.draftStore?.preserveNextExit()
                 deps?.onSelectAccountPane?.invoke(AccountDetailPane.PROFILE)
                 navigator.back()
             }
@@ -31,7 +33,7 @@ fun NavGraphBuilder.profileGraph(
         ProfileScreen(
             embeddedInPane = embeddedInPane,
             onBack = { navigator.back() },
-            onOpenVerifyEmail = { navigator.openProfileVerifyEmail() },
+            onOpenVerifyEmail = onOpenVerifyEmail ?: { navigator.openProfileVerifyEmail() },
         )
     }
 

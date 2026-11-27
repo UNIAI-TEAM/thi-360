@@ -1,5 +1,7 @@
 package vn.unicom.thi360.feature.account
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -7,6 +9,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
@@ -291,5 +295,130 @@ class ProfileScreenTest {
         composeRule.onNodeWithTag(ProfileTestTags.UNVERIFIED_BANNER).assertDoesNotExist()
         composeRule.onNodeWithTag(ProfileTestTags.EMAIL_NONE).performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithTag(ProfileTestTags.CHANGE_EMAIL_TOGGLE).performScrollTo().assertTextContains("Đổi email")
+    }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp")
+    fun systemBackDiscardsUnsavedDraftsAndClearsChangeEmailPasswordOnReentry() {
+        server.respondApiFixture("GET", "/api/v1/me/profile", 200, "me-profile-200.json")
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/"),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(testSignedInTokens()),
+            localeProvider = { AppLocale.VI },
+        )
+        var backDispatcher: OnBackPressedDispatcher? = null
+
+        composeRule.setContent {
+            backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+                startDestination = Destination.Account.route,
+                profileGateway = OpenApiProfileGateway.fromSessionStack(stack, server.url("/")),
+                apiBaseUrl = server.url("/"),
+            )
+        }
+
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag(AccountTestTags.PROFILE_FULL_NAME).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag(AccountTestTags.PROFILE_ROW).performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performScrollTo().performTextClearance()
+        composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performTextInput("Abandoned Draft Name")
+        composeRule.onNodeWithTag(ProfileTestTags.CHANGE_EMAIL_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(ProfileTestTags.NEW_EMAIL_FIELD).performScrollTo().performTextInput("abandoned@thi360.vn")
+        composeRule.onNodeWithTag(ProfileTestTags.CURRENT_PASSWORD_FIELD).performScrollTo().performTextInput("TempPass1!")
+
+        composeRule.runOnIdle { backDispatcher?.onBackPressed() }
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag(AccountTestTags.PROFILE_ROW).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        composeRule.onNodeWithTag(AccountTestTags.PROFILE_ROW).performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performScrollTo().assertTextContains("Nguyễn Văn An")
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag(ProfileTestTags.CHANGE_EMAIL_FORM).assertDoesNotExist()
+        composeRule.onNodeWithTag(ProfileTestTags.CHANGE_EMAIL_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(ProfileTestTags.NEW_EMAIL_FIELD).performScrollTo().assertTextContains("")
+        composeRule.onNodeWithTag(ProfileTestTags.CURRENT_PASSWORD_FIELD).performScrollTo().assertTextContains("")
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h720dp")
+    fun twoPaneSwitchAndTabSwitchDiscardUnsavedDraftsAndResetOnReentry() {
+        server.respondApiFixture("GET", "/api/v1/me/profile", 200, "me-profile-200.json")
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/"),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(testSignedInTokens()),
+            localeProvider = { AppLocale.VI },
+        )
+
+        composeRule.setContent {
+            AppRoot(
+                preferences = AppPreferences(locale = AppLocale.VI),
+                onSelectLocale = {},
+                onSelectThemeMode = {},
+                sessionManager = stack.sessionManager,
+                validateOnLaunch = false,
+                startDestination = Destination.Account.route,
+                profileGateway = OpenApiProfileGateway.fromSessionStack(stack, server.url("/")),
+                apiBaseUrl = server.url("/"),
+            )
+        }
+
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+
+        composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performScrollTo().performTextClearance()
+        composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performTextInput("Pane Draft Name")
+        composeRule.onNodeWithTag(ProfileTestTags.CHANGE_EMAIL_TOGGLE).performScrollTo().performClick()
+        composeRule.onNodeWithTag(ProfileTestTags.CURRENT_PASSWORD_FIELD).performScrollTo().performTextInput("SecretPane1!")
+
+        composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).performScrollTo().performClick()
+        composeRule.onNodeWithTag(AccountTestTags.PROFILE_ROW).performScrollTo().performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performScrollTo().assertTextContains("Nguyễn Văn An")
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag(ProfileTestTags.CHANGE_EMAIL_FORM).assertDoesNotExist()
+
+        composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performScrollTo().performTextClearance()
+        composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performTextInput("Tab Draft Name")
+        composeRule.onNodeWithTag(vn.unicom.thi360.shell.ShellTestTags.navItem(Destination.Home)).performClick()
+        composeRule.onNodeWithTag(vn.unicom.thi360.shell.ShellTestTags.navItem(Destination.Account)).performClick()
+        composeRule.waitUntil(timeoutMillis = 10_000) {
+            runCatching {
+                composeRule.onNodeWithTag(ProfileTestTags.FULL_NAME_FIELD).performScrollTo().assertTextContains("Nguyễn Văn An")
+                true
+            }.getOrDefault(false)
+        }
     }
 }

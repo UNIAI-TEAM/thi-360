@@ -764,7 +764,27 @@ internal fun AppSessionContent(
             }
         }
         DisposableEffect(shellNavController) {
+            var previousRoute = shellNavController.currentDestination?.route
+            val profileRoute = AppRoute.tabRoute(Destination.Account, AppRoute.PROFILE_PATH)
+            val verifyEmailRoute = AppRoute.tabRoute(Destination.Account, AppRoute.PROFILE_VERIFY_EMAIL_PATH)
+            val accountRootRoute = AppRoute.rootRouteFor(Destination.Account)
+            val draftCleanupListener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
+                val nextRoute = destination.route
+                val inProfileFlow = nextRoute == accountRootRoute ||
+                    nextRoute == profileRoute ||
+                    nextRoute == verifyEmailRoute
+                if (!inProfileFlow) {
+                    profileDraftStore.clear()
+                } else if (previousRoute == profileRoute && nextRoute == accountRootRoute) {
+                    if (!profileDraftStore.consumePreserveNextExit()) {
+                        profileDraftStore.clear()
+                    }
+                }
+                previousRoute = nextRoute
+            }
+            shellNavController.addOnDestinationChangedListener(draftCleanupListener)
             onDispose {
+                shellNavController.removeOnDestinationChangedListener(draftCleanupListener)
                 val nextState = sessionManager.state.value
                 val sameGeneration = sessionManager.sessionGeneration.value == sessionGeneration
                 if (navController != null) {

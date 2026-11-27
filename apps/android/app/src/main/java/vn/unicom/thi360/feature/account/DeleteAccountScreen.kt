@@ -371,11 +371,6 @@ internal fun DeleteAccountScreenContent(
                                         color = colors.dangerText,
                                         modifier = Modifier.testTag(DeleteAccountTestTags.BLOCKED_PENDING_PAYMENT_MESSAGE),
                                     )
-                                }
-
-                                if (DeletionBlocker.ORDER_BEING_CHECKED in state.blockers ||
-                                    DeletionBlocker.ORDER_PENDING_PAYMENT in state.blockers
-                                ) {
                                     OutlinedButton(
                                         onClick = onOpenOrders,
                                         border = BorderStroke(1.dp, colors.borderStrong),
