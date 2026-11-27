@@ -143,21 +143,12 @@ final class SessionStore {
         let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let previousTokens = try? tokenStore.read()
         let previousRefreshToken = previousTokens?.refreshToken
-        let previousAccountId = previousTokens?.accountId
 
         do {
             let newTokens = try await apiClient.login(identifier: trimmedIdentifier, password: password)
             await apiClient.refresher.invalidate()
             try tokenStore.write(newTokens)
             await fetchAndPersistAccountIdIfMissing()
-            let newAccountId = currentAccountId
-            if let previousAccountId,
-               !previousAccountId.isEmpty,
-               let newAccountId,
-               previousAccountId != newAccountId
-            {
-                await sessionCleanup.runLogout(accountId: previousAccountId)
-            }
             biometricManager?.clearForSessionEnd()
             onSessionReplaced?()
             connectivityState = .online
