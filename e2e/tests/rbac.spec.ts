@@ -188,6 +188,28 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
         row.locator("[data-col=detail]").getByText(new RegExp(`Vai trò:.*${roleName}`)),
       ).toBeVisible();
     });
+
+    test("E2E 2b: số tài khoản đang giữ ở tab Vai trò dẫn sang Người dùng theo vai trò đúng vai trò (UNI-2892)", async ({
+      page,
+    }) => {
+      await loginAs(page, "platform", PLATFORM_PASSWORD);
+      await expect(page).toHaveURL(new RegExp(`^${ADMIN_URL}/?$`));
+
+      await page.goto(`${ADMIN_URL}/rbac/roles`);
+      await page.getByLabel("Tìm kiếm").fill(roleCode);
+      await page.getByRole("button", { name: `Xem tài khoản đang giữ vai trò ${roleName}` }).click();
+
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_URL}/rbac/role-users\\?role=${roleCode}$`));
+      const tabNav = page.getByRole("navigation", { name: "Các tab phân quyền" });
+      await expect(tabNav.getByRole("link", { name: "Người dùng theo vai trò" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      await expect(page.getByRole("heading", { name: new RegExp(`${roleName} · ${roleCode}`) })).toBeVisible();
+      const userLink = page.getByRole("link", { name: watchUsername });
+      await expect(userLink).toBeVisible();
+      await expect(userLink).toHaveAttribute("href", new RegExp(`/users/${watchUserId}\\?tab=roles$`));
+    });
   });
 
   test("E2E 3: Gán hàng loạt quyền trực tiếp AUDIT.VIEW cho ops.admin và student01", async ({
@@ -350,7 +372,10 @@ test.describe("Phân quyền (T08 - UNI-2545)", () => {
       await expect(rolesLink).toHaveAttribute("aria-current", "page");
       await expect(tabNav.getByRole("link", { name: "Quyền", exact: true })).toBeHidden();
       await expect(tabNav.getByRole("link", { name: "Người dùng theo quyền" })).toBeHidden();
+      await expect(tabNav.getByRole("link", { name: "Người dùng theo vai trò" })).toBeHidden();
       await expect(tabNav.getByRole("link", { name: "Gán hàng loạt" })).toBeHidden();
+      // Không có USER.VIEW: số tài khoản đang giữ chỉ là chữ, không dẫn sang tab Người dùng theo vai trò.
+      await expect(page.getByRole("button", { name: /Xem tài khoản đang giữ vai trò/ })).toHaveCount(0);
 
       await expect(page.getByRole("button", { name: "+ Tạo vai trò" })).toBeHidden();
       await expect(page.getByRole("button", { name: /Sửa vai trò/ })).toHaveCount(0);

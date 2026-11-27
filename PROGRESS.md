@@ -17,7 +17,9 @@
 - **`UNI-2889`, nhánh `fix/UNI-2889-loi-than-thien`:** rà lỗi hiện cho người dùng: trang lỗi bỏ số HTTP, mã yêu cầu ghi "Khi cần hỗ trợ, gửi kèm mã này"; bỏ "(412)" ở Khuyến mãi; kiểm tra bài thi không hiện mã kỹ thuật, mã mới ra câu chung; MAPID không in mã quy tắc/nút cây; lý do gán quyền hàng loạt, lý do đóng/kết thúc lượt lạ ra câu chung; ô Kỳ thi có câu lỗi tiếng Việt.
 - **Đã xong:** #244, #245, #246 merge vào `develop` (`b39b12e3`), demo deploy lại, worktree đã dọn.
 - **`UNI-2888` bổ sung, nhánh `fix/UNI-2888-the-ke-lo-ra`:** bề rộng thẻ danh mục chia theo bề ngang dải để luôn lộ 1/4 thẻ kế; ít bài thì căn giữa, ẩn nút ←/→; ô khuyến mãi trong giá ghi tên chương trình, chip `-n%` đỏ đặc, giá gốc, ngày kết thúc (thẻ và trang chi tiết); nhãn `-n%` vàng trên bìa to và nổi hơn, có cả trên ảnh bìa riêng. web-student 569 test qua; đã xem thật (server máy trỏ API demo) sáng/tối.
-- **Tiếp theo:** người đã cho commit, merge, deploy nhánh trên. Vẫn chờ người trả lời: Phần II "Dữ liệu tổng hợp" SP2E 2026 và cảnh báo năm cấu trúc ≠ năm ma trận.
+- **`UNI-2888` bổ sung đã xong:** PR #250 merge vào `develop` (`53b09754`), demo deploy lại.
+- **`UNI-2892`, nhánh `feature/UNI-2892-nguoi-dung-theo-vai-tro`:** Phân quyền thêm tab "Người dùng theo vai trò" (`/rbac/role-users?role=CODE`, cần `ROLE.VIEW` + `USER.VIEW`, bố cục hai khung như Người dùng theo quyền, dùng API `/admin/users?roleId=` có sẵn, không đổi backend); số "Tài khoản đang giữ" ở tab Vai trò (bảng và thẻ) là liên kết sang tab mới đúng vai trò, số 0 chỉ là chữ; tên tài khoản dẫn tới `/users/[id]?tab=roles`. web-admin 307 file / 3.256 test, typecheck, lint, e2e typecheck; e2e `rbac.spec.ts` thêm E2E 2b.
+- **Tiếp theo:** người đã cho commit, merge, deploy `UNI-2892`; xem trên demo sau deploy. Vẫn chờ người trả lời: Phần II "Dữ liệu tổng hợp" SP2E 2026 và cảnh báo năm cấu trúc ≠ năm ma trận.
 
 ### App học viên native: port cổng thi — kế hoạch bản 8 đã duyệt; bản 9 đối chiếu lại với `develop`, chờ duyệt (2026-11-26, `UNI-2820`)
 

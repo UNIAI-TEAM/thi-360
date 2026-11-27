@@ -182,7 +182,7 @@ Có ba kiểu, chọn theo việc tab làm gì chứ không theo hình dáng:
 |---|---|---|
 | Tab phân đoạn | Chuyển chế độ trong cùng một khối (đăng nhập/đăng ký, chế độ xem) | `Tabs variant="segmented"` |
 | Tab nội dung | Đổi phần nội dung **trong cùng một trang**, không có đường dẫn riêng (các tab ở chi tiết tài khoản) | `Tabs variant="content"` |
-| Tab điều hướng | Mỗi tab là **một trang con có đường dẫn riêng** (bốn trang con của Phân quyền: `/rbac/roles`, `/rbac/permissions`, `/rbac/users`, `/rbac/bulk-assign`) | `NavTabs` + `NavTab` bọc `<Link>` |
+| Tab điều hướng | Mỗi tab là **một trang con có đường dẫn riêng** (năm trang con của Phân quyền: `/rbac/roles`, `/rbac/permissions`, `/rbac/role-users`, `/rbac/users`, `/rbac/bulk-assign`) | `NavTabs` + `NavTab` bọc `<Link>` |
 
 - **Tab phân đoạn:** thanh nền `bg-subtle` bo góc 12px, cao 48px; tab đang chọn nền trắng, `shadow-sm`, chữ `primary-text`.
 - **Tab nội dung và tab điều hướng** trông giống nhau: tab đang chọn nền `primary-50`, chữ `primary-text`, bo góc 10px, cao 40px; tab khác chữ `#54545A`.
@@ -246,7 +246,7 @@ Thanh dọc 4px màu `primary-600` (hoặc màu của nhóm) bên trái, tiêu �
   - **Nội dung:** Ngân hàng câu hỏi (`/questions`, `QUESTION.VIEW`), Bài thi (`/exams`, `EXAM.VIEW`), **Chấm tự luận** (`/grading`, `GRADING.VIEW`), Cấu hình chung (`/catalog`, `CATALOG.VIEW`).
   - **Thương mại:** Khuyến mãi (`/promotions`, `PROMOTION.VIEW`), Đơn hàng (`/orders`, `ORDER.VIEW`), Bộ đề (`/bundles`, `EXAM.VIEW`).
   - **Học viên:** Lượt thi (`/attempts`, `ATTEMPT.VIEW`).
-  - Chức năng phụ vẫn là nút hoặc tab trong trang chi tiết: Cấp hàng loạt là nút trong Tài khoản; Vai trò, Quyền, Người dùng theo quyền, Gán hàng loạt là bốn tab của Phân quyền; Thông tin bán (`/exams/[id]/listing`) là tab trong khung soạn bài thi; Hồ sơ học tập (`?tab=learning`) là tab trong chi tiết tài khoản (`/users/[id]`).
+  - Chức năng phụ vẫn là nút hoặc tab trong trang chi tiết: Cấp hàng loạt là nút trong Tài khoản; Vai trò, Quyền, Người dùng theo vai trò, Người dùng theo quyền, Gán hàng loạt là năm tab của Phân quyền (UNI-2892: tab Người dùng theo vai trò `?role=CODE` cùng bố cục hai khung với Người dùng theo quyền, cần `ROLE.VIEW` và `USER.VIEW`; số "Tài khoản đang giữ" ở tab Vai trò là liên kết sang tab này như cột "Tài khoản đang có" ở tab Quyền, số 0 chỉ là chữ; tên tài khoản dẫn tới `/users/[id]?tab=roles`); Thông tin bán (`/exams/[id]/listing`) là tab trong khung soạn bài thi; Hồ sơ học tập (`?tab=learning`) là tab trong chi tiết tài khoản (`/users/[id]`).
 
 - **Trình soạn bài thi, hàng thao tác:** bước 2 dùng thanh công cụ dính đầu trong khung soạn; bước 1, 3, 4 dùng `EditorStepToolbar` (`sticky top-0`, viền, nền `surface/95` blur) đặt đầu vùng soạn, nên đi tiếp, lưu nháp, công bố không phải cuộn hết trang. Thứ tự nút: Quay lại → phụ (Lưu nháp và thoát, Kiểm tra) → chính. Nhãn nút chính viết "Tiếp tục: <bước sau>" kèm icon mũi tên, không ghi mũi tên trong chữ (UNI-2876).
 - **Trang Tạo/Sửa câu hỏi:** cả đầu trang (`DetailHeader`) dính đầu khi cuộn (`sticky`, `top` âm bằng chiều cao lối quay lại để chỉ còn tiêu đề và hàng nút Đổi dạng câu, Dán từ Word, Hủy, Lưu nháp), nền trang có blur và đường kẻ dưới (UNI-2878).

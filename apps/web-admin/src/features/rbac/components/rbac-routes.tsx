@@ -5,6 +5,7 @@ import { BulkAssignTab, type BulkAssignTabProps } from "./bulk-assign-tab";
 import { PermissionUsersTab, type PermissionUsersTabProps } from "./permission-users-tab";
 import { PermissionsTab, type PermissionsTabProps } from "./permissions-tab";
 import { useRbacLayout } from "./rbac-layout-view";
+import { RoleUsersTab, type RoleUsersTabProps } from "./role-users-tab";
 import { RolesTab, type RolesTabProps } from "./roles-tab";
 
 /*
@@ -12,17 +13,39 @@ import { RolesTab, type RolesTabProps } from "./roles-tab";
  * (quyền đang chọn trên URL, hộp thoại tạo vai trò, chuyển tab). Props chỉ để test tiêm API giả.
  */
 
-export type RbacRolesRouteProps = Omit<RolesTabProps, "createOpen" | "onCreateOpenChange">;
+export type RbacRolesRouteProps = Omit<
+  RolesTabProps,
+  "createOpen" | "onCreateOpenChange" | "onSelectRoleUsers"
+>;
 
 /** `/rbac/roles` */
 export function RbacRolesRoute(props: RbacRolesRouteProps) {
-  const { createRoleOpen, setCreateRoleOpen } = useRbacLayout();
+  const { createRoleOpen, setCreateRoleOpen, navigateToTab } = useRbacLayout();
 
   // Rời trang Vai trò thì đóng yêu cầu mở hộp thoại, để quay lại không tự mở lại.
   useEffect(() => () => setCreateRoleOpen(false), [setCreateRoleOpen]);
 
   return (
-    <RolesTab {...props} createOpen={createRoleOpen} onCreateOpenChange={setCreateRoleOpen} />
+    <RolesTab
+      {...props}
+      createOpen={createRoleOpen}
+      onCreateOpenChange={setCreateRoleOpen}
+      onSelectRoleUsers={(code) => navigateToTab("role-users", code)}
+    />
+  );
+}
+
+export type RbacRoleUsersRouteProps = Omit<RoleUsersTabProps, "selectedRoleCode" | "onSelectRole">;
+
+/** `/rbac/role-users` (+ `?role=CODE`) */
+export function RbacRoleUsersRoute(props: RbacRoleUsersRouteProps) {
+  const { navigateToTab, selectedRoleCode } = useRbacLayout();
+  return (
+    <RoleUsersTab
+      {...props}
+      selectedRoleCode={selectedRoleCode}
+      onSelectRole={(code) => navigateToTab("role-users", code)}
+    />
   );
 }
 

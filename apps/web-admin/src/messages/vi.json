@@ -2610,7 +2610,6 @@
         "status": "Trạng thái",
         "users": "Tài khoản đang giữ"
       },
-      "cardCounts": "Số quyền: {permissions} · Tài khoản đang giữ: {users}",
       "createButton": "+ Tạo vai trò",
       "deleteAria": "Xóa vai trò {name}",
       "deleteConfirmAction": "Xóa vai trò",
@@ -2648,7 +2647,31 @@
       "statusInactive": "Ngừng hoạt động",
       "totalCount": "{count} vai trò",
       "viewAria": "Xem vai trò {name}",
-      "viewTooltip": "Xem chi tiết"
+      "viewTooltip": "Xem chi tiết",
+      "cardPermissionCount": "Số quyền: {count}",
+      "userCountAria": "Xem tài khoản đang giữ vai trò {name}",
+      "userCountValue": "{count} tài khoản"
+    },
+    "roleUsers": {
+      "pickerLabel": "Chọn vai trò",
+      "pickerSearchLabel": "Tìm vai trò",
+      "pickerSearchPlaceholder": "Mã hoặc tên vai trò",
+      "pickerEmptyTitle": "Không có vai trò phù hợp",
+      "pickerEmptyDescription": "Thử từ khóa khác.",
+      "summaryCount": "{count} tài khoản đang giữ vai trò này",
+      "columns": {
+        "account": "Tài khoản",
+        "otherRoles": "Vai trò khác",
+        "lastLogin": "Đăng nhập gần nhất",
+        "status": "Trạng thái"
+      },
+      "neverLoggedIn": "Chưa đăng nhập",
+      "lastLoginInline": "Đăng nhập gần nhất: {value}",
+      "emptyTitle": "Không có tài khoản",
+      "emptyDescription": "Chưa có tài khoản nào giữ vai trò này, hoặc không khớp bộ lọc.",
+      "errorTitle": "Không tải được danh sách tài khoản",
+      "errorDescription": "Kiểm tra kết nối rồi thử lại.",
+      "footnote": "Bấm tên tài khoản để mở trang chi tiết, tab Vai trò & quyền, khi cần gán hoặc gỡ vai trò."
     },
     "sessionErrorDescription": "Không tải được thông tin phiên làm việc. Hãy thử lại.",
     "sessionErrorTitle": "Không tải được trang phân quyền",
@@ -2662,12 +2685,14 @@
       "ariaLabel": "Các tab phân quyền",
       "bulk-assign": "Gán hàng loạt",
       "permissions": "Quyền",
+      "role-users": "Người dùng theo vai trò",
       "roles": "Vai trò",
       "users": "Người dùng theo quyền"
     },
     "tabsDescription": {
       "bulk-assign": "Tab Gán hàng loạt: gán hoặc gỡ vai trò, quyền cho nhiều tài khoản trong một lần. Xem trước kết quả từng tài khoản rồi mới áp dụng.",
       "permissions": "Tab Quyền: danh sách quyền của hệ thống, chỉ để xem. Quyền được gán cho vai trò và cho từng tài khoản ở các tab khác.",
+      "role-users": "Tab Người dùng theo vai trò: chọn một vai trò để xem những tài khoản đang giữ vai trò đó.",
       "roles": "Tab Vai trò: mỗi vai trò có một phạm vi truy cập và một tập quyền. Phạm vi quyết định người giữ vai trò vào trang nào sau khi đăng nhập.",
       "users": "Tab Người dùng theo quyền: chọn một quyền để xem những tài khoản đang có quyền đó và có từ đâu."
     },

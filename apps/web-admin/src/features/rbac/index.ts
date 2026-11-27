@@ -6,10 +6,12 @@ export {
 export {
   RbacBulkAssignRoute,
   RbacPermissionsRoute,
+  RbacRoleUsersRoute,
   RbacRolesRoute,
   RbacUsersRoute,
   type RbacBulkAssignRouteProps,
   type RbacPermissionsRouteProps,
+  type RbacRoleUsersRouteProps,
   type RbacRolesRouteProps,
   type RbacUsersRouteProps,
 } from "./components/rbac-routes";
@@ -35,6 +37,7 @@ export {
   PermissionUsersTab,
   type PermissionUsersTabProps,
 } from "./components/permission-users-tab";
+export { RoleUsersTab, type RoleUsersTabProps } from "./components/role-users-tab";
 export { RolesTab, type RolesTabProps } from "./components/roles-tab";
 export { UserRbacTab, type UserRbacTabProps } from "./components/user-rbac-tab";
 export {
