@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="result_actions_myExams">Bài thi của tôi</string>
+    <string name="result_actions_pendingReviewNote">Câu tự luận xem lại được sau khi chấm xong.</string>
+    <string name="result_actions_reviewAutoGraded">Xem lại câu đã chấm tự động</string>
+    <string name="result_actions_reviewFull">Xem lại bài</string>
+    <string name="result_actions_scoreOnlyNote">Bài thi này chỉ cho xem điểm, không có phần xem lại bài làm.</string>
+    <string name="result_actions_unavailableNote">Chưa thể xem lại bài làm ở trạng thái hiện tại.</string>
+
+    <string name="result_attemptNo">Lần %1$d</string>
+    <string name="result_backToHistory">Lịch sử luyện thi</string>
+    <string name="result_back">Quay lại</string>
+
+    <string name="result_choiceOptions_ANH">Tiếng Anh</string>
+    <string name="result_choiceOptions_CS">Khoa học máy tính</string>
+    <string name="result_choiceOptions_ENGLISH">Tiếng Anh</string>
+    <string name="result_choiceOptions_ICT">Tin học ứng dụng</string>
+    <string name="result_choiceOptions_KH">Khoa học</string>
+    <string name="result_choiceOptions_SCIENCE">Khoa học</string>
+    <string name="result_choiceOptions_TA">Tiếng Anh</string>
+
+    <string name="result_endReasons_CHOICE_TIMEOUT">Quá hạn chọn phần 3</string>
+    <string name="result_endReasons_FAULT_CLOSED">Đóng do lỗi hệ thống</string>
+    <string name="result_endReasons_SUBMITTED">Nộp bài</string>
+    <string name="result_endReasons_TIME_UP">Hết giờ</string>
+
+    <string name="result_errorDescription">Kiểm tra kết nối mạng rồi thử lại.</string>
+    <string name="result_errorTitle">Không tải được kết quả lượt thi</string>
+    <string name="result_eyebrow">Kết quả lượt thi</string>
+
+    <string name="result_fault_compensatedBanner">Lượt bị ảnh hưởng bởi lỗi hệ thống, đã cấp bù 1 lượt</string>
+    <string name="result_fault_faultNoticeBanner">Lượt kết thúc do lỗi hệ thống</string>
+    <string name="result_fault_reasonLabel">Ghi chú:</string>
+
+    <string name="result_grading_description">Bài làm đã được ghi nhận. Hệ thống đang tính điểm, màn hình sẽ tự cập nhật.</string>
+    <string name="result_grading_heading">Đang chấm</string>
+    <string name="result_grading_reload">Tải lại</string>
+    <string name="result_grading_timeoutDescription">Quá trình chấm mất nhiều thời gian hơn dự kiến. Kết quả sẽ cập nhật trong Lịch sử luyện thi khi hoàn tất.</string>
+    <string name="result_grading_timeoutHeading">Đang tính điểm, bạn có thể quay lại sau</string>
+
+    <string name="result_gradingError_heading">Đang xử lý kết quả</string>
+    <string name="result_gradingError_message">Bài làm đã được ghi nhận, kết quả đang được xử lý</string>
+
+    <string name="result_info_attemptNo">Lần làm</string>
+    <string name="result_info_choices">Lựa chọn đã chọn</string>
+    <string name="result_info_duration">Thời gian làm bài thực tế</string>
+    <string name="result_info_durationHoursMinutes" tools:ignore="PluralsCandidate">%1$d giờ %2$d phút</string>
+    <string name="result_info_durationMinutes">%1$d phút</string>
+    <string name="result_info_durationSeconds" tools:ignore="PluralsCandidate">%1$d giây</string>
+    <string name="result_info_durationZero">0 giây</string>
+    <string name="result_info_endReason">Cách kết thúc</string>
+    <string name="result_info_examKind">Kỳ thi</string>
+    <string name="result_info_finishedAt">Kết thúc</string>
+    <string name="result_info_noChoices">Không có</string>
+    <string name="result_info_part">Phần thi</string>
+    <string name="result_info_scope">Phạm vi thi</string>
+    <string name="result_info_startedAt">Bắt đầu</string>
+    <string name="result_info_subject">Môn thi</string>
+    <string name="result_info_title">Thông tin lượt thi</string>
+
+    <string name="result_loading">Đang tải kết quả lượt thi</string>
+
+    <string name="result_notFinished_continueAttempt">Tiếp tục làm bài</string>
+    <string name="result_notFinished_description">Lượt thi này vẫn đang mở hoặc đang được chuẩn bị nên chưa có kết quả.</string>
+    <string name="result_notFinished_title">Lượt thi chưa kết thúc</string>
+    <string name="result_notFinished_toHistory">Lịch sử luyện thi</string>
+
+    <string name="result_notFound_description">Lượt thi không tồn tại hoặc không thuộc tài khoản đang đăng nhập.</string>
+    <string name="result_notFound_eyebrow">MÃ LỖI 404</string>
+    <string name="result_notFound_title">Không tìm thấy kết quả lượt thi</string>
+    <string name="result_notFound_toHistory">Lịch sử luyện thi</string>
+    <string name="result_notFound_toHome">Bài thi của tôi</string>
+
+    <string name="result_pageTitle">Kết quả lượt thi</string>
+
+    <string name="result_parts_description">Điểm phần là tổng điểm các câu trong phần.</string>
+    <string name="result_parts_manualChip">Chấm tay</string>
+    <string name="result_parts_maxScoreNote">Điểm tối đa của phần: %1$s.</string>
+    <string name="result_parts_partScoreLabel">Điểm phần</string>
+    <string name="result_parts_pendingDescription">Điểm của phần đã chấm xong là điểm riêng của phần đó, chưa phải điểm tổng.</string>
+    <string name="result_parts_skippedBadge">Bị bỏ qua</string>
+    <string name="result_parts_skippedChoiceTimeout">Không làm phần 3: quá thời gian chọn</string>
+    <string name="result_parts_skippedFallback">Phần này đã bị bỏ qua và tính 0 điểm.</string>
+    <string name="result_parts_skippedFaultClosed">Phần bị bỏ qua do lượt kết thúc vì lỗi hệ thống.</string>
+    <string name="result_parts_title">Điểm từng phần</string>
+
+    <string name="result_scopes_FULL">Bài thi FULL</string>
+    <string name="result_scopes_PART">Bài thi theo phần</string>
+    <string name="result_scopes_SUBJECT">Bài thi theo môn</string>
+
+    <string name="result_segments_columns_blank">Bỏ trống</string>
+    <string name="result_segments_columns_correct">Đúng</string>
+    <string name="result_segments_columns_partial">Đúng một phần</string>
+    <string name="result_segments_columns_pending">Chờ chấm</string>
+    <string name="result_segments_columns_wrong">Sai</string>
+    <string name="result_segments_description">Điểm từng phân đoạn hiển thị trong phạm vi bài làm.</string>
+    <string name="result_segments_manualChip">Chấm tay</string>
+    <string name="result_segments_pendingDescription">Điểm của phân đoạn đã chấm xong là điểm riêng của phân đoạn đó, chưa phải điểm tổng.</string>
+    <string name="result_segments_range">Câu %1$d–%2$d</string>
+    <string name="result_segments_segmentScoreLabel">Điểm phân đoạn</string>
+    <string name="result_segments_title">Điểm theo phân đoạn</string>
+
+    <string name="result_states_GRADING">Đang chấm</string>
+    <string name="result_states_GRADING_ERROR">Đang xử lý kết quả</string>
+    <string name="result_states_PENDING_REVIEW">Chờ chấm</string>
+    <string name="result_states_REGRADING">Đang chấm lại</string>
+    <string name="result_states_SCORED">Đã chấm</string>
+
+    <string name="result_stats_blank">Bỏ trống</string>
+    <string name="result_stats_correct">Đúng</string>
+    <string name="result_stats_denominator">Trên %1$s câu phải làm.</string>
+    <string name="result_stats_partial">Đúng một phần</string>
+    <string name="result_stats_pending">Chờ chấm</string>
+    <string name="result_stats_title">Thống kê câu hỏi</string>
+    <string name="result_stats_wrong">Sai</string>
+
+    <string name="result_subjects_columns_blank">Bỏ trống</string>
+    <string name="result_subjects_columns_correct">Đúng</string>
+    <string name="result_subjects_columns_partial">Đúng một phần</string>
+    <string name="result_subjects_columns_pending">Chờ chấm</string>
+    <string name="result_subjects_columns_wrong">Sai</string>
+    <string name="result_subjects_description">Điểm từng môn thực tế đã làm trong lượt thi.</string>
+    <string name="result_subjects_manualChip">Chấm tay</string>
+    <string name="result_subjects_maxScoreNote">Tối đa %1$s</string>
+    <string name="result_subjects_pendingDescription">Điểm của môn đã chấm xong là điểm riêng của môn đó, chưa phải điểm tổng.</string>
+    <string name="result_subjects_subjectScoreLabel">Điểm môn</string>
+    <string name="result_subjects_title">Điểm theo môn</string>
+
+    <string name="result_total_pendingDescription" tools:ignore="Typos">Bài có câu tự luận chấm tay. Điểm tổng hiện sau khi người chấm chấm xong mọi câu tự luận.</string>
+    <string name="result_total_pendingReturnNote">Bạn có thể rời màn hình. Khi chấm xong, mở lại lượt này từ Lịch sử luyện thi để xem điểm tổng.</string>
+    <string name="result_total_pendingTitle">Chờ chấm</string>
+    <string name="result_total_regradingNote">Người chấm đang chấm lại câu tự luận. Điểm bên trên là điểm trước khi chấm lại và có thể đổi khi chấm xong.</string>
+    <string name="result_total_scaleDescription">Tổng điểm các câu trong phạm vi bài làm. Câu bỏ trống được 0 điểm.</string>
+    <string name="result_total_title">Tổng điểm</string>
+    <string name="result_total_vactScaleDescription">Điểm luyện tập quy từ điểm các câu về thang %1$s.</string>
+
+    <string name="result_vact_collapseSubsections">Ẩn chi tiết 2 tiểu mục</string>
+    <string name="result_vact_components_ANH">Tiếng Anh</string>
+    <string name="result_vact_components_SCIENTIFIC_THINKING">Tư duy khoa học</string>
+    <string name="result_vact_components_TOAN">Toán học</string>
+    <string name="result_vact_components_VIETNAMESE">Tiếng Việt</string>
+    <string name="result_vact_componentsCaption">Số câu đúng và tỷ lệ đúng theo từng thành phần (không hiện điểm thành phần).</string>
+    <string name="result_vact_componentsTitle">Kết quả theo thành phần</string>
+    <string name="result_vact_correctRatio" tools:ignore="PluralsCandidate">%1$d/%2$d câu đúng · %3$s%%</string>
+    <string name="result_vact_expandSubsections">Xem riêng 2 tiểu mục (12 và 18 câu)</string>
+    <string name="result_vact_practiceNote">Không phải điểm V-ACT chính thức</string>
+    <string name="result_vact_scoreLabel">Điểm luyện tập</string>
+    <plurals name="result_vact_subsectionQuestions">
+        <item quantity="other">%1$d câu</item>
+    </plurals>
+    <string name="result_vact_subsections_logicData">Logic và phân tích số liệu</string>
+    <string name="result_vact_subsections_scientificReasoning">Suy luận khoa học</string>
+
+    <string name="review_backToResult">Về kết quả</string>
+    <string name="review_emptyPart_description">Phần này hiện chưa có câu hỏi nào để xem lại.</string>
+    <string name="review_emptyPart_title">Không có câu hỏi trong phần này</string>
+    <string name="review_errorDescription">Kiểm tra kết nối mạng rồi thử lại.</string>
+    <string name="review_errorTitle">Không tải được bài làm</string>
+
+    <string name="review_essayCriteria_commentCol">Nhận xét tiêu chí</string>
+    <string name="review_essayCriteria_criterionCol">Tiêu chí</string>
+    <string name="review_essayCriteria_criterionFallback">Tiêu chí %1$d</string>
+    <string name="review_essayCriteria_pointsCol">Điểm</string>
+    <string name="review_essayCriteria_pointsValue">%1$s điểm</string>
+    <string name="review_essayCriteria_title">Điểm từng tiêu chí</string>
+
+    <string name="review_loading">Đang tải bài làm để xem lại</string>
+
+    <string name="review_nav_currentItem">đang xem</string>
+    <string name="review_nav_next">Câu sau</string>
+    <string name="review_nav_paletteItemAria">%1$s, %2$s</string>
+    <string name="review_nav_paletteLegend">Chú thích trạng thái câu</string>
+    <string name="review_nav_paletteSummary">Đúng %1$d · Đúng một phần %2$d · Sai %3$d · Bỏ trống %4$d</string>
+    <string name="review_nav_paletteTitle">Danh sách câu</string>
+    <string name="review_nav_partsLabel">Các phần của đề</string>
+    <string name="review_nav_prev">Câu trước</string>
+    <string name="review_nav_skippedPartBadge">Bị bỏ qua</string>
+
+    <string name="review_notAvailable_backToResult">Về kết quả</string>
+    <string name="review_notAvailable_description">Kết quả của lượt này chưa sẵn sàng. Bạn xem lại bài được sau khi chấm xong.</string>
+    <string name="review_notAvailable_title">Chưa thể xem lại bài làm</string>
+
+    <string name="review_notFound_description">Lượt thi không tồn tại hoặc không thuộc tài khoản đang đăng nhập.</string>
+    <string name="review_notFound_eyebrow">MÃ LỖI 404</string>
+    <string name="review_notFound_title">Không tìm thấy bài làm</string>
+    <string name="review_notFound_toHistory">Lịch sử luyện thi</string>
+    <string name="review_notFound_toHome">Bài thi của tôi</string>
+
+    <string name="review_notIncluded_backToResult">Về kết quả</string>
+    <string name="review_notIncluded_description">Bài thi bạn đã mua chỉ cho xem điểm. Bạn vẫn xem được điểm của lượt này ở màn hình kết quả.</string>
+    <string name="review_notIncluded_title">Bài thi này không có phần xem lại bài làm</string>
+
+    <string name="review_outcomes_BLANK">bỏ trống</string>
+    <string name="review_outcomes_CORRECT">đúng</string>
+    <string name="review_outcomes_PARTIAL">đúng một phần</string>
+    <string name="review_outcomes_PENDING_REVIEW">chờ chấm</string>
+    <string name="review_outcomes_WRONG">sai</string>
+
+    <string name="review_pageTitle">Xem lại bài làm</string>
+    <string name="review_pendingBanner">Lượt thi còn câu tự luận đang chờ chấm. Bạn chỉ xem lại được các câu đã chấm tự động cho tới khi chấm xong.</string>
+    <string name="review_questionLabel">Câu %1$d</string>
+    <string name="review_questionRangeLabel">Câu %1$d–%2$d</string>
+    <string name="review_scoreOnlyNotice">Không hiển thị lời giải cho mức quyền lợi hiện tại.</string>
+
+    <string name="review_skippedPart_description">Phần này đã bị bỏ qua nên không có câu để xem lại. Phần được %1$s/%2$s điểm.</string>
+    <string name="review_skippedPart_descriptionNoScore">Phần này đã bị bỏ qua nên không có câu để xem lại.</string>
+    <string name="review_skippedPart_title">Phần này bị bỏ qua</string>
+
+    <string name="review_subtitle">%1$s · %2$s · Lần %3$d</string>
+    <string name="review_subtitleWithScore">%1$s · %2$s · Lần %3$d · Tổng điểm: %4$s/%5$s</string>
+</resources>
