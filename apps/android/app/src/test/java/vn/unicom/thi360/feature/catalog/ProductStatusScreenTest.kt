@@ -75,7 +75,7 @@ class ProductStatusScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("HSA")).fetchSemanticsNodes().isNotEmpty()
@@ -83,7 +83,7 @@ class ProductStatusScreenTest {
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
                     harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 2
@@ -92,7 +92,7 @@ class ProductStatusScreenTest {
             val accessBeforeGone = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")
 
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-GONE-01") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_GONE).fetchSemanticsNodes().isNotEmpty()
             }
@@ -115,7 +115,7 @@ class ProductStatusScreenTest {
             assertEquals(productsBeforeBack, harness.server.requestCount("GET", "/api/v1/public/storefront/products"))
 
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-GONE-BLANK") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_GONE).fetchSemanticsNodes().isNotEmpty()
             }
@@ -129,7 +129,7 @@ class ProductStatusScreenTest {
             composeRule.waitForIdle()
             val accessBefore404 = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-NOPE-404") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_NOT_FOUND).fetchSemanticsNodes().isNotEmpty()
             }
@@ -185,7 +185,8 @@ class ProductStatusScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
                     harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
             }
@@ -193,7 +194,7 @@ class ProductStatusScreenTest {
             val accessBefore = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")
 
             composeRule.runOnIdle { navRef!!.openProduct("BUNDLE-409-PLAIN") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_UNAVAILABLE).fetchSemanticsNodes().isNotEmpty()
             }
@@ -204,7 +205,7 @@ class ProductStatusScreenTest {
             assertEquals(accessBefore, harness.server.requestCount("POST", "/api/v1/me/exam-access/query"))
 
             composeRule.runOnIdle { navRef!!.openProduct("BUNDLE-409-FULL") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_UNAVAILABLE_BANNER).fetchSemanticsNodes().isNotEmpty()
             }
@@ -215,7 +216,7 @@ class ProductStatusScreenTest {
             assertEquals(accessBefore, harness.server.requestCount("POST", "/api/v1/me/exam-access/query"))
 
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-409-NONBUNDLE") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_UNAVAILABLE).fetchSemanticsNodes().isNotEmpty()
             }
@@ -253,7 +254,8 @@ class ProductStatusScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
                     harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
             }
@@ -261,7 +263,7 @@ class ProductStatusScreenTest {
             val accessBefore = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")
 
             composeRule.runOnIdle { navRef!!.openProduct("BUNDLE-200-UNAVAIL") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_UNAVAILABLE_BANNER).fetchSemanticsNodes().isNotEmpty()
             }

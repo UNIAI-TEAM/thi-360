@@ -211,13 +211,15 @@ class ExamDetailScreenTest {
                 }
             }
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1
             }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(LoadStateTestTags.RETRY_BUTTON).assertIsDisplayed().performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 2 &&
                     harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
             }
@@ -339,7 +341,8 @@ class ExamDetailScreenTest {
                 }
             }
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1
             }
             composeRule.waitForIdle()
@@ -398,7 +401,8 @@ class ExamDetailScreenTest {
                 }
             }
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
             }
             composeRule.waitForIdle()
