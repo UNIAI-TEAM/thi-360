@@ -345,14 +345,7 @@ enum CatalogTestStackFactory {
             initialStateOverride: initialTokens == nil ? nil : .active,
             skipsLaunchValidation: true
         )
-        let api = CatalogAPI.makeWithWireMiddleware(
-            serverURL: serverURL,
-            tokenStore: tokenStore,
-            transport: transport,
-            refresher: mobileClient.refresher,
-            logger: logger,
-            localeProvider: localeProvider
-        )
+        let api = CatalogAPI(apiClient: mobileClient)
         return Stack(
             sessionStore: sessionStore,
             tokenStore: tokenStore,

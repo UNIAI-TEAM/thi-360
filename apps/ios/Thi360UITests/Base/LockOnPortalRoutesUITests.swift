@@ -32,7 +32,7 @@ final class LockOnPortalRoutesUITests: XCTestCase {
             "-uitest-keychain-service", keychainService,
             "-uitest-reset-session",
             "-uitest-lock-timeout", "2",
-            "-uitest-route", "product/ielts-lock",
+            "-uitest-route", "order/ord-lock",
             "-uitest-api-base-url", baseURL
         ]
         app.launch()
@@ -53,10 +53,10 @@ final class LockOnPortalRoutesUITests: XCTestCase {
         enableButton.tap()
         PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
 
-        let paramText = app.staticTexts["route.placeholder.param.code"].firstMatch
+        let paramText = app.staticTexts["route.placeholder.param.orderCode"].firstMatch
         PortalBiometricUITestHelper.waitForBiometricMatch(until: paramText, timeout: 10)
         XCTAssertTrue(paramText.exists)
-        XCTAssertEqual(paramText.label, "ielts-lock")
+        XCTAssertEqual(paramText.label, "ord-lock")
 
         let draftField = app.textFields["route.placeholder.draftField"].firstMatch
         XCTAssertTrue(draftField.waitForExistence(timeout: 5))
@@ -76,7 +76,7 @@ final class LockOnPortalRoutesUITests: XCTestCase {
         PortalBiometricUITestHelper.waitForBiometricMatch(until: paramText, timeout: 10)
 
         XCTAssertTrue(paramText.exists, "Unlocking must return to portal sub-route")
-        XCTAssertEqual(paramText.label, "ielts-lock")
+        XCTAssertEqual(paramText.label, "ord-lock")
         XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, "Keep across lock")
     }
 }

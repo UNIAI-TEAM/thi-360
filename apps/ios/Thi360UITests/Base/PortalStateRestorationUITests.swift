@@ -18,13 +18,13 @@ final class PortalStateRestorationUITests: XCTestCase {
             "-uitest-state-probe",
             "-uitest-authenticated",
             "-uitest-destination", "home",
-            "-uitest-route", "product/ielts-99"
+            "-uitest-route", "order/ord-99"
         ]
         app.launch()
 
-        let paramText = app.staticTexts["route.placeholder.param.code"].firstMatch
+        let paramText = app.staticTexts["route.placeholder.param.orderCode"].firstMatch
         XCTAssertTrue(paramText.waitForExistence(timeout: 8))
-        XCTAssertEqual(paramText.label, "ielts-99")
+        XCTAssertEqual(paramText.label, "ord-99")
 
         let draftField = app.textFields["route.placeholder.draftField"].firstMatch
         XCTAssertTrue(draftField.waitForExistence(timeout: 5))
@@ -39,27 +39,27 @@ final class PortalStateRestorationUITests: XCTestCase {
         }
 
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.staticTexts["route.placeholder.param.code"].firstMatch.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["route.placeholder.param.code"].firstMatch.label, "ielts-99")
+        XCTAssertTrue(app.staticTexts["route.placeholder.param.orderCode"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["route.placeholder.param.orderCode"].firstMatch.label, "ord-99")
         XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, sample)
 
         XCUIDevice.shared.orientation = .portrait
-        XCTAssertTrue(app.staticTexts["route.placeholder.param.code"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["route.placeholder.param.orderCode"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, sample)
 
         let toggleButton = app.buttons["route.placeholder.toggleSizeClass"].firstMatch
         XCTAssertTrue(toggleButton.waitForExistence(timeout: 5))
         toggleButton.tap()
 
-        XCTAssertTrue(app.staticTexts["route.placeholder.param.code"].firstMatch.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["route.placeholder.param.code"].firstMatch.label, "ielts-99")
+        XCTAssertTrue(app.staticTexts["route.placeholder.param.orderCode"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["route.placeholder.param.orderCode"].firstMatch.label, "ord-99")
         XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, sample)
 
         let toggleBack = app.buttons["route.placeholder.toggleSizeClass"].firstMatch
         XCTAssertTrue(toggleBack.waitForExistence(timeout: 5))
         toggleBack.tap()
 
-        XCTAssertTrue(app.staticTexts["route.placeholder.param.code"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["route.placeholder.param.orderCode"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, sample)
     }
 }

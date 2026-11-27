@@ -93,32 +93,10 @@ final class CatalogAPI: CatalogAPIClientProtocol, Sendable {
     }
 
     convenience init(apiClient: MobileAPIClient) {
-        self.init(client: apiClient.authenticatedClient, refresher: apiClient.refresher)
-    }
-
-    static func makeWithWireMiddleware(
-        serverURL: URL,
-        tokenStore: any TokenStore,
-        transport: any ClientTransport,
-        refresher: TokenRefresher,
-        logger: RedactingAppLogger = RedactingAppLogger(),
-        localeProvider: @escaping @Sendable () async -> AppLocale
-    ) -> CatalogAPI {
-        let configuration = Configuration(dateTranscoder: FlexibleISO8601DateTranscoder())
-        let middlewares: [any ClientMiddleware] = [
-            CatalogProductWireMiddleware(),
-            AcceptLanguageMiddleware(localeProvider: localeProvider),
-            RetryAfterMiddleware(),
-            AuthBearerMiddleware(tokenStore: tokenStore, refresher: refresher),
-            NetworkLoggingMiddleware(logger: logger)
-        ]
-        let client = Client(
-            serverURL: serverURL,
-            configuration: configuration,
-            transport: transport,
-            middlewares: middlewares
+        self.init(
+            client: apiClient.makeAuthenticatedClient(leadingMiddlewares: [CatalogProductWireMiddleware()]),
+            refresher: apiClient.refresher
         )
-        return CatalogAPI(client: client, refresher: refresher)
     }
 
     func fetchFilters() async throws -> CatalogFilters {

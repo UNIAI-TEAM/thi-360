@@ -70,6 +70,13 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
     let authenticatedClient: Client
     let refresher: TokenRefresher
 
+    private let configuration: Configuration
+    private let transport: any ClientTransport
+    private let acceptLanguage: AcceptLanguageMiddleware
+    private let retryAfter: RetryAfterMiddleware
+    private let bearer: AuthBearerMiddleware
+    private let logging: NetworkLoggingMiddleware
+
     init(
         serverURL: URL,
         tokenStore: any TokenStore,
@@ -101,11 +108,26 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         self.refresher = refresher
 
         let bearer = AuthBearerMiddleware(tokenStore: tokenStore, refresher: refresher)
+        self.configuration = configuration
+        self.transport = transport
+        self.acceptLanguage = acceptLanguage
+        self.retryAfter = retryAfter
+        self.bearer = bearer
+        self.logging = logging
         self.authenticatedClient = Client(
             serverURL: serverURL,
             configuration: configuration,
             transport: transport,
             middlewares: [acceptLanguage, retryAfter, bearer, logging]
+        )
+    }
+
+    func makeAuthenticatedClient(leadingMiddlewares: [any ClientMiddleware]) -> Client {
+        Client(
+            serverURL: serverURL,
+            configuration: configuration,
+            transport: transport,
+            middlewares: [acceptLanguage] + leadingMiddlewares + [retryAfter, bearer, logging]
         )
     }
 

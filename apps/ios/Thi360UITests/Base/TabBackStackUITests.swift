@@ -13,13 +13,13 @@ final class TabBackStackUITests: XCTestCase {
             "-uitest-reset-preferences",
             "-uitest-authenticated",
             "-uitest-destination", "home",
-            "-uitest-route", "product/ielts-01"
+            "-uitest-route", "order/ord-01"
         ]
         app.launch()
 
-        let paramText = app.staticTexts["route.placeholder.param.code"].firstMatch
-        XCTAssertTrue(paramText.waitForExistence(timeout: 8), "Expected product/ielts-01 route placeholder")
-        XCTAssertEqual(paramText.label, "ielts-01")
+        let paramText = app.staticTexts["route.placeholder.param.orderCode"].firstMatch
+        XCTAssertTrue(paramText.waitForExistence(timeout: 8), "Expected order/ord-01 route placeholder")
+        XCTAssertEqual(paramText.label, "ord-01")
 
         let draftField = app.textFields["route.placeholder.draftField"].firstMatch
         XCTAssertTrue(draftField.waitForExistence(timeout: 5))
@@ -39,9 +39,9 @@ final class TabBackStackUITests: XCTestCase {
 
         openDestination(titled: "Trang chủ", identifier: "shell.dest.home", in: app)
 
-        let restoredParam = app.staticTexts["route.placeholder.param.code"].firstMatch
-        XCTAssertTrue(restoredParam.waitForExistence(timeout: 5), "Returning to Home must restore pushed product route")
-        XCTAssertEqual(restoredParam.label, "ielts-01")
+        let restoredParam = app.staticTexts["route.placeholder.param.orderCode"].firstMatch
+        XCTAssertTrue(restoredParam.waitForExistence(timeout: 5), "Returning to Home must restore pushed sub-route")
+        XCTAssertEqual(restoredParam.label, "ord-01")
 
         let restoredDraft = app.textFields["route.placeholder.draftField"].firstMatch
         if !restoredDraft.exists {

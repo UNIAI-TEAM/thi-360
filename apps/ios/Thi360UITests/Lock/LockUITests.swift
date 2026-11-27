@@ -17,6 +17,9 @@ final class LockUITests: XCTestCase {
         let loginBody = try Data(contentsOf: authDir.appendingPathComponent("login-200.json"))
         let refreshBody = try Data(contentsOf: authDir.appendingPathComponent("refresh-200.json"))
         let profileBody = try Data(contentsOf: apiDir.appendingPathComponent("me-profile-200.json"))
+        let filtersBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-filters-200.json"))
+        let productsBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-list-200.json"))
+        let accessBody = try Data(contentsOf: apiDir.appendingPathComponent("exam-access-query-200.json"))
 
         let mockServer = try RecoveryFixtureHTTPServer { method, path, _ in
             if method == "POST", path == "/api/v1/auth/mobile/login" {
@@ -27,6 +30,15 @@ final class LockUITests: XCTestCase {
             }
             if method == "GET", path == "/api/v1/me/profile" {
                 return (200, profileBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/filters" {
+                return (200, filtersBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/products" {
+                return (200, productsBody)
+            }
+            if method == "POST", path == "/api/v1/me/exam-access/query" {
+                return (200, accessBody)
             }
             if method == "POST", path == "/api/v1/auth/mobile/logout" {
                 return (204, Data())
@@ -79,8 +91,9 @@ final class LockUITests: XCTestCase {
         enableButton.tap()
 
         SimulatorBiometricHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
-        waitForBiometricMatch(until: app.staticTexts["Trang chủ"], timeout: 10)
-        XCTAssertTrue(app.staticTexts["Trang chủ"].exists, "Successful biometric enable must enter Home")
+        let homeHeading = app.staticTexts["catalog.heading"].firstMatch
+        waitForBiometricMatch(until: homeHeading, timeout: 10)
+        XCTAssertTrue(homeHeading.exists, "Successful biometric enable must enter Home")
 
         // Switch to History destination before backgrounding so we verify unlock returns to exact screen.
         openDestination(titled: "Lịch sử", identifier: "shell.dest.history", in: app)
