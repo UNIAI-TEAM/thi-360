@@ -197,4 +197,78 @@ class RouteOpenersTest {
             controller.currentBackStackEntry?.arguments?.getBoolean(AppRoute.ARG_RESET_FILTERS) == true,
         )
     }
+
+    @Test
+    fun accountTabSupportsCrossRouteOrderCheckoutProductPrepareAttemptAndResultFlows() {
+        val (nav, controller) = mountShell()
+
+        composeRule.runOnIdle { nav.switchTab(Destination.Account) }
+        composeRule.runOnIdle { nav.openOrders() }
+        composeRule.runOnIdle { nav.openCheckout("MATH01", seenVersionNo = 1, seenPrice = 50_000L) }
+        assertEquals(
+            listOf("account/root", "account/orders", "account/${AppRoute.CHECKOUT_PATTERN}"),
+            controller.leafStack(),
+        )
+
+        composeRule.runOnIdle { nav.openProduct("MATH01") }
+        assertEquals("account/product/{code}", controller.currentDestination?.route)
+
+        composeRule.runOnIdle { nav.openPrepare("ent-acc-1") }
+        assertEquals("account/prepare/{entitlementId}", controller.currentDestination?.route)
+
+        composeRule.runOnIdle { nav.openAttempt("att-acc-1") }
+        assertEquals("attempt/{attemptId}", controller.currentDestination?.route)
+
+        composeRule.runOnIdle { nav.openResultFromAttempt("att-acc-1") }
+        assertEquals(
+            listOf(
+                "account/root",
+                "account/orders",
+                "account/${AppRoute.CHECKOUT_PATTERN}",
+                "account/product/{code}",
+                "account/result/{attemptId}",
+            ),
+            controller.leafStack(),
+        )
+
+        composeRule.runOnIdle { nav.openReview("att-acc-1") }
+        assertEquals("account/review/{attemptId}", controller.currentDestination?.route)
+    }
+
+    @Test
+    fun accountPinnedOpenersFromHomeSwitchTabAndPreserveHomeBackStack() {
+        val (nav, controller) = mountShell()
+
+        composeRule.runOnIdle { nav.openProduct("PROD-KEEP") }
+        assertEquals(listOf("home/catalog", "home/product/{code}"), controller.leafStack())
+
+        composeRule.runOnIdle { nav.openProfile() }
+        assertEquals(listOf("account/root", "account/profile"), controller.leafStack())
+
+        composeRule.runOnIdle { nav.switchTab(Destination.Home) }
+        assertEquals(listOf("home/catalog", "home/product/{code}"), controller.leafStack())
+
+        composeRule.runOnIdle { nav.openProfileVerifyEmail() }
+        assertEquals(
+            listOf("account/root", "account/profile", "account/profile/verify-email"),
+            controller.leafStack(),
+        )
+
+        composeRule.runOnIdle { nav.switchTab(Destination.Home) }
+        assertEquals(listOf("home/catalog", "home/product/{code}"), controller.leafStack())
+
+        composeRule.runOnIdle { nav.openDeleteAccount() }
+        assertEquals("account/account/delete", controller.currentDestination?.route)
+        assertEquals("account/root", controller.leafStack().first())
+
+        composeRule.runOnIdle { nav.switchTab(Destination.Home) }
+        assertEquals(listOf("home/catalog", "home/product/{code}"), controller.leafStack())
+
+        composeRule.runOnIdle { nav.openLegal(LegalId.TERMS) }
+        assertEquals("account/legal/{id}", controller.currentDestination?.route)
+        assertEquals("account/root", controller.leafStack().first())
+
+        composeRule.runOnIdle { nav.switchTab(Destination.Home) }
+        assertEquals(listOf("home/catalog", "home/product/{code}"), controller.leafStack())
+    }
 }

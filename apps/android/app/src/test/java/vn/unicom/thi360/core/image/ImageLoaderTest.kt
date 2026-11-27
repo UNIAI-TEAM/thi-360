@@ -2,6 +2,7 @@ package vn.unicom.thi360.core.image
 
 import android.graphics.Bitmap
 import androidx.test.core.app.ApplicationProvider
+import coil3.SingletonImageLoader
 import coil3.asImage
 import coil3.memory.MemoryCache
 import java.io.ByteArrayOutputStream
@@ -15,6 +16,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -115,5 +117,15 @@ class ImageLoaderTest {
             loader.close()
             cleanupDir.deleteRecursively()
         }
+    }
+
+    @Test
+    fun applicationImplementsSingletonImageLoaderFactory() {
+        val app = ApplicationProvider.getApplicationContext<Thi360Application>()
+        assertSame(
+            "Coil SingletonImageLoader must return Thi360Application's session-wired ImageLoader",
+            app.imageLoader.imageLoader,
+            SingletonImageLoader.get(app),
+        )
     }
 }

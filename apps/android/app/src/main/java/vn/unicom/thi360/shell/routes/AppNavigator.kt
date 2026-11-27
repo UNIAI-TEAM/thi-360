@@ -212,6 +212,9 @@ class AppNavigator(
     fun back(): Boolean = navController.popBackStack()
 
     private fun navigateInTab(tab: Destination, route: AppRoute) {
+        if (navController.currentDestination.shellDestination() != tab) {
+            switchTab(tab, reload = false)
+        }
         lastKnownTab = tab
         val target = AppRoute.tabRoute(tab, AppRoute.buildSubPath(route, linkStore))
         navController.navigate(target)

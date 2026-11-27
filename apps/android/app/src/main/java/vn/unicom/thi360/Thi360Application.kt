@@ -2,6 +2,9 @@ package vn.unicom.thi360
 
 import android.app.Application
 import androidx.annotation.VisibleForTesting
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import vn.unicom.thi360.core.appearance.AppearanceRepository
@@ -9,6 +12,7 @@ import vn.unicom.thi360.core.biometric.AndroidBiometricAvailabilityChecker
 import vn.unicom.thi360.core.biometric.BiometricController
 import vn.unicom.thi360.core.biometric.DataStoreBiometricPromptMemoryStore
 import vn.unicom.thi360.core.biometric.KeystoreBiometricVault
+import vn.unicom.thi360.core.catalog.CatalogOptionsCache
 import vn.unicom.thi360.core.config.AppEnvironment
 import vn.unicom.thi360.core.image.Thi360ImageLoader
 import vn.unicom.thi360.core.legal.LegalRepository
@@ -23,7 +27,7 @@ import vn.unicom.thi360.feature.recovery.ResetLink
 import vn.unicom.thi360.shell.routes.InboundLinkRouter
 import vn.unicom.thi360.shell.routes.PaymentReturnLinkStore
 
-class Thi360Application : Application() {
+class Thi360Application : Application(), SingletonImageLoader.Factory {
     val preferencesRepository: AppPreferencesRepository by lazy {
         DataStoreAppPreferencesRepository.create(this)
     }
@@ -72,6 +76,11 @@ class Thi360Application : Application() {
             sessionCleanup = sessionCleanup,
         )
     }
+
+    val catalogOptionsCache: CatalogOptionsCache
+        get() = AppSessionContainer.get(this).catalogOptionsCache
+
+    override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoader.imageLoader
 
     private var testAppearanceRepository: AppearanceRepository? = null
     private val defaultAppearanceRepository: AppearanceRepository by lazy {

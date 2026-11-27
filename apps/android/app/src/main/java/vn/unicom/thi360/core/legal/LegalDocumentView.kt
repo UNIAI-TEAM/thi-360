@@ -30,11 +30,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -312,6 +314,8 @@ private fun LegalBlockItem(
                         block.headers.size,
                         block.rows.maxOfOrNull { it.size } ?: 0,
                     )
+                    val columnWidth = (TABLE_COLUMN_WIDTH_DP * LocalDensity.current.fontScale.coerceIn(1f, 1.6f)).dp
+                    val tableWidth = columnWidth * columnCount
                     Column {
                         if (block.headers.isNotEmpty()) {
                             Row(
@@ -322,13 +326,18 @@ private fun LegalBlockItem(
                                         text = block.headers.getOrElse(col) { "" },
                                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                                         color = colors.text,
+                                        softWrap = true,
+                                        overflow = TextOverflow.Clip,
                                         modifier = Modifier
-                                            .width(TABLE_COLUMN_WIDTH_DP.dp)
+                                            .width(columnWidth)
                                             .padding(horizontal = 12.dp, vertical = 10.dp),
                                     )
                                 }
                             }
-                            HorizontalDivider(color = colors.border)
+                            HorizontalDivider(
+                                modifier = Modifier.width(tableWidth),
+                                color = colors.border,
+                            )
                         }
 
                         block.rows.forEachIndexed { rowIdx, row ->
@@ -338,14 +347,19 @@ private fun LegalBlockItem(
                                         text = row.getOrElse(col) { "" },
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = colors.textSecondary,
+                                        softWrap = true,
+                                        overflow = TextOverflow.Clip,
                                         modifier = Modifier
-                                            .width(TABLE_COLUMN_WIDTH_DP.dp)
+                                            .width(columnWidth)
                                             .padding(horizontal = 12.dp, vertical = 10.dp),
                                     )
                                 }
                             }
                             if (rowIdx < block.rows.lastIndex) {
-                                HorizontalDivider(color = colors.border)
+                                HorizontalDivider(
+                                    modifier = Modifier.width(tableWidth),
+                                    color = colors.border,
+                                )
                             }
                         }
                     }

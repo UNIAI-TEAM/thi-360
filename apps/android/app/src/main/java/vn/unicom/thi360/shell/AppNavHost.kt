@@ -919,7 +919,14 @@ fun AppNavHost(
                 }
             }
             profileGraph(tab = Destination.Account, navigator = navigator)
+            catalogGraph(
+                tab = Destination.Account,
+                navigator = navigator,
+                showCompactBrandHeader = showCompactBrandHeader,
+            )
             paymentGraph(tab = Destination.Account, navigator = navigator)
+            prepareGraph(tab = Destination.Account, navigator = navigator)
+            resultGraph(tab = Destination.Account, navigator = navigator)
             legalGraph(
                 tab = Destination.Account,
                 navigator = navigator,

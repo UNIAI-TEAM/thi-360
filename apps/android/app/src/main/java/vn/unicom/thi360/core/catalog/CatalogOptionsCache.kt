@@ -1,5 +1,6 @@
 package vn.unicom.thi360.core.catalog
 
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import vn.unicom.thi360.core.network.ApiResult
@@ -28,7 +29,7 @@ class CatalogOptionsCache(
     )
 
     private val mutexes = CatalogOptionType.entries.associateWith { Mutex() }
-    private val entries = mutableMapOf<CatalogOptionType, CacheEntry>()
+    private val entries = ConcurrentHashMap<CatalogOptionType, CacheEntry>()
 
     suspend fun get(
         type: CatalogOptionType,
@@ -61,6 +62,10 @@ class CatalogOptionsCache(
                 entries.remove(type)
             }
         }
+    }
+
+    fun invalidateAll() {
+        entries.clear()
     }
 
     companion object {

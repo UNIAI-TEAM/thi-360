@@ -5,8 +5,10 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import okhttp3.OkHttpClient
 import retrofit2.Response
+import vn.unicom.thi360.core.catalog.CatalogOptionsCache
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.generated.api.AuthApi
+import vn.unicom.thi360.core.network.generated.api.CatalogOptionsApi
 import vn.unicom.thi360.core.network.generated.api.ProfileApi
 import vn.unicom.thi360.core.network.generated.infrastructure.ApiClient
 import vn.unicom.thi360.core.network.generated.model.MobileLoginRequest
@@ -103,6 +105,7 @@ class Thi360SessionStack(
     val publicAuthApi: AuthApi,
     val authenticatedAuthApi: AuthApi,
     val profileApi: ProfileApi,
+    val catalogOptionsCache: CatalogOptionsCache,
     val publicOkHttpClient: OkHttpClient,
     val authenticatedOkHttpClient: OkHttpClient,
     private val publicApiClient: ApiClient,
@@ -130,6 +133,7 @@ object Thi360ApiFactory {
         startLocked: Boolean = false,
         sessionCleanup: SessionCleanup? = null,
         resolveAccountIdOnAuth: Boolean = true,
+        catalogOptionsClockMillis: () -> Long = { System.nanoTime() / 1_000_000L },
     ): Thi360SessionStack {
         val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
         val acceptLanguageInterceptor = AcceptLanguageInterceptor(localeProvider)
@@ -154,6 +158,7 @@ object Thi360ApiFactory {
         val authGateway = OpenApiMobileAuthGateway(publicAuthApi)
 
         var authenticatedAuthApiRef: AuthApi? = null
+        var catalogOptionsCacheRef: CatalogOptionsCache? = null
         val accountIdResolver: (suspend () -> String?)? = if (resolveAccountIdOnAuth) {
             {
                 val api = authenticatedAuthApiRef
@@ -173,7 +178,10 @@ object Thi360ApiFactory {
         val sessionManager = SessionManager(
             tokenStore = tokenStore,
             authGateway = authGateway,
-            onSessionCleared = onSessionCleared,
+            onSessionCleared = {
+                catalogOptionsCacheRef?.invalidateAll()
+                onSessionCleared()
+            },
             startLocked = startLocked,
             sessionCleanup = sessionCleanup,
             accountIdResolver = accountIdResolver,
@@ -196,6 +204,13 @@ object Thi360ApiFactory {
         val authenticatedAuthApi = authenticatedApiClient.createService(AuthApi::class.java)
         authenticatedAuthApiRef = authenticatedAuthApi
         val profileApi = authenticatedApiClient.createService(ProfileApi::class.java)
+        val catalogOptionsApi = authenticatedApiClient.createService(CatalogOptionsApi::class.java)
+        val catalogOptionsCache = CatalogOptionsCache.fromApi(
+            api = catalogOptionsApi,
+            clockMillis = catalogOptionsClockMillis,
+        )
+        catalogOptionsCacheRef = catalogOptionsCache
+        sessionCleanup?.register { catalogOptionsCache.clear() }
 
         return Thi360SessionStack(
             tokenStore = tokenStore,
@@ -203,6 +218,7 @@ object Thi360ApiFactory {
             publicAuthApi = publicAuthApi,
             authenticatedAuthApi = authenticatedAuthApi,
             profileApi = profileApi,
+            catalogOptionsCache = catalogOptionsCache,
             publicOkHttpClient = publicOkHttpClient,
             authenticatedOkHttpClient = authenticatedOkHttpClient,
             publicApiClient = publicApiClient,

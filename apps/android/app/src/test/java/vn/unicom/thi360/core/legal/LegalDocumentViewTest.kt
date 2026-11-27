@@ -1,8 +1,11 @@
 package vn.unicom.thi360.core.legal
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -11,11 +14,13 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -71,22 +76,18 @@ class LegalDocumentViewTest {
     fun publishedShowsEffectiveDate() {
         val context = ApplicationProvider.getApplicationContext<Thi360Application>()
         val repo = LegalRepository.create(context)
+        val doc = repo.load(LegalId.TERMS, AppLocale.VI).getOrThrow()
+        assertEquals(LegalStatus.PUBLISHED, doc.status)
 
-        for (id in listOf(LegalId.TERMS, LegalId.PRIVACY)) {
-            val doc = repo.load(id, AppLocale.VI).getOrThrow()
-            assertEquals(LegalStatus.PUBLISHED, doc.status)
-
-            composeRule.setContent {
-                Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
-                    LegalDocumentView(document = doc, onOpenOnWeb = {})
-                }
+        composeRule.setContent {
+            Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
+                LegalDocumentView(document = doc, onOpenOnWeb = {})
             }
-            composeRule.onNodeWithTag(LegalTestTags.EFFECTIVE_DATE)
-                .assertIsDisplayed()
-                .assertTextContains("Có hiệu lực từ 26/11/2026")
-            composeRule.onNodeWithTag(LegalTestTags.DRAFT_BANNER).assertDoesNotExist()
-            return
         }
+        composeRule.onNodeWithTag(LegalTestTags.EFFECTIVE_DATE)
+            .assertIsDisplayed()
+            .assertTextContains("Có hiệu lực từ 26/11/2026")
+        composeRule.onNodeWithTag(LegalTestTags.DRAFT_BANNER).assertDoesNotExist()
     }
 
     @Test
@@ -154,69 +155,143 @@ class LegalDocumentViewTest {
         }
     }
 
+    private fun collectDescendants(node: SemanticsNode, out: MutableList<SemanticsNode>) {
+        out += node
+        for (child in node.children) {
+            collectDescendants(child, out)
+        }
+    }
+
     @Test
     @Config(qualifiers = "w360dp-h640dp-xhdpi")
     fun tableScrollsInFrame() {
-        val doc = loadDraftFixture()
-        val tableIndex = doc.blocks.indexOfFirst { it is LegalBlock.Table }
-        assertTrue("Draft fixture must include a table block", tableIndex >= 0)
+        val context = ApplicationProvider.getApplicationContext<Thi360Application>()
+        val repo = LegalRepository.create(context)
+        val docs = listOf(
+            repo.load(LegalId.TERMS, AppLocale.VI).getOrThrow(),
+            repo.load(LegalId.PRIVACY, AppLocale.VI).getOrThrow(),
+        )
 
+        val activeDoc = mutableStateOf(docs.first())
         composeRule.setContent {
+            val doc = activeDoc.value
             val base = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale = 2.0f)) {
-                Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
-                    LegalDocumentView(document = doc, onOpenOnWeb = {})
+            key(doc.id) {
+                CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale = 2.0f)) {
+                    Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
+                        LegalDocumentView(document = doc, onOpenOnWeb = {})
+                    }
                 }
             }
         }
-        composeRule.waitForIdle()
 
-        val rootNode = composeRule.onRoot().fetchSemanticsNode()
-        val rootBounds = composeRule.onRoot().getUnclippedBoundsInRoot()
-        assertTrue(
-            "Root document must not expose horizontal scroll",
-            !rootNode.config.contains(SemanticsProperties.HorizontalScrollAxisRange),
-        )
+        for (doc in docs) {
+            composeRule.runOnIdle { activeDoc.value = doc }
+            composeRule.waitForIdle()
 
-        val tableScrollNode = composeRule.onNodeWithTag(LegalTestTags.tableScroll(tableIndex))
-            .performScrollTo()
-            .assertIsDisplayed()
-            .fetchSemanticsNode()
-        assertTrue(
-            "Table wrapper must expose horizontalScroll semantics",
-            tableScrollNode.config.contains(SemanticsProperties.HorizontalScrollAxisRange) ||
-                tableScrollNode.config.contains(SemanticsActions.ScrollBy),
-        )
-        val tableBounds = composeRule.onNodeWithTag(LegalTestTags.block(tableIndex)).getUnclippedBoundsInRoot()
-        assertTrue(
-            "Table outer frame must stay within 360dp viewport (right=${tableBounds.right}, rootRight=${rootBounds.right})",
-            tableBounds.right <= rootBounds.right + 1.dp,
-        )
+            val tableIndices = doc.blocks.mapIndexedNotNull { idx, block ->
+                if (block is LegalBlock.Table) idx else null
+            }
+            assertTrue("Bundled ${doc.id} must include at least one table block", tableIndices.isNotEmpty())
+
+            val rootNode = composeRule.onRoot().fetchSemanticsNode()
+            val rootBounds = composeRule.onRoot().getUnclippedBoundsInRoot()
+            assertTrue(
+                "Root document must not expose horizontal scroll (${doc.id})",
+                !rootNode.config.contains(SemanticsProperties.HorizontalScrollAxisRange),
+            )
+
+            for (tableIndex in tableIndices) {
+                val tableScrollNode = composeRule.onNodeWithTag(LegalTestTags.tableScroll(tableIndex))
+                    .performScrollTo()
+                    .assertIsDisplayed()
+                    .fetchSemanticsNode()
+                assertTrue(
+                    "Table wrapper must expose horizontalScroll semantics (${doc.id}#$tableIndex)",
+                    tableScrollNode.config.contains(SemanticsProperties.HorizontalScrollAxisRange),
+                )
+                val scrollRange = tableScrollNode.config[SemanticsProperties.HorizontalScrollAxisRange]
+                assertTrue(
+                    "Table horizontal scroll range must be > 0 at 360dp/200% (${doc.id}#$tableIndex, max=${scrollRange.maxValue()})",
+                    scrollRange.maxValue() > 0f,
+                )
+
+                val tableBounds = composeRule.onNodeWithTag(LegalTestTags.block(tableIndex)).getUnclippedBoundsInRoot()
+                assertTrue(
+                    "Table outer frame must stay within 360dp viewport (right=${tableBounds.right}, rootRight=${rootBounds.right})",
+                    tableBounds.right <= rootBounds.right + 1.dp,
+                )
+
+                val descendants = mutableListOf<SemanticsNode>()
+                collectDescendants(tableScrollNode, descendants)
+                var cellTextChecked = 0
+                for (node in descendants) {
+                    if (SemanticsActions.GetTextLayoutResult in node.config) {
+                        val layouts = mutableListOf<TextLayoutResult>()
+                        node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+                        for (layout in layouts) {
+                            cellTextChecked++
+                            assertFalse(
+                                "Table cell text clipped horizontally in ${doc.id}#$tableIndex: '${layout.layoutInput.text}'",
+                                layout.didOverflowWidth,
+                            )
+                            assertFalse(
+                                "Table cell text clipped vertically in ${doc.id}#$tableIndex: '${layout.layoutInput.text}'",
+                                layout.didOverflowHeight,
+                            )
+                            assertFalse(
+                                "Table cell text has visual overflow in ${doc.id}#$tableIndex: '${layout.layoutInput.text}'",
+                                layout.hasVisualOverflow,
+                            )
+                        }
+                    }
+                }
+                assertTrue("Expected table cells to expose text layout results in ${doc.id}#$tableIndex", cellTextChecked > 0)
+            }
+        }
     }
 
     @Test
     @Config(qualifiers = "w390dp-h844dp")
     fun headingsAreHeadings() {
-        val doc = loadDraftFixture()
+        val context = ApplicationProvider.getApplicationContext<Thi360Application>()
+        val repo = LegalRepository.create(context)
+        val docs = listOf(
+            repo.load(LegalId.TERMS, AppLocale.VI).getOrThrow(),
+            repo.load(LegalId.PRIVACY, AppLocale.VI).getOrThrow(),
+        )
+
+        val activeDoc = mutableStateOf(docs.first())
         composeRule.setContent {
-            Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
-                LegalDocumentView(document = doc, onOpenOnWeb = {})
+            val doc = activeDoc.value
+            key(doc.id) {
+                Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
+                    LegalDocumentView(document = doc, onOpenOnWeb = {})
+                }
             }
         }
 
-        val titleSemantics = composeRule.onNodeWithTag(LegalTestTags.TITLE).fetchSemanticsNode()
-        assertTrue("Document title must have heading semantics", titleSemantics.config.contains(SemanticsProperties.Heading))
+        for (doc in docs) {
+            composeRule.runOnIdle { activeDoc.value = doc }
+            composeRule.waitForIdle()
 
-        doc.blocks.forEachIndexed { idx, block ->
-            if (block is LegalBlock.Heading) {
-                val node = composeRule.onNodeWithTag(LegalTestTags.block(idx))
-                    .performScrollTo()
-                    .fetchSemanticsNode()
-                assertTrue(
-                    "Heading block $idx ('${block.text}') must expose TalkBack heading() semantics",
-                    node.config.contains(SemanticsProperties.Heading),
-                )
+            val titleSemantics = composeRule.onNodeWithTag(LegalTestTags.TITLE).fetchSemanticsNode()
+            assertTrue("Document title must have heading semantics (${doc.id})", titleSemantics.config.contains(SemanticsProperties.Heading))
+
+            var headingCount = 0
+            doc.blocks.forEachIndexed { idx, block ->
+                if (block is LegalBlock.Heading) {
+                    headingCount++
+                    val node = composeRule.onNodeWithTag(LegalTestTags.block(idx))
+                        .performScrollTo()
+                        .fetchSemanticsNode()
+                    assertTrue(
+                        "Heading block $idx ('${block.text}') in ${doc.id} must expose TalkBack heading() semantics",
+                        node.config.contains(SemanticsProperties.Heading),
+                    )
+                }
             }
+            assertTrue("Bundled ${doc.id} must contain headings", headingCount > 0)
         }
     }
 
@@ -252,7 +327,10 @@ class LegalDocumentViewTest {
     }
 
     private fun captureLegalSnapshot(name: String, themeMode: ThemeMode) {
-        val doc = loadDraftFixture()
+        val context = ApplicationProvider.getApplicationContext<Thi360Application>()
+        val doc = LegalRepository.create(context).load(LegalId.TERMS, AppLocale.VI).getOrThrow()
+        val tableIndex = doc.blocks.indexOfFirst { it is LegalBlock.Table }
+        assertTrue("Bundled terms must contain a refund table", tableIndex >= 0)
         composeRule.setContent {
             val base = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(base.density, fontScale = 2.0f)) {
@@ -261,6 +339,7 @@ class LegalDocumentViewTest {
                 }
             }
         }
+        composeRule.onNodeWithTag(LegalTestTags.block(tableIndex)).performScrollTo().assertIsDisplayed()
         composeRule.waitForIdle()
         composeRule.onRoot().captureRoboImage("src/test/snapshots/$name.png")
     }
