@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="common_backHome">Back to home</string>
+    <string name="common_closeToast">Close toast</string>
+    <string name="common_loading">Loading</string>
+    <string name="common_notificationsLabel">Notifications</string>
+    <string name="common_offline_title">No connection</string>
+    <string name="common_offline_description">Check your internet connection and try again.</string>
+    <string name="common_retry">Retry</string>
+
+    <string name="errorPage_eyebrow">ERROR 500</string>
+    <string name="errorPage_title">Server error</string>
+    <string name="errorPage_description">An unexpected error occurred while processing your request. Please try again later.</string>
+    <string name="errorPage_traceLabel">Request ID: %1$s</string>
+
+    <string name="landing_support_pending">Contact information is being updated.</string>
+
+    <string name="storefront_format_BUNDLE">Exam bundle</string>
+    <string name="storefront_format_FULL">FULL exam</string>
+    <string name="storefront_format_PART">Section exam</string>
+    <string name="storefront_format_SUBJECT">Subject exam</string>
+    <string name="storefront_review">Review exam</string>
+
+    <plurals name="storefront_units_attempts">
+        <item quantity="one">%1$d attempt</item>
+        <item quantity="other">%1$d attempts</item>
+    </plurals>
+    <plurals name="storefront_units_attemptsPerExam">
+        <item quantity="one">%1$d attempt per exam</item>
+        <item quantity="other">%1$d attempts per exam</item>
+    </plurals>
+    <string name="storefront_units_minutes">%1$d minutes</string>
+    <string name="storefront_units_questions">%1$d questions</string>
+
+    <string name="account_deletion_deletedNotice">Your account has been deleted.</string>
+</resources>

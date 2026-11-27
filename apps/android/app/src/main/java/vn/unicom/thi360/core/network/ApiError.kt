@@ -22,7 +22,11 @@ data class ApiError(
 
 sealed interface ApiResult<out T> {
     data class Success<T>(val data: T) : ApiResult<T>
-    data class HttpFailure(val statusCode: Int, val error: ApiError?) : ApiResult<Nothing>
+    data class HttpFailure(
+        val statusCode: Int,
+        val error: ApiError?,
+        val retryAfterSeconds: Long? = null,
+    ) : ApiResult<Nothing>
     data class NetworkFailure(val cause: Throwable) : ApiResult<Nothing>
 }
 

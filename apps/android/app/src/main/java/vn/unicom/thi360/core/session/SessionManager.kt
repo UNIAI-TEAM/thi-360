@@ -1,5 +1,6 @@
 package vn.unicom.thi360.core.session
 
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,8 @@ class SessionManager(
     private val onSessionCleared: () -> Unit = {},
     startLocked: Boolean = false,
     private val backgroundScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    private val sessionCleanup: SessionCleanup? = null,
+    private val accountIdResolver: (suspend () -> String?)? = null,
 ) : TokenRefresher {
 
     private data class InFlightRefresh(
@@ -50,17 +53,25 @@ class SessionManager(
     )
 
     private val refreshMutex = Mutex()
+    private val logoutInFlight = AtomicBoolean(false)
     private var inFlightRefresh: InFlightRefresh? = null
 
-    private val _state = MutableStateFlow(initialStateFrom(tokenStore.read(), startLocked))
+    private val initialTokens = tokenStore.read()
+
+    private val _state = MutableStateFlow(initialStateFrom(initialTokens, startLocked))
     val state: StateFlow<SessionState> = _state.asStateFlow()
 
     private val _sessionGeneration = MutableStateFlow(0L)
     val sessionGeneration: StateFlow<Long> = _sessionGeneration.asStateFlow()
 
+    private val _currentAccountId = MutableStateFlow(initialTokens?.accountId)
+    val currentAccountId: StateFlow<String?> = _currentAccountId.asStateFlow()
+
     fun currentAccessToken(): String? = tokenStore.read()?.accessToken
 
     fun currentRefreshToken(): String? = tokenStore.read()?.refreshToken
+
+    fun currentAccountIdOrNull(): String? = tokenStore.read()?.accountId ?: _currentAccountId.value
 
     fun lockSession() {
         val current = _state.value
@@ -85,8 +96,15 @@ class SessionManager(
                     inFlightRefresh = null
                     onSessionCleared()
                     tokenStore.write(stored)
+                    _currentAccountId.value = stored.accountId
+                }
+                withContext(NonCancellable) {
+                    ensureAccountIdResolved()
+                }
+                refreshMutex.withLock {
+                    val latest = tokenStore.read() ?: stored
                     _sessionGeneration.value += 1L
-                    _state.value = stateForTokens(stored, isOffline = false)
+                    _state.value = stateForTokens(latest, isOffline = false)
                 }
                 LoginOutcome.Authenticated
             }
@@ -98,6 +116,7 @@ class SessionManager(
                     refreshMutex.withLock {
                         inFlightRefresh = null
                         onSessionCleared()
+                        _currentAccountId.value = null
                         _state.value = SessionState.SignedOut(
                             SignOutReason.StudentOnly(username = trimmedIdentifier),
                         )
@@ -123,14 +142,21 @@ class SessionManager(
                     inFlightRefresh = null
                     onSessionCleared()
                     tokenStore.write(stored)
-                    _sessionGeneration.value += 1L
-                    _state.value = stateForTokens(stored, isOffline = false)
+                    _currentAccountId.value = stored.accountId
                     oldToken
                 }
                 if (previousRefreshToken != null && previousRefreshToken != stored.refreshToken) {
                     backgroundScope.launch {
                         runCatching { authGateway.logout(previousRefreshToken) }
                     }
+                }
+                withContext(NonCancellable) {
+                    ensureAccountIdResolved()
+                }
+                refreshMutex.withLock {
+                    val latest = tokenStore.read() ?: stored
+                    _sessionGeneration.value += 1L
+                    _state.value = stateForTokens(latest, isOffline = false)
                 }
                 LoginOutcome.Authenticated
             }
@@ -143,6 +169,7 @@ class SessionManager(
                         val oldToken = tokenStore.read()?.refreshToken
                         inFlightRefresh = null
                         tokenStore.clear()
+                        _currentAccountId.value = null
                         onSessionCleared()
                         _sessionGeneration.value += 1L
                         _state.value = SessionState.SignedOut(
@@ -167,13 +194,19 @@ class SessionManager(
 
     suspend fun unlockAndRefresh(): RefreshOutcome {
         val outcome = refreshSession(failedAccessToken = null)
+        if (outcome is RefreshOutcome.Refreshed && outcome.tokens.accountId.isNullOrBlank()) {
+            withContext(NonCancellable) {
+                ensureAccountIdResolved()
+            }
+        }
         refreshMutex.withLock {
             if (_state.value !is SessionState.Locked) {
                 return outcome
             }
             when (outcome) {
                 is RefreshOutcome.Refreshed -> {
-                    _state.value = stateForTokens(outcome.tokens, isOffline = false)
+                    val latest = tokenStore.read() ?: outcome.tokens
+                    _state.value = stateForTokens(latest, isOffline = false)
                 }
 
                 RefreshOutcome.Offline, RefreshOutcome.TransientFailure -> {
@@ -181,6 +214,7 @@ class SessionManager(
                     if (stored != null) {
                         _state.value = stateForTokens(stored, isOffline = true)
                     } else {
+                        _currentAccountId.value = null
                         onSessionCleared()
                         _sessionGeneration.value += 1L
                         _state.value = SessionState.SignedOut(SignOutReason.Expired)
@@ -188,6 +222,7 @@ class SessionManager(
                 }
 
                 RefreshOutcome.SignedOut -> {
+                    _currentAccountId.value = null
                     onSessionCleared()
                     _sessionGeneration.value += 1L
                     _state.value = SessionState.SignedOut(SignOutReason.Expired)
@@ -229,14 +264,13 @@ class SessionManager(
         existingDeferred?.let { return it.await() }
 
         val owned = checkNotNull(ownedInFlight)
-        // Run the single-flight refresh non-cancellably so one cancelled caller cannot strand concurrent waiters.
         return withContext(NonCancellable) {
             val outcome = try {
                 executeSingleFlightRefresh(
                     refreshToken = owned.refreshToken,
                     fallbackUsername = storedUsername,
                 )
-            } catch (cancelled: CancellationException) {
+            } catch (_: CancellationException) {
                 RefreshOutcome.TransientFailure
             } catch (_: Throwable) {
                 RefreshOutcome.TransientFailure
@@ -263,8 +297,13 @@ class SessionManager(
                     return RefreshOutcome.SignedOut
                 }
                 val resolvedUsername = result.data.username ?: stillStored.username ?: fallbackUsername
-                val updated = result.data.copy(username = resolvedUsername)
+                val resolvedAccountId = result.data.accountId ?: stillStored.accountId
+                val updated = result.data.copy(
+                    username = resolvedUsername,
+                    accountId = resolvedAccountId,
+                )
                 tokenStore.write(updated)
+                _currentAccountId.value = updated.accountId
                 _state.value = when {
                     _state.value is SessionState.Locked -> SessionState.Locked(
                         username = resolvedUsername,
@@ -293,6 +332,7 @@ class SessionManager(
                         }
                         val username = stillStored.username ?: fallbackUsername.orEmpty()
                         tokenStore.clear()
+                        _currentAccountId.value = null
                         onSessionCleared()
                         _sessionGeneration.value += 1L
                         _state.value = SessionState.SignedOut(SignOutReason.StudentOnly(username))
@@ -307,6 +347,7 @@ class SessionManager(
                             return RefreshOutcome.SignedOut
                         }
                         tokenStore.clear()
+                        _currentAccountId.value = null
                         onSessionCleared()
                         _sessionGeneration.value += 1L
                         _state.value = SessionState.SignedOut(SignOutReason.Expired)
@@ -347,12 +388,49 @@ class SessionManager(
         }
     }
 
-    suspend fun validateSessionOnLaunch(): RefreshOutcome {
-        if (tokenStore.read() == null) return RefreshOutcome.SignedOut
-        return refreshSession(failedAccessToken = null)
+    suspend fun ensureAccountIdResolved(): String? {
+        val existing = refreshMutex.withLock { tokenStore.read() } ?: return null
+        if (!existing.accountId.isNullOrBlank()) {
+            _currentAccountId.value = existing.accountId
+            return existing.accountId
+        }
+        val resolver = accountIdResolver ?: return null
+        val resolved = try {
+            resolver()?.takeIf { it.isNotBlank() }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Throwable) {
+            null
+        } ?: return null
+
+        return refreshMutex.withLock {
+            val current = tokenStore.read() ?: return@withLock null
+            if (current.refreshToken != existing.refreshToken) {
+                return@withLock current.accountId
+            }
+            val updated = current.copy(accountId = resolved)
+            tokenStore.write(updated)
+            _currentAccountId.value = resolved
+            resolved
+        }
     }
 
-    suspend fun retryConnection(): RefreshOutcome = refreshSession(failedAccessToken = null)
+    suspend fun validateSessionOnLaunch(): RefreshOutcome {
+        if (tokenStore.read() == null) return RefreshOutcome.SignedOut
+        val outcome = refreshSession(failedAccessToken = null)
+        if (outcome is RefreshOutcome.Refreshed && outcome.tokens.accountId.isNullOrBlank()) {
+            ensureAccountIdResolved()
+        }
+        return outcome
+    }
+
+    suspend fun retryConnection(): RefreshOutcome {
+        val outcome = refreshSession(failedAccessToken = null)
+        if (outcome is RefreshOutcome.Refreshed && outcome.tokens.accountId.isNullOrBlank()) {
+            ensureAccountIdResolved()
+        }
+        return outcome
+    }
 
     fun acknowledgeRoleNotice() {
         if (_state.value is SessionState.SignedOut) {
@@ -365,8 +443,17 @@ class SessionManager(
             inFlightRefresh = null
             onSessionCleared()
             tokenStore.write(tokens)
+            _currentAccountId.value = tokens.accountId
+        }
+        if (tokens.accountId.isNullOrBlank()) {
+            withContext(NonCancellable) {
+                ensureAccountIdResolved()
+            }
+        }
+        refreshMutex.withLock {
+            val latest = tokenStore.read() ?: tokens
             _sessionGeneration.value += 1L
-            _state.value = stateForTokens(tokens, isOffline = false)
+            _state.value = stateForTokens(latest, isOffline = false)
         }
     }
 
@@ -383,26 +470,48 @@ class SessionManager(
         refreshMutex.withLock {
             inFlightRefresh = null
             tokenStore.clear()
+            _currentAccountId.value = null
             onSessionCleared()
             _sessionGeneration.value += 1L
             _state.value = SessionState.SignedOut(reason)
         }
     }
 
-    suspend fun logout() {
-        val refreshToken = refreshMutex.withLock {
-            inFlightRefresh = null
-            val existing = tokenStore.read()?.refreshToken
-            tokenStore.clear()
-            onSessionCleared()
-            _sessionGeneration.value += 1L
-            _state.value = SessionState.SignedOut(SignOutReason.None)
-            existing
+    suspend fun logout(reason: SignOutReason = SignOutReason.UserInitiated) {
+        if (!logoutInFlight.compareAndSet(false, true)) {
+            return
         }
-        if (refreshToken != null) {
-            withContext(NonCancellable) {
-                runCatching { authGateway.logout(refreshToken) }
+        try {
+            val snapshot = refreshMutex.withLock {
+                val stored = tokenStore.read()
+                if (stored == null && _state.value is SessionState.SignedOut) {
+                    return
+                }
+                stored
             }
+            val accountId = snapshot?.accountId ?: _currentAccountId.value.orEmpty()
+            if (sessionCleanup != null) {
+                withContext(NonCancellable) {
+                    sessionCleanup.onLogout(accountId)
+                }
+            }
+            val refreshToken = refreshMutex.withLock {
+                inFlightRefresh = null
+                val existing = tokenStore.read()?.refreshToken ?: snapshot?.refreshToken
+                tokenStore.clear()
+                _currentAccountId.value = null
+                onSessionCleared()
+                _sessionGeneration.value += 1L
+                _state.value = SessionState.SignedOut(reason)
+                existing
+            }
+            if (reason != SignOutReason.AccountDeleted && refreshToken != null) {
+                withContext(NonCancellable) {
+                    runCatching { authGateway.logout(refreshToken) }
+                }
+            }
+        } finally {
+            logoutInFlight.set(false)
         }
     }
 

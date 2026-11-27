@@ -127,14 +127,12 @@ class AccessibilityAndFontScaleTest {
                 RegisterTestTags.BACK_BUTTON,
                 RegisterTestTags.PASSWORD_VISIBILITY_TOGGLE,
                 RegisterTestTags.TERMS_CHECKBOX,
-                RegisterTestTags.TERMS_VIEW_BUTTON,
                 RegisterTestTags.SUBMIT_BUTTON,
                 RegisterTestTags.LOGIN_LINK,
             ),
             scrollableTags = setOf(
                 RegisterTestTags.PASSWORD_VISIBILITY_TOGGLE,
                 RegisterTestTags.TERMS_CHECKBOX,
-                RegisterTestTags.TERMS_VIEW_BUTTON,
                 RegisterTestTags.SUBMIT_BUTTON,
                 RegisterTestTags.LOGIN_LINK,
             ),
@@ -498,10 +496,14 @@ class AccessibilityAndFontScaleTest {
             val hasContentDesc = node.config.getOrNull(SemanticsProperties.ContentDescription)
                 .orEmpty()
                 .any { it.isNotBlank() }
+            val isLabeledInlineLink = node.config.any { it.key.name == "LinkTestMarker" } &&
+                node.parent?.config?.getOrNull(SemanticsProperties.Text)
+                    .orEmpty()
+                    .any { it.text.isNotBlank() }
             val testTag = node.config.getOrNull(SemanticsProperties.TestTag) ?: "id=${node.id}"
             assertTrue(
                 "$screenName interactive node '$testTag' must have non-blank Text or ContentDescription for TalkBack",
-                hasText || hasEditable || hasContentDesc,
+                hasText || hasEditable || hasContentDesc || isLabeledInlineLink,
             )
         }
     }

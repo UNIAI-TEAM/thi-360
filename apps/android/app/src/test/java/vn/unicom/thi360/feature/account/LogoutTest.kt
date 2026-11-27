@@ -14,8 +14,6 @@ import androidx.compose.ui.test.performTextInput
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,7 +35,6 @@ import vn.unicom.thi360.core.biometric.PromptAnswer
 import vn.unicom.thi360.core.biometric.PromptMemory
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -51,6 +48,7 @@ import vn.unicom.thi360.feature.login.LoginTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class LogoutTest {
@@ -58,12 +56,11 @@ class LogoutTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -92,7 +89,7 @@ class LogoutTest {
             promptMemoryStore = promptMemory,
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.EN },
@@ -133,20 +130,19 @@ class LogoutTest {
         }
         assertEquals(BiometricState.On, biometricController.state.value)
 
-        // Dismiss confirmation keeps session intact.
         composeRule.onNodeWithTag(AccountTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.LOGOUT_DIALOG).assertIsDisplayed()
         composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CANCEL_BUTTON).performClick()
-        assertEquals(0, server.requestCount)
+        assertEquals(0, server.requestCount("POST", "/api/v1/auth/mobile/logout"))
         assertEquals(BiometricState.On, biometricController.state.value)
 
-        // Confirm logout calls /api/v1/auth/mobile/logout, clears tokens + biometric, preserves locale & theme.
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
         composeRule.onNodeWithTag(AccountTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CONFIRM_BUTTON).performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            stack.sessionManager.state.value is SessionState.SignedOut
+            stack.sessionManager.state.value is SessionState.SignedOut &&
+                server.requestCount("POST", "/api/v1/auth/mobile/logout") == 1
         }
         composeRule.waitForIdle()
 
@@ -156,15 +152,14 @@ class LogoutTest {
         assertEquals("Locale must survive logout", AppLocale.EN, preferences.locale)
         assertEquals("Theme must survive logout", ThemeMode.DARK, preferences.themeMode)
 
-        val logoutReq = server.takeRequest()
+        val logoutReq = server.requests("POST", "/api/v1/auth/mobile/logout").single()
         assertEquals("/api/v1/auth/mobile/logout", logoutReq.path)
-        assertEquals(1, server.requestCount)
+        assertEquals(1, server.requestCount("POST", "/api/v1/auth/mobile/logout"))
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
 
-        // User B signs in and sees only User B's profile, never User A's data.
-        val userBLogin = ContractFixtureLoader.readAuthFixture("login-200.json")
-            .replace("student.demo", "student.beta")
-        server.enqueue(ContractFixtureLoader.jsonResponse(200, userBLogin))
+        server.respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json") {
+            it.replace("student.demo", "student.beta")
+        }
 
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.beta")
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("BetaPass1!")
@@ -234,7 +229,6 @@ class LogoutTest {
 
         composeRule.onNodeWithTag(AccountTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CONFIRM_BUTTON).performClick()
-        // Rapid second tap must not emit a duplicate logout request.
         runCatching { composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CONFIRM_BUTTON).performClick() }
 
         releaseLogout.complete(ApiResult.NetworkFailure(IOException("No network")))

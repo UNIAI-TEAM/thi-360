@@ -35,7 +35,9 @@ object AppSessionContainer {
                 current
             } else {
                 val tokenStore = KeystoreTokenStore.create(appContext)
-                val biometricController = (appContext as? Thi360Application)?.biometricController
+                val app = appContext as? Thi360Application
+                val biometricController = app?.biometricController
+                val sessionCleanup = app?.sessionCleanup
                 val startLocked = biometricController?.shouldStartLocked(
                     hasStoredSession = tokenStore.read() != null,
                 ) ?: false
@@ -46,6 +48,7 @@ object AppSessionContainer {
                     localeProvider = { currentLocale.get() },
                     onSessionCleared = { biometricController?.clearForSessionEnd() },
                     startLocked = startLocked,
+                    sessionCleanup = sessionCleanup,
                 ).also {
                     cachedAppContext = appContext
                     stack = it

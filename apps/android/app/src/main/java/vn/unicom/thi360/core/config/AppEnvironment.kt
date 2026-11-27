@@ -17,4 +17,5 @@ object AppEnvironment {
     val environment: Environment = Environment.fromFlavor(BuildConfig.ENVIRONMENT)
     val apiBaseUrl: String = BuildConfig.API_BASE_URL
     val webBaseUrl: String = BuildConfig.WEB_BASE_URL
+    val supportContact: SupportContact = SupportContact.fromBuildConfig()
 }
