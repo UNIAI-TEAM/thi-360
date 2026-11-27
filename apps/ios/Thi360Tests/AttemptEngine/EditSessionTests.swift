@@ -357,20 +357,61 @@ final class EditSessionTests: XCTestCase {
         XCTAssertEqual(server.callCount(for: .saveAnswers), 0)
         XCTAssertEqual(server.callCount(for: .confirmPartChoice), 0)
 
+        let firstTakeoverGets = server.callCount(for: .getState)
+        server.enqueue(.getState, try .serverError(statusCode: 503))
+        engine.takeover()
+        let failedReload = await clock.waitUntil {
+            server.callCount(for: .claimSession) == 2
+                && server.callCount(for: .getState) == firstTakeoverGets + 1
+                && engine.state.command == .refused(code: "SERVICE_UNAVAILABLE")
+        }
+        XCTAssertTrue(failedReload)
+        XCTAssertEqual(
+            engine.state.session,
+            .openElsewhere(lastSeenAt: otherLastSeen),
+            "Failed getState during takeover must NOT transition session to .editing"
+        )
+        let firstTakeoverCall = try XCTUnwrap(server.calls(for: .claimSession).last)
+        XCTAssertEqual(firstTakeoverCall.decodedJSON()?["takeover"] as? Bool, true)
+        XCTAssertEqual(firstTakeoverCall.decodedJSON()?["sessionId"] as? String, storedId)
+        let persistedAfterFailedReload = await store.read(namespace: "attempt", key: "session:\(server.attemptId)")
+        let firstGrantedSessionId = try XCTUnwrap(persistedAfterFailedReload.flatMap { String(data: $0, encoding: .utf8) })
+        XCTAssertNotEqual(firstGrantedSessionId, storedId)
+
+        engine.answer(itemId: itemId, value: .singleChoice(optionId: "a"))
+        XCTAssertNil(engine.state.answers[itemId]?.value, "Editing must remain blocked after failed takeover reload")
+
         let takeoverGate = AttemptTestGate()
+        let getStateGate = AttemptTestGate()
         server.setGate(takeoverGate, for: .claimSession)
+        server.setGate(getStateGate, for: .getState)
         engine.takeover()
         engine.takeover()
         await takeoverGate.waitUntilEntered()
         XCTAssertEqual(engine.state.command, .sending(.takeover))
-        XCTAssertEqual(server.callCount(for: .claimSession), 2, "Duplicate takeover() while sending must be ignored")
+        XCTAssertEqual(server.callCount(for: .claimSession), 3, "Duplicate takeover() while sending must be ignored")
 
         server.setGate(nil, for: .claimSession)
         await takeoverGate.releaseAll()
+        await getStateGate.waitUntilEntered()
+
+        XCTAssertEqual(
+            engine.state.session,
+            .openElsewhere(lastSeenAt: otherLastSeen),
+            "Session must stay .openElsewhere until GET /attempts/{id} finishes reloading"
+        )
+        XCTAssertEqual(engine.state.command, .sending(.takeover))
+        engine.takeover()
+        engine.answer(itemId: itemId, value: .singleChoice(optionId: "b"))
+        XCTAssertEqual(server.callCount(for: .claimSession), 3, "Duplicate takeover() during getState must be ignored")
+        XCTAssertNil(engine.state.answers[itemId]?.value, "Editing must stay blocked while takeover getState is in flight")
+
+        server.setGate(nil, for: .getState)
+        await getStateGate.releaseAll()
 
         let tookOver = await clock.waitUntil {
             if case .editing = engine.state.session {
-                return engine.state.command == .idle && server.callCount(for: .getState) >= 2
+                return engine.state.command == .idle && server.callCount(for: .getState) >= firstTakeoverGets + 2
             }
             return false
         }
@@ -378,7 +419,7 @@ final class EditSessionTests: XCTestCase {
 
         let takeoverCall = try XCTUnwrap(server.calls(for: .claimSession).last)
         XCTAssertEqual(takeoverCall.decodedJSON()?["takeover"] as? Bool, true)
-        XCTAssertEqual(takeoverCall.decodedJSON()?["sessionId"] as? String, storedId)
+        XCTAssertEqual(takeoverCall.decodedJSON()?["sessionId"] as? String, firstGrantedSessionId)
 
         guard case let .editing(newSessionId) = engine.state.session else {
             return XCTFail("Expected editing state after takeover")

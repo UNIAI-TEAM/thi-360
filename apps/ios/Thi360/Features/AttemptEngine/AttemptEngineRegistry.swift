@@ -79,9 +79,7 @@ final class AttemptEngineRegistry {
         AttemptDataCleanup(
             storeProvider: storeProvider,
             onAccountLogout: { [weak self] accountId in
-                await MainActor.run {
-                    self?.releaseAll(forAccount: accountId)
-                }
+                await self?.releaseAll(forAccount: accountId)
             }
         )
     }

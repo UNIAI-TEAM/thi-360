@@ -263,18 +263,13 @@ final class FinishPartCommandTests: XCTestCase {
         XCTAssertEqual(engine.state.command, .refused(code: "PART_CLOSED"))
         XCTAssertGreaterThan(server.callCount(for: .getState), getsBefore409, "4xx != 401 must reload attempt state")
 
+        // Plan A6 documented derivation: mutate code field on certified start 400 fixture for finishPart 400 refusal.
         let getsBefore400 = server.callCount(for: .getState)
         server.enqueue(
             .finishPart,
-            try .json(
-                statusCode: 400,
-                object: [
-                    "code": "INVALID_PART_STATE",
-                    "message": "Invalid state",
-                    "fieldErrors": [],
-                    "traceId": "test-400"
-                ]
-            )
+            try .fixture(operationId: Operations.start.id, status: 400, variant: "idempotency-key-required") { obj in
+                obj["code"] = "INVALID_PART_STATE"
+            }
         )
         engine.finishPart(partId: part1Id)
         let refused400 = await clock.waitUntil {

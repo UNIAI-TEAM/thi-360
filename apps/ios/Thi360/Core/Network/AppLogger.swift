@@ -87,17 +87,27 @@ struct RedactingAppLogger: Sendable {
         "voucher_code"
     ]
 
+    private static let containerFieldPatterns: [(NSRegularExpression, Character, Character)] = {
+        let definitions: [(String, Character, Character)] = [
+            (#"(?i)"finalAnswers"\s*:\s*"#, "[", "]"),
+            (#"(?i)"answer"\s*:\s*"#, "{", "}")
+        ]
+        return definitions.compactMap { pattern, openChar, closeChar in
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+            return (regex, openChar, closeChar)
+        }
+    }()
+
     private static let redactionPatterns: [(NSRegularExpression, String)] = {
         let sensitiveFieldNames = "password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode|voucherCode|voucher_code|vnp_[A-Za-z0-9_]+|x-attempt-session|answer|finalAnswers|html|text"
         let definitions: [(String, String)] = [
             (#"(?i)(Bearer\s+)[^\s,;"')]+"#, "$1<redacted>"),
-            (#"(?i)("finalAnswers"\s*:\s*)\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]"#, "$1\"<redacted>\""),
-            (#"(?i)("answer"\s*:\s*)\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}"#, "$1\"<redacted>\""),
-            ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*\")[^\"]*(\")", "$1<redacted>$2"),
+            ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*\")(?:\\\\.|[^\"\\\\])*(\")", "$1<redacted>$2"),
             ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*)(?!\"|null\\b)[^\\s,}\\]]+", "$1\"<redacted>\""),
-            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\(\")[^\"]*(\"\\))", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\(\")(?:\\\\.|[^\"\\\\])*(\"\\))", "$1$2<redacted>$3"),
             ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\()(?!\"|nil\\))[^)]+(\\))", "$1$2<redacted>$3"),
-            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*\")[^\"]*(\")", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*\")(?:\\\\.|[^\"\\\\])*(\")", "$1$2<redacted>$3"),
+            ("(?i)\\b(x-attempt-session)(\\s*:\\s*)[^\\s&,;)\"'\\]\\}]+", "$1$2<redacted>"),
             ("(?i)\\b(\(sensitiveFieldNames))(\\s*=\\s*)[^\\s&,;)\"'\\]\\}]+", "$1$2<redacted>")
         ]
         return definitions.compactMap { pattern, replacement in
@@ -178,10 +188,84 @@ struct RedactingAppLogger: Sendable {
 
     static func redact(_ input: String) -> String {
         var result = input
+        for (regex, openChar, closeChar) in containerFieldPatterns {
+            result = redactJSONContainers(
+                in: result,
+                fieldPattern: regex,
+                openChar: openChar,
+                closeChar: closeChar
+            )
+        }
         for (regex, replacement) in redactionPatterns {
             let range = NSRange(result.startIndex..., in: result)
             result = regex.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: replacement)
         }
         return result
+    }
+
+    private static func redactJSONContainers(
+        in input: String,
+        fieldPattern: NSRegularExpression,
+        openChar: Character,
+        closeChar: Character
+    ) -> String {
+        var output = ""
+        output.reserveCapacity(input.count)
+        var searchStart = input.startIndex
+
+        while searchStart < input.endIndex {
+            let nsRange = NSRange(searchStart..<input.endIndex, in: input)
+            guard let match = fieldPattern.firstMatch(in: input, options: [], range: nsRange),
+                  let matchRange = Range(match.range, in: input)
+            else {
+                output.append(contentsOf: input[searchStart..<input.endIndex])
+                break
+            }
+
+            let valueStart = matchRange.upperBound
+            guard valueStart < input.endIndex, input[valueStart] == openChar else {
+                output.append(contentsOf: input[searchStart..<valueStart])
+                searchStart = valueStart
+                continue
+            }
+
+            output.append(contentsOf: input[searchStart..<valueStart])
+            output.append("\"\(redactedToken)\"")
+
+            var index = valueStart
+            var depth = 0
+            var inString = false
+            var escaped = false
+
+            while index < input.endIndex {
+                let ch = input[index]
+                if inString {
+                    if escaped {
+                        escaped = false
+                    } else if ch == "\\" {
+                        escaped = true
+                    } else if ch == "\"" {
+                        inString = false
+                    }
+                } else {
+                    if ch == "\"" {
+                        inString = true
+                    } else if ch == openChar {
+                        depth += 1
+                    } else if ch == closeChar {
+                        depth -= 1
+                        if depth == 0 {
+                            index = input.index(after: index)
+                            break
+                        }
+                    }
+                }
+                index = input.index(after: index)
+            }
+
+            searchStart = index
+        }
+
+        return output
     }
 }

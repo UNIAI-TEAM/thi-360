@@ -26,8 +26,8 @@ final class AttemptTokenRefreshTests: XCTestCase {
         )
 
         let refreshGate = AttemptTestGate()
-        let refreshFixture = try ContractFixtureLoader.loadAuthFixture("refresh-200.json")
-        var refreshObj = try XCTUnwrap(JSONSerialization.jsonObject(with: refreshFixture) as? [String: Any])
+        // Plan A6 documented derivation: mutate accessToken field on certified mobileRefresh 200 fixture to verify refreshed bearer.
+        var refreshObj = try AttemptFixtureCatalog.loadJSONObject(operationId: Operations.mobileRefresh.id, status: 200)
         refreshObj["accessToken"] = freshAccess
         let refreshData = try JSONSerialization.data(withJSONObject: refreshObj)
 
@@ -56,7 +56,11 @@ final class AttemptTokenRefreshTests: XCTestCase {
         let asyncAssertResult1 = await clock.waitUntil { engine.state.activeSessionId != nil }
         XCTAssertTrue(asyncAssertResult1)
 
-        let unauthFixture = try ContractFixtureLoader.loadApiFixture("me-401-unauthenticated.json")
+        let unauthFixture = try AttemptFixtureCatalog.loadData(
+            operationId: Operations.me.id,
+            status: 401,
+            variant: "unauthenticated"
+        )
         let unauthOverride = FakeAttemptServer.OverrideResponse(
             statusCode: 401,
             data: unauthFixture,

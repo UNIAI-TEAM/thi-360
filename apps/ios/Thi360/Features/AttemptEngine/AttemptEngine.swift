@@ -25,6 +25,8 @@ final class AttemptEngine {
 
     @ObservationIgnored private var eventContinuations: [UUID: AsyncStream<EngineEvent>.Continuation] = [:]
     @ObservationIgnored private var isForeground: Bool = true
+    @ObservationIgnored private var needsForegroundHeartbeat: Bool = false
+    @ObservationIgnored private var isClosing: Bool = false
     @ObservationIgnored private var disposed: Bool = false
     @ObservationIgnored private var started: Bool = false
 
@@ -102,6 +104,10 @@ final class AttemptEngine {
             sessionIdGenerator: sessionIdGenerator,
             isOnline: { [weak self] in
                 self?.connectivity.isOnline ?? false
+            },
+            onTakeoverReload: { [weak self] sessionId in
+                guard let self else { return .closed }
+                return await self.performTakeoverReload(sessionId: sessionId)
             },
             onEvent: { [weak self] event in
                 self?.handleEditSessionEvent(event)
@@ -333,6 +339,9 @@ final class AttemptEngine {
         isForeground = foreground
 
         if !foreground {
+            needsForegroundHeartbeat = true
+            onlineTask?.cancel()
+            onlineTask = nil
             heartbeatLoop.stop()
             partPolling.stop()
             stopCountdownTicker()
@@ -397,6 +406,7 @@ final class AttemptEngine {
 
     func waitForIdleForTesting() async {
         await loadTask?.value
+        await editSession.waitForPendingTakeover()
         await commandTask?.value
         await foregroundTask?.value
         await onlineTask?.value
@@ -497,6 +507,7 @@ final class AttemptEngine {
         heartbeatLoop.stop()
         partPolling.stop()
         stopCountdownTicker()
+        saveQueue.cancelInFlightFlush()
         saveQueue.cancelAllPendingTimers()
         saveQueue.cancelRetryTimer()
 
@@ -507,30 +518,42 @@ final class AttemptEngine {
             state.clock = .none
 
         case .ABORTED:
+            isClosing = true
+            defer { isClosing = false }
             let reason = ClosedReason.aborted(reason: attempt.abortReason?.rawValue)
-            state.closed = reason
             state.clock = .none
             editSession.markReadOnly(.closed(reason))
+            saveQueue.lockItems(partId: nil)
+            saveQueue.clearTransientError()
+            await saveQueue.waitForPendingDraftWrites()
+            await positionTracker.waitForPendingPersist()
             let knownIds = saveQueue.allItemIds
             try? await draftStore.clearAttempt(
                 attemptId: attemptId,
                 keepStartContext: true,
                 knownItemIds: knownIds
             )
+            state.closed = reason
             emitAttemptClosedOnce(reason)
 
         default:
+            isClosing = true
+            defer { isClosing = false }
             let inferred = PartSelection.inferClosedReason(from: attempt) ?? .submitted
             let resolved = explicitClosedReason ?? inferred
-            state.closed = resolved
             state.clock = .none
             editSession.markReadOnly(.closed(resolved))
+            saveQueue.lockItems(partId: nil)
+            saveQueue.clearTransientError()
+            await saveQueue.waitForPendingDraftWrites()
+            await positionTracker.waitForPendingPersist()
             let knownIds = saveQueue.allItemIds
             try? await draftStore.clearAttempt(
                 attemptId: attemptId,
                 keepStartContext: false,
                 knownItemIds: knownIds
             )
+            state.closed = resolved
             emitAttemptClosedOnce(resolved)
         }
 
@@ -586,58 +609,23 @@ final class AttemptEngine {
         case let .claimSucceeded(_, fromTakeover):
             claimErrorReason = nil
             claimOffline = false
+            saveQueue.clearTransientError()
+            if state.command == .sending(.takeover) {
+                state.command = .idle
+            }
             recomputeSaveStatus()
+            refreshCountdownAndPolling()
 
+            if isForeground && connectivity.isOnline && state.closed == nil {
+                heartbeatLoop.start()
+            }
             if fromTakeover {
-                loadTask?.cancel()
-                loadTask = Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    defer {
-                        if self.state.command == .sending(.takeover) {
-                            self.state.command = .idle
-                        }
-                    }
-                    let snapshot = try? await self.api.getState(attemptId: self.attemptId)
-                    guard !self.disposed, !Task.isCancelled else { return }
-                    if let snapshot {
-                        self.serverClock.reanchor(serverNow: snapshot.response.serverNow, at: self.clock.now)
-                        self.state.attempt = snapshot.response
-                        let ids = Self.extractLeafItemIds(from: snapshot.response)
-                        let diskDrafts = await self.draftStore.loadDrafts(attemptId: self.attemptId, knownItemIds: ids)
-                        self.saveQueue.reconcile(snapshot: snapshot, diskDrafts: diskDrafts)
-                        let localPos = await self.draftStore.readPosition(attemptId: self.attemptId)
-                        let serverPos = PartSelection.parseServerPosition(from: snapshot.response)
-                        let resolvedPos = PartSelection.initial(
-                            attempt: snapshot.response,
-                            serverPosition: serverPos,
-                            localPosition: localPos
-                        )
-                        self.state.position = resolvedPos
-                        self.positionTracker.setInitial(resolvedPos)
-                        if snapshot.response.state != .IN_PROGRESS {
-                            await self.applyNonInProgressState(snapshot.response)
-                            return
-                        }
-                    }
-                    self.refreshCountdownAndPolling()
-                    if self.isForeground {
-                        self.heartbeatLoop.start()
-                    }
-                    if self.saveQueue.hasDirtyChanges || self.positionTracker.isDirty {
-                        self.saveQueue.scheduleFlush()
-                    }
+                if (saveQueue.hasDirtyChanges || positionTracker.isDirty) && connectivity.isOnline && isForeground {
+                    saveQueue.scheduleFlush()
                 }
-            } else {
-                if state.command == .sending(.takeover) {
-                    state.command = .idle
-                }
-                if isForeground {
-                    heartbeatLoop.start()
-                }
-                if saveQueue.hasDirtyChanges || positionTracker.isDirty {
-                    Task { @MainActor [weak self] in
-                        await self?.saveQueue.flushNow()
-                    }
+            } else if (saveQueue.hasDirtyChanges || positionTracker.isDirty) && connectivity.isOnline && isForeground {
+                Task { @MainActor [weak self] in
+                    await self?.saveQueue.flushNow()
                 }
             }
 
@@ -671,6 +659,53 @@ final class AttemptEngine {
             saveQueue.cancelRetryTimer()
             emit(.sessionLost)
             recomputeSaveStatus()
+        }
+    }
+
+    private func performTakeoverReload(sessionId _: String) async -> TakeoverReloadOutcome {
+        do {
+            let snapshot = try await api.getState(attemptId: attemptId)
+            guard !disposed, !Task.isCancelled else { return .closed }
+
+            let ids = Self.extractLeafItemIds(from: snapshot.response)
+            let diskDrafts = await draftStore.loadDrafts(attemptId: attemptId, knownItemIds: ids)
+            let localPos = await draftStore.readPosition(attemptId: attemptId)
+            guard !disposed, !Task.isCancelled else { return .closed }
+
+            serverClock.reanchor(serverNow: snapshot.response.serverNow, at: clock.now)
+            state.attempt = snapshot.response
+            state.load = .loaded(value: (), stale: false)
+            saveQueue.reconcile(snapshot: snapshot, diskDrafts: diskDrafts)
+
+            let serverPos = PartSelection.parseServerPosition(from: snapshot.response)
+            let resolvedPos = PartSelection.initial(
+                attempt: snapshot.response,
+                serverPosition: serverPos,
+                localPosition: localPos
+            )
+            state.position = resolvedPos
+            positionTracker.setInitial(resolvedPos)
+
+            if snapshot.response.state != .IN_PROGRESS {
+                await applyNonInProgressState(snapshot.response)
+                if state.command == .sending(.takeover) {
+                    state.command = .idle
+                }
+                return .closed
+            }
+
+            saveQueue.clearTransientError()
+            return .readyToEdit
+        } catch let apiError as AttemptAPIError {
+            guard !disposed, !Task.isCancelled else { return .closed }
+            if apiError.isSessionConflict {
+                applyEviction(markSaveConflict: saveQueue.hasDirtyChanges)
+                return .closed
+            }
+            return .failed(apiError)
+        } catch {
+            guard !disposed, !Task.isCancelled else { return .closed }
+            return .failed(nil)
         }
     }
 
@@ -773,6 +808,13 @@ final class AttemptEngine {
         }
 
         saveQueue.handleOnlineReset()
+
+        guard isForeground else {
+            editSession.resetBackoff()
+            recomputeSaveStatus()
+            return
+        }
+
         editSession.handleOnline()
 
         switch state.command {
@@ -796,9 +838,22 @@ final class AttemptEngine {
         onlineTask = Task { @MainActor [weak self] in
             guard let self else { return }
             await self.saveQueue.waitForCurrentFlush()
-            guard !self.disposed, !Task.isCancelled, self.connectivity.isOnline else { return }
+            guard !self.disposed, !Task.isCancelled, self.connectivity.isOnline, self.isForeground else { return }
+
+            if self.needsForegroundHeartbeat && self.editSession.activeSessionId != nil {
+                let outcome = await self.heartbeatLoop.sendNow()
+                guard !self.disposed, !Task.isCancelled, self.connectivity.isOnline, self.isForeground else { return }
+                if outcome == .evicted || self.isClosedOutcome(outcome) {
+                    self.needsForegroundHeartbeat = false
+                    return
+                }
+                if case .active = outcome {
+                    self.needsForegroundHeartbeat = false
+                }
+            }
+
             let fresh = await self.reloadStateFromServer(reconcileLocalDrafts: true)
-            guard !self.disposed, !Task.isCancelled, self.connectivity.isOnline else { return }
+            guard !self.disposed, !Task.isCancelled, self.connectivity.isOnline, self.isForeground else { return }
             if fresh?.state == .IN_PROGRESS,
                !self.isEditingBlocked(),
                self.editSession.activeSessionId != nil,
@@ -806,12 +861,22 @@ final class AttemptEngine {
             {
                 await self.saveQueue.flushNow()
             }
+            guard !self.disposed, !Task.isCancelled else { return }
+            if self.isForeground
+                && self.connectivity.isOnline
+                && self.state.closed == nil
+                && self.editSession.activeSessionId != nil
+            {
+                self.heartbeatLoop.start()
+                self.refreshCountdownAndPolling()
+            }
         }
     }
 
     private func handleReturnToForeground() async {
         guard !disposed, !Task.isCancelled else { return }
         guard state.closed == nil, state.attempt?.state == .IN_PROGRESS else {
+            needsForegroundHeartbeat = false
             return
         }
 
@@ -820,31 +885,37 @@ final class AttemptEngine {
                 let outcome = await heartbeatLoop.sendNow()
                 guard !disposed, !Task.isCancelled else { return }
                 if outcome == .evicted || isClosedOutcome(outcome) {
+                    needsForegroundHeartbeat = false
                     return
+                }
+                if case .active = outcome {
+                    needsForegroundHeartbeat = false
                 }
                 let fresh = await reloadStateFromServer(reconcileLocalDrafts: true)
                 guard !disposed, !Task.isCancelled else { return }
                 if fresh?.state == .IN_PROGRESS,
                    !isEditingBlocked(),
-                   editSession.activeSessionId != nil
+                   editSession.activeSessionId != nil,
+                   saveQueue.hasDirtyChanges || positionTracker.isDirty
                 {
-                    if saveQueue.hasDirtyChanges || positionTracker.isDirty {
-                        await saveQueue.flushNow()
-                    }
-                    guard !disposed, !Task.isCancelled else { return }
-                    if isForeground && state.closed == nil && editSession.activeSessionId != nil {
-                        heartbeatLoop.start()
-                        refreshCountdownAndPolling()
-                    }
+                    await saveQueue.flushNow()
+                }
+                guard !disposed, !Task.isCancelled else { return }
+                if isForeground && connectivity.isOnline && state.closed == nil && editSession.activeSessionId != nil {
+                    heartbeatLoop.start()
+                    refreshCountdownAndPolling()
                 }
             } else {
                 refreshCountdownAndPolling()
             }
         } else if case .acquiring = editSession.state {
+            needsForegroundHeartbeat = false
             if connectivity.isOnline {
                 editSession.handleOnline()
             }
             refreshCountdownAndPolling()
+        } else {
+            needsForegroundHeartbeat = false
         }
     }
 
@@ -917,26 +988,36 @@ final class AttemptEngine {
             )
             guard !disposed, !Task.isCancelled else { return }
 
+            isClosing = true
+            defer { isClosing = false }
+            saveQueue.cancelInFlightFlush()
+            saveQueue.cancelAllPendingTimers()
+            saveQueue.cancelRetryTimer()
+            heartbeatLoop.stop()
+            partPolling.stop()
+            stopCountdownTicker()
+
             serverClock.reanchor(serverNow: response.serverNow, at: clock.now)
             saveQueue.applyFinalAnswerResults(response.results)
 
             let resolvedReason = Self.mapEndReason(response.endReason?.rawValue) ?? .submitted
             explicitClosedReason = resolvedReason
+            editSession.markReadOnly(.closed(resolvedReason))
+            saveQueue.lockItems(partId: nil)
+            saveQueue.clearTransientError()
 
+            await saveQueue.waitForPendingDraftWrites()
+            await positionTracker.waitForPendingPersist()
             let knownIds = saveQueue.allItemIds
             try? await draftStore.clearAttempt(
                 attemptId: attemptId,
                 keepStartContext: false,
                 knownItemIds: knownIds
             )
-            saveQueue.lockItems(partId: nil)
 
             state.closed = resolvedReason
+            state.clock = .none
             state.command = .idle
-            heartbeatLoop.stop()
-            partPolling.stop()
-            stopCountdownTicker()
-            editSession.markReadOnly(.closed(resolvedReason))
             recomputeSaveStatus()
 
             _ = await reloadStateFromServer(reconcileLocalDrafts: false)
@@ -1052,9 +1133,17 @@ final class AttemptEngine {
             if let partId {
                 emit(.partClosed(partId))
             }
+            if fresh.state == .IN_PROGRESS && isForeground && connectivity.isOnline && state.closed == nil && editSession.activeSessionId != nil {
+                heartbeatLoop.start()
+                refreshCountdownAndPolling()
+            }
         } else {
             partCommands.clearUnconfirmedFinishPart()
             state.command = .idle
+            if isForeground && connectivity.isOnline && state.closed == nil && editSession.activeSessionId != nil {
+                heartbeatLoop.start()
+                refreshCountdownAndPolling()
+            }
             if saveQueue.hasDirtyChanges && connectivity.isOnline && editSession.activeSessionId != nil {
                 saveQueue.scheduleFlush()
             }
@@ -1071,6 +1160,10 @@ final class AttemptEngine {
             state.command = .idle
         } else {
             state.command = .idle
+            if isForeground && connectivity.isOnline && state.closed == nil && editSession.activeSessionId != nil {
+                heartbeatLoop.start()
+                refreshCountdownAndPolling()
+            }
             if saveQueue.hasDirtyChanges && connectivity.isOnline && editSession.activeSessionId != nil {
                 saveQueue.scheduleFlush()
             }
@@ -1078,6 +1171,7 @@ final class AttemptEngine {
     }
 
     private func applyEviction(markSaveConflict: Bool) {
+        guard state.closed == nil, !isClosing else { return }
         state.command = .idle
         heartbeatLoop.stop()
         partPolling.stop()
@@ -1302,7 +1396,7 @@ final class AttemptEngine {
     }
 
     private func isEditingBlocked() -> Bool {
-        if disposed || state.closed != nil {
+        if disposed || isClosing || state.closed != nil {
             return true
         }
         switch editSession.state {

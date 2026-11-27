@@ -1,5 +1,11 @@
 import Foundation
 
+enum TakeoverReloadOutcome: Sendable {
+    case readyToEdit
+    case closed
+    case failed(AttemptAPIError?)
+}
+
 enum EditSessionCallbackEvent: Sendable {
     case stateChanged(EditSessionState)
     case serverNow(Date)
@@ -18,6 +24,7 @@ final class EditSession {
     private let clock: any EngineClock
     private let sessionIdGenerator: @Sendable () -> String
     private let isOnline: @MainActor () -> Bool
+    private let onTakeoverReload: @MainActor (String) async -> TakeoverReloadOutcome
     private let onEvent: @MainActor (EditSessionCallbackEvent) -> Void
 
     private(set) var state: EditSessionState = .acquiring
@@ -37,6 +44,7 @@ final class EditSession {
         clock: any EngineClock,
         sessionIdGenerator: @escaping @Sendable () -> String = { UUID().uuidString.lowercased() },
         isOnline: @escaping @MainActor () -> Bool,
+        onTakeoverReload: @escaping @MainActor (String) async -> TakeoverReloadOutcome,
         onEvent: @escaping @MainActor (EditSessionCallbackEvent) -> Void
     ) {
         self.attemptId = attemptId
@@ -45,6 +53,7 @@ final class EditSession {
         self.clock = clock
         self.sessionIdGenerator = sessionIdGenerator
         self.isOnline = isOnline
+        self.onTakeoverReload = onTakeoverReload
         self.onEvent = onEvent
     }
 
@@ -63,6 +72,15 @@ final class EditSession {
         claimTask = Task { @MainActor [weak self] in
             await self?.runClaimAttempt()
         }
+    }
+
+    func resetBackoff() {
+        guard !disposed else { return }
+        backoff.reset()
+    }
+
+    func waitForPendingTakeover() async {
+        await takeoverTask?.value
     }
 
     func handleOnline() {
@@ -208,11 +226,22 @@ final class EditSession {
             guard !disposed, !Task.isCancelled else { return }
             persistedSessionId = response.sessionId
             try? await draftStore.writeSessionId(response.sessionId, attemptId: attemptId)
+            guard !disposed, !Task.isCancelled else { return }
             backoff.reset()
             onEvent(.serverNow(response.serverNow))
             onEvent(.claimError(nil, offline: false))
-            transition(to: .editing(sessionId: response.sessionId))
-            onEvent(.claimSucceeded(sessionId: response.sessionId, fromTakeover: true))
+
+            let reloadOutcome = await onTakeoverReload(response.sessionId)
+            guard !disposed, !Task.isCancelled else { return }
+            switch reloadOutcome {
+            case .readyToEdit:
+                transition(to: .editing(sessionId: response.sessionId))
+                onEvent(.claimSucceeded(sessionId: response.sessionId, fromTakeover: true))
+            case .closed:
+                break
+            case let .failed(apiError):
+                onEvent(.takeoverFailed(apiError))
+            }
         } catch let apiError as AttemptAPIError {
             guard !disposed, !Task.isCancelled else { return }
             if case let .conflict(code, _, _) = apiError {

@@ -83,7 +83,10 @@ final class SaveErrorTests: XCTestCase {
         server.resetCalls()
         server.enqueue(.saveAnswers, responses: [
             try .serverError(statusCode: 503),
-            try .json(statusCode: 400, object: ["code": "BAD_REQUEST", "message": "bad", "fieldErrors": [], "traceId": "t"]),
+            // Plan A6 documented derivation: mutate code field on certified start 400 fixture for generic saveAnswers 400.
+            try .fixture(operationId: Operations.start.id, status: 400, variant: "idempotency-key-required") { obj in
+                obj["code"] = "BAD_REQUEST"
+            },
             .networkError(.timedOut),
             try .serverError(statusCode: 500),
             try .serverError(statusCode: 502),

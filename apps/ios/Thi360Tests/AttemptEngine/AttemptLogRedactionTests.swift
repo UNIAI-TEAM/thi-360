@@ -17,6 +17,10 @@ final class AttemptLogRedactionTests: XCTestCase {
         let clozeTextSentinel = "ClozeSecretToken-55506"
         let essayHtmlSentinel = "<p>EssaySecretParagraph-44607</p>"
         let finalAnswerSentinel = "FinalAnswerSubmitSecret-33708"
+        let latexMathSentinel = "SecretMathFormula-11223"
+        let clozeLatexSentinel = "ClozeLaTeXSecret-22334"
+        let escapedQuoteTextSentinel = "EscapedQuoteAnswerSecret-44556"
+        let colonSessionSentinel = "sess-colon-secret-33445"
 
         let clock = TestEngineClock()
         let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)
@@ -102,6 +106,26 @@ final class AttemptLogRedactionTests: XCTestCase {
             category: "attempt",
             message: #"{"X-Attempt-Session":"\#(sessionSentinel)","answer":{"type":"SHORT_ANSWER","text":"\#(shortTextSentinel)"},"html":"\#(essayHtmlSentinel)","finalAnswers":[{"itemId":"\#(item2)","text":"\#(finalAnswerSentinel)"}]}"#
         )
+        demoLogger.log(
+            .info,
+            category: "attempt",
+            message: #"{"changes":[{"itemId":"\#(item1)","seq":1,"answer":{"type":"ESSAY","html":"<span class=\"math-tex\">\\frac{\\sqrt{\#(latexMathSentinel)}}{2}</span>"}}]}"#
+        )
+        demoLogger.log(
+            .info,
+            category: "attempt",
+            message: #"{"changes":[{"itemId":"\#(item1)","seq":2,"answer":{"type":"CLOZE","blanks":{"b1":"\\frac{\\sqrt{\#(clozeLatexSentinel)}}{2}"}}}]}"#
+        )
+        demoLogger.log(
+            .info,
+            category: "attempt",
+            message: #"{"html":"<p class=\"lead\">\#(escapedQuoteTextSentinel)</p>","text":"quote \"\#(escapedQuoteTextSentinel)\""}"#
+        )
+        demoLogger.log(
+            .info,
+            category: "attempt",
+            message: "X-Attempt-Session: \(colonSessionSentinel)"
+        )
 
         let devSink = InMemoryLogSink()
         let devLogger = RedactingAppLogger(environment: .dev, sink: devSink)
@@ -127,7 +151,11 @@ final class AttemptLogRedactionTests: XCTestCase {
             shortTextSentinel,
             clozeTextSentinel,
             essayHtmlSentinel,
-            finalAnswerSentinel
+            finalAnswerSentinel,
+            latexMathSentinel,
+            clozeLatexSentinel,
+            escapedQuoteTextSentinel,
+            colonSessionSentinel
         ]
         for entry in allEntries {
             for secret in secrets {

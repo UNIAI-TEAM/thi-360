@@ -174,12 +174,12 @@ final class AttemptLocalDataTests: XCTestCase {
             attemptId: server.attemptId
         )
 
-        let meTemplate = try ContractFixtureLoader.loadApiFixture("me-200.json")
-        var meBObj = try XCTUnwrap(JSONSerialization.jsonObject(with: meTemplate) as? [String: Any])
+        // Plan A6 documented derivation: mutate id and username fields on certified me 200 fixture for Account B.
+        var meBObj = try AttemptFixtureCatalog.loadJSONObject(operationId: Operations.me.id, status: 200)
         meBObj["id"] = "account-B"
         meBObj["username"] = "userB"
         let meBJSON = try JSONSerialization.data(withJSONObject: meBObj)
-        let loginBJSON = try ContractFixtureLoader.loadAuthFixture("login-200.json")
+        let loginBJSON = try AttemptFixtureCatalog.loadData(operationId: Operations.mobileLogin.id, status: 200)
         let lockStack = AccountTestFactory.makeContractStack(
             initialTokens: AccountTestFactory.sampleTokens(username: "userA", accountId: "account-A", refreshToken: "refresh-A"),
             initialEnrolled: true,

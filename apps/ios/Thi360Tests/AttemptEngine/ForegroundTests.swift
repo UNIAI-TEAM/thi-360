@@ -334,4 +334,212 @@ final class ForegroundTests: XCTestCase {
             "Unsaved changes must NOT be sent when background takeover revokes session"
         )
     }
+
+    func testConnectivityOnlineWhileBackgroundedOrLockedDoesNotSendBeforeForegroundHeartbeat() async throws {
+        let clock = TestEngineClock()
+        let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)
+        let item1 = server.firstLeafItemId(inPartIndex: 0)
+        let (_, store, rootURL) = try AttemptEngineTestHarness.makeStore()
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let (connectivity, netObserver) = AttemptEngineTestHarness.makeConnectivity(initialOnline: true)
+
+        let engine = AttemptEngine(
+            attemptId: server.attemptId,
+            accountId: "account-A",
+            api: server.makeAttemptAPI(),
+            store: store,
+            clock: clock,
+            connectivity: connectivity
+        )
+        defer { engine.dispose() }
+
+        let claimed = await clock.waitUntil {
+            if case .editing = engine.state.session { return true }
+            return false
+        }
+        XCTAssertTrue(claimed)
+
+        netObserver.emit(false)
+        await clock.settle()
+        engine.answer(itemId: item1, value: .singleChoice(optionId: "offline-bg-edit"))
+        await engine.waitForIdleForTesting()
+
+        engine.setForeground(false)
+        await clock.settle()
+
+        server.simulateExternalTakeover(newSessionId: "other-device-while-locked")
+        let savesBeforeOnline = server.callCount(for: .saveAnswers)
+        let getsBeforeOnline = server.callCount(for: .getState)
+        let heartbeatsBeforeOnline = server.callCount(for: .heartbeat)
+
+        netObserver.emit(true)
+        await clock.advance(by: .seconds(5))
+        XCTAssertEqual(server.callCount(for: .saveAnswers), savesBeforeOnline, "Must not send PUT /answers while backgrounded/locked")
+        XCTAssertEqual(server.callCount(for: .getState), getsBeforeOnline, "Must not reload GET /attempts/{id} while backgrounded/locked")
+        XCTAssertEqual(server.callCount(for: .heartbeat), heartbeatsBeforeOnline, "Must not send heartbeat while backgrounded/locked")
+
+        engine.setForeground(true)
+        let evicted = await clock.waitUntil {
+            engine.state.session == .evicted
+        }
+        XCTAssertTrue(evicted)
+        XCTAssertEqual(server.callCount(for: .heartbeat), heartbeatsBeforeOnline + 1)
+        XCTAssertEqual(server.callCount(for: .saveAnswers), savesBeforeOnline, "First foreground heartbeat must evict without sending unsaved answers")
+    }
+
+    func testBackgroundOfflineReturnForegroundThenOnlineResumesHeartbeats() async throws {
+        let clock = TestEngineClock()
+        let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)
+        let (_, store, rootURL) = try AttemptEngineTestHarness.makeStore()
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let (connectivity, netObserver) = AttemptEngineTestHarness.makeConnectivity(initialOnline: true)
+
+        let engine = AttemptEngine(
+            attemptId: server.attemptId,
+            accountId: "account-A",
+            api: server.makeAttemptAPI(),
+            store: store,
+            clock: clock,
+            connectivity: connectivity
+        )
+        defer { engine.dispose() }
+
+        let claimed = await clock.waitUntil {
+            if case .editing = engine.state.session { return true }
+            return false
+        }
+        XCTAssertTrue(claimed)
+
+        engine.setForeground(false)
+        netObserver.emit(false)
+        await clock.settle()
+
+        engine.setForeground(true)
+        await clock.settle()
+
+        let heartbeatsBeforeReconnect = server.callCount(for: .heartbeat)
+        netObserver.emit(true)
+        let immediateHeartbeat = await clock.waitUntil {
+            server.callCount(for: .heartbeat) >= heartbeatsBeforeReconnect + 1
+        }
+        XCTAssertTrue(immediateHeartbeat, "Reconnecting in foreground after background-offline must run foreground heartbeat")
+        await engine.waitForIdleForTesting()
+
+        let countAfterReconnect = server.callCount(for: .heartbeat)
+        await clock.advance(by: .seconds(30))
+        let periodicResumed = await clock.waitUntil {
+            server.callCount(for: .heartbeat) == countAfterReconnect + 1
+        }
+        XCTAssertTrue(periodicResumed, "30s periodic heartbeats must resume after background -> offline -> foreground -> online")
+    }
+
+    func testForegroundReturnWithTransientGetStateFailureKeepsHeartbeatAndCountdownRunning() async throws {
+        let clock = TestEngineClock()
+        let baseNow = FlexibleISO8601DateTranscoder.parse("2026-11-20T10:00:00Z")!
+        let server = try FakeAttemptServer(
+            initialStateVariant: "in-progress-shared",
+            initialServerNow: baseNow,
+            clock: clock,
+            mutateInitialState: { json in
+                json["deadlineAt"] = FakeAttemptServer.isoString(baseNow.addingTimeInterval(600))
+            }
+        )
+        let (_, store, rootURL) = try AttemptEngineTestHarness.makeStore()
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let (connectivity, _) = AttemptEngineTestHarness.makeConnectivity(initialOnline: true)
+
+        let engine = AttemptEngine(
+            attemptId: server.attemptId,
+            accountId: "account-A",
+            api: server.makeAttemptAPI(),
+            store: store,
+            clock: clock,
+            connectivity: connectivity
+        )
+        defer { engine.dispose() }
+
+        let claimed = await clock.waitUntil {
+            if case .editing = engine.state.session { return true }
+            return false
+        }
+        XCTAssertTrue(claimed)
+
+        engine.setForeground(false)
+        await clock.settle()
+
+        server.enqueue(.getState, try .serverError(statusCode: 503))
+        let heartbeatsBefore = server.callCount(for: .heartbeat)
+        let getsBefore = server.callCount(for: .getState)
+
+        engine.setForeground(true)
+        let returnHandled = await clock.waitUntil {
+            server.callCount(for: .heartbeat) == heartbeatsBefore + 1
+                && server.callCount(for: .getState) == getsBefore + 1
+        }
+        XCTAssertTrue(returnHandled)
+        await engine.waitForIdleForTesting()
+
+        let remainingBeforeTick = try XCTUnwrap(engine.state.clock.remainingSecondsCeil)
+        await clock.advance(by: .seconds(5))
+        let remainingAfterTick = try XCTUnwrap(engine.state.clock.remainingSecondsCeil)
+        XCTAssertLessThan(remainingAfterTick, remainingBeforeTick, "1s countdown ticker must remain running after transient getState 503")
+
+        await clock.advance(by: .seconds(26))
+        let nextHeartbeatFired = await clock.waitUntil {
+            server.callCount(for: .heartbeat) == heartbeatsBefore + 2
+        }
+        XCTAssertTrue(nextHeartbeatFired, "30s heartbeat loop must remain running after transient getState 503")
+    }
+
+    func testLateInFlightSaveConflictAfterSubmitPreservesSubmittedClosedState() async throws {
+        let clock = TestEngineClock()
+        let server = try FakeAttemptServer(initialStateVariant: "in-progress-shared", clock: clock)
+        let item1 = server.firstLeafItemId(inPartIndex: 0)
+        let (_, store, rootURL) = try AttemptEngineTestHarness.makeStore()
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+        let (connectivity, _) = AttemptEngineTestHarness.makeConnectivity(initialOnline: true)
+
+        let engine = AttemptEngine(
+            attemptId: server.attemptId,
+            accountId: "account-A",
+            api: server.makeAttemptAPI(),
+            store: store,
+            clock: clock,
+            connectivity: connectivity
+        )
+        defer { engine.dispose() }
+
+        let claimed = await clock.waitUntil {
+            if case .editing = engine.state.session { return true }
+            return false
+        }
+        XCTAssertTrue(claimed)
+
+        let saveGate = AttemptTestGate()
+        server.enqueue(
+            .saveAnswers,
+            try .fixture(
+                operationId: Operations.saveAnswers.id,
+                status: 409,
+                variant: "attempt-session-revoked",
+                gate: saveGate
+            )
+        )
+
+        engine.answer(itemId: item1, value: .singleChoice(optionId: "a"))
+        await saveGate.waitUntilEntered(count: 1)
+
+        engine.submit()
+        let submitted = await clock.waitUntil {
+            engine.state.closed == .submitted && engine.state.command == .idle
+        }
+        XCTAssertTrue(submitted)
+
+        await saveGate.releaseAll()
+        await clock.settle(yields: 12)
+
+        XCTAssertEqual(engine.state.closed, .submitted)
+        XCTAssertEqual(engine.state.session, .readOnly(.closed(.submitted)))
+        XCTAssertEqual(engine.state.save, .saved)
+    }
 }

@@ -178,5 +178,31 @@ final class EvictionTests: XCTestCase {
             engine.state.session == .evicted && engine.state.save == .unsaved(.sessionConflict)
         }
         XCTAssertTrue(evictedDuringSave)
+
+        server.mutateState { json in
+            if var parts = json["parts"] as? [[String: Any]],
+               !parts.isEmpty,
+               var partItems = parts[0]["items"] as? [[String: Any]]
+            {
+                for idx in partItems.indices where partItems[idx]["itemId"] as? String == itemId {
+                    partItems[idx]["answerSeq"] = 5
+                    partItems[idx]["answer"] = ["type": "SINGLE_CHOICE", "optionId": "b"]
+                }
+                parts[0]["items"] = partItems
+                json["parts"] = parts
+            }
+        }
+        let savesBeforeRecoveryTakeover = server.callCount(for: .saveAnswers)
+        engine.takeover()
+        let recoveredAfterSaveConflict = await clock.waitUntil {
+            if case .editing = engine.state.session {
+                return engine.state.command == .idle
+                    && engine.state.save == .saved
+                    && engine.state.answers[itemId]?.value == .singleChoice(optionId: "b")
+            }
+            return false
+        }
+        XCTAssertTrue(recoveredAfterSaveConflict, "Takeover after save-conflict eviction must clear .sessionConflict to .saved")
+        XCTAssertEqual(server.callCount(for: .saveAnswers), savesBeforeRecoveryTakeover)
     }
 }

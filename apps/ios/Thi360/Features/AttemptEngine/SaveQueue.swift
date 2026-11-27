@@ -166,7 +166,7 @@ final class SaveQueue {
             try? await store.saveDraft(draft, attemptId: attemptId)
         }
 
-        if lastErrorReason == .rejected {
+        if lastErrorReason != nil && (lastErrorReason != .rejected || !hasRejectedItems()) {
             lastErrorReason = nil
         }
 
@@ -255,6 +255,10 @@ final class SaveQueue {
             }
         }
 
+        if lastErrorReason != .rejected {
+            lastErrorReason = nil
+        }
+
         onEvent(.answersChanged(localAnswersSnapshot))
         onEvent(.statusChanged)
 
@@ -281,6 +285,7 @@ final class SaveQueue {
     func flushNow() async {
         guard !disposed, !isReadOnly() else { return }
         cancelAllPendingTimers()
+        cancelRetryTimer()
         guard isOnline(), sessionIdProvider() != nil else {
             onEvent(.statusChanged)
             return
@@ -330,10 +335,15 @@ final class SaveQueue {
     }
 
     func clearTransientError() {
-        if lastErrorReason != .rejected {
+        if lastErrorReason != .rejected || !hasRejectedItems() {
             lastErrorReason = nil
         }
         onEvent(.statusChanged)
+    }
+
+    func cancelInFlightFlush() {
+        flushTask?.cancel()
+        flushTask = nil
     }
 
     func markSessionConflictError() {
@@ -375,8 +385,9 @@ final class SaveQueue {
             deletedIds.append(id)
         }
         if !deletedIds.isEmpty {
+            let idsToDelete = deletedIds
             enqueueDraftOp { store, attemptId in
-                for id in deletedIds {
+                for id in idsToDelete {
                     try? await store.deleteDraft(attemptId: attemptId, itemId: id)
                 }
             }
@@ -533,7 +544,7 @@ final class SaveQueue {
                         flags: flagsChunk,
                         position: batchPosition
                     )
-                    guard !disposed, !Task.isCancelled else { return }
+                    guard !disposed, !Task.isCancelled, !isReadOnly() else { return }
 
                     backoff.reset()
                     if lastErrorReason != .rejected {
@@ -654,6 +665,7 @@ final class SaveQueue {
     }
 
     private func handleFlushError(_ error: AttemptAPIError) {
+        guard !disposed, !isReadOnly() else { return }
         if !isOnline() {
             onEvent(.statusChanged)
             return
