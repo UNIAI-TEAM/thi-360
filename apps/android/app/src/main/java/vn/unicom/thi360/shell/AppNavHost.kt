@@ -89,6 +89,7 @@ import vn.unicom.thi360.feature.register.RegistrationFlowScreen
 import vn.unicom.thi360.shell.routes.AppNavigator
 import vn.unicom.thi360.shell.routes.AppRoute
 import vn.unicom.thi360.shell.routes.InboundLinkRouter
+import vn.unicom.thi360.shell.routes.PaymentRoutesEffect
 import vn.unicom.thi360.shell.routes.attemptGraph
 import vn.unicom.thi360.shell.routes.authLegalGraph
 import vn.unicom.thi360.shell.routes.catalogGraph
@@ -843,6 +844,7 @@ fun AppNavHost(
     legalRepository: LegalRepository? = null,
 ) {
     val showCompactBrandHeader = navLayout == NavLayout.BottomBar
+    PaymentRoutesEffect(navigator = navigator)
 
     NavHost(
         navController = navController,

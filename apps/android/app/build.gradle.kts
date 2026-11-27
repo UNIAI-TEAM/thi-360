@@ -324,6 +324,8 @@ dependencies {
     implementation(libs.retrofit.converter.scalars)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    // AND-PAY: Custom Tabs browser launcher for VNPAY checkout (R-39, Spec 7.1, B1.13).
+    implementation(libs.androidx.browser)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

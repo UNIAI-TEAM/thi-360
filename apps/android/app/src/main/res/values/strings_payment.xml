@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checkout_heading">Xác nhận mua</string>
+    <string name="checkout_pageTitle">Xác nhận mua</string>
+    <string name="checkout_subtitle">Kiểm tra thông tin tài khoản, bài thi và chi tiết thanh toán trước khi tiếp tục.</string>
+    <string name="checkout_backToExam">Quay lại bài thi</string>
+    <string name="checkout_backToCatalog">Về danh mục bài thi</string>
+
+    <string name="checkout_notFound_title">Không tìm thấy bài thi</string>
+    <string name="checkout_notFound_description">Bài thi bạn yêu cầu không tồn tại hoặc đã bị gỡ khỏi danh mục.</string>
+    <string name="checkout_gone_title">Bài thi này hiện đã ngừng bán</string>
+    <string name="checkout_gone_description">Sản phẩm %1$s đã ngừng kinh doanh. Bạn không thể tạo đơn mua mới.</string>
+    <string name="checkout_loadError_title">Không thể tải thông tin thanh toán</string>
+    <string name="checkout_loadError_description">Vui lòng kiểm tra kết nối mạng và thử lại.</string>
+
+    <string name="checkout_account_title">Tài khoản nhận bài thi</string>
+    <string name="checkout_account_grantNotice">Sau khi hoàn tất, bài thi sẽ được cấp cho tài khoản %1$s.</string>
+    <string name="checkout_account_switchAccount">Đăng nhập bằng tài khoản khác</string>
+    <string name="checkout_account_changedTitle">Tài khoản đăng nhập đã thay đổi</string>
+    <string name="checkout_account_changedDescription">Bạn mở trang này với tài khoản %1$s, nhưng phiên hiện tại đang là %2$s. Vui lòng kiểm tra lại tài khoản trước khi thanh toán.</string>
+    <string name="checkout_account_continueAsCurrent">Tiếp tục với %1$s</string>
+
+    <string name="checkout_priceChanged_title">Giá hoặc quyền lợi đã thay đổi</string>
+    <string name="checkout_priceChanged_description">Giá hoặc quyền lợi vừa được cập nhật theo phiên bản mới nhất (%1$s). Vui lòng kiểm tra lại trước khi thanh toán.</string>
+    <string name="checkout_priceChanged_descriptionWithSeen">Giá hoặc quyền lợi vừa được cập nhật lên %1$s (trước đó hiển thị %2$s). Vui lòng kiểm tra lại trước khi thanh toán.</string>
+
+    <string name="checkout_accessBanner_buyMore">Mua thêm lượt</string>
+    <string name="checkout_accessBanner_checkingTitle">Đang kiểm tra đơn %1$s</string>
+    <string name="checkout_accessBanner_checkingDescription">Đơn mua bài thi này đang chờ đối soát thanh toán. Bạn không cần tạo đơn mới hay thanh toán lại.</string>
+    <string name="checkout_accessBanner_viewPaymentStatus">Xem trạng thái thanh toán</string>
+    <string name="checkout_accessBanner_enterExam">Vào bài thi</string>
+    <string name="checkout_accessBanner_continueAttempt">Tiếp tục</string>
+    <plurals name="checkout_accessBanner_existingTitle">
+        <item quantity="other">Bạn đang có %1$d lượt với bài thi này</item>
+    </plurals>
+    <plurals name="checkout_accessBanner_existingInProgressTitle">
+        <item quantity="other">Bạn đang có lượt làm dở (%1$d lượt với bài thi này)</item>
+    </plurals>
+    <string name="checkout_accessBanner_loadErrorTitle">Chưa kiểm tra được quyền sử dụng</string>
+    <string name="checkout_accessBanner_loadErrorDescription">Không thể kiểm tra quyền làm bài hiện tại của bạn. Vui lòng thử lại trước khi tiếp tục.</string>
+
+    <string name="checkout_product_sectionTitle">Thông tin bài thi</string>
+    <string name="checkout_product_version">Phiên bản v%1$d</string>
+    <plurals name="checkout_product_attemptsGranted">
+        <item quantity="other">%1$d lượt thi</item>
+    </plurals>
+
+    <string name="checkout_refund_title">Chính sách hoàn tiền</string>
+    <string name="checkout_refund_body">Bài thi được cấp ngay sau khi giao dịch hoàn tất và không hỗ trợ hoàn tiền sau khi đã kích hoạt lượt thi.</string>
+    <string name="checkout_refund_supportLabel">Hỗ trợ thanh toán:</string>
+
+    <string name="checkout_voucher_sectionTitle">Mã giảm giá</string>
+    <string name="checkout_voucher_label">Nhập mã giảm giá</string>
+    <string name="checkout_voucher_placeholder">Ví dụ: GIAM20</string>
+    <string name="checkout_voucher_apply">Áp dụng</string>
+    <string name="checkout_voucher_remove">Gỡ mã</string>
+    <string name="checkout_voucher_emptyInput">Vui lòng nhập mã giảm giá.</string>
+    <string name="checkout_voucher_applied">Đã áp dụng mã %1$s (-%2$s).</string>
+    <string name="checkout_voucher_appliedCombined">Đã áp dụng mã %1$s (-%2$s) cùng ưu đãi tự động.</string>
+    <string name="checkout_voucher_appliedReplacedPromo">Đã áp dụng mã %1$s (-%2$s). Mã này giảm nhiều hơn nên đã thay thế ưu đãi tự động.</string>
+    <string name="checkout_voucher_notBetter">Mã %1$s không giảm nhiều hơn ưu đãi tự động hiện tại nên hệ thống giữ nguyên mức giá tốt nhất.</string>
+    <string name="checkout_voucher_errors_RATE_LIMITED">Bạn kiểm tra mã quá nhanh. Vui lòng thử lại sau ít phút.</string>
+    <string name="checkout_voucher_errors_VOUCHER_EXHAUSTED">Mã giảm giá đã hết lượt sử dụng.</string>
+    <string name="checkout_voucher_errors_VOUCHER_EXPIRED">Mã giảm giá đã hết hạn sử dụng.</string>
+    <string name="checkout_voucher_errors_VOUCHER_INVALID">Mã giảm giá không tồn tại hoặc không hợp lệ.</string>
+    <string name="checkout_voucher_errors_VOUCHER_NOT_APPLICABLE">Mã giảm giá không áp dụng cho bài thi này.</string>
+    <string name="checkout_voucher_errors_VOUCHER_NOT_APPLICABLE_BUNDLE">Mã này chỉ áp cho một số bài thi, không áp cho bộ đề.</string>
+    <string name="checkout_voucher_errors_VOUCHER_NOT_ELIGIBLE">Tài khoản của bạn chưa đủ điều kiện sử dụng mã này.</string>
+    <string name="checkout_voucher_errors_VOUCHER_USER_LIMIT">Bạn đã dùng hết số lượt cho phép của mã giảm giá này.</string>
+    <string name="checkout_voucher_errors_generic">Không thể áp dụng mã giảm giá. Vui lòng thử lại.</string>
+
+    <string name="checkout_summary_title">Chi tiết thanh toán</string>
+    <string name="checkout_summary_listPrice">Giá gốc</string>
+    <string name="checkout_summary_promotion">Ưu đãi tự động (%1$s)</string>
+    <string name="checkout_summary_promotionFallback">Ưu đãi tự động</string>
+    <string name="checkout_summary_voucherDiscount">Mã giảm giá (%1$s)</string>
+    <string name="checkout_summary_totalDue">Thành tiền</string>
+    <string name="checkout_summary_freeVoucher">0 đ (đã áp dụng voucher)</string>
+    <string name="checkout_summary_ctaVnpay">Thanh toán qua VNPAY</string>
+    <string name="checkout_summary_ctaFree">Dùng voucher và nhận bài thi</string>
+    <string name="checkout_summary_ctaFreeNoVoucher">Nhận bài thi miễn phí</string>
+    <string name="checkout_summary_errorGeneric">Không thể tạo đơn hàng. Vui lòng thử lại.</string>
+    <string name="checkout_summary_errorRateLimited">Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.</string>
+
+    <string name="checkout_resultPageTitle">Kết quả thanh toán</string>
+    <string name="checkout_result_buyAgain">Mua lại bài thi</string>
+    <string name="checkout_result_checkAgain">Kiểm tra lại ngay</string>
+    <string name="checkout_result_checkingBadge">Đang kiểm tra</string>
+    <string name="checkout_result_checkingHeading">Đang chờ xác nhận thanh toán</string>
+    <string name="checkout_result_checkingPending">Hệ thống đang đối soát phản hồi từ VNPAY cho đơn %1$s. Vui lòng đợi trong giây lát.</string>
+    <string name="checkout_result_checkingTimeoutHeading">Đang kiểm tra thanh toán</string>
+    <string name="checkout_result_checkingTimeoutBody">Đã quá 60 giây nhưng VNPAY chưa gửi xác nhận cuối cùng cho đơn %1$s. Trạng thái hiện vẫn là Đang kiểm tra — bạn không cần thanh toán lại.</string>
+    <string name="checkout_result_checkingTimeoutSupport">Nếu bài thi chưa xuất hiện sau ít phút, hãy liên hệ hỗ trợ qua %1$s kèm mã đơn %2$s.</string>
+    <string name="checkout_result_noResultHeading">Chưa nhận được kết quả thanh toán</string>
+    <string name="checkout_result_noResultBody">Nếu bạn đã thanh toán xong trên VNPAY, trạng thái đơn %1$s sẽ cập nhật trong giây lát. Nếu bạn đã đóng trang thanh toán, đơn vẫn giữ giá tới %2$s.</string>
+    <string name="checkout_result_noResultBodyNoExpiry">Nếu bạn đã thanh toán xong trên VNPAY, trạng thái đơn %1$s sẽ cập nhật trong giây lát. Nếu bạn đã đóng trang thanh toán, bạn có thể tiếp tục thanh toán bên dưới.</string>
+    <string name="checkout_result_closedHeading">Đơn hàng đã đóng</string>
+    <string name="checkout_result_closedBody">Đơn hàng %1$s không còn ở trạng thái chờ thanh toán.</string>
+    <string name="checkout_result_failedHeading">Thanh toán chưa thành công</string>
+    <string name="checkout_result_failedBody">Giao dịch cho đơn %1$s chưa hoàn tất.</string>
+    <string name="checkout_result_invalidSignatureHeading">Không xác minh được phản hồi thanh toán</string>
+    <string name="checkout_result_invalidSignatureBody">Chữ ký phản hồi thanh toán từ VNPAY không hợp lệ hoặc dữ liệu đã bị thay đổi. Vui lòng kiểm tra trong mục Đơn của tôi trước khi thử thanh toán lại.</string>
+    <string name="checkout_result_loadErrorHeading">Không thể kiểm tra kết quả thanh toán</string>
+    <string name="checkout_result_loadErrorBody">Không thể tải thông tin đơn hàng lúc này. Vui lòng thử lại.</string>
+    <string name="checkout_result_missingOrderHeading">Thiếu thông tin giao dịch</string>
+    <string name="checkout_result_missingOrderBody">Không tìm thấy mã đơn hoặc phản hồi thanh toán hợp lệ trong đường dẫn này.</string>
+    <string name="checkout_result_notOwnedHeading">Không tìm thấy đơn trong tài khoản đang đăng nhập</string>
+    <string name="checkout_result_notOwnedBody">Không tìm thấy đơn %1$s trong tài khoản %2$s. Có thể bạn đang đăng nhập bằng một tài khoản khác.</string>
+    <string name="checkout_result_pollErrorNotice">Tạm thời không kiểm tra được trạng thái mới nhất. Hệ thống vẫn đang tiếp tục thử lại.</string>
+    <string name="checkout_result_pollErrorTimeoutNotice">Không kiểm tra lại được trạng thái đơn lúc này. Hãy bấm Kiểm tra lại ngay hoặc liên hệ hỗ trợ.</string>
+    <string name="checkout_result_retryPay">Thanh toán lại</string>
+    <string name="checkout_result_successHeading">Đã cấp bài thi</string>
+    <string name="checkout_result_successBody">Đơn %1$s đã được xác nhận thành công. Bài thi đã được cấp vào tài khoản của bạn.</string>
+    <string name="checkout_result_successFreeBody">Đơn %1$s đã được áp dụng voucher miễn phí và cấp bài thi ngay lập tức.</string>
+    <string name="checkout_result_txnRefLabel">Mã giao dịch:</string>
+    <string name="checkout_result_verifyNotFoundBody">Không tìm thấy đơn hàng tương ứng với phản hồi thanh toán này.</string>
+    <string name="checkout_result_viewMyExams">Vào Bài thi của tôi</string>
+    <string name="checkout_result_viewOrder">Xem chi tiết đơn</string>
+    <string name="checkout_result_viewOrders">Xem đơn của tôi</string>
+
+    <string name="bundle_checkout_backToBundle">Quay lại chi tiết bộ đề</string>
+    <string name="bundle_checkout_existingNote">Bài đã có quyền thì lượt mua thêm cộng vào lượt đang có. Quyền lợi theo từng lần cấp.</string>
+    <plurals name="bundle_checkout_grantNotice">
+        <item quantity="other">Sau khi hoàn tất, toàn bộ %1$d bài thi trong bộ sẽ được cấp cho tài khoản %2$s.</item>
+    </plurals>
+    <string name="bundle_checkout_itemsTitle">Các bài thi trong bộ (%1$d)</string>
+    <string name="bundle_checkout_pendingExamOrder">Đơn %1$s cho bài %2$s đang được kiểm tra. Bạn không cần thanh toán lại.</string>
+    <string name="bundle_checkout_pendingExamOrderNoCode">Có đơn đang được kiểm tra cho bài %1$s. Bạn không cần thanh toán lại.</string>
+    <string name="bundle_checkout_refundBody">Các bài thi trong bộ được cấp ngay sau khi giao dịch hoàn tất và không hỗ trợ hoàn tiền sau khi đã kích hoạt lượt thi.</string>
+    <string name="bundle_checkout_sectionTitle">Bộ đề đã chọn</string>
+    <string name="bundle_checkout_subtitle">Kiểm tra danh sách bài thi trong bộ, quyền lợi nhận được và tài khoản nhận bài trước khi thanh toán.</string>
+    <string name="bundle_checkout_summaryLabel">Tóm tắt bộ đề</string>
+    <string name="bundle_checkout_tableCaption">Các bài trong bộ và quyền nhận được</string>
+    <string name="bundle_checkout_unavailableActionBack">Về chi tiết bộ đề</string>
+    <string name="bundle_checkout_unavailableBody">Một bài trong bộ vừa ngừng bán. Chưa có khoản nào bị trừ.</string>
+    <string name="bundle_checkout_unavailableTitle">Bộ đề tạm thời chưa bán được.</string>
+
+    <string name="orders_pageTitle">Đơn của tôi</string>
+    <string name="orders_detailPageTitle">Chi tiết đơn hàng</string>
+    <string name="orders_backToList">Đơn của tôi</string>
+    <string name="orders_bundleBadge">Bộ đề</string>
+    <string name="orders_subtitle">Các đơn mua bài thi của tài khoản %1$s, mới nhất trước. Khi cần hỗ trợ, hãy gửi kèm mã đơn.</string>
+    <string name="orders_tableLabel">Danh sách đơn hàng của tôi</string>
+    <string name="orders_emptyTitle">Bạn chưa có đơn nào</string>
+    <string name="orders_emptyDescription">Khi bạn mua bài thi, các đơn hàng sẽ hiện ở đây.</string>
+    <string name="orders_exploreExams">Khám phá bài thi</string>
+    <string name="orders_errorTitle">Không tải được danh sách đơn</string>
+    <string name="orders_errorDescription">Kiểm tra kết nối mạng rồi thử lại.</string>
+    <string name="orders_staleTitle">Dữ liệu chưa được cập nhật.</string>
+    <string name="orders_staleDescription">Không tải lại được dữ liệu; đang hiện bản đã tải lúc %1$s.</string>
+    <string name="orders_staleDescriptionNoTime">Không tải lại được dữ liệu; đang hiện bản đã tải trước đó.</string>
+    <string name="orders_pendingHoldUntil">Giữ giá tới %1$s</string>
+    <string name="orders_replacedBy">Thay bằng đơn %1$s</string>
+    <string name="orders_paidChecking">Đã nhận thanh toán cho đơn %1$s. Bài thi đang được cấp cho tài khoản của bạn.</string>
+    <string name="orders_paidCheckingSupport">Nếu chờ quá lâu, liên hệ hỗ trợ qua %1$s và gửi kèm mã đơn %2$s.</string>
+    <string name="orders_paidCheckingSupportPending">Nếu chờ quá lâu, hãy liên hệ hỗ trợ kèm mã đơn %1$s. %2$s</string>
+    <string name="orders_stateSubtext_PAID">Đã nhận tiền, đang cấp bài thi</string>
+
+    <string name="orders_actions_cancel">Hủy đơn</string>
+    <string name="orders_actions_continuePayment">Tiếp tục thanh toán</string>
+    <string name="orders_actions_createNew">Tạo đơn mới</string>
+    <string name="orders_actions_goMyExams">Vào Bài thi của tôi</string>
+    <string name="orders_actions_toCatalog">Về danh mục bài thi</string>
+    <string name="orders_actions_viewDetail">Xem chi tiết</string>
+    <string name="orders_actions_viewReplacement">Xem đơn thay thế %1$s</string>
+
+    <string name="orders_amount_discountSummary">đã giảm %1$s</string>
+    <string name="orders_amount_free">Miễn phí</string>
+    <string name="orders_amount_freeAmount">0 đ</string>
+    <string name="orders_amount_freeVoucher">0 đ (đã áp dụng voucher)</string>
+    <string name="orders_amount_freeVoucherNote">Miễn phí nhờ voucher</string>
+    <string name="orders_amount_vnpay">VNPAY</string>
+
+    <string name="orders_cancelDialog_title">Hủy đơn %1$s?</string>
+    <string name="orders_cancelDialog_description">Đơn chờ thanh toán %1$s sẽ bị hủy. Mã giảm giá đã dùng cho đơn này được trả lại.</string>
+    <string name="orders_cancelDialog_confirm">Hủy đơn</string>
+    <string name="orders_cancelDialog_keep">Giữ đơn</string>
+    <string name="orders_cancelDialog_success">Đã hủy đơn %1$s.</string>
+
+    <string name="orders_notFound_title">Không tìm thấy đơn hàng</string>
+    <string name="orders_notFound_description">Không tìm thấy đơn trong tài khoản đang đăng nhập. Hãy kiểm tra bạn đã đăng nhập đúng tài khoản dùng để mua chưa.</string>
+    <string name="orders_notFound_otherAccount">Đăng nhập bằng tài khoản khác</string>
+    <string name="orders_notFound_backToOrders">Quay lại đơn của tôi</string>
+
+    <string name="orders_states_CANCELLED">Đã hủy</string>
+    <string name="orders_states_EXPIRED">Hết hạn</string>
+    <string name="orders_states_FULFILLED">Đã cấp bài thi</string>
+    <string name="orders_states_PAID">Đang kiểm tra</string>
+    <string name="orders_states_PENDING_PAYMENT">Chờ thanh toán</string>
+    <string name="orders_states_REFUNDED">Đã hoàn tiền</string>
+    <string name="orders_states_REPLACED">Đã thay thế</string>
+
+    <string name="orders_errors_ORDER_EXPIRED">Đơn đã hết hạn thanh toán. Vui lòng tạo đơn mới theo giá hiện tại.</string>
+    <string name="orders_errors_ORDER_NOT_FOUND">Không tìm thấy đơn trong tài khoản đang đăng nhập. Hãy kiểm tra bạn đã đăng nhập đúng tài khoản dùng để mua chưa.</string>
+    <string name="orders_errors_ORDER_NOT_PENDING">Đơn không còn ở trạng thái chờ thanh toán.</string>
+    <string name="orders_errors_PAYMENT_ATTEMPTS_EXCEEDED">Đơn đã vượt quá số lần tạo giao dịch thanh toán. Vui lòng tạo đơn mới.</string>
+    <string name="orders_errors_PRODUCT_DISCONTINUED">Bài thi đã ngừng bán. Không thể tiếp tục thanh toán đơn này.</string>
+    <string name="orders_errors_PRODUCT_NOT_FOUND">Không tìm thấy bài thi của đơn này.</string>
+    <string name="orders_errors_RATE_LIMITED">Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.</string>
+    <string name="orders_errors_generic">Không thực hiện được thao tác. Vui lòng thử lại hoặc tạo đơn mới.</string>
+
+    <string name="orders_detail_heading">Đơn %1$s</string>
+    <string name="orders_detail_errorTitle">Không tải được chi tiết đơn hàng</string>
+    <string name="orders_detail_snapshotTitle">Thông tin đơn hàng</string>
+    <string name="orders_detail_itemsTitle">Bài thi trong đơn (%1$d)</string>
+    <string name="orders_detail_selectPrompt">Chọn một đơn hàng để xem chi tiết.</string>
+    <plurals name="orders_detail_attemptsValue">
+        <item quantity="other">%1$d lượt</item>
+    </plurals>
+    <string name="orders_detail_fields_buyer">Tài khoản mua</string>
+    <string name="orders_detail_fields_product">Sản phẩm</string>
+    <string name="orders_detail_fields_version">Phiên bản lúc mua</string>
+    <string name="orders_detail_fields_listPrice">Giá gốc</string>
+    <string name="orders_detail_fields_promotion">Khuyến mãi tự động</string>
+    <string name="orders_detail_fields_voucher">Mã giảm giá</string>
+    <string name="orders_detail_fields_amountDue">Số tiền phải trả</string>
+    <string name="orders_detail_fields_attempts">Số lượt được cấp</string>
+    <string name="orders_detail_fields_createdAt">Tạo lúc</string>
+    <string name="orders_detail_fields_expiresAt">Giữ giá tới</string>
+    <string name="orders_detail_fields_paidAt">Thanh toán lúc</string>
+    <string name="orders_detail_fields_fulfilledAt">Cấp bài thi lúc</string>
+    <string name="orders_detail_fields_benefits">Quyền lợi</string>
+    <string name="orders_detail_benefits_resultView">Xem kết quả</string>
+    <string name="orders_detail_benefits_ai">Giải thích bằng AI</string>
+    <string name="orders_detail_benefits_strengths">Đánh giá điểm mạnh, điểm yếu</string>
+    <string name="orders_detail_benefits_practice">Ôn luyện bổ sung</string>
+    <string name="orders_detail_benefits_yes">Có</string>
+    <string name="orders_detail_benefits_no">Không</string>
+
+    <string name="orders_detail_payments_title">Giao dịch thanh toán</string>
+    <string name="orders_detail_payments_empty">Đơn miễn phí, không phát sinh giao dịch VNPAY.</string>
+    <string name="orders_detail_payments_emptyVnpay">Chưa có giao dịch thanh toán.</string>
+    <string name="orders_detail_payments_amount">Số tiền</string>
+    <string name="orders_detail_payments_attemptSeq">Lần</string>
+    <string name="orders_detail_payments_bank">Ngân hàng</string>
+    <string name="orders_detail_payments_createdAt">Thời điểm</string>
+    <string name="orders_detail_payments_duplicate">Thu trùng</string>
+    <string name="orders_detail_payments_reason">Chi tiết</string>
+    <string name="orders_detail_payments_status">Trạng thái</string>
+    <string name="orders_detail_payments_txnRef">Mã tham chiếu</string>
+    <string name="orders_detail_payments_states_CREATED">Khởi tạo</string>
+    <string name="orders_detail_payments_states_FAILED">Thất bại</string>
+    <string name="orders_detail_payments_states_SUCCEEDED">Thành công</string>
+    <string name="orders_detail_payments_states_UNKNOWN">Chưa rõ</string>
+
+    <string name="orders_detail_history_title">Lịch sử xử lý</string>
+    <string name="orders_detail_history_empty">Chưa có lịch sử xử lý.</string>
+    <string name="orders_detail_history_created">Tạo đơn</string>
+    <string name="orders_detail_history_transition">%1$s → %2$s</string>
+    <string name="orders_detail_history_actors_ADMIN">Quản trị viên</string>
+    <string name="orders_detail_history_actors_LEARNER">Học viên</string>
+    <string name="orders_detail_history_actors_SYSTEM">Hệ thống</string>
+    <string name="orders_detail_history_actors_VNPAY_IPN">Cổng thanh toán VNPAY</string>
+    <string name="orders_detail_history_actors_unknown">Hệ thống</string>
+    <string name="orders_detail_history_reasons_AUTO_EXCESS_AFTER_COUNTED">Giao dịch %1$s tự động ghi nhận thu thừa sau khoản đã tính</string>
+    <string name="orders_detail_history_reasons_CANCELLED_BY_USER">Học viên đã hủy đơn hàng</string>
+    <string name="orders_detail_history_reasons_DOUBLE_CHARGE_REPLACED_ORDER">Cảnh báo thu trùng trên chuỗi đơn thay thế (%1$s)</string>
+    <string name="orders_detail_history_reasons_DOUBLE_CHARGE_REVIEW">Cần đối soát thu trùng (%1$s)</string>
+    <string name="orders_detail_history_reasons_EXCESS_AFTER_COUNTED">Giao dịch %1$s thu thừa sau khi đơn đã thanh toán</string>
+    <string name="orders_detail_history_reasons_EXPIRED">Đơn hàng đã hết hạn thanh toán</string>
+    <string name="orders_detail_history_reasons_FREE_ORDER_PAID">Đơn hàng 0 đồng được xác nhận ngay</string>
+    <string name="orders_detail_history_reasons_FULFILLED">Đã cấp quyền vào bài thi</string>
+    <string name="orders_detail_history_reasons_LATE_PAYMENT_RECLAIMED">Nhận thanh toán muộn (%1$s) và đã đối soát cấp quyền</string>
+    <string name="orders_detail_history_reasons_LATE_PAYMENT_REPLACED_DOUBLE_CHARGE">Nhận thanh toán muộn (%1$s) trên đơn đã thay thế (cần kiểm tra thu trùng)</string>
+    <string name="orders_detail_history_reasons_LATE_PAYMENT_REPLACED_RECLAIMED">Nhận thanh toán muộn (%1$s) trên đơn đã thay thế</string>
+    <string name="orders_detail_history_reasons_LATE_SUCCESS_PENDING_REVIEW">Giao dịch %1$s báo thành công muộn, đang chờ đối soát</string>
+    <string name="orders_detail_history_reasons_ORDER_CREATED">Khởi tạo đơn hàng chờ thanh toán</string>
+    <string name="orders_detail_history_reasons_PAYMENT_ATTEMPT_CREATED">Khởi tạo giao dịch thanh toán %1$s</string>
+    <string name="orders_detail_history_reasons_PAYMENT_SUCCEEDED">Thanh toán thành công qua giao dịch %1$s</string>
+    <string name="orders_detail_history_reasons_REFUNDED">Đơn hàng đã được hoàn tiền</string>
+    <string name="orders_detail_history_reasons_REPLACED_BY">Đã thay thế bằng đơn %1$s</string>
+    <string name="orders_detail_history_reasons_REUSE_PENDING_PAYMENT">Tạo lại liên kết thanh toán %1$s trên đơn đang chờ</string>
+    <string name="orders_detail_history_reasons_unknown">Cập nhật trạng thái đơn hàng</string>
+
+    <string name="orders_vnpayReasons_07">Trừ tiền thành công nhưng giao dịch bị nghi ngờ.</string>
+    <string name="orders_vnpayReasons_09">Thẻ hoặc tài khoản chưa đăng ký dịch vụ Internet Banking.</string>
+    <string name="orders_vnpayReasons_10">Xác thực thông tin thẻ hoặc tài khoản không đúng quá 3 lần.</string>
+    <string name="orders_vnpayReasons_11">Giao dịch đã hết thời gian chờ thanh toán.</string>
+    <string name="orders_vnpayReasons_12">Thẻ hoặc tài khoản đang bị khóa.</string>
+    <string name="orders_vnpayReasons_13">Bạn đã nhập sai mật khẩu xác thực giao dịch (OTP).</string>
+    <string name="orders_vnpayReasons_24">Bạn đã hủy giao dịch trên VNPAY.</string>
+    <string name="orders_vnpayReasons_51">Tài khoản ngân hàng không đủ số dư để thanh toán.</string>
+    <string name="orders_vnpayReasons_65">Tài khoản đã vượt quá hạn mức giao dịch trong ngày.</string>
+    <string name="orders_vnpayReasons_75">Ngân hàng thanh toán đang bảo trì.</string>
+    <string name="orders_vnpayReasons_79">Bạn đã nhập sai thông tin xác thực quá số lần cho phép.</string>
+    <string name="orders_vnpayReasons_99">Chưa nhận được kết quả cuối từ cổng thanh toán.</string>
+    <string name="orders_vnpayReasons_generic">Ngân hàng hoặc VNPAY từ chối giao dịch.</string>
+
+    <string name="payment_price">%1$s đ</string>
+    <string name="payment_units_questions_range">%1$s câu</string>
+    <string name="payment_units_minutes_range">%1$s phút</string>
+    <string name="payment_detail_maxScore">%1$s điểm</string>
+    <string name="payment_detail_resultViews_SCORE">Chỉ điểm</string>
+    <string name="payment_detail_resultViews_SCORE_AND_ANSWERS">Điểm và đáp án</string>
+    <string name="payment_detail_resultViews_FULL_SOLUTION">Điểm, đáp án và lời giải</string>
+    <string name="payment_detail_rights_ai">Giải thích bằng AI</string>
+    <string name="payment_detail_rights_strengths">Đánh giá điểm mạnh, điểm yếu</string>
+    <string name="payment_detail_rights_practice">Ôn luyện bổ sung</string>
+    <string name="payment_detail_rights_yes">Có</string>
+    <string name="payment_detail_rights_no">Không</string>
+    <string name="payment_bundle_detail_unavailableBody">Một bài trong bộ đang được cập nhật. Bạn vẫn mua được từng bài lẻ.</string>
+    <plurals name="payment_bundle_examCountValue">
+        <item quantity="other">%1$d bài</item>
+    </plurals>
+    <plurals name="payment_bundle_existingEntitlement">
+        <item quantity="other">Bạn đã có %1$d lượt bài %2$s; mua bộ sẽ cộng thêm lượt</item>
+    </plurals>
+    <plurals name="payment_access_attemptsLeft">
+        <item quantity="other">Còn %1$d lượt</item>
+    </plurals>
+    <string name="payment_back">Quay lại</string>
+</resources>
