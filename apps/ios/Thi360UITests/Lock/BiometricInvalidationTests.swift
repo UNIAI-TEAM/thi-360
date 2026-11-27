@@ -17,6 +17,9 @@ final class BiometricInvalidationTests: XCTestCase {
         let loginBody = try Data(contentsOf: authDir.appendingPathComponent("login-200.json"))
         let refreshBody = try Data(contentsOf: authDir.appendingPathComponent("refresh-200.json"))
         let profileBody = try Data(contentsOf: apiDir.appendingPathComponent("me-profile-200.json"))
+        let filtersBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-filters-200.json"))
+        let productsBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-list-200.json"))
+        let accessBody = try Data(contentsOf: apiDir.appendingPathComponent("exam-access-query-200.json"))
 
         let mockServer = try RecoveryFixtureHTTPServer { method, path, _ in
             if method == "POST", path == "/api/v1/auth/mobile/login" {
@@ -27,6 +30,15 @@ final class BiometricInvalidationTests: XCTestCase {
             }
             if method == "GET", path == "/api/v1/me/profile" {
                 return (200, profileBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/filters" {
+                return (200, filtersBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/products" {
+                return (200, productsBody)
+            }
+            if method == "POST", path == "/api/v1/me/exam-access/query" {
+                return (200, accessBody)
             }
             if method == "POST", path == "/api/v1/auth/mobile/logout" {
                 return (204, Data())
@@ -77,8 +89,9 @@ final class BiometricInvalidationTests: XCTestCase {
         enableButton.tap()
 
         SimulatorBiometricHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
-        waitForBiometricMatch(until: app.staticTexts["Trang chủ"], timeout: 10)
-        XCTAssertTrue(app.staticTexts["Trang chủ"].exists)
+        let homeHeading = app.staticTexts["catalog.heading"].firstMatch
+        waitForBiometricMatch(until: homeHeading, timeout: 10)
+        XCTAssertTrue(homeHeading.exists)
 
         // 2. Terminate app and clear simulator biometric enrollment so the .biometryCurrentSet Keychain item cannot be unlocked.
         app.terminate()
@@ -121,7 +134,7 @@ final class BiometricInvalidationTests: XCTestCase {
             laterButton.tap()
         }
 
-        XCTAssertTrue(relaunched.staticTexts["Trang chủ"].waitForExistence(timeout: 8))
+        XCTAssertTrue(relaunched.staticTexts["catalog.heading"].firstMatch.waitForExistence(timeout: 8))
         openAccountDestination(in: relaunched)
 
         let bioToggle = relaunched.switches["account.biometricToggle"]

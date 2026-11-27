@@ -74,6 +74,7 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
     private let transport: any ClientTransport
     private let acceptLanguage: AcceptLanguageMiddleware
     private let retryAfter: RetryAfterMiddleware
+    private let bearer: AuthBearerMiddleware
     private let logging: NetworkLoggingMiddleware
 
     init(
@@ -89,12 +90,6 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         let acceptLanguage = AcceptLanguageMiddleware(localeProvider: localeProvider)
         let retryAfter = RetryAfterMiddleware()
         let logging = NetworkLoggingMiddleware(logger: logger)
-
-        self.configuration = configuration
-        self.transport = transport
-        self.acceptLanguage = acceptLanguage
-        self.retryAfter = retryAfter
-        self.logging = logging
 
         let publicClient = Client(
             serverURL: serverURL,
@@ -113,6 +108,12 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         self.refresher = refresher
 
         let bearer = AuthBearerMiddleware(tokenStore: tokenStore, refresher: refresher)
+        self.configuration = configuration
+        self.transport = transport
+        self.acceptLanguage = acceptLanguage
+        self.retryAfter = retryAfter
+        self.bearer = bearer
+        self.logging = logging
         self.authenticatedClient = Client(
             serverURL: serverURL,
             configuration: configuration,
@@ -130,6 +131,14 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         )
     }
 
+    func makeAuthenticatedClient(leadingMiddlewares: [any ClientMiddleware]) -> Client {
+        Client(
+            serverURL: serverURL,
+            configuration: configuration,
+            transport: transport,
+            middlewares: [acceptLanguage] + leadingMiddlewares + [retryAfter, bearer, logging]
+        )
+    }
     static func makeJSONDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
