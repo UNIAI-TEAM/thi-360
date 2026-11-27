@@ -153,4 +153,83 @@ final class ReviewEssaySetTests: XCTestCase {
         let text = QuestionViewTestHelper.allAccessibilityStrings(in: window).joined(separator: "\n")
         XCTAssertFalse(text.contains("Đáp án:"), "showAnswers=false must hide child accepted answers")
     }
+
+    func testBlankEssayReviewShowsOnlyNotAnsweredAndUnderLimitReviewShowsWordsNeeded() throws {
+        let item = QuestionItem.essay(
+            id: "essay-edge",
+            displayNo: 28,
+            points: 10,
+            stem: "<p>Viết đoạn văn tối thiểu 200 chữ.</p>",
+            wordLimit: 200
+        )
+        let blankReviewWithExtraDetail = ItemReview(
+            outcome: .blank,
+            earned: 0,
+            max: 10,
+            level: .scoreAndAnswers,
+            essay: EssayReviewDetail(
+                state: .graded,
+                wordCount: 0,
+                criteria: [EssayCriterionResult(description: "Nội dung", earned: 0, max: 10)],
+                comment: "Không nên hiện trên bài bỏ trống"
+            )
+        )
+
+        let (blankWindow, _) = QuestionViewTestHelper.host(
+            ScrollView {
+                QuestionView(
+                    item: item,
+                    answer: nil,
+                    mode: .review(blankReviewWithExtraDetail),
+                    onAnswer: { _, _ in },
+                    locale: .vi,
+                    fixedWidth: 358
+                )
+                .padding(16)
+            },
+            size: CGSize(width: 390, height: 640)
+        )
+        defer { blankWindow.isHidden = true }
+
+        XCTAssertNotNil(QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.manualTag", in: blankWindow))
+        let blankEl = try XCTUnwrap(
+            QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.essayBlank", in: blankWindow)
+        )
+        XCTAssertEqual(blankEl.accessibilityLabel, "Chưa trả lời")
+        XCTAssertNil(QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.yourEssayLabel", in: blankWindow))
+        XCTAssertNil(QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.pendingReviewNote", in: blankWindow))
+        XCTAssertNil(QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.criteriaTable", in: blankWindow))
+        XCTAssertNil(QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.graderComment", in: blankWindow))
+        XCTAssertNil(QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.reviewWordsNeeded", in: blankWindow))
+
+        let shortAnswer = AnswerValues.essay(html: "<p>Bài viết ngắn chỉ năm chữ.</p>")
+        let underLimitReview = ItemReview(
+            outcome: .partial,
+            earned: 3,
+            max: 10,
+            level: .scoreAndAnswers,
+            essay: EssayReviewDetail(state: .graded, wordCount: shortAnswer.essayWordCount)
+        )
+        let (shortWindow, _) = QuestionViewTestHelper.host(
+            ScrollView {
+                QuestionView(
+                    item: item,
+                    answer: shortAnswer,
+                    mode: .review(underLimitReview),
+                    onAnswer: { _, _ in },
+                    locale: .vi,
+                    fixedWidth: 358
+                )
+                .padding(16)
+            },
+            size: CGSize(width: 390, height: 640)
+        )
+        defer { shortWindow.isHidden = true }
+
+        let expectedMissing = 200 - (shortAnswer.essayWordCount ?? 0)
+        let warnEl = try XCTUnwrap(
+            QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-edge.reviewWordsNeeded", in: shortWindow)
+        )
+        XCTAssertEqual(warnEl.accessibilityLabel, "Còn \(expectedMissing) chữ nữa để đạt yêu cầu.")
+    }
 }

@@ -3,6 +3,7 @@ import SwiftUI
 struct QuestionSetView<Attachments: View>: View {
     let item: QuestionItem
     let passage: String
+    let blankNumberStart: Int?
     let children: [QuestionItem]
     let answers: [String: AnswerValue]
     let mode: QuestionMode
@@ -135,6 +136,7 @@ struct QuestionSetView<Attachments: View>: View {
                     document: RichHTMLParser.parse(passage),
                     assets: assets,
                     mode: mode.richContentMode,
+                    blankNumberStart: blankNumberStart ?? 1,
                     formulaEngine: formulaEngine,
                     locale: locale,
                     fixedWidth: contentWidth

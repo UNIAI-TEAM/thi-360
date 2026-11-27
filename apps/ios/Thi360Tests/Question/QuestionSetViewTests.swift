@@ -78,4 +78,61 @@ final class QuestionSetViewTests: XCTestCase {
         )
         XCTAssertEqual(regularChild2Field.text, "2148,6", "Child draft must survive compact -> regular transition")
     }
+
+    func testReadingClozeSetForwardsBlankNumberStartToPassageBlanks() throws {
+        let child31 = QuestionItem.singleChoice(
+            id: "set-cloze-31",
+            displayNo: 31,
+            points: 1,
+            stem: "<p>Chọn từ cho ô 31.</p>",
+            optionOrder: nil,
+            options: [
+                ChoiceOption(id: "a", content: "<p>because</p>"),
+                ChoiceOption(id: "b", content: "<p>although</p>")
+            ]
+        )
+        let child32 = QuestionItem.singleChoice(
+            id: "set-cloze-32",
+            displayNo: 32,
+            points: 1,
+            stem: "<p>Chọn từ cho ô 32.</p>",
+            optionOrder: nil,
+            options: [
+                ChoiceOption(id: "a", content: "<p>however</p>"),
+                ChoiceOption(id: "b", content: "<p>therefore</p>")
+            ]
+        )
+        let readingClozeSet = QuestionItem.questionSet(
+            id: "set-reading-cloze",
+            displayNo: 31,
+            points: 2,
+            stem: nil,
+            passage: #"<p>First <span class="blank" data-blank="1"></span> second <span class="blank" data-blank="2"></span>.</p>"#,
+            blankNumberStart: 31,
+            children: [child31, child32]
+        )
+
+        let (window, _) = QuestionViewTestHelper.host(
+            ScrollView {
+                QuestionView(
+                    item: readingClozeSet,
+                    answers: [:],
+                    mode: .answering,
+                    onAnswer: { _, _ in },
+                    locale: .vi,
+                    fixedWidth: 358
+                )
+                .padding(16)
+            },
+            size: CGSize(width: 390, height: 844),
+            sizeClass: .compact
+        )
+        defer { window.isHidden = true }
+
+        let renderedStrings = QuestionViewTestHelper.allAccessibilityStrings(in: window).joined(separator: "\n")
+        XCTAssertTrue(renderedStrings.contains("(31)"), "Expected blank chip (31) in passage, got:\n\(renderedStrings)")
+        XCTAssertTrue(renderedStrings.contains("(32)"), "Expected blank chip (32) in passage, got:\n\(renderedStrings)")
+        XCTAssertFalse(renderedStrings.contains("(1)"), "Reading-cloze passage must not misnumber blank 1 as (1)")
+        XCTAssertFalse(renderedStrings.contains("(2)"), "Reading-cloze passage must not misnumber blank 2 as (2)")
+    }
 }

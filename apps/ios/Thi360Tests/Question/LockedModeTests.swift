@@ -55,6 +55,10 @@ final class LockedModeTests: XCTestCase {
         )
         defer { window.isHidden = true }
 
+        XCTAssertNil(
+            QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.locked-essay.manualTag", in: window),
+            "Chấm tay chip must not appear in locked mode"
+        )
         let textView = try XCTUnwrap(controller.textView)
         XCTAssertFalse(textView.isEditable, "Locked essay editor must not be editable")
         XCTAssertTrue(textView.isSelectable, "Locked essay editor must remain selectable for copy")

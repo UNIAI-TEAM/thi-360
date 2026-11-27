@@ -27,6 +27,7 @@ final class ReviewTrueFalseMatchingTests: XCTestCase {
         let compactText = QuestionViewTestHelper.allAccessibilityStrings(in: compactWindow).joined(separator: "\n")
         XCTAssertTrue(compactText.contains("Bạn chọn"))
         XCTAssertTrue(compactText.contains("Đáp án"))
+        XCTAssertTrue(compactText.contains("Điểm:"))
 
         let scrollViews = QuestionViewTestHelper.findViews(ofType: UIScrollView.self, in: compactWindow)
         for sv in scrollViews {
@@ -90,6 +91,8 @@ final class ReviewTrueFalseMatchingTests: XCTestCase {
         defer { countWindow.isHidden = true }
 
         let countText = QuestionViewTestHelper.allAccessibilityStrings(in: countWindow).joined(separator: "\n")
+        XCTAssertTrue(countText.contains("Điểm:"), "COUNT_TABLE / backend-mapped TRUE_FALSE review must still show Điểm:")
+        XCTAssertTrue(countText.contains("—"), "COUNT_TABLE / backend-mapped TRUE_FALSE rows without per-statement points must show —")
         XCTAssertTrue(countText.contains("Đúng 1/2 ý → 0,25 điểm"))
     }
 
@@ -113,10 +116,44 @@ final class ReviewTrueFalseMatchingTests: XCTestCase {
         defer { regularWindow.isHidden = true }
 
         let text = QuestionViewTestHelper.allAccessibilityStrings(in: regularWindow).joined(separator: "\n")
-        XCTAssertTrue(text.contains("Cột trái"))
+        XCTAssertTrue(text.contains("Mục"), "First review table header must use question.itemCol (Mục)")
+        XCTAssertFalse(text.contains("Cột trái"), "Review table header must not use question.leftColumn (Cột trái)")
         XCTAssertTrue(text.contains("Bạn chọn"))
         XCTAssertTrue(text.contains("Đáp án"))
         XCTAssertTrue(text.contains("Điểm"))
         XCTAssertTrue(text.contains("Chưa ghép"), "Unmatched left row l4 must display Chưa ghép")
+
+        let blankReview = ItemReview(
+            outcome: .blank,
+            earned: 0,
+            max: 2,
+            level: .scoreAndAnswers,
+            showAnswers: true,
+            detail: [:]
+        )
+        let (blankWindow, _) = QuestionViewTestHelper.host(
+            ScrollView {
+                QuestionView(
+                    item: matchSample.item,
+                    answer: nil,
+                    mode: .review(blankReview),
+                    onAnswer: { _, _ in },
+                    locale: .vi,
+                    fixedWidth: 960
+                )
+                .padding(16)
+            },
+            size: CGSize(width: 1024, height: 768),
+            sizeClass: .regular
+        )
+        defer { blankWindow.isHidden = true }
+
+        let blankText = QuestionViewTestHelper.allAccessibilityStrings(in: blankWindow).joined(separator: "\n")
+        XCTAssertTrue(blankText.contains("Mục"))
+        XCTAssertTrue(blankText.contains("Bạn chọn"))
+        XCTAssertTrue(blankText.contains("Đáp án"))
+        XCTAssertTrue(blankText.contains("Điểm"), "BLANK matching review must still render 4th Điểm column")
+        XCTAssertTrue(blankText.contains("—"), "BLANK matching rows without per-pair earned points must show —")
+        XCTAssertTrue(blankText.contains("Chưa ghép"))
     }
 }

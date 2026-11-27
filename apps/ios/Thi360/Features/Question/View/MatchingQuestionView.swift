@@ -300,29 +300,29 @@ struct MatchingQuestionView<Attachments: View>: View {
             uniqueKeysWithValues: (pairs ?? []).map { ($0.leftId, $0) }
         )
         let showAnswerCol = review.showAnswers && !keyByLeft.isEmpty
-        let hasPointsCol = left.contains { review.detail[$0.id]?.earned != nil }
         let useTable = horizontalSizeClass == .regular && (fixedWidth ?? 1000) >= 600
 
         let reviewSummaryText: String = {
             var parts: [String] = [
-                QuestionStrings.text("question.leftColumn", locale: locale),
+                QuestionStrings.text("question.itemCol", locale: locale),
                 QuestionStrings.text("question.youChoseCol", locale: locale)
             ]
             if showAnswerCol {
                 parts.append(QuestionStrings.text("question.answerCol", locale: locale))
             }
-            if hasPointsCol {
-                parts.append(QuestionStrings.text("question.pointsCol", locale: locale))
-            }
-            for leftItem in left where currentPairs[leftItem.id].flatMap({ rightLookup[$0] }) == nil {
-                parts.append(QuestionStrings.text("question.notMatched", locale: locale))
+            parts.append(QuestionStrings.text("question.pointsCol", locale: locale))
+            for leftItem in left {
+                if currentPairs[leftItem.id].flatMap({ rightLookup[$0] }) == nil {
+                    parts.append(QuestionStrings.text("question.notMatched", locale: locale))
+                }
+                parts.append(pointsLabel(part: review.detail[leftItem.id], fallbackMax: keyByLeft[leftItem.id]?.points ?? 1))
             }
             return parts.joined(separator: " | ")
         }()
 
         VStack(alignment: .leading, spacing: 8) {
             if useTable {
-                reviewTableHeader(showAnswerCol: showAnswerCol, hasPointsCol: hasPointsCol)
+                reviewTableHeader(showAnswerCol: showAnswerCol)
             }
 
             ForEach(Array(left.enumerated()), id: \.element.id) { index, leftItem in
@@ -340,8 +340,7 @@ struct MatchingQuestionView<Attachments: View>: View {
                         expected: expected,
                         expectedPoints: expectedKey?.points,
                         part: part,
-                        showAnswerCol: showAnswerCol,
-                        hasPointsCol: hasPointsCol
+                        showAnswerCol: showAnswerCol
                     )
                 } else {
                     reviewStackedCard(
@@ -351,8 +350,7 @@ struct MatchingQuestionView<Attachments: View>: View {
                         expected: expected,
                         expectedPoints: expectedKey?.points,
                         part: part,
-                        showAnswerCol: showAnswerCol,
-                        hasPointsCol: hasPointsCol
+                        showAnswerCol: showAnswerCol
                     )
                 }
             }
@@ -366,9 +364,9 @@ struct MatchingQuestionView<Attachments: View>: View {
     }
 
     @ViewBuilder
-    private func reviewTableHeader(showAnswerCol: Bool, hasPointsCol: Bool) -> some View {
+    private func reviewTableHeader(showAnswerCol: Bool) -> some View {
         HStack(alignment: .center, spacing: 8) {
-            Text(QuestionStrings.text("question.leftColumn", locale: locale))
+            Text(QuestionStrings.text("question.itemCol", locale: locale))
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(QuestionStrings.text("question.youChoseCol", locale: locale))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -376,10 +374,8 @@ struct MatchingQuestionView<Attachments: View>: View {
                 Text(QuestionStrings.text("question.answerCol", locale: locale))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            if hasPointsCol {
-                Text(QuestionStrings.text("question.pointsCol", locale: locale))
-                    .frame(width: 96, alignment: .trailing)
-            }
+            Text(QuestionStrings.text("question.pointsCol", locale: locale))
+                .frame(width: 96, alignment: .trailing)
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(brandPalette.textMutedColor)
@@ -395,10 +391,9 @@ struct MatchingQuestionView<Attachments: View>: View {
         expected: (letter: String, item: MatchingSideItem)?,
         expectedPoints: Double?,
         part: PartResult?,
-        showAnswerCol: Bool,
-        hasPointsCol: Bool
+        showAnswerCol: Bool
     ) -> some View {
-        let colWidth = fixedWidth.map { max(($0 - (hasPointsCol ? 140 : 40)) / (showAnswerCol ? 3 : 2) - 24, 80) }
+        let colWidth = fixedWidth.map { max(($0 - 140) / (showAnswerCol ? 3 : 2) - 24, 80) }
 
         HStack(alignment: .top, spacing: 8) {
             HStack(alignment: .top, spacing: 6) {
@@ -445,12 +440,10 @@ struct MatchingQuestionView<Attachments: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if hasPointsCol {
-                Text(pointsLabel(part: part, fallbackMax: expectedPoints ?? 1))
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(brandPalette.textColor)
-                    .frame(width: 96, alignment: .trailing)
-            }
+            Text(pointsLabel(part: part, fallbackMax: expectedPoints ?? 1))
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(brandPalette.textColor)
+                .frame(width: 96, alignment: .trailing)
         }
         .padding(.vertical, 6)
         Divider()
@@ -464,8 +457,7 @@ struct MatchingQuestionView<Attachments: View>: View {
         expected: (letter: String, item: MatchingSideItem)?,
         expectedPoints: Double?,
         part: PartResult?,
-        showAnswerCol: Bool,
-        hasPointsCol: Bool
+        showAnswerCol: Bool
     ) -> some View {
         let contentWidth = fixedWidth.map { max($0 - 72, 80) }
 
@@ -519,15 +511,13 @@ struct MatchingQuestionView<Attachments: View>: View {
                 }
             }
 
-            if hasPointsCol {
-                HStack(spacing: 6) {
-                    Text("\(QuestionStrings.text("question.pointsCol", locale: locale)):")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(brandPalette.textMutedColor)
-                    Text(pointsLabel(part: part, fallbackMax: expectedPoints ?? 1))
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(brandPalette.textColor)
-                }
+            HStack(spacing: 6) {
+                Text("\(QuestionStrings.text("question.pointsCol", locale: locale)):")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(brandPalette.textMutedColor)
+                Text(pointsLabel(part: part, fallbackMax: expectedPoints ?? 1))
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(brandPalette.textColor)
             }
         }
         .padding(.vertical, 6)

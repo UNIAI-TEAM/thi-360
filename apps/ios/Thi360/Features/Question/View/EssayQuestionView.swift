@@ -59,7 +59,7 @@ struct EssayQuestionView<Attachments: View>: View {
             mode: mode,
             flagged: flagged,
             onFlag: onFlag,
-            manualTag: true,
+            manualTag: mode.isReview,
             assets: assets,
             formulaEngine: formulaEngine,
             locale: locale,
@@ -76,8 +76,15 @@ struct EssayQuestionView<Attachments: View>: View {
 
     private var answeringContent: some View {
         let count = computedWordCount
+        let editorLabelText = QuestionStrings.text("question.essayEditorLabel", locale: locale)
 
         return VStack(alignment: .leading, spacing: 10) {
+            Text(editorLabelText)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(brandPalette.textColor)
+                .accessibilityIdentifier("question.\(item.id).essayEditorLabel")
+                .questionProbe(id: "question.\(item.id).essayEditorLabel", label: editorLabelText)
+
             EssayEditorView(
                 itemId: item.id,
                 html: currentHtml,
@@ -136,6 +143,25 @@ struct EssayQuestionView<Attachments: View>: View {
 
     @ViewBuilder
     private func reviewContent(review: ItemReview) -> some View {
+        if review.outcome == .blank {
+            let notAnsweredText = QuestionStrings.text("question.notAnswered", locale: locale)
+            Text(notAnsweredText)
+                .font(.subheadline)
+                .foregroundStyle(brandPalette.textSecondaryColor)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(brandPalette.bgSubtleColor))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(brandPalette.borderColor, lineWidth: 1))
+                .accessibilityIdentifier("question.\(item.id).essayBlank")
+                .questionProbe(id: "question.\(item.id).essayBlank", label: notAnsweredText)
+        } else {
+            nonBlankReviewContent(review: review)
+        }
+    }
+
+    @ViewBuilder
+    private func nonBlankReviewContent(review: ItemReview) -> some View {
         let essayDetail = review.essay
         let gradingState = essayDetail?.state ?? (review.outcome == .pendingReview ? .pending : .graded)
         let isBlank = EssayReviewMetrics.plainCharacterCount(html: currentHtml) == 0
@@ -145,6 +171,7 @@ struct EssayQuestionView<Attachments: View>: View {
             compatibleWith: UITraitCollection(preferredContentSizeCategory: UIContentSizeCategory(dynamicTypeSize))
         )
         let collapsedMaxHeight = ceil(bodyFont.lineHeight * CGFloat(EssayReviewMetrics.collapsedLineCount) + 12)
+        let yourEssayText = QuestionStrings.text("question.yourEssayLabel", locale: locale)
 
         VStack(alignment: .leading, spacing: 12) {
             if gradingState == .regrading {
@@ -190,26 +217,36 @@ struct EssayQuestionView<Attachments: View>: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .center, spacing: 8) {
-                    Text(QuestionStrings.text("question.yourEssayLabel", locale: locale))
+                    Text(yourEssayText)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(brandPalette.textMutedColor)
+                        .accessibilityIdentifier("question.\(item.id).yourEssayLabel")
+                        .questionProbe(id: "question.\(item.id).yourEssayLabel", label: yourEssayText)
                     Spacer()
                     if !isBlank {
-                        Text(QuestionStrings.essayWordCount(count: computedWordCount, min: wordLimit, locale: locale))
+                        let reviewCountText = QuestionStrings.essayWordCount(
+                            count: computedWordCount,
+                            min: wordLimit,
+                            locale: locale
+                        )
+                        Text(reviewCountText)
                             .font(.caption.weight(.semibold).monospacedDigit())
                             .foregroundStyle(brandPalette.textSecondaryColor)
                             .accessibilityIdentifier("question.\(item.id).reviewWordCount")
+                            .questionProbe(id: "question.\(item.id).reviewWordCount", label: reviewCountText)
                     }
                 }
 
                 if isBlank {
-                    Text(QuestionStrings.text("question.notAnswered", locale: locale))
+                    let notAnsweredText = QuestionStrings.text("question.notAnswered", locale: locale)
+                    Text(notAnsweredText)
                         .font(.subheadline)
                         .foregroundStyle(brandPalette.textMutedColor)
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(brandPalette.bgSubtleColor))
                         .accessibilityIdentifier("question.\(item.id).essayBlank")
+                        .questionProbe(id: "question.\(item.id).essayBlank", label: notAnsweredText)
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         QuestionRichText(
@@ -251,6 +288,16 @@ struct EssayQuestionView<Attachments: View>: View {
                                 action: { isEssayExpanded.toggle() }
                             )
                         }
+
+                        if let limit = wordLimit, computedWordCount < limit {
+                            let warnText = QuestionStrings.wordsNeeded(count: limit - computedWordCount, locale: locale)
+                            Text(warnText)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(statusPalette.warningColor)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("question.\(item.id).reviewWordsNeeded")
+                                .questionProbe(id: "question.\(item.id).reviewWordsNeeded", label: warnText)
+                        }
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -259,11 +306,11 @@ struct EssayQuestionView<Attachments: View>: View {
                 }
             }
 
-            if let criteria = essayDetail?.criteria, !criteria.isEmpty {
+            if gradingState != .pending, let criteria = essayDetail?.criteria, !criteria.isEmpty {
                 criteriaTable(criteria: criteria)
             }
 
-            if let comment = essayDetail?.comment, !comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if gradingState != .pending, let comment = essayDetail?.comment, !comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(QuestionStrings.text("question.gradingCommentLabel", locale: locale))
                         .font(.caption.weight(.semibold))

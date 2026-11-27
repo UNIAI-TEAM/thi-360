@@ -32,6 +32,16 @@ final class EssayEditorTests: XCTestCase {
         )
         defer { window.isHidden = true }
 
+        let editorLabel = QuestionViewTestHelper.accessibilityElement(
+            withIdentifier: "question.essay-ac14.essayEditorLabel",
+            in: window
+        )
+        XCTAssertEqual(editorLabel?.accessibilityLabel, "Bài viết của bạn")
+        XCTAssertNil(
+            QuestionViewTestHelper.accessibilityElement(withIdentifier: "question.essay-ac14.manualTag", in: window),
+            "Chấm tay chip must not appear outside review mode"
+        )
+
         let textView = try XCTUnwrap(controller.textView, "Expected TextKit 2 EssayUITextView")
         XCTAssertNotNil(textView.textLayoutManager, "Essay editor must use TextKit 2 NSTextLayoutManager")
 

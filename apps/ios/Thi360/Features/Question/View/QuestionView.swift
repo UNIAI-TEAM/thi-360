@@ -211,10 +211,11 @@ struct QuestionView<Attachments: View>: View {
                 attachments: attachments
             )
 
-        case let .questionSet(_, _, _, _, passage, _, children):
+        case let .questionSet(_, _, _, _, passage, blankNumberStart, children):
             QuestionSetView(
                 item: item,
                 passage: passage,
+                blankNumberStart: blankNumberStart,
                 children: children,
                 answers: answers,
                 mode: mode,

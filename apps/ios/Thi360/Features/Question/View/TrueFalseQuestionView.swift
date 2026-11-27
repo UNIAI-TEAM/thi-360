@@ -69,6 +69,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
     private func answeringRow(index: Int, statement: TrueFalseStatement) -> some View {
         let letter = OptionOrder.statementLetter(at: index)
         let currentValue = currentStatements[statement.id]
+        let isAnswered = currentValue != nil
         let contentBlock = HStack(alignment: .top, spacing: 8) {
             Text("\(letter))")
                 .font(.subheadline.weight(.bold))
@@ -92,6 +93,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                 title: QuestionStrings.text("question.trueOption", locale: locale),
                 letter: letter,
                 isSelected: currentValue == true,
+                rowAnswered: isAnswered,
                 isTrueButton: true,
                 statementId: statement.id
             )
@@ -99,6 +101,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                 title: QuestionStrings.text("question.falseOption", locale: locale),
                 letter: letter,
                 isSelected: currentValue == false,
+                rowAnswered: isAnswered,
                 isTrueButton: false,
                 statementId: statement.id
             )
@@ -122,7 +125,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(brandPalette.bgSurfaceColor)
+                .fill(isAnswered ? brandPalette.bgSubtleColor : brandPalette.bgSurfaceColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -130,6 +133,10 @@ struct TrueFalseQuestionView<Attachments: View>: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("question.\(item.id).tf.\(statement.id).row")
+        .questionProbe(
+            id: "question.\(item.id).tf.\(statement.id).row",
+            value: isAnswered ? "answered" : "unanswered"
+        )
     }
 
     private var statementContentWidth: CGFloat? {
@@ -144,6 +151,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
         title: String,
         letter: String,
         isSelected: Bool,
+        rowAnswered: Bool,
         isTrueButton: Bool,
         statementId: String
     ) -> some View {
@@ -165,7 +173,11 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                 .frame(minWidth: 72, minHeight: 44)
                 .background(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(isSelected ? brandPalette.primaryFillColor : brandPalette.bgSubtleColor)
+                        .fill(
+                            isSelected
+                                ? brandPalette.primaryFillColor
+                                : (rowAnswered ? brandPalette.bgSurfaceColor : brandPalette.bgSubtleColor)
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -195,7 +207,6 @@ struct TrueFalseQuestionView<Attachments: View>: View {
     @ViewBuilder
     private func reviewContent(review: ItemReview) -> some View {
         let showAnswerCol = review.showAnswers && statements.contains(where: { $0.answer != nil })
-        let hasPointsCol = statements.contains { review.detail[$0.id]?.earned != nil }
         let useTable = horizontalSizeClass == .regular && (fixedWidth ?? 1000) >= 600
         let showCountSummary = scoringMethod != .perStatement && review.earned != nil
 
@@ -204,16 +215,17 @@ struct TrueFalseQuestionView<Attachments: View>: View {
             if showAnswerCol {
                 parts.append("\(QuestionStrings.text("question.answerCol", locale: locale)):")
             }
-            if hasPointsCol {
-                parts.append("\(QuestionStrings.text("question.pointsCol", locale: locale)):")
-            }
+            parts.append("\(QuestionStrings.text("question.pointsCol", locale: locale)):")
+            parts.append(contentsOf: statements.map { statement in
+                pointsLabel(part: review.detail[statement.id], fallbackMax: statement.points ?? 1)
+            })
             return parts.joined(separator: " | ")
         }()
 
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 8) {
                 if useTable {
-                    reviewTableHeader(showAnswerCol: showAnswerCol, hasPointsCol: hasPointsCol)
+                    reviewTableHeader(showAnswerCol: showAnswerCol)
                 }
 
                 ForEach(Array(statements.enumerated()), id: \.element.id) { index, statement in
@@ -226,8 +238,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                             statement: statement,
                             picked: picked,
                             part: part,
-                            showAnswerCol: showAnswerCol,
-                            hasPointsCol: hasPointsCol
+                            showAnswerCol: showAnswerCol
                         )
                     } else {
                         reviewStackedCard(
@@ -235,8 +246,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                             statement: statement,
                             picked: picked,
                             part: part,
-                            showAnswerCol: showAnswerCol,
-                            hasPointsCol: hasPointsCol
+                            showAnswerCol: showAnswerCol
                         )
                     }
                 }
@@ -267,7 +277,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
     }
 
     @ViewBuilder
-    private func reviewTableHeader(showAnswerCol: Bool, hasPointsCol: Bool) -> some View {
+    private func reviewTableHeader(showAnswerCol: Bool) -> some View {
         HStack(alignment: .center, spacing: 8) {
             Text(QuestionStrings.text("question.itemCol", locale: locale))
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -277,10 +287,8 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                 Text(QuestionStrings.text("question.answerCol", locale: locale))
                     .frame(width: 96, alignment: .leading)
             }
-            if hasPointsCol {
-                Text(QuestionStrings.text("question.pointsCol", locale: locale))
-                    .frame(width: 96, alignment: .trailing)
-            }
+            Text(QuestionStrings.text("question.pointsCol", locale: locale))
+                .frame(width: 96, alignment: .trailing)
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(brandPalette.textMutedColor)
@@ -294,8 +302,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
         statement: TrueFalseStatement,
         picked: Bool?,
         part: PartResult?,
-        showAnswerCol: Bool,
-        hasPointsCol: Bool
+        showAnswerCol: Bool
     ) -> some View {
         HStack(alignment: .top, spacing: 8) {
             HStack(alignment: .top, spacing: 6) {
@@ -331,12 +338,10 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                     .frame(width: 96, alignment: .leading)
             }
 
-            if hasPointsCol {
-                Text(pointsLabel(part: part, fallbackMax: statement.points ?? 1))
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(brandPalette.textColor)
-                    .frame(width: 96, alignment: .trailing)
-            }
+            Text(pointsLabel(part: part, fallbackMax: statement.points ?? 1))
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(brandPalette.textColor)
+                .frame(width: 96, alignment: .trailing)
         }
         .padding(.vertical, 6)
         Divider()
@@ -348,8 +353,7 @@ struct TrueFalseQuestionView<Attachments: View>: View {
         statement: TrueFalseStatement,
         picked: Bool?,
         part: PartResult?,
-        showAnswerCol: Bool,
-        hasPointsCol: Bool
+        showAnswerCol: Bool
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 6) {
@@ -391,15 +395,13 @@ struct TrueFalseQuestionView<Attachments: View>: View {
                     }
                 }
 
-                if hasPointsCol {
-                    HStack(spacing: 6) {
-                        Text("\(QuestionStrings.text("question.pointsCol", locale: locale)):")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(brandPalette.textMutedColor)
-                        Text(pointsLabel(part: part, fallbackMax: statement.points ?? 1))
-                            .font(.subheadline.monospacedDigit())
-                            .foregroundStyle(brandPalette.textColor)
-                    }
+                HStack(spacing: 6) {
+                    Text("\(QuestionStrings.text("question.pointsCol", locale: locale)):")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(brandPalette.textMutedColor)
+                    Text(pointsLabel(part: part, fallbackMax: statement.points ?? 1))
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(brandPalette.textColor)
                 }
             }
         }
