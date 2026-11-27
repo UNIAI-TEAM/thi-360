@@ -75,6 +75,8 @@ class AttemptAudioController(
     private var beforeCloseAttempt = false
     private var partClosedEventSeen = false
     private var hasPlayError = false
+    private var lastHydratedAttempt: AttemptStateResponse? = null
+    private var forceAcceptNextServerSnapshot = false
     private var phase: AudioPlayerPhase = AudioPlayerPhase.Idle(AudioPlaySnapshot.DEFAULT_MAX_PLAYS)
 
     private var actionJob: Job? = null
@@ -108,11 +110,15 @@ class AttemptAudioController(
     }
 
     fun setExternalDisabled(disabled: Boolean) {
+        var shouldStopMedia = false
         synchronized(stateLock) {
             if (closed || currentExternalDisabled == disabled) return
             currentExternalDisabled = disabled
-            applyEngineStateLocked(engine.state.value)
+            shouldStopMedia = applyEngineStateLocked(engine.state.value)
             publishLocked()
+        }
+        if (shouldStopMedia) {
+            playbackEngine.stopAndRelease()
         }
     }
 
@@ -204,6 +210,7 @@ class AttemptAudioController(
                     actionJob = null
                     cancelTimersLocked()
                     shouldStopMedia = true
+                    wasPlayingBeforeOffline = false
                     val activePlayId = snapshot.playId?.takeIf { snapshot.state == ServerAudioPlayState.PLAYING }
                     phase = if (activePlayId != null) {
                         displayedPositionMs = lastConfirmedPositionMs
@@ -217,6 +224,20 @@ class AttemptAudioController(
                     } else {
                         AudioPlayerPhase.Idle(snapshot.playsLeft)
                     }
+                    publishLocked()
+                }
+
+                is AudioPlayerPhase.WaitingNetwork -> {
+                    epoch += 1
+                    cancelTimersLocked()
+                    wasPlayingBeforeOffline = false
+                    hasPlayError = false
+                    displayedPositionMs = lastConfirmedPositionMs
+                    phase = AudioPlayerPhase.Paused(
+                        playId = current.playId,
+                        serverPositionMs = lastConfirmedPositionMs,
+                        reason = reason,
+                    )
                     publishLocked()
                 }
 
@@ -591,6 +612,7 @@ class AttemptAudioController(
                     cancelTimersLocked()
                     shouldStopMedia = true
                     hasPlayError = false
+                    forceAcceptNextServerSnapshot = true
                     shouldRefresh = true
                     phase = if (snapshot.playsLeft <= 0) {
                         AudioPlayerPhase.Exhausted
@@ -835,6 +857,11 @@ class AttemptAudioController(
 
     private fun hydrateFromEngineStateLocked(engineState: EngineState, initial: Boolean) {
         val attempt = engineState.attempt
+        if (!initial && attempt === lastHydratedAttempt) {
+            return
+        }
+        lastHydratedAttempt = attempt
+
         val serverPolicyMax = attempt?.audioPolicy?.maxPlays?.takeIf { it > 0 }
         if (serverPolicyMax != null) {
             policyMaxPlays = serverPolicyMax
@@ -846,16 +873,26 @@ class AttemptAudioController(
             val isLocallyActive = phase is AudioPlayerPhase.Playing ||
                 phase is AudioPlayerPhase.Opening ||
                 phase is AudioPlayerPhase.WaitingNetwork
-            val ignoreRegressiveUpdate = !initial && isLocallyActive && (
+            val ignoreRegressiveUpdate = !initial && !forceAcceptNextServerSnapshot && (
                 fresh.playsUsed < snapshot.playsUsed ||
+                    (fresh.playsUsed == snapshot.playsUsed &&
+                        snapshot.state == ServerAudioPlayState.PLAYING &&
+                        fresh.state == ServerAudioPlayState.IDLE) ||
                     (fresh.playId == snapshot.playId &&
+                        snapshot.state == ServerAudioPlayState.PLAYING &&
                         fresh.state == ServerAudioPlayState.PLAYING &&
-                        fresh.positionMs < lastConfirmedPositionMs)
+                        fresh.positionMs < lastConfirmedPositionMs) ||
+                    (fresh.playsUsed == snapshot.playsUsed &&
+                        fresh.playId == snapshot.playId &&
+                        snapshot.state == ServerAudioPlayState.ENDED &&
+                        fresh.state != ServerAudioPlayState.ENDED)
                 )
             if (!ignoreRegressiveUpdate) {
+                val acceptingStaleReload = forceAcceptNextServerSnapshot
+                forceAcceptNextServerSnapshot = false
                 val previous = snapshot
                 snapshot = fresh
-                if (fresh.playId == previous.playId && fresh.state == ServerAudioPlayState.PLAYING) {
+                if (!acceptingStaleReload && fresh.playId == previous.playId && fresh.state == ServerAudioPlayState.PLAYING) {
                     lastConfirmedPositionMs = maxOf(lastConfirmedPositionMs, fresh.positionMs)
                 } else {
                     lastConfirmedPositionMs = fresh.positionMs
@@ -879,25 +916,32 @@ class AttemptAudioController(
                 }
             }
         } else if (initial) {
+            forceAcceptNextServerSnapshot = false
             snapshot = AudioPlaySnapshot.empty(policyMaxPlays)
             lastConfirmedPositionMs = 0L
             displayedPositionMs = 0L
             phase = resolveLockReasonLocked(engineState)?.let { AudioPlayerPhase.Locked(it) }
                 ?: unlockedPhaseFromSnapshotLocked()
-        } else if (serverPolicyMax != null && snapshot.playsUsed == 0 && snapshot.state == ServerAudioPlayState.IDLE) {
-            snapshot = AudioPlaySnapshot.empty(policyMaxPlays)
-            if (phase is AudioPlayerPhase.Idle) {
-                phase = AudioPlayerPhase.Idle(snapshot.playsLeft)
+        } else {
+            forceAcceptNextServerSnapshot = false
+            if (serverPolicyMax != null && snapshot.playsUsed == 0 && snapshot.state == ServerAudioPlayState.IDLE) {
+                snapshot = AudioPlaySnapshot.empty(policyMaxPlays)
+                if (phase is AudioPlayerPhase.Idle) {
+                    phase = AudioPlayerPhase.Idle(snapshot.playsLeft)
+                }
             }
         }
     }
 
-    private fun applyEngineStateLocked(engineState: EngineState) {
+    private fun applyEngineStateLocked(engineState: EngineState): Boolean {
         val lockReason = resolveLockReasonLocked(engineState)
-        if (lockReason != null) {
+        return if (lockReason != null) {
             stopAndLockLocked(lockReason)
-        } else if (phase is AudioPlayerPhase.Locked) {
-            phase = unlockedPhaseFromSnapshotLocked()
+        } else {
+            if (phase is AudioPlayerPhase.Locked) {
+                phase = unlockedPhaseFromSnapshotLocked()
+            }
+            false
         }
     }
 

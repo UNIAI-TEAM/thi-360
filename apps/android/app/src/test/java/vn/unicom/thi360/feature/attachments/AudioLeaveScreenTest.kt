@@ -1,5 +1,7 @@
 package vn.unicom.thi360.feature.attachments
 
+import android.app.Activity
+import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Button
@@ -8,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -20,6 +23,7 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -117,7 +121,11 @@ class AudioLeaveScreenTest {
         val (engine, audioServer, parts) = createFreeNavEngine()
         val (part1Id, _) = parts
         val assetId = UUID.fromString("00000000-0000-7000-8000-000000000008")
-        val playback = FakeAudioPlaybackEngine(mediaDurationMs = 35_000L)
+        val stoppedAtNs = AtomicLong(-1L)
+        val playback = FakeAudioPlaybackEngine(
+            mediaDurationMs = 35_000L,
+            onStopHook = { stoppedAtNs.compareAndSet(-1L, System.nanoTime()) },
+        )
         val controller = AttemptAudioController(
             attemptId = engine.attemptId,
             assetId = assetId,
@@ -130,13 +138,17 @@ class AudioLeaveScreenTest {
         )
 
         var activePartIndex by mutableStateOf(1)
+        val switchClickedAtNs = AtomicLong(-1L)
 
         composeRule.setContent {
             AttachmentsTestHost {
                 Column {
                     Row {
                         Button(onClick = { activePartIndex = 1 }) { Text("Phần 1") }
-                        Button(onClick = { activePartIndex = 2 }) { Text("Phần 2") }
+                        Button(onClick = {
+                            switchClickedAtNs.set(System.nanoTime())
+                            activePartIndex = 2
+                        }) { Text("Phần 2") }
                     }
                     if (activePartIndex == 1) {
                         AttemptAudioPlayer(controller = controller)
@@ -153,12 +165,13 @@ class AudioLeaveScreenTest {
         assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Playing)
         assertEquals(1, controller.uiState.value.playsLeft)
 
-        val switchStartMs = System.nanoTime() / 1_000_000L
+        stoppedAtNs.set(-1L)
         composeRule.onNodeWithText("Phần 2").performClick()
         composeRule.waitForIdle()
-        val stopElapsedMs = (System.nanoTime() / 1_000_000L) - switchStartMs
+        val stopElapsedMs = ((stoppedAtNs.get() - switchClickedAtNs.get()).coerceAtLeast(0L)) / 1_000_000L
 
         assertFalse("Audio must stop when switching from part 1 to part 2", playback.isPlaying())
+        assertTrue("Expected onStopHook to fire on part switch", stoppedAtNs.get() > 0L)
         assertTrue("Audio must stop within 1s (actual ${stopElapsedMs}ms)", stopElapsedMs < 1_000L)
         assertEquals(0, playback.heldBytesSize)
         val paused = controller.uiState.value.phase as AudioPlayerPhase.Paused
@@ -182,7 +195,11 @@ class AudioLeaveScreenTest {
         val (engine, audioServer, parts) = createFreeNavEngine()
         val (part1Id, _) = parts
         val assetId = UUID.fromString("00000000-0000-7000-8000-000000000008")
-        val playback = FakeAudioPlaybackEngine(mediaDurationMs = 35_000L)
+        val stoppedAtNs = AtomicLong(-1L)
+        val playback = FakeAudioPlaybackEngine(
+            mediaDurationMs = 35_000L,
+            onStopHook = { stoppedAtNs.compareAndSet(-1L, System.nanoTime()) },
+        )
         val controller = AttemptAudioController(
             attemptId = engine.attemptId,
             assetId = assetId,
@@ -198,6 +215,7 @@ class AudioLeaveScreenTest {
             registry.currentState = Lifecycle.State.RESUMED
         }
         var currentDestination by mutableStateOf("attempt")
+        val navClickedAtNs = AtomicLong(-1L)
 
         composeRule.setContent {
             AttachmentsTestHost {
@@ -208,6 +226,7 @@ class AudioLeaveScreenTest {
                             attemptRouteLifecycle.registry.currentState = Lifecycle.State.RESUMED
                         }) { Text("Làm bài") }
                         Button(onClick = {
+                            navClickedAtNs.set(System.nanoTime())
                             attemptRouteLifecycle.registry.currentState = Lifecycle.State.CREATED
                             currentDestination = "history"
                         }) { Text("Lịch sử") }
@@ -227,12 +246,13 @@ class AudioLeaveScreenTest {
         composeRule.waitForIdle()
         assertTrue(playback.isPlaying())
 
-        val navStartMs = System.nanoTime() / 1_000_000L
+        stoppedAtNs.set(-1L)
         composeRule.onNodeWithText("Lịch sử").performClick()
         composeRule.waitForIdle()
-        val stopElapsedMs = (System.nanoTime() / 1_000_000L) - navStartMs
+        val stopElapsedMs = ((stoppedAtNs.get() - navClickedAtNs.get()).coerceAtLeast(0L)) / 1_000_000L
 
         assertFalse("Audio must stop when leaving attempt screen to History tab", playback.isPlaying())
+        assertTrue("Expected onStopHook to fire on navigation to History tab", stoppedAtNs.get() > 0L)
         assertTrue("Audio must stop within 1s (actual ${stopElapsedMs}ms)", stopElapsedMs < 1_000L)
         assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Paused)
 
@@ -242,6 +262,73 @@ class AudioLeaveScreenTest {
         assertFalse("Returning to attempt screen must not auto-play", playback.isPlaying())
         composeRule.onNodeWithText("Phát lại").assertIsDisplayed()
         composeRule.onNodeWithTag(AttachmentTestTags.audioPlaysBadge(assetId)).assertTextEquals("Còn 1/2 lần nghe")
+
+        controller.close()
+        engine.close()
+    }
+
+    @Test
+    @Config(qualifiers = "w840dp-h1024dp-xhdpi")
+    fun configChangeDisposePreservesPlaybackWhileRealLeavePauses() {
+        val (engine, audioServer, parts) = createFreeNavEngine()
+        val (part1Id, _) = parts
+        val assetId = UUID.fromString("00000000-0000-7000-8000-000000000008")
+        val playback = FakeAudioPlaybackEngine(mediaDurationMs = 35_000L)
+        val controller = AttemptAudioController(
+            attemptId = engine.attemptId,
+            assetId = assetId,
+            partId = part1Id,
+            fileName = "tablet-rotate.mp3",
+            engine = engine,
+            gateway = audioServer.virtualTimeGateway(engine),
+            playbackEngine = playback,
+            scope = engineScope,
+        )
+
+        var changingConfig by mutableStateOf(true)
+        var showPlayer by mutableStateOf(true)
+        val rotatingActivity = object : Activity() {
+            override fun isChangingConfigurations(): Boolean = changingConfig
+        }
+
+        composeRule.setContent {
+            val baseContext = LocalContext.current
+            val wrappedContext = object : ContextWrapper(rotatingActivity) {
+                override fun getApplicationContext() = baseContext.applicationContext
+                override fun getResources() = baseContext.resources
+                override fun getTheme() = baseContext.theme
+                override fun getPackageName() = baseContext.packageName
+            }
+            AttachmentsTestHost {
+                CompositionLocalProvider(LocalContext provides wrappedContext) {
+                    if (showPlayer) {
+                        AttemptAudioPlayer(controller = controller)
+                    } else {
+                        Text("Recreated")
+                    }
+                }
+            }
+        }
+
+        composeRule.onNodeWithTag(AttachmentTestTags.audioPrimaryButton(assetId)).performClick()
+        composeRule.waitForIdle()
+        assertTrue(playback.isPlaying())
+
+        // Dispose while isChangingConfigurations == true must NOT pause playback (R1-5).
+        changingConfig = true
+        showPlayer = false
+        composeRule.waitForIdle()
+        assertTrue("Configuration change dispose must preserve active playback", playback.isPlaying())
+        assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Playing)
+
+        // Re-attach, then dispose while isChangingConfigurations == false -> must pause playback.
+        showPlayer = true
+        composeRule.waitForIdle()
+        changingConfig = false
+        showPlayer = false
+        composeRule.waitForIdle()
+        assertFalse("Real leave-screen dispose must stop active playback", playback.isPlaying())
+        assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Paused)
 
         controller.close()
         engine.close()

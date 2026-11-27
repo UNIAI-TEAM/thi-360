@@ -1241,4 +1241,247 @@ class AttemptAudioControllerTest {
             assertFalse("Leaked session id in log: $line", line.contains(secretSessionId.toString()))
         }
     }
+
+    @Test
+    fun staleEngineTickAfterCompletingOrPausingPlayNeverCorruptsState() = runTest {
+        val assetId = UUID.fromString("00000000-0000-7000-8000-000000000003")
+        val play1Id = UUID.fromString("00000000-0000-7000-8000-000000000005")
+        val (attempt, partId) = loadAudioAttempt(
+            assetId = assetId,
+            maxPlays = 2,
+            initialPlays = listOf(
+                AttemptAudioPlayView(
+                    assetId = assetId,
+                    partId = UUID.fromString("00000000-0000-7000-8000-000000000006"),
+                    durationMs = 30_000L,
+                    playsUsed = 1,
+                    playsLeft = 1,
+                    state = AttemptAudioPlayView.State.PLAYING,
+                    playId = play1Id,
+                    positionMs = 10_000L,
+                ),
+            ),
+        )
+        val audioServer = FakeAudioServerAddon(server, defaultDurationMs = 30_000L, defaultMaxPlays = 2)
+        audioServer.seedPlayRecord(
+            assetId = assetId,
+            playId = play1Id,
+            playsUsed = 1,
+            durationMs = 30_000L,
+            positionMs = 10_000L,
+            state = AttemptAudioPlayResponse.State.PLAYING,
+        )
+        val (engine, _) = newEngineHarness(server, storeRoot)
+        runCurrent()
+
+        val playback = FakeAudioPlaybackEngine(testScope = this, mediaDurationMs = 30_000L)
+        val controller = AttemptAudioController(
+            attemptId = attempt.attemptId,
+            assetId = assetId,
+            partId = partId,
+            fileName = "reopen-tick.mp3",
+            engine = engine,
+            gateway = audioServer.virtualTimeGateway(engine),
+            playbackEngine = playback,
+            scope = backgroundScope,
+        )
+        runCurrent()
+        assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Paused)
+
+        // Resume play #1, finish it, then advance clock ticks: must stay Idle(1), not revert to Paused(play1Id).
+        controller.onPrimaryAction()
+        runCurrent()
+        playback.triggerCompleted()
+        runCurrent()
+        assertEquals(AudioPlayerPhase.Idle(1), controller.uiState.value.phase)
+
+        advanceTimeBy(2_000L)
+        runCurrent()
+        assertEquals(AudioPlayerPhase.Idle(1), controller.uiState.value.phase)
+
+        // Open play #2, finish it, then advance clock ticks: must stay Exhausted (0/2).
+        controller.onPrimaryAction()
+        runCurrent()
+        assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Playing)
+        playback.triggerCompleted()
+        runCurrent()
+        assertEquals(AudioPlayerPhase.Exhausted, controller.uiState.value.phase)
+
+        advanceTimeBy(2_000L)
+        runCurrent()
+        assertEquals(AudioPlayerPhase.Exhausted, controller.uiState.value.phase)
+        assertEquals(0, controller.uiState.value.playsLeft)
+
+        controller.close()
+        engine.close()
+
+        // Sub-case 2: opened with P1 ENDED (playsUsed=1), open P2 and background -> clock ticks must keep Paused(P2, playsLeft=0).
+        val server2 = FakeAttemptServer()
+        try {
+            val state2 = server2.loadStateFixture("audio-playing") { base ->
+                base.copy(
+                    audioPolicy = AudioPolicyView(maxPlays = 2, seekable = false),
+                    audioPlays = listOf(
+                        AttemptAudioPlayView(
+                            assetId = assetId,
+                            partId = base.firstOpenPart().partId!!,
+                            durationMs = 30_000L,
+                            playsUsed = 1,
+                            playsLeft = 1,
+                            state = AttemptAudioPlayView.State.ENDED,
+                            playId = play1Id,
+                            positionMs = 30_000L,
+                        ),
+                    ),
+                ).withFutureDeadlines(serverNow = base.serverNow)
+            }
+            val audioServer2 = FakeAudioServerAddon(server2, defaultDurationMs = 30_000L, defaultMaxPlays = 2)
+            audioServer2.seedPlayRecord(
+                assetId = assetId,
+                playId = play1Id,
+                playsUsed = 1,
+                durationMs = 30_000L,
+                positionMs = 30_000L,
+                state = AttemptAudioPlayResponse.State.ENDED,
+            )
+            val (engine2, _) = newEngineHarness(server2, createTempStoreRoot("thi360-r1-1-"))
+            runCurrent()
+            val playback2 = FakeAudioPlaybackEngine(testScope = this, mediaDurationMs = 30_000L)
+            val controller2 = AttemptAudioController(
+                attemptId = state2.attemptId,
+                assetId = assetId,
+                partId = state2.firstOpenPart().partId,
+                fileName = "paused-p2.mp3",
+                engine = engine2,
+                gateway = audioServer2.virtualTimeGateway(engine2),
+                playbackEngine = playback2,
+                scope = backgroundScope,
+            )
+            runCurrent()
+            assertEquals(AudioPlayerPhase.Idle(1), controller2.uiState.value.phase)
+
+            controller2.onPrimaryAction()
+            runCurrent()
+            val play2Id = (controller2.uiState.value.phase as AudioPlayerPhase.Playing).playId
+            controller2.onAppBackgrounded()
+            runCurrent()
+
+            advanceTimeBy(2_000L)
+            runCurrent()
+            val pausedP2 = controller2.uiState.value.phase as AudioPlayerPhase.Paused
+            assertEquals(play2Id, pausedP2.playId)
+            assertEquals(0, controller2.uiState.value.playsLeft)
+
+            controller2.close()
+            engine2.close()
+        } finally {
+            runCatching { server2.shutdown() }
+        }
+    }
+
+    @Test
+    fun externalDisabledStopsActivePlayback() = runTest {
+        val assetId = UUID.fromString("00000000-0000-7000-8000-000000000008")
+        val (attempt, partId) = loadAudioAttempt(assetId = assetId, initialPlays = emptyList())
+        val audioServer = FakeAudioServerAddon(server, defaultDurationMs = 35_000L, defaultMaxPlays = 2)
+        val (engine, _) = newEngineHarness(server, storeRoot)
+        runCurrent()
+
+        val playback = FakeAudioPlaybackEngine(testScope = this, mediaDurationMs = 35_000L)
+        val controller = AttemptAudioController(
+            attemptId = attempt.attemptId,
+            assetId = assetId,
+            partId = partId,
+            fileName = "external-disabled.mp3",
+            engine = engine,
+            gateway = audioServer.virtualTimeGateway(engine),
+            playbackEngine = playback,
+            scope = backgroundScope,
+        )
+        runCurrent()
+
+        controller.onPrimaryAction()
+        runCurrent()
+        assertTrue(playback.isPlaying())
+        assertTrue(playback.heldBytesSize > 0)
+
+        controller.setExternalDisabled(true)
+        runCurrent()
+
+        assertFalse("setExternalDisabled(true) must stop active playback immediately", playback.isPlaying())
+        assertEquals("In-memory audio buffer must be purged on external disable", 0, playback.heldBytesSize)
+        assertEquals(AudioPlayerPhase.Locked(AudioLockReason.Disabled), controller.uiState.value.phase)
+
+        controller.close()
+        engine.close()
+    }
+
+    @Test
+    fun offlineThenBackgroundOrLeaveNeverAutoResumesOnReconnect() = runTest {
+        val assetId = UUID.fromString("00000000-0000-7000-8000-000000000008")
+        val (attempt, partId) = loadAudioAttempt(assetId = assetId, initialPlays = emptyList())
+        val connectivity = MutableConnectivityMonitor(initialOnline = true)
+        val audioServer = FakeAudioServerAddon(server, defaultDurationMs = 35_000L, defaultMaxPlays = 2)
+        val (engine, _) = newEngineHarness(server, storeRoot, connectivity = connectivity)
+        runCurrent()
+
+        val playback = FakeAudioPlaybackEngine(testScope = this, mediaDurationMs = 35_000L)
+        val controller = AttemptAudioController(
+            attemptId = attempt.attemptId,
+            assetId = assetId,
+            partId = partId,
+            fileName = "offline-bg.mp3",
+            engine = engine,
+            gateway = audioServer.virtualTimeGateway(engine),
+            playbackEngine = playback,
+            scope = backgroundScope,
+        )
+        runCurrent()
+
+        controller.onPrimaryAction()
+        runCurrent()
+        val playId = (controller.uiState.value.phase as AudioPlayerPhase.Playing).playId
+
+        // Lose network -> WaitingNetwork, then press Home while offline.
+        connectivity.setOnline(false)
+        runCurrent()
+        assertEquals(AudioPlayerPhase.WaitingNetwork(playId), controller.uiState.value.phase)
+
+        controller.onAppBackgrounded()
+        runCurrent()
+        val pausedBg = controller.uiState.value.phase as AudioPlayerPhase.Paused
+        assertEquals(PauseReason.Background, pausedBg.reason)
+
+        // Network returns while backgrounded: must NOT auto-resume.
+        audioServer.resetCalls()
+        connectivity.setOnline(true)
+        runCurrent()
+        assertFalse(playback.isPlaying())
+        assertEquals(0, audioServer.calls().count { it.endpoint == AudioEndpoint.RESUME })
+        assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Paused)
+
+        // Manual resume works, then repeat with onLeaveScreen while offline.
+        controller.onPrimaryAction()
+        runCurrent()
+        assertTrue(playback.isPlaying())
+
+        connectivity.setOnline(false)
+        runCurrent()
+        assertTrue(controller.uiState.value.phase is AudioPlayerPhase.WaitingNetwork)
+
+        controller.onLeaveScreen()
+        runCurrent()
+        val pausedLeave = controller.uiState.value.phase as AudioPlayerPhase.Paused
+        assertEquals(PauseReason.LeftScreen, pausedLeave.reason)
+
+        audioServer.resetCalls()
+        connectivity.setOnline(true)
+        runCurrent()
+        assertFalse(playback.isPlaying())
+        assertEquals(0, audioServer.calls().count { it.endpoint == AudioEndpoint.RESUME })
+        assertTrue(controller.uiState.value.phase is AudioPlayerPhase.Paused)
+
+        controller.close()
+        engine.close()
+    }
 }

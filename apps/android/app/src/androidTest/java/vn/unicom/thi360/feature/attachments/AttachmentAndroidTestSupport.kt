@@ -295,7 +295,7 @@ internal class EmbeddedAttachmentServer(
 
         val progressRegex = Regex("^$attemptPrefix/audio/[^/]+/plays/([^/]+)/progress$")
         progressRegex.matchEntire(path)?.let { match ->
-            if (req.method != "PATCH") return jsonReply(404, """{"code":"NOT_FOUND"}""")
+            if (req.method != "PUT") return jsonReply(404, """{"code":"NOT_FOUND"}""")
             val playId = UUID.fromString(match.groupValues[1])
             val posMs = runCatching {
                 json.parseToJsonElement(req.body).jsonObject["positionMs"]?.jsonPrimitive?.content?.toLong()

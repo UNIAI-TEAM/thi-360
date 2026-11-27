@@ -96,7 +96,9 @@ fun AttemptAudioPlayer(
             ).attach()
             onDispose {
                 bridge.close()
-                controller.onLeaveScreen()
+                if (activity?.isChangingConfigurations != true) {
+                    controller.onLeaveScreen()
+                }
             }
         }
     }
