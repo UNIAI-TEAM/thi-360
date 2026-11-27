@@ -3,4 +3,7 @@
     <cache-path
         name="avatar_camera"
         path="avatar-captures/" />
+    <cache-path
+        name="attempt_assets"
+        path="attempt-assets/" />
 </paths>

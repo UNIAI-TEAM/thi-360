@@ -132,8 +132,11 @@ class ManifestTest {
             }
         }
         assertEquals(
-            "file_provider_paths.xml must declare only the avatar camera cache-path entry",
-            listOf(Triple("cache-path", "avatar_camera", "avatar-captures/")),
+            "file_provider_paths.xml must declare only the avatar camera and attempt assets cache-path entries",
+            listOf(
+                Triple("cache-path", "avatar_camera", "avatar-captures/"),
+                Triple("cache-path", "attempt_assets", "attempt-assets/"),
+            ),
             childEntries,
         )
     }
