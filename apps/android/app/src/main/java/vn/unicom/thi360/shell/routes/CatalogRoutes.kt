@@ -4,8 +4,9 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import vn.unicom.thi360.feature.catalog.CatalogRoute
+import vn.unicom.thi360.feature.catalog.ProductDetailRoute
 import vn.unicom.thi360.shell.Destination
-import vn.unicom.thi360.shell.PlaceholderTabScreen
 
 fun NavGraphBuilder.catalogGraph(
     tab: Destination,
@@ -14,8 +15,8 @@ fun NavGraphBuilder.catalogGraph(
 ) {
     if (tab == Destination.Home) {
         composable(AppRoute.tabRoute(tab, AppRoute.CATALOG_PATH)) {
-            PlaceholderTabScreen(
-                destination = Destination.Home,
+            CatalogRoute(
+                navigator = navigator,
                 showCompactBrandHeader = showCompactBrandHeader,
             )
         }
@@ -29,10 +30,9 @@ fun NavGraphBuilder.catalogGraph(
     ) { backStackEntry ->
         val rawCode = backStackEntry.arguments?.getString(AppRoute.ARG_CODE).orEmpty()
         val code = AppRoute.decodeSegment(rawCode).orEmpty()
-        RoutePlaceholderScreen(
-            routeName = "product",
-            params = mapOf("code" to code),
-            onBack = { navigator.back() },
+        ProductDetailRoute(
+            code = code,
+            navigator = navigator,
         )
     }
 }
