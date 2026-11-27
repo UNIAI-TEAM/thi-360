@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="question_type_singleChoice">Single choice</string>
+    <string name="question_type_multipleChoice">Multiple choice</string>
+    <string name="question_type_shortAnswer">Short answer</string>
+    <string name="question_type_cloze">Fill in the blanks</string>
+    <string name="question_type_clozeCount">Fill in the blanks · %1$s</string>
+    <string name="question_type_questionSet">Question set</string>
+    <string name="question_type_trueFalse">True/False</string>
+    <string name="question_type_matching">Matching</string>
+    <string name="question_type_essay">Essay</string>
+
+    <string name="question_outcome_correct">Correct</string>
+    <string name="question_outcome_partial">Partially correct</string>
+    <string name="question_outcome_wrong">Wrong</string>
+    <string name="question_outcome_blank">Blank</string>
+    <string name="question_outcome_pendingReview">Pending grading</string>
+
+    <string name="question_regrading">Regrading</string>
+    <string name="question_flagForReview">Flag for review</string>
+    <string name="question_flagRemove">Remove flag</string>
+    <string name="question_manualGrading">Manually graded</string>
+    <string name="question_chooseSingle">Select one answer</string>
+    <string name="question_chooseMultiple">Select all correct answers</string>
+
+    <string name="question_answerLabel">Answer</string>
+    <string name="question_answerPlaceholder">Type the answer</string>
+    <string name="question_shortAnswerNote">The answer is matched literally, so follow the input hint above.</string>
+    <string name="question_hintPrefix">Input hint:</string>
+
+    <string name="question_clozeHelp">Type the answer into each blank in the passage. Each blank is its own question.</string>
+    <string name="question_clozeFilled">%1$s/%2$s filled</string>
+    <string name="question_clozeBlankNote">An empty blank counts as unanswered; blanks are graded separately.</string>
+    <string name="question_clozeBlankAria">Question %1$s, blank %2$s</string>
+    <string name="question_clozePlaceholder">Blank %1$s</string>
+
+    <string name="question_trueOption">True</string>
+    <string name="question_falseOption">False</string>
+    <string name="question_trueFalseHelp">Choose True or False for each statement</string>
+
+    <string name="question_leftColumn">Left column</string>
+    <string name="question_rightColumn">Right column</string>
+    <string name="question_matchExclusive">Pick a choice for each item from its list. Each choice can be used once: a matched choice is dimmed in the other items’ lists; unmatch it to reuse it.</string>
+    <string name="question_matchReusable">A right-column choice can match multiple items.</string>
+    <string name="question_matchWith">Match with</string>
+    <string name="question_matchPlaceholder">Select…</string>
+    <string name="question_matchClear">Unmatch item %1$s</string>
+    <string name="question_matchDone">%1$s/%2$s matched</string>
+    <string name="question_matchDoneNote">An unmatched item counts as unanswered; pairs are graded separately.</string>
+    <string name="question_matchPickLeft">Item %1$s</string>
+
+    <string name="question_essayEditorLabel">Your essay</string>
+    <string name="question_essayPlaceholder">Write your essay here</string>
+    <string name="question_wordsNeeded">%1$s more words to reach the minimum.</string>
+    <string name="question_wordLimitMet">Word minimum reached</string>
+    <string name="question_essayNote">The essay accepts text and text formatting only (bold, italic, underline, lists); no images. Content is autosaved while you write.</string>
+    <string name="question_pendingReviewNote">This question is graded by a human after you submit. The attempt total appears once grading finishes.</string>
+    <string name="question_essayWordCount">%1$s words</string>
+    <string name="question_essayWordCountMin">%1$s / at least %2$s words</string>
+
+    <string name="question_setPassageCaption">Shared passage for questions %1$s–%2$s</string>
+    <string name="question_points">%1$s / %2$s points</string>
+    <string name="question_pointsSuffix">points</string>
+    <string name="question_noPointsYet">No points yet</string>
+    <string name="question_maxPoints">up to %1$s points</string>
+    <string name="question_solutionLabel">Solution</string>
+    <string name="question_correctAnswerTag">Correct answer</string>
+    <string name="question_yourPickTag">Your choice</string>
+    <string name="question_yourPickWrongTag">Your choice · Wrong</string>
+    <string name="question_notPickedTag">Not chosen</string>
+    <string name="question_correctAnswerPrefix">Answer:</string>
+    <string name="question_notAnswered">Not answered</string>
+    <string name="question_notMatched">Not matched</string>
+    <string name="question_yourEssayLabel">Your essay</string>
+    <string name="question_showFullEssay">Show full essay</string>
+    <string name="question_hideFullEssay">Collapse essay</string>
+    <string name="question_gradingCommentLabel">Grader comment</string>
+    <string name="question_criteriaLabel">Points by criterion</string>
+    <string name="question_criterionCol">Criterion</string>
+    <string name="question_pointsCol">Points</string>
+    <string name="question_itemCol">Item</string>
+    <string name="question_youChoseCol">You chose</string>
+    <string name="question_answerCol">Answer</string>
+    <string name="question_acceptedCol">Accepted answers</string>
+    <string name="question_blankFilledTag">blank</string>
+    <string name="question_countTableSummary">%1$s/%2$s correct → %3$s points</string>
+    <string name="question_label">Question %1$s</string>
+    <string name="question_rangeLabel">Question %1$s–%2$s</string>
+
+    <string name="question_symbolInput_groupLabel">Symbol input bar</string>
+    <string name="question_symbolInput_symbolNames_plus">Plus sign (+)</string>
+    <string name="question_symbolInput_symbolNames_minus">Minus sign (-)</string>
+    <string name="question_symbolInput_symbolNames_lparen">Left parenthesis (</string>
+    <string name="question_symbolInput_symbolNames_rparen">Right parenthesis )</string>
+    <string name="question_symbolInput_symbolNames_charge2plus">Charge 2+</string>
+    <string name="question_symbolInput_symbolNames_charge3plus">Charge 3+</string>
+    <string name="question_symbolInput_symbolNames_charge2minus">Charge 2-</string>
+    <string name="question_symbolInput_symbolNames_charge3minus">Charge 3-</string>
+    <string name="question_symbolInput_symbolNames_sub2">Subscript 2</string>
+    <string name="question_symbolInput_symbolNames_sub3">Subscript 3</string>
+    <string name="question_symbolInput_symbolNames_sub4">Subscript 4</string>
+    <string name="question_symbolInput_symbolNames_arrowRight">Reaction arrow (-&gt;)</string>
+
+    <string name="question_numericInput_groupLabel">Extra numeric keys</string>
+    <string name="question_numericInput_slash">Slash</string>
+    <string name="question_numericInput_comma">Comma</string>
+    <string name="question_numericInput_dot">Full stop</string>
+
+    <string name="attempt_editor_bold">Bold</string>
+    <string name="attempt_editor_italic">Italic</string>
+    <string name="attempt_editor_bulletList">Bullet list</string>
+    <string name="attempt_editor_orderedList">Numbered list</string>
+    <string name="attempt_editor_undo">Undo</string>
+    <string name="attempt_editor_redo">Redo</string>
+    <string name="attempt_editor_toolbarLabel">Essay formatting</string>
+    <string name="attempt_editor_loading">Loading essay editor…</string>
+</resources>

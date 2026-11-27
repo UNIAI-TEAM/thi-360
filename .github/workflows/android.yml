@@ -75,7 +75,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Run instrumented tests and 4-sharded formula corpus on Pixel 7 API 34 emulator
+      - name: Run instrumented tests, question samples, and 4-sharded formula corpus on Pixel 7 API 34 emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -83,7 +83,7 @@ jobs:
           arch: x86_64
           profile: pixel_7
           disable-animations: true
-          script: bash -euo pipefail -c 'cd apps/android && ./gradlew :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.notPackage=vn.unicom.thi360.smoke -Pandroid.testInstrumentationRunnerArguments.notClass=vn.unicom.thi360.feature.richcontent.FormulaCorpusInstrumentedTest,vn.unicom.thi360.feature.richcontent.FormulaSheetInstrumentedTest,vn.unicom.thi360.feature.richcontent.RichSamplesScreenshotInstrumentedTest && for shard in 0 1 2 3; do ./gradlew :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=vn.unicom.thi360.feature.richcontent.FormulaCorpusInstrumentedTest -Pandroid.testInstrumentationRunnerArguments.numShards=4 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${shard}; done'
+          script: bash -euo pipefail -c 'cd apps/android && ./gradlew :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.notPackage=vn.unicom.thi360.smoke -Pandroid.testInstrumentationRunnerArguments.notClass=vn.unicom.thi360.feature.richcontent.FormulaCorpusInstrumentedTest,vn.unicom.thi360.feature.richcontent.FormulaSheetInstrumentedTest,vn.unicom.thi360.feature.richcontent.RichSamplesScreenshotInstrumentedTest,vn.unicom.thi360.feature.question.QuestionSamplesScreenshotInstrumentedTest && ./gradlew :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=vn.unicom.thi360.feature.question.QuestionSamplesScreenshotInstrumentedTest && for shard in 0 1 2 3; do ./gradlew :app:connectedDevDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=vn.unicom.thi360.feature.richcontent.FormulaCorpusInstrumentedTest -Pandroid.testInstrumentationRunnerArguments.numShards=4 -Pandroid.testInstrumentationRunnerArguments.shardIndex=${shard}; done'
       - name: Print emulator test failure details
         if: failure()
         run: |
