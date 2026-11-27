@@ -1,4 +1,6 @@
 import Foundation
+import SwiftUI
+import UIKit
 import XCTest
 @testable import Thi360
 
@@ -85,5 +87,75 @@ final class SessionCleanupTests: XCTestCase {
         XCTAssertTrue(pendingAfter.isEmpty)
         XCTAssertEqual(startupParticipant.logoutAccountIds, ["acc-crashed"])
         XCTAssertEqual(startupParticipant.appStartCount, 1)
+    }
+
+    @MainActor
+    func testStartupCleanupGateFinishesBeforeContentMountsOrReadsStore() async throws {
+        let rootDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("thi360-startup-gate-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootDir) }
+
+        let provider = AccountScopedStoreProvider(rootDirectoryURL: rootDir)
+        _ = try await provider.write(Data("stale-secret".utf8), accountId: "acc-pending", namespace: "drafts", key: "k")
+        let cleanup = SessionCleanup(storeProvider: provider)
+        await cleanup.recordPendingLogoutForTesting("acc-pending")
+
+        let gate = TestAsyncGate()
+        final class SlowStartupParticipant: SessionCleanupParticipant, @unchecked Sendable {
+            let id = "test.slowStartup"
+            let gate: TestAsyncGate
+            init(gate: TestAsyncGate) { self.gate = gate }
+            func onLogout(accountId: String) async throws {
+                await gate.enterAndWait()
+            }
+        }
+
+        final class MountProbe {
+            var mounted = false
+            var storeExistedAtMount = true
+        }
+        struct ChildProbeView: View {
+            let provider: AccountScopedStoreProvider
+            let probe: MountProbe
+            var body: some View {
+                Color.clear
+                    .onAppear {
+                        probe.mounted = true
+                        probe.storeExistedAtMount = provider.accountDirectoryExists(for: "acc-pending")
+                    }
+            }
+        }
+
+        let probe = MountProbe()
+        let view = StartupCleanupGateView(
+            sessionCleanup: cleanup,
+            participants: [SlowStartupParticipant(gate: gate)]
+        ) {
+            ChildProbeView(provider: provider, probe: probe)
+        }
+
+        let (window, _) = RecoveryViewTestHelper.host(
+            view,
+            size: CGSize(width: 390, height: 844),
+            sizeClass: .compact,
+            themeMode: .light
+        )
+        defer { window.isHidden = true }
+
+        await gate.waitUntilEntered()
+        XCTAssertFalse(probe.mounted, "App content must not mount before SessionCleanup.runAppStart finishes")
+
+        await gate.release()
+        let deadline = Date().addingTimeInterval(3)
+        while !probe.mounted && Date() < deadline {
+            try await Task.sleep(nanoseconds: 50_000_000)
+            RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+        }
+
+        XCTAssertTrue(probe.mounted, "App content must mount once startup cleanup completes")
+        XCTAssertFalse(
+            probe.storeExistedAtMount,
+            "Pending account store must already be wiped before any mounted screen can read it"
+        )
     }
 }

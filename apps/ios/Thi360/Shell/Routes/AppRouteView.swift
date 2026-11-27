@@ -11,7 +11,7 @@ struct AppRouteView: View {
     var body: some View {
         switch route {
         case .catalog:
-            CatalogRoutes.homeRoot(preferences: preferences, showsBrandHeader: true)
+            CatalogRoutes.homeRoot(router: router, preferences: preferences, showsBrandHeader: true)
         case let .product(code):
             CatalogRoutes.product(code: code, destination: destination, router: router, preferences: preferences)
         case let .checkout(code, seenVersionNo, seenPrice):
@@ -40,9 +40,9 @@ struct AppRouteView: View {
                 preferences: preferences
             )
         case .myExams:
-            MyExamsRoutes.myExamsRoot(preferences: preferences, showsBrandHeader: false)
+            MyExamsRoutes.myExamsRoot(router: router, preferences: preferences, showsBrandHeader: false)
         case let .history(resetFilters):
-            MyExamsRoutes.historyRoot(resetFilters: resetFilters, preferences: preferences, showsBrandHeader: false)
+            MyExamsRoutes.historyRoot(resetFilters: resetFilters, router: router, preferences: preferences, showsBrandHeader: false)
         case let .prepare(entitlementId):
             PrepareRoutes.prepare(
                 entitlementId: entitlementId,

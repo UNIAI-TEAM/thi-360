@@ -3,13 +3,28 @@ import SwiftUI
 enum CatalogRoutes {
     @MainActor
     static func homeRoot(
+        router: AppRouter? = nil,
         preferences: AppPreferences,
         showsBrandHeader: Bool
     ) -> some View {
-        PlaceholderDestinationView(
+        let _ = router
+        return PlaceholderDestinationView(
             destination: .home,
             locale: preferences.locale,
             showsBrandHeader: showsBrandHeader
+        )
+    }
+
+    @MainActor
+    static func homeEmptyDetail(
+        router: AppRouter? = nil,
+        preferences: AppPreferences
+    ) -> some View {
+        let _ = router
+        return PlaceholderDestinationView(
+            destination: .home,
+            locale: preferences.locale,
+            showsBrandHeader: false
         )
     }
 

@@ -130,7 +130,10 @@ final class ImageLoader: SessionCleanupParticipant, @unchecked Sendable {
     }
 
     func shouldAttachBearer(for url: URL) -> Bool {
-        guard let targetHost = url.host?.lowercased(),
+        guard let targetScheme = url.scheme?.lowercased(),
+              let apiScheme = apiBaseURL.scheme?.lowercased(),
+              targetScheme == apiScheme,
+              let targetHost = url.host?.lowercased(),
               let apiHost = apiBaseURL.host?.lowercased(),
               targetHost == apiHost
         else {
@@ -138,27 +141,33 @@ final class ImageLoader: SessionCleanupParticipant, @unchecked Sendable {
         }
         let targetPort = url.port ?? Self.defaultPort(for: url.scheme)
         let apiPort = apiBaseURL.port ?? Self.defaultPort(for: apiBaseURL.scheme)
-        return targetPort == apiPort
+        guard targetPort == apiPort else {
+            return false
+        }
+        if url.path.hasPrefix("/api/v1/public/") {
+            return false
+        }
+        return true
     }
 
     func cachedImage(for url: URL) -> UIImage? {
         cache.object(forKey: url.absoluteString as NSString)
     }
 
-    func loadImage(from rawURL: String) async throws -> UIImage {
+    func loadImage(from rawURL: String, authenticated: Bool = true) async throws -> UIImage {
         guard let url = resolveURL(rawURL) else {
             throw ImageLoaderError.invalidURL
         }
-        return try await loadImage(from: url)
+        return try await loadImage(from: url, authenticated: authenticated)
     }
 
-    func loadImage(from url: URL) async throws -> UIImage {
+    func loadImage(from url: URL, authenticated: Bool = true) async throws -> UIImage {
         let cacheKey = url.absoluteString as NSString
         if let cached = cache.object(forKey: cacheKey) {
             return cached
         }
 
-        let attachBearer = shouldAttachBearer(for: url)
+        let attachBearer = authenticated && shouldAttachBearer(for: url)
         let initialToken = attachBearer ? (try? tokenStore.read())?.accessToken : nil
 
         let (data, statusCode) = try await fetchData(url: url, bearerToken: initialToken)
@@ -230,6 +239,7 @@ struct RemoteImage<Placeholder: View>: View {
     let urlString: String?
     let contentMode: ContentMode
     var loader: ImageLoader? = nil
+    var authenticated: Bool = true
     @ViewBuilder let placeholder: () -> Placeholder
 
     @Environment(\.imageLoader) private var envLoader
@@ -258,7 +268,7 @@ struct RemoteImage<Placeholder: View>: View {
                 loadedImage = cached
                 return
             }
-            if let image = try? await activeLoader.loadImage(from: urlString) {
+            if let image = try? await activeLoader.loadImage(from: urlString, authenticated: authenticated) {
                 loadedImage = image
             }
         }

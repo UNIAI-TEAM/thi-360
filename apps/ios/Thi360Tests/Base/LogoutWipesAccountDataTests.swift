@@ -114,4 +114,38 @@ final class LogoutWipesAccountDataTests: XCTestCase {
         )
         XCTAssertFalse(provider.accountDirectoryExists(for: "account-dt"))
     }
+
+    func testCrashBeforeTokenClearDoesNotResurrectSessionOnColdStart() async throws {
+        let rootDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("thi360-logout-crash-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: rootDir) }
+
+        let provider = AccountScopedStoreProvider(rootDirectoryURL: rootDir)
+        let cleanup = SessionCleanup(storeProvider: provider)
+        _ = try await provider.write(Data("draft-A".utf8), accountId: "account-crashed", namespace: "drafts", key: "att-1")
+        await cleanup.recordPendingLogoutForTesting("account-crashed")
+
+        let stack = AccountTestFactory.makeContractStack(
+            initialTokens: AccountTestFactory.sampleTokens(
+                username: "crashedUser",
+                accountId: "account-crashed",
+                refreshToken: "refresh-crashed"
+            ),
+            initialEnrolled: true,
+            storeProvider: provider,
+            sessionCleanup: cleanup
+        )
+        defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
+
+        XCTAssertEqual(
+            stack.sessionStore.state,
+            .signedOut(reason: .none),
+            "Cold start after interrupted logout must never resurrect active or locked session"
+        )
+        XCTAssertNil(try stack.tokenStore.read(), "Residual tokens for interrupted logout must be cleared on init")
+        XCTAssertFalse(stack.biometricManager.isEnabled, "Biometric state must be cleared on interrupted logout recovery")
+
+        await cleanup.runAppStart()
+        XCTAssertFalse(provider.accountDirectoryExists(for: "account-crashed"))
+    }
 }

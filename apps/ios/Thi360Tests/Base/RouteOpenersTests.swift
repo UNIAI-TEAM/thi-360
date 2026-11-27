@@ -1,4 +1,6 @@
 import Foundation
+import SwiftUI
+import UIKit
 import XCTest
 @testable import Thi360
 
@@ -155,5 +157,94 @@ final class RouteOpenersTests: XCTestCase {
         XCTAssertEqual(router.selectedDestination, .myExams)
         XCTAssertEqual(router.path(for: .myExams), [])
         XCTAssertEqual(router.reloadCount(for: .myExams), 1)
+    }
+
+    func testOpenHistoryResetFiltersTrueAndFalse() {
+        let router = AppRouter(initialDestination: .myExams)
+        router.switchTab(.history)
+        router.openResult(attemptId: "att-1")
+        router.switchTab(.myExams)
+
+        router.openHistory(resetFilters: false)
+        XCTAssertEqual(router.selectedDestination, .history)
+        XCTAssertFalse(router.historyResetFilters)
+        XCTAssertEqual(router.path(for: .history), [.result(attemptId: "att-1")])
+        XCTAssertEqual(router.reloadCount(for: .history), 0)
+
+        router.openHistory(resetFilters: true)
+        XCTAssertEqual(router.selectedDestination, .history)
+        XCTAssertTrue(router.historyResetFilters)
+        XCTAssertEqual(router.path(for: .history), [])
+        XCTAssertEqual(router.reloadCount(for: .history), 1)
+    }
+
+    func testAppRootViewExposesSessionStoreAndAppRouterInEnvironment() throws {
+        final class EnvCapture {
+            var sessionStore: SessionStore?
+            var appRouter: AppRouter?
+        }
+
+        struct EnvProbeView: View {
+            @Environment(\.sessionStore) private var sessionStore
+            @Environment(\.appRouter) private var appRouter
+            let capture: EnvCapture
+
+            var body: some View {
+                Color.clear
+                    .onAppear {
+                        capture.sessionStore = sessionStore
+                        capture.appRouter = appRouter
+                    }
+            }
+        }
+
+        let stack = AccountTestFactory.makeContractStack(
+            initialTokens: AccountTestFactory.sampleTokens(accountId: "acc-env")
+        )
+        defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
+
+        let router = AppRouter(initialDestination: .home)
+        let capture = EnvCapture()
+        let probeHosted = EnvProbeView(capture: capture)
+            .environment(\.sessionStore, stack.sessionStore)
+            .environment(\.appRouter, router)
+
+        let (probeWindow, _) = RecoveryViewTestHelper.host(
+            probeHosted,
+            size: CGSize(width: 200, height: 200),
+            sizeClass: .compact,
+            themeMode: .light
+        )
+        defer { probeWindow.isHidden = true }
+
+        XCTAssertTrue(capture.sessionStore === stack.sessionStore)
+        XCTAssertTrue(capture.appRouter === router)
+
+        router.openHistory(resetFilters: true)
+        let rootHosted = AppRootView(
+            router: router,
+            preferences: stack.preferences,
+            sessionStore: stack.sessionStore,
+            biometricManager: stack.biometricManager,
+            idiomOverride: .phone
+        )
+        let (rootWindow, _) = RecoveryViewTestHelper.host(
+            rootHosted,
+            size: CGSize(width: 390, height: 844),
+            sizeClass: .compact,
+            themeMode: .light
+        )
+        defer { rootWindow.isHidden = true }
+
+        XCTAssertEqual(router.selectedDestination, .history)
+        XCTAssertTrue(router.historyResetFilters)
+
+        let appRouterSource = try String(
+            contentsOf: ContractFixtureLoader.repoRootURL
+                .appendingPathComponent("apps/ios/Thi360/Shell/AppRouter.swift"),
+            encoding: .utf8
+        )
+        XCTAssertTrue(appRouterSource.contains(#".environment(\.sessionStore, sessionStore)"#))
+        XCTAssertTrue(appRouterSource.contains(#".environment(\.appRouter, router)"#))
     }
 }

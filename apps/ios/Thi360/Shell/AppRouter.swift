@@ -21,6 +21,7 @@ final class AppRouter {
     var paths: [Destination: [AppRoute]] = [:]
     var presentedAttempt: AttemptRef?
     var reloadTokens: [Destination: Int] = [:]
+    var historyResetFilters: Bool = false
     var signedOutPath: [AppRoute] = []
     var draftProbeText: String = ""
     let stateProbeEnabled: Bool
@@ -57,8 +58,9 @@ final class AppRouter {
                 self.selectedDestination = .home
             case .myExams:
                 self.selectedDestination = .myExams
-            case .history:
+            case let .history(resetFilters):
                 self.selectedDestination = .history
+                self.historyResetFilters = resetFilters
             case let .attempt(attemptId):
                 self.presentedAttempt = AttemptRef(
                     attemptId: attemptId,
@@ -244,6 +246,7 @@ final class AppRouter {
         paths.removeAll()
         presentedAttempt = nil
         reloadTokens.removeAll()
+        historyResetFilters = false
         signedOutPath.removeAll()
         routeStateStore.removeAll()
         inboundLinkRouter.resetPendingWorkForSignOut()
@@ -260,6 +263,7 @@ final class AppRouter {
         paths.removeAll()
         presentedAttempt = nil
         reloadTokens.removeAll()
+        historyResetFilters = false
         signedOutPath.removeAll()
         routeStateStore.removeAll()
         selectedDestination = .home
@@ -360,6 +364,8 @@ struct AppRootView: View {
         }
         .environment(\.brandPalette, activePalette)
         .environment(\.statusPalette, activeStatusPalette)
+        .environment(\.sessionStore, sessionStore)
+        .environment(\.appRouter, router)
         .environment(\.imageLoader, imageLoader)
         .environment(\.catalogOptionsCache, catalogOptionsCache)
         .environment(\.connectivityMonitor, connectivityMonitor)
@@ -798,5 +804,16 @@ private struct ForcedPasswordChangeHostView: View {
                 Task { await sessionStore.signOut() }
             }
         )
+    }
+}
+
+private struct AppRouterEnvironmentKey: EnvironmentKey {
+    static let defaultValue: AppRouter? = nil
+}
+
+extension EnvironmentValues {
+    var appRouter: AppRouter? {
+        get { self[AppRouterEnvironmentKey.self] }
+        set { self[AppRouterEnvironmentKey.self] = newValue }
     }
 }

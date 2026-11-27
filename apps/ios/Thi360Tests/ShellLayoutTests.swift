@@ -64,6 +64,49 @@ final class ShellLayoutTests: XCTestCase {
         XCTAssertEqual(controller.view.bounds.size, CGSize(width: 951, height: 669))
     }
 
+    func testIPhoneDuoUnfoldedRendersRouteRootAndEmptyDetailAndReloadsLeftPane() {
+        let suite = "vn.unicom.thi360.tests.layout.duo.routes.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let preferences = AppPreferences(userDefaults: defaults)
+        let router = AppRouter(initialDestination: .home)
+        let rootView = AppRootView(router: router, preferences: preferences, idiomOverride: .phone)
+        let controller = UIHostingController(rootView: rootView)
+        controller.traitOverrides.horizontalSizeClass = .regular
+
+        let window: UIWindow
+        if let activeScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+            window = UIWindow(windowScene: activeScene)
+            window.frame = CGRect(origin: .zero, size: CGSize(width: 951, height: 669))
+        } else {
+            window = UIWindow(frame: CGRect(origin: .zero, size: CGSize(width: 951, height: 669)))
+        }
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        pumpLayout(window: window)
+        defer { window.isHidden = true }
+
+        XCTAssertTrue(findViews(ofType: UITabBar.self, in: controller.view).isEmpty)
+        XCTAssertEqual(findViewControllers(ofType: UINavigationController.self, in: controller).count, 2)
+
+        router.openProduct(code: "duo-exam-1")
+        pumpLayout(window: window)
+        XCTAssertEqual(router.path(for: .home), [.product(code: "duo-exam-1")])
+
+        router.switchTab(.myExams, reload: true)
+        pumpLayout(window: window)
+        XCTAssertEqual(router.selectedDestination, .myExams)
+        XCTAssertEqual(router.reloadCount(for: .myExams), 1)
+        XCTAssertEqual(router.path(for: .myExams), [])
+
+        router.openHistory(resetFilters: true)
+        pumpLayout(window: window)
+        XCTAssertEqual(router.selectedDestination, .history)
+        XCTAssertTrue(router.historyResetFilters)
+        XCTAssertEqual(router.reloadCount(for: .history), 1)
+    }
+
     func testSplitViewCompact() {
         XCTAssertEqual(
             ShellLayoutResolver.resolve(idiom: .pad, horizontalSizeClass: .compact),

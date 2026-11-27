@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import OpenAPIRuntime
+import SwiftUI
 
 @Observable
 @MainActor
@@ -46,7 +47,15 @@ final class SessionStore {
         } else {
             _ = try? firstRunCleaner?.cleanIfNeeded()
             if let existing = try? tokenStore.read() {
-                if existing.mustChangePassword {
+                let pendingLogoutIds = SessionCleanup.pendingLogoutAccountIds(
+                    rootDirectoryURL: storeProvider.rootDirectoryURL
+                )
+                let existingAccountId = existing.accountId?.trimmingCharacters(in: .whitespacesAndNewlines)
+                if let existingAccountId, !existingAccountId.isEmpty, pendingLogoutIds.contains(existingAccountId) {
+                    try? tokenStore.clear()
+                    biometricManager?.clearForSessionEnd()
+                    self.state = .signedOut(reason: .none)
+                } else if existing.mustChangePassword {
                     self.state = .mustChangePassword
                 } else if biometricManager?.shouldLockOnColdLaunch() == true {
                     self.state = .locked
@@ -449,5 +458,16 @@ final class SessionStore {
             return nil
         }
         return arguments[index + 1]
+    }
+}
+
+private struct SessionStoreEnvironmentKey: EnvironmentKey {
+    static let defaultValue: SessionStore? = nil
+}
+
+extension EnvironmentValues {
+    var sessionStore: SessionStore? {
+        get { self[SessionStoreEnvironmentKey.self] }
+        set { self[SessionStoreEnvironmentKey.self] = newValue }
     }
 }

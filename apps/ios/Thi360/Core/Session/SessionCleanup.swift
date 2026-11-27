@@ -97,7 +97,12 @@ actor SessionCleanup {
     }
 
     private func readPendingAccountIds() -> [String] {
-        guard let data = try? Data(contentsOf: markerFileURL),
+        Self.pendingLogoutAccountIds(rootDirectoryURL: storeProvider.rootDirectoryURL)
+    }
+
+    static func pendingLogoutAccountIds(rootDirectoryURL: URL) -> [String] {
+        let markerURL = rootDirectoryURL.appendingPathComponent(pendingMarkerFilename, isDirectory: false)
+        guard let data = try? Data(contentsOf: markerURL),
               let ids = try? JSONDecoder().decode([String].self, from: data)
         else {
             return []

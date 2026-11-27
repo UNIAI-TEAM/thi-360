@@ -76,6 +76,18 @@ extension AppRouter {
         push(.legal(id))
     }
 
+    func openHistory(resetFilters: Bool = false) {
+        if presentedAttempt != nil {
+            closeAttempt()
+        }
+        historyResetFilters = resetFilters
+        selectedDestination = .history
+        if resetFilters {
+            setPath([], for: .history)
+            reloadTokens[.history, default: 0] += 1
+        }
+    }
+
     func openSignedOutLegal(_ id: LegalId) {
         signedOutPath.append(.legal(id))
     }
@@ -153,6 +165,9 @@ extension AppRouter {
     func switchTab(_ destination: Destination, reload: Bool = false) {
         selectedDestination = destination
         if reload {
+            if destination == .history {
+                historyResetFilters = true
+            }
             setPath([], for: destination)
             reloadTokens[destination, default: 0] += 1
         }

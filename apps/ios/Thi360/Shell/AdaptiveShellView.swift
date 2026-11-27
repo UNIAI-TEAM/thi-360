@@ -162,6 +162,7 @@ struct AdaptiveShellView: View {
             VStack(spacing: 0) {
                 NavigationStack {
                     leftBookPaneContent
+                        .id(router.reloadCount(for: router.selectedDestination))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -227,39 +228,8 @@ struct AdaptiveShellView: View {
                 )
             }
         case .home, .myExams, .history:
-            duoLeftOverviewPane(for: router.selectedDestination)
+            destinationContent(for: router.selectedDestination, showsBrandHeader: true)
         }
-    }
-
-    private func duoLeftOverviewPane(for destination: Destination) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                BrandWordmarkHeader(locale: preferences.locale)
-
-                Text(ShellStrings.text(destination.titleKey, locale: preferences.locale))
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(palette.textColor)
-                    .accessibilityAddTraits(.isHeader)
-
-                if let descriptionKey = destination.placeholderDescriptionKey {
-                    Text(ShellStrings.text(descriptionKey, locale: preferences.locale))
-                        .font(.subheadline)
-                        .foregroundStyle(palette.textMutedColor)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(palette.bgSurfaceColor)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(palette.borderColor, lineWidth: 1)
-                        )
-                }
-            }
-            .padding(20)
-        }
-        .background(palette.bgPageColor.ignoresSafeArea())
     }
 
     @ViewBuilder
@@ -280,12 +250,12 @@ struct AdaptiveShellView: View {
                     effectiveSizeClass: effectiveSizeClass
                 )
             }
-        case .home, .myExams, .history:
-            PlaceholderDestinationView(
-                destination: router.selectedDestination,
-                locale: preferences.locale,
-                showsBrandHeader: false
-            )
+        case .home:
+            CatalogRoutes.homeEmptyDetail(router: router, preferences: preferences)
+        case .myExams:
+            MyExamsRoutes.myExamsEmptyDetail(router: router, preferences: preferences)
+        case .history:
+            MyExamsRoutes.historyEmptyDetail(router: router, preferences: preferences)
         }
     }
 
@@ -293,11 +263,16 @@ struct AdaptiveShellView: View {
     private func destinationContent(for destination: Destination, showsBrandHeader: Bool) -> some View {
         switch destination {
         case .home:
-            CatalogRoutes.homeRoot(preferences: preferences, showsBrandHeader: showsBrandHeader)
+            CatalogRoutes.homeRoot(router: router, preferences: preferences, showsBrandHeader: showsBrandHeader)
         case .myExams:
-            MyExamsRoutes.myExamsRoot(preferences: preferences, showsBrandHeader: showsBrandHeader)
+            MyExamsRoutes.myExamsRoot(router: router, preferences: preferences, showsBrandHeader: showsBrandHeader)
         case .history:
-            MyExamsRoutes.historyRoot(resetFilters: false, preferences: preferences, showsBrandHeader: showsBrandHeader)
+            MyExamsRoutes.historyRoot(
+                resetFilters: router.historyResetFilters,
+                router: router,
+                preferences: preferences,
+                showsBrandHeader: showsBrandHeader
+            )
         case .account:
             if let accountViewModel {
                 AccountView(

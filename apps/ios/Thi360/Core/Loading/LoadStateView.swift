@@ -12,6 +12,8 @@ struct LoadStateView<T, Content: View, EmptyContent: View, CustomErrorContent: V
     @ViewBuilder let customError: (LoadFailureKind, Int?) -> CustomErrorContent
 
     @Environment(\.brandPalette) private var palette
+    @State private var stateDerivedBlockedUntil: Date?
+    @State private var cooldownTick: Int = 0
 
     init(
         state: LoadState<T>,
@@ -33,61 +35,101 @@ struct LoadStateView<T, Content: View, EmptyContent: View, CustomErrorContent: V
         self.content = content
         self.empty = empty
         self.customError = customError
+        if retryBlockedUntil == nil,
+           case let .failed(_, _, retryAfter?) = state,
+           retryAfter > 0
+        {
+            _stateDerivedBlockedUntil = State(initialValue: clock.now.addingTimeInterval(TimeInterval(retryAfter)))
+        } else {
+            _stateDerivedBlockedUntil = State(initialValue: nil)
+        }
+    }
+
+    private var failedRetryAfterSeconds: Int? {
+        if case let .failed(_, _, retryAfter?) = state, retryAfter > 0 {
+            return retryAfter
+        }
+        return nil
+    }
+
+    var effectiveRetryBlockedUntil: Date? {
+        retryBlockedUntil ?? stateDerivedBlockedUntil
     }
 
     var isRetryBlocked: Bool {
-        guard let retryBlockedUntil else { return false }
-        return clock.now < retryBlockedUntil
+        guard let deadline = effectiveRetryBlockedUntil else { return false }
+        return clock.now < deadline
     }
 
     var body: some View {
-        switch state {
-        case .loading:
-            loadingView
+        let _ = cooldownTick
+        Group {
+            switch state {
+            case .loading:
+                loadingView
 
-        case let .loaded(value, stale):
-            VStack(spacing: 0) {
-                if stale, let staleMessage, !staleMessage.isEmpty {
-                    StaleBanner(
-                        message: staleMessage,
-                        locale: locale,
-                        onRetry: isRetryBlocked ? nil : { triggerRetryIfAllowed() }
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
+            case let .loaded(value, stale):
+                VStack(spacing: 0) {
+                    if stale, let staleMessage, !staleMessage.isEmpty {
+                        StaleBanner(
+                            message: staleMessage,
+                            locale: locale,
+                            onRetry: isRetryBlocked ? nil : { triggerRetryIfAllowed() }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                    }
+                    content(value)
                 }
-                content(value)
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("loadState.loaded")
-
-        case .empty:
-            empty()
                 .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("loadState.empty")
+                .accessibilityIdentifier("loadState.loaded")
 
-        case let .failed(kind, canRetry, retryAfter):
-            switch kind {
-            case .offline:
-                failureCard(
-                    symbolName: "wifi.slash",
-                    title: AppStrings.common("common.offline.title", locale: locale),
-                    description: AppStrings.common("common.offline.description", locale: locale),
-                    canRetry: canRetry,
-                    identifier: "loadState.failed.offline"
-                )
-            case .server:
-                failureCard(
-                    symbolName: "exclamationmark.triangle",
-                    title: AppStrings.common("errorPage.title", locale: locale),
-                    description: AppStrings.common("errorPage.description", locale: locale),
-                    canRetry: canRetry,
-                    identifier: "loadState.failed.server"
-                )
-            case .notFound, .gone, .forbidden, .conflict:
-                customError(kind, retryAfter)
+            case .empty:
+                empty()
                     .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("loadState.failed.custom")
+                    .accessibilityIdentifier("loadState.empty")
+
+            case let .failed(kind, canRetry, retryAfter):
+                switch kind {
+                case .offline:
+                    failureCard(
+                        symbolName: "wifi.slash",
+                        title: AppStrings.common("common.offline.title", locale: locale),
+                        description: AppStrings.common("common.offline.description", locale: locale),
+                        canRetry: canRetry,
+                        identifier: "loadState.failed.offline"
+                    )
+                case .server:
+                    failureCard(
+                        symbolName: "exclamationmark.triangle",
+                        title: AppStrings.common("errorPage.title", locale: locale),
+                        description: AppStrings.common("errorPage.description", locale: locale),
+                        canRetry: canRetry,
+                        identifier: "loadState.failed.server"
+                    )
+                case .notFound, .gone, .forbidden, .conflict:
+                    customError(kind, retryAfter)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("loadState.failed.custom")
+                }
+            }
+        }
+        .onChange(of: failedRetryAfterSeconds) { _, newSeconds in
+            if retryBlockedUntil == nil, let newSeconds, newSeconds > 0 {
+                stateDerivedBlockedUntil = clock.now.addingTimeInterval(TimeInterval(newSeconds))
+            } else {
+                stateDerivedBlockedUntil = nil
+            }
+        }
+        .task(id: effectiveRetryBlockedUntil) {
+            guard let deadline = effectiveRetryBlockedUntil else { return }
+            while !Task.isCancelled && clock.now < deadline {
+                let remaining = deadline.timeIntervalSince(clock.now)
+                let stepSeconds = min(max(remaining, 0.01), 0.1)
+                try? await Task.sleep(nanoseconds: UInt64(stepSeconds * 1_000_000_000))
+            }
+            if !Task.isCancelled {
+                cooldownTick &+= 1
             }
         }
     }

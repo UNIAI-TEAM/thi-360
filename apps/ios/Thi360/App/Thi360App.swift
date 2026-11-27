@@ -56,19 +56,20 @@ struct Thi360App: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRootView(
-                router: router,
-                preferences: preferences,
-                sessionStore: sessionStore,
-                appearanceRepository: appearanceRepository,
-                biometricManager: biometricManager,
-                imageLoader: imageLoader,
-                catalogOptionsCache: catalogOptionsCache,
-                connectivityMonitor: connectivityMonitor
-            )
-            .task {
-                await sessionCleanup.register(imageLoader)
-                await sessionCleanup.runAppStart()
+            StartupCleanupGateView(
+                sessionCleanup: sessionCleanup,
+                participants: [imageLoader]
+            ) {
+                AppRootView(
+                    router: router,
+                    preferences: preferences,
+                    sessionStore: sessionStore,
+                    appearanceRepository: appearanceRepository,
+                    biometricManager: biometricManager,
+                    imageLoader: imageLoader,
+                    catalogOptionsCache: catalogOptionsCache,
+                    connectivityMonitor: connectivityMonitor
+                )
             }
             .onOpenURL { url in
                 _ = router.handleIncomingURL(url)
@@ -76,6 +77,33 @@ struct Thi360App: App {
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                 _ = router.handleUserActivity(userActivity)
             }
+        }
+    }
+}
+
+struct StartupCleanupGateView<Content: View>: View {
+    let sessionCleanup: SessionCleanup
+    let participants: [any SessionCleanupParticipant]
+    @ViewBuilder let content: () -> Content
+
+    @State private var isReady = false
+
+    var body: some View {
+        Group {
+            if isReady {
+                content()
+            } else {
+                Color.clear
+                    .accessibilityIdentifier("app.startupCleanupGate")
+            }
+        }
+        .task {
+            guard !isReady else { return }
+            for participant in participants {
+                await sessionCleanup.register(participant)
+            }
+            await sessionCleanup.runAppStart()
+            isReady = true
         }
     }
 }

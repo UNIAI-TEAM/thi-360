@@ -91,6 +91,9 @@ struct RedactingAppLogger: Sendable {
         let definitions: [(String, String)] = [
             (#"(?i)(Bearer\s+)[^\s,;"')]+"#, "$1<redacted>"),
             ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*\")[^\"]*(\")", "$1<redacted>$2"),
+            ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*)(?!\"|null\\b)[^\\s,}\\]]+", "$1\"<redacted>\""),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\(\")[^\"]*(\"\\))", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*Optional\\()(?!\"|nil\\))[^)]+(\\))", "$1$2<redacted>$3"),
             ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*\")[^\"]*(\")", "$1$2<redacted>$3"),
             ("(?i)\\b(\(sensitiveFieldNames))(\\s*=\\s*)[^\\s&,;)\"'\\]\\}]+", "$1$2<redacted>")
         ]

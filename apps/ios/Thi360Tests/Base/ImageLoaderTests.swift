@@ -40,6 +40,16 @@ final class ImageLoaderTests: XCTestCase {
             fields[.contentType] = "image/png"
             return (HTTPResponse(status: .ok, headerFields: fields), HTTPBody(pngData))
         }
+        transport.register(method: .get, path: "/api/v1/public/storefront/covers/cover-1.png") { _ in
+            var fields = HTTPFields()
+            fields[.contentType] = "image/png"
+            return (HTTPResponse(status: .ok, headerFields: fields), HTTPBody(pngData))
+        }
+        transport.register(method: .get, path: "/api/v1/assets/avatar-noauth.png") { _ in
+            var fields = HTTPFields()
+            fields[.contentType] = "image/png"
+            return (HTTPResponse(status: .ok, headerFields: fields), HTTPBody(pngData))
+        }
 
         let apiBase = URL(string: "https://api.thi360.test")!
         let loader = ImageLoader(
@@ -49,7 +59,9 @@ final class ImageLoaderTests: XCTestCase {
         )
 
         XCTAssertTrue(loader.shouldAttachBearer(for: URL(string: "https://api.thi360.test/api/v1/assets/avatar.png")!))
+        XCTAssertFalse(loader.shouldAttachBearer(for: URL(string: "http://api.thi360.test:443/api/v1/assets/avatar.png")!))
         XCTAssertFalse(loader.shouldAttachBearer(for: URL(string: "https://api.thi360.test:8443/api/v1/assets/avatar.png")!))
+        XCTAssertFalse(loader.shouldAttachBearer(for: URL(string: "https://api.thi360.test/api/v1/public/storefront/covers/cover-1.png")!))
         XCTAssertFalse(loader.shouldAttachBearer(for: URL(string: "https://cdn.example.com/public/banner.png")!))
 
         let first = try await loader.loadImage(from: "/api/v1/assets/avatar.png")
@@ -60,6 +72,19 @@ final class ImageLoaderTests: XCTestCase {
         let apiRequests = transport.requests(method: .get, path: "/api/v1/assets/avatar.png")
         XCTAssertEqual(apiRequests.count, 1, "Second read must hit NSCache without extra network call")
         XCTAssertEqual(apiRequests.first?.header(.authorization), "Bearer img-access-token")
+
+        _ = try await loader.loadImage(from: "/api/v1/public/storefront/covers/cover-1.png")
+        let publicCoverRequests = transport.requests(method: .get, path: "/api/v1/public/storefront/covers/cover-1.png")
+        XCTAssertEqual(publicCoverRequests.count, 1)
+        XCTAssertNil(
+            publicCoverRequests.first?.header(.authorization),
+            "Public storefront cover URL must never receive Authorization header"
+        )
+
+        _ = try await loader.loadImage(from: "/api/v1/assets/avatar-noauth.png", authenticated: false)
+        let optOutRequests = transport.requests(method: .get, path: "/api/v1/assets/avatar-noauth.png")
+        XCTAssertEqual(optOutRequests.count, 1)
+        XCTAssertNil(optOutRequests.first?.header(.authorization))
 
         _ = try await loader.loadImage(from: "https://cdn.example.com/public/banner.png")
         let foreignRequests = transport.requests(method: .get, path: "/public/banner.png")
