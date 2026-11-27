@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -18,6 +19,9 @@ import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.ui.LoadState
 import vn.unicom.thi360.feature.attemptengine.AttemptCommandKind
 import vn.unicom.thi360.feature.attemptengine.CommandState
+import vn.unicom.thi360.feature.attemptengine.EditSessionState
+import vn.unicom.thi360.feature.attemptengine.PartSelection
+import vn.unicom.thi360.feature.attemptengine.ReadOnlyReason
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
@@ -51,7 +55,11 @@ class GenerationPanelTest {
             }
         }
 
+        val genPart = PartSelection.sortedParts(generating)
+            .first { it.state == vn.unicom.thi360.core.network.generated.model.AttemptPartStateView.State.GENERATING }
         composeRule.onNodeWithTag(PlayerTestTags.GENERATION_PANEL).assertIsDisplayed()
+        composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_TIMER).assertDoesNotExist()
+        composeRule.onNodeWithText(genPart.partName!!, substring = true).assertIsDisplayed()
         composeRule.waitUntil(5_000L) {
             composeRule.onAllNodes(androidx.compose.ui.test.hasTestTag(PlayerTestTags.GENERATION_BUSY_NOTICE))
                 .fetchSemanticsNodes().isNotEmpty()
@@ -64,9 +72,18 @@ class GenerationPanelTest {
             engineState = PlayerTestFixtures.activeEngineState(failed)
         }
         composeRule.onNodeWithTag(PlayerTestTags.GENERATION_FAILED_PANEL).assertIsDisplayed()
+        composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_TIMER).assertDoesNotExist()
         composeRule.onNodeWithTag(PlayerTestTags.GENERATION_RETRY).performClick()
         composeRule.onNodeWithTag(PlayerTestTags.GENERATION_RETRY).assertIsNotEnabled()
         composeRule.onNodeWithTag(PlayerTestTags.GENERATION_RETRY).performClick()
         assertEquals(1, retryCalls)
+
+        composeRule.runOnIdle {
+            engineState = PlayerTestFixtures.activeEngineState(
+                attempt = failed,
+                session = EditSessionState.ReadOnly(ReadOnlyReason.SessionUnavailable),
+            )
+        }
+        composeRule.onNodeWithTag(PlayerTestTags.GENERATION_RETRY).assertIsNotEnabled()
     }
 }

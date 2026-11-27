@@ -182,10 +182,14 @@ fun PlayerHost(
         onOpenPrepare = onOpenPrepare,
         onToggleCollapse = { localUi = localUi.copy(headerCollapsed = !localUi.headerCollapsed) },
         onSelectPart = { partId ->
-            val targetPart = engineState.attempt?.parts.orEmpty().firstOrNull { it.partId == partId }
-            val firstLeaf = targetPart?.let { vn.unicom.thi360.feature.attemptengine.PartSelection.leafItems(it).firstOrNull()?.itemId }
-            engine.position(partId, firstLeaf)
-            localUi = localUi.copy(gridFilter = GridFilter.All, gridSheetOpen = false)
+            if (engineState.position?.partId != partId) {
+                val targetPart = engineState.attempt?.parts.orEmpty().firstOrNull { it.partId == partId }
+                val firstLeaf = targetPart?.let {
+                    vn.unicom.thi360.feature.attemptengine.PartSelection.leafItems(it).firstOrNull()?.itemId
+                }
+                engine.position(partId, firstLeaf)
+                localUi = localUi.copy(gridFilter = GridFilter.All, gridSheetOpen = false)
+            }
         },
         onAnswer = engine::answer,
         onFlag = engine::flag,
@@ -377,10 +381,23 @@ fun PlayerScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.statusBars)
+                        .semantics(mergeDescendants = true) {}
                         .testTag(PlayerTestTags.LOADING),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(color = colors.primaryFill)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.padding(24.dp),
+                    ) {
+                        CircularProgressIndicator(color = colors.primaryFill)
+                        Text(
+                            text = stringResource(R.string.attempt_waiting_title),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.text,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
 
@@ -462,9 +479,15 @@ fun PlayerScreen(
                                 val panel = ui.choicePanel
                                 PartChoicePanel(
                                     panel = panel,
-                                    onSelectOption = { code -> onSelectChoiceOption(panel.partId, code) },
+                                    onSelectOption = { code ->
+                                        if (!panel.isLocked) {
+                                            onSelectChoiceOption(panel.partId, code)
+                                        }
+                                    },
                                     onToggleSubject = { code ->
-                                        onToggleChoiceSubject(panel.partId, code, panel.requiredSubjectCount)
+                                        if (!panel.isLocked) {
+                                            onToggleChoiceSubject(panel.partId, code, panel.requiredSubjectCount)
+                                        }
                                     },
                                     onConfirm = {
                                         val code = panel.selectedOptionCode

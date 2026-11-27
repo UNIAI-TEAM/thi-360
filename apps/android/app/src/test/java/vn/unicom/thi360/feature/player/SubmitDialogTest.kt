@@ -6,6 +6,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -97,5 +100,57 @@ class SubmitDialogTest {
         composeRule.onNodeWithText("Chưa xác nhận nộp bài").assertIsDisplayed()
         composeRule.onNodeWithTag(PlayerTestTags.SUBMIT_RECONCILE).assertIsDisplayed().performClick()
         assertEquals(1, reconcileCalls)
+    }
+
+    @Test
+    fun partBreakdownIncludesCompletedPartsAndFallbackNames() {
+        val base = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-shared"))
+        val origPart = PartSelection.sortedParts(base).first()
+        val leaves = PartSelection.leafItems(origPart)
+        require(leaves.size >= 2)
+        val p1 = origPart.copy(
+            partId = UUID.randomUUID(),
+            ord = 0,
+            partName = "",
+            partCode = "PART-ONE",
+            items = listOf(leaves[0]),
+        )
+        val p2 = origPart.copy(
+            partId = UUID.randomUUID(),
+            ord = 1,
+            partName = "Phần hai",
+            items = listOf(leaves[1]),
+        )
+        val attempt = base.copy(parts = listOf(p1, p2))
+
+        composeRule.setContent {
+            PlayerTestTheme {
+                PlayerScreen(
+                    attemptId = attempt.attemptId.toString(),
+                    engineState = PlayerTestFixtures.activeEngineState(
+                        attempt = attempt,
+                        answersOverride = mapOf(
+                            leaves[0].itemId!! to LocalAnswer(
+                                value = vn.unicom.thi360.core.network.generated.model.SingleChoiceAnswer("a"),
+                                seq = 1L,
+                                flagged = false,
+                                sync = AnswerSyncStatus.Saved,
+                            ),
+                        ),
+                    ),
+                    localUi = PlayerLocalUi(dialog = PlayerDialog.Submit),
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(PlayerTestTags.SUBMIT_PART_BREAKDOWN).assertIsDisplayed()
+        composeRule.onNode(
+            hasText("PART-ONE") and hasAnyAncestor(hasTestTag(PlayerTestTags.SUBMIT_PART_BREAKDOWN)),
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText("Còn thiếu 0/1 câu").assertIsDisplayed()
+        composeRule.onNode(
+            hasText("Phần hai") and hasAnyAncestor(hasTestTag(PlayerTestTags.SUBMIT_PART_BREAKDOWN)),
+        ).assertIsDisplayed()
+        composeRule.onNodeWithText("Còn thiếu 1/1 câu").assertIsDisplayed()
     }
 }

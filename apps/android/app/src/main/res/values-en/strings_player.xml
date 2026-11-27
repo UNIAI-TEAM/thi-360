@@ -29,7 +29,6 @@
     <string name="attempt_evicted_takeoverHere">Continue here</string>
     <string name="attempt_evicted_backToMyExams">Back to My exams</string>
 
-    <string name="attempt_readOnly_acquiring">Connecting to exam session. You can view questions, but editing is temporarily locked.</string>
     <string name="attempt_readOnly_unavailable">Unable to start editing session. Read-only mode is active.</string>
     <string name="attempt_readOnly_partClosed">This section is closed and read-only.</string>
 
@@ -168,7 +167,6 @@
     <string name="attempt_dialogs_finishPart_title">Finish section?</string>
     <string name="attempt_dialogs_finishPart_warningIrreversible">Once finished, you cannot return to this section.</string>
     <string name="attempt_dialogs_finishPart_missingSummary">%1$d/%2$d questions unanswered</string>
-    <string name="attempt_dialogs_finishPart_allAnswered">You have answered all %1$d/%2$d questions in this section.</string>
     <string name="attempt_dialogs_finishPart_partialSummary">%1$d questions partially answered</string>
     <string name="attempt_dialogs_finishPart_nextPartOpensNote">The next section will open right away and you cannot return to this section.</string>
     <string name="attempt_dialogs_finishPart_nextPartChoiceNote">Next is the Section 3 selection step. You have up to 15 minutes to confirm; if time runs out, the attempt ends and Section 3 scores 0.</string>

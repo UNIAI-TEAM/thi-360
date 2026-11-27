@@ -15,8 +15,17 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import vn.unicom.thi360.core.network.generated.model.AttemptItemView
+import vn.unicom.thi360.core.network.generated.model.AttemptPartStateView
+import vn.unicom.thi360.core.network.generated.model.SingleChoiceAnswer
+import vn.unicom.thi360.core.network.generated.model.StatementView
+import vn.unicom.thi360.core.network.generated.model.TrueFalse
+import vn.unicom.thi360.core.network.generated.model.TrueFalseAnswer
+import vn.unicom.thi360.feature.attemptengine.AnswerSyncStatus
 import vn.unicom.thi360.feature.attemptengine.AttemptCommandKind
 import vn.unicom.thi360.feature.attemptengine.CommandState
+import vn.unicom.thi360.feature.attemptengine.LocalAnswer
+import vn.unicom.thi360.feature.attemptengine.PartSelection
 import vn.unicom.thi360.feature.attemptengine.UnconfirmedCommandKind
 
 @RunWith(RobolectricTestRunner::class)
@@ -63,5 +72,63 @@ class FinishPartDialogTest {
         composeRule.onNodeWithText("Chưa xác nhận hoàn thành phần").assertIsDisplayed()
         composeRule.onNodeWithTag(PlayerTestTags.FINISH_PART_RECONCILE).assertIsDisplayed().performClick()
         assertEquals(1, reconcileCalls)
+    }
+
+    @Test
+    fun countsOnlyBlankAsMissingSeparatesPartialAndDistinguishesPendingVsChoiceNextPart() {
+        val base = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
+        val parts = PartSelection.sortedParts(base)
+        val p1 = parts[0]
+        val leaves = PartSelection.leafItems(p1)
+        require(leaves.size >= 3)
+        val partialItem = leaves[1].copy(
+            questionType = AttemptItemView.QuestionType.TRUE_FALSE,
+            questionBody = TrueFalse(
+                statements = listOf(
+                    StatementView(id = "s1", content = "S1"),
+                    StatementView(id = "s2", content = "S2"),
+                ),
+            ),
+        )
+        val trimmedP1 = p1.copy(items = listOf(leaves[0], partialItem, leaves[2]))
+        val pendingNext = parts[1].copy(
+            state = AttemptPartStateView.State.PENDING,
+            questionCount = null,
+            items = emptyList(),
+        )
+        var attempt by mutableStateOf(base.copy(parts = listOf(trimmedP1, pendingNext)))
+        var answers by mutableStateOf(
+            mapOf(
+                leaves[0].itemId!! to LocalAnswer(SingleChoiceAnswer("a"), 1L, false, AnswerSyncStatus.Saved),
+                partialItem.itemId!! to LocalAnswer(TrueFalseAnswer(mapOf("s1" to true)), 1L, false, AnswerSyncStatus.Saved),
+            ),
+        )
+
+        composeRule.setContent {
+            PlayerTestTheme {
+                PlayerScreen(
+                    attemptId = attempt.attemptId.toString(),
+                    engineState = PlayerTestFixtures.activeEngineState(attempt, answersOverride = answers),
+                    localUi = PlayerLocalUi(dialog = PlayerDialog.FinishPart),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Còn 1/3 câu chưa trả lời").assertIsDisplayed()
+        composeRule.onNodeWithText("Có 1 câu đang làm dở").assertIsDisplayed()
+        composeRule.onNodeWithText("Phần tiếp theo sẽ mở ngay và không thể quay lại phần này.").assertIsDisplayed()
+
+        composeRule.runOnIdle {
+            answers = answers + (leaves[2].itemId!! to LocalAnswer(SingleChoiceAnswer("a"), 1L, false, AnswerSyncStatus.Saved))
+            attempt = base.copy(
+                parts = listOf(
+                    trimmedP1,
+                    parts[1].copy(state = AttemptPartStateView.State.AWAITING_CHOICE, items = emptyList()),
+                ),
+            )
+        }
+        composeRule.onNodeWithText("Còn 0/3 câu chưa trả lời").assertIsDisplayed()
+        composeRule.onNodeWithText("Có 1 câu đang làm dở").assertIsDisplayed()
+        composeRule.onNodeWithText("Tiếp theo là bước chọn phần 3", substring = true).assertIsDisplayed()
     }
 }

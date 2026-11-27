@@ -33,6 +33,7 @@ import vn.unicom.thi360.feature.attemptengine.EngineState
 import vn.unicom.thi360.feature.attemptengine.SaveStatus
 import vn.unicom.thi360.feature.attemptengine.UnsavedReason
 import vn.unicom.thi360.feature.question.ui.QuestionTestTags
+import vn.unicom.thi360.shell.ShellTestTags
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w412dp-h915dp-xhdpi")
@@ -59,7 +60,11 @@ class PlayerScreenTest {
             }
         }
 
-        composeRule.onNodeWithTag(PlayerTestTags.LOADING).assertIsDisplayed()
+        composeRule.onNodeWithTag(PlayerTestTags.LOADING)
+            .assertIsDisplayed()
+            .assertTextContains("Đang chuẩn bị đề", substring = true)
+        composeRule.onNodeWithTag(ShellTestTags.BOTTOM_BAR).assertDoesNotExist()
+        composeRule.onNodeWithTag(ShellTestTags.NAV_RAIL).assertDoesNotExist()
 
         composeRule.runOnIdle {
             engineState = EngineState(load = LoadState.Failed(LoadFailureKind.NotFound, canRetry = false))
@@ -132,6 +137,7 @@ class PlayerScreenTest {
             ).copy(save = SaveStatus.Unsaved(UnsavedReason.ServerError)),
         )
         var answeredCalls = 0
+        var flaggedCalls = 0
 
         composeRule.setContent {
             PlayerTestTheme {
@@ -140,21 +146,37 @@ class PlayerScreenTest {
                     engineState = engineState,
                     localUi = PlayerLocalUi(),
                     onAnswer = { _, _ -> answeredCalls += 1 },
+                    onFlag = { _, _ -> flaggedCalls += 1 },
                 )
             }
         }
 
         composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_ACTION_BUTTON).assertIsNotEnabled()
-        composeRule.onNodeWithTag(PlayerTestTags.READ_ONLY_BANNER).assertIsDisplayed()
+        composeRule.onNodeWithTag(PlayerTestTags.READ_ONLY_BANNER).assertDoesNotExist()
         composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_SAVE_STATUS).assertTextContains("Máy chủ bận", substring = true)
 
         val firstSingleChoice = PlayerTestFixtures.leafItems(attempt)
             .firstOrNull { it.questionType == AttemptItemView.QuestionType.SINGLE_CHOICE }
         val firstOptId = (firstSingleChoice?.questionBody as? SingleChoice)?.options?.firstOrNull()?.id
         if (firstOptId != null) {
-            composeRule.onNodeWithTag(QuestionTestTags.choiceOption(firstOptId)).performClick()
-            assertEquals("Locked question must not emit answers before session", 0, answeredCalls)
+            composeRule.onAllNodes(androidx.compose.ui.test.hasTestTag(QuestionTestTags.choiceOption(firstOptId)))[0]
+                .performClick()
+            assertTrue("AC-4: answering must work before edit session is acquired", answeredCalls > 0)
         }
+        composeRule.onAllNodes(androidx.compose.ui.test.hasTestTag(QuestionTestTags.FRAME_FLAG_BUTTON))[0].performClick()
+        assertTrue("AC-4: flagging must work before edit session is acquired", flaggedCalls > 0)
+
+        composeRule.runOnIdle {
+            engineState = engineState.copy(save = SaveStatus.Unsaved(UnsavedReason.NetworkError))
+        }
+        composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_ACTION_BUTTON).assertIsNotEnabled()
+        composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_SAVE_STATUS).assertTextContains("Lỗi kết nối", substring = true)
+
+        composeRule.runOnIdle {
+            engineState = engineState.copy(save = SaveStatus.Offline)
+        }
+        composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_ACTION_BUTTON).assertIsNotEnabled()
+        composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_SAVE_STATUS).assertTextContains("Mất kết nối", substring = true)
 
         composeRule.runOnIdle {
             engineState = engineState.copy(
@@ -164,10 +186,6 @@ class PlayerScreenTest {
         }
         composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_ACTION_BUTTON).assertIsEnabled()
         composeRule.onNodeWithTag(PlayerTestTags.READ_ONLY_BANNER).assertDoesNotExist()
-        if (firstOptId != null) {
-            composeRule.onNodeWithTag(QuestionTestTags.choiceOption(firstOptId)).performClick()
-            assertTrue("Editing session must emit answer", answeredCalls > 0)
-        }
     }
 
     @Test

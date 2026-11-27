@@ -91,6 +91,12 @@ class QuestionGridTest {
         composeRule.onNodeWithTag(PlayerTestTags.gridCellUnsaved(id2.toString()), useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithTag(PlayerTestTags.GRID_LEGEND_FLAGGED).assertIsDisplayed()
 
+        val cell1Desc = composeRule.onNodeWithTag(PlayerTestTags.gridCell(id1.toString()))
+            .fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription)
+            ?.joinToString(" ").orEmpty()
+        assertTrue("Expected saved TalkBack desc: $cell1Desc",
+            cell1Desc.contains("đã trả lời") && cell1Desc.contains("đánh dấu xem lại") && cell1Desc.contains("đã lưu"))
+
         val cell2Desc = composeRule.onNodeWithTag(PlayerTestTags.gridCell(id2.toString()))
             .fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription)
             ?.joinToString(" ").orEmpty()

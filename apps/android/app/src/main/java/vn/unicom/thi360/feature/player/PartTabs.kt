@@ -139,18 +139,22 @@ private fun PartTabCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 when (tab.state) {
-                    AttemptPartStateView.State.CLOSED -> {
+                    AttemptPartStateView.State.CLOSED,
+                    AttemptPartStateView.State.SKIPPED,
+                    -> {
                         Icon(
                             imageVector = PlayerIcons.CheckCircle,
                             contentDescription = null,
-                            tint = statusColors.success,
+                            tint = if (tab.state == AttemptPartStateView.State.CLOSED) {
+                                statusColors.success
+                            } else {
+                                colors.textMuted
+                            },
                             modifier = Modifier.size(16.dp),
                         )
                     }
 
-                    AttemptPartStateView.State.PENDING,
-                    AttemptPartStateView.State.SKIPPED,
-                    -> {
+                    AttemptPartStateView.State.PENDING -> {
                         Icon(
                             imageVector = PlayerIcons.Lock,
                             contentDescription = null,
@@ -161,9 +165,9 @@ private fun PartTabCard(
 
                     AttemptPartStateView.State.GENERATION_FAILED -> {
                         Icon(
-                            imageVector = PlayerIcons.Warning,
+                            imageVector = if (tab.isSelected) PlayerIcons.Warning else PlayerIcons.Lock,
                             contentDescription = null,
-                            tint = colors.dangerText,
+                            tint = if (tab.isSelected) colors.dangerText else colors.textMuted,
                             modifier = Modifier.size(15.dp),
                         )
                     }
@@ -172,9 +176,9 @@ private fun PartTabCard(
                     AttemptPartStateView.State.GENERATING,
                     -> {
                         Icon(
-                            imageVector = PlayerIcons.Clock,
+                            imageVector = if (tab.isSelected) PlayerIcons.Clock else PlayerIcons.Lock,
                             contentDescription = null,
-                            tint = statusColors.warning,
+                            tint = if (tab.isSelected) statusColors.warning else colors.textMuted,
                             modifier = Modifier.size(15.dp),
                         )
                     }

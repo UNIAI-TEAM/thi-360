@@ -29,7 +29,6 @@
     <string name="attempt_evicted_takeoverHere">Tiếp tục tại đây</string>
     <string name="attempt_evicted_backToMyExams">Về Bài thi của tôi</string>
 
-    <string name="attempt_readOnly_acquiring">Đang kết nối phiên làm bài. Bạn có thể xem đề nhưng chưa thể sửa câu trả lời.</string>
     <string name="attempt_readOnly_unavailable">Chưa thể mở phiên chỉnh sửa. Chế độ chỉ xem đang được bật.</string>
     <string name="attempt_readOnly_partClosed">Phần thi này đã đóng và chỉ có thể xem.</string>
 
@@ -166,7 +165,6 @@
     <string name="attempt_dialogs_finishPart_title">Hoàn thành phần?</string>
     <string name="attempt_dialogs_finishPart_warningIrreversible">Sau khi hoàn thành bạn không thể quay lại phần này.</string>
     <string name="attempt_dialogs_finishPart_missingSummary">Còn %1$d/%2$d câu chưa trả lời</string>
-    <string name="attempt_dialogs_finishPart_allAnswered">Bạn đã trả lời đủ %1$d/%2$d câu trong phần này.</string>
     <string name="attempt_dialogs_finishPart_partialSummary">Có %1$d câu đang làm dở</string>
     <string name="attempt_dialogs_finishPart_nextPartOpensNote">Phần tiếp theo sẽ mở ngay và không thể quay lại phần này.</string>
     <string name="attempt_dialogs_finishPart_nextPartChoiceNote">Tiếp theo là bước chọn phần 3. Bạn có tối đa 15 phút để xác nhận lựa chọn; quá thời gian thì lượt kết thúc và phần 3 được 0 điểm.</string>

@@ -6,12 +6,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import java.util.UUID
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -22,6 +24,7 @@ import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.network.generated.model.AttemptPartStateView
 import vn.unicom.thi360.core.network.generated.model.AttemptStateResponse
 import vn.unicom.thi360.core.network.generated.model.SingleChoiceAnswer
+import vn.unicom.thi360.core.ui.LoadState
 import vn.unicom.thi360.feature.attemptengine.AnswerSyncStatus
 import vn.unicom.thi360.feature.attemptengine.EnginePosition
 import vn.unicom.thi360.feature.attemptengine.LocalAnswer
@@ -142,5 +145,63 @@ class PartTabsTest {
 
         composeRule.onNodeWithTag(PlayerTestTags.partTab(p2.partId!!.toString())).performClick()
         assertEquals(p2.partId, engineState.position?.partId)
+    }
+
+    @Test
+    fun resolvesChosenNamePartCodeAndOrdFallbackAndBlocksNonOpenAndActiveTabClicks() {
+        val base = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("in-progress-per-part"))
+        val metadata = PlayerTestFixtures.partChoiceMetadata("per-part")
+        val parts = PartSelection.sortedParts(base)
+        require(parts.size >= 3)
+        val chosenOption = metadata.choices.first().options!!.first()
+        val p1 = parts[0].copy(
+            state = AttemptPartStateView.State.OPEN,
+            partName = "",
+            partCode = "MATH-CODE",
+        )
+        val p2 = parts[1].copy(
+            state = AttemptPartStateView.State.AWAITING_CHOICE,
+            partName = "",
+            partCode = "",
+        )
+        val p3 = parts[2].copy(
+            state = AttemptPartStateView.State.SKIPPED,
+            choice = mapOf("optionCode" to JsonPrimitive(chosenOption.code!!)),
+        )
+        val attempt = base.copy(
+            navigationMode = AttemptStateResponse.NavigationMode.FREE,
+            parts = listOf(p1, p2, p3),
+        )
+        val clickedParts = mutableListOf<PartId>()
+
+        composeRule.setContent {
+            PlayerTestTheme {
+                PlayerScreen(
+                    attemptId = attempt.attemptId.toString(),
+                    engineState = PlayerTestFixtures.activeEngineState(
+                        attempt = attempt,
+                        positionOverride = EnginePosition(p1.partId!!, null),
+                    ),
+                    localUi = PlayerLocalUi(),
+                    partChoiceLoad = LoadState.Loaded(metadata),
+                    onSelectPart = { clickedParts.add(it) },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(PlayerTestTags.partTab(p1.partId!!.toString()))
+            .assertTextContains("MATH-CODE", substring = true)
+            .assertIsNotEnabled()
+            .performClick()
+        composeRule.onNodeWithTag(PlayerTestTags.partTab(p2.partId!!.toString()))
+            .assertTextContains("#2", substring = true)
+            .assertIsNotEnabled()
+            .performClick()
+        composeRule.onNodeWithTag(PlayerTestTags.partTab(p3.partId!!.toString()))
+            .assertTextContains(chosenOption.name!!, substring = true)
+            .assertIsNotEnabled()
+            .performClick()
+
+        assertTrue("Active, AWAITING_CHOICE, and SKIPPED tabs must not emit onSelectPart", clickedParts.isEmpty())
     }
 }

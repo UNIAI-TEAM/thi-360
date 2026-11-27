@@ -553,6 +553,7 @@ internal fun QuestionGridCell(
     }
     val flaggedWord = stringResource(R.string.attempt_nav_stateFlagged)
     val currentWord = stringResource(R.string.attempt_nav_stateCurrent)
+    val savedWord = stringResource(R.string.attempt_nav_stateSaved)
     val unsavedWord = stringResource(R.string.attempt_nav_stateUnsaved)
     val qNumber = stringResource(R.string.attempt_nav_questionNumber, cell.displayNo)
     val cellA11y = buildList {
@@ -560,7 +561,7 @@ internal fun QuestionGridCell(
         add(completionWord)
         if (cell.flagged) add(flaggedWord)
         if (cell.isCurrent) add(currentWord)
-        if (cell.isUnsaved) add(unsavedWord)
+        add(if (cell.isUnsaved) unsavedWord else savedWord)
     }.joinToString(", ")
 
     val shape = RoundedCornerShape(10.dp)
@@ -592,7 +593,7 @@ internal fun QuestionGridCell(
                     val innerOffset = strokeWidth + 2.dp.toPx()
                     drawRoundRect(
                         color = if (cell.completion == ItemCompletion.Answered) {
-                            statusColors.onDanger.copy(alpha = 0.7f)
+                            (if (cell.flagged) statusColors.onDanger else colors.onPrimary).copy(alpha = 0.7f)
                         } else {
                             ringColor.copy(alpha = 0.35f)
                         },

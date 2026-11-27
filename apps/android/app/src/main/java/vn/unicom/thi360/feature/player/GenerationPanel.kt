@@ -124,6 +124,15 @@ internal fun GenerationPanel(
                                 },
                             )
 
+                            if (panel.partName.isNotBlank()) {
+                                Text(
+                                    text = panel.partName,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+
                             if (!panel.chosenOptionName.isNullOrBlank()) {
                                 Surface(
                                     shape = RoundedCornerShape(999.dp),
@@ -168,7 +177,7 @@ internal fun GenerationPanel(
 
                             Button(
                                 onClick = onRetry,
-                                enabled = !panel.isRetrying,
+                                enabled = !panel.isRetrying && !panel.isLocked,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = colors.primaryFill,
@@ -217,6 +226,15 @@ internal fun GenerationPanel(
                                     liveRegion = LiveRegionMode.Polite
                                 },
                             )
+
+                            if (panel.partName.isNotBlank()) {
+                                Text(
+                                    text = panel.partName,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = colors.textSecondary,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
 
                             if (!panel.chosenOptionName.isNullOrBlank()) {
                                 Surface(

@@ -124,7 +124,8 @@ internal object PlayerTestFixtures {
             activePart?.state == AttemptPartStateView.State.AWAITING_CHOICE && activePart.partId != null ->
                 CountdownTarget.Choice(activePart.partId)
             attempt.timing == AttemptStateResponse.Timing.SHARED -> CountdownTarget.Attempt
-            activePart?.partId != null -> CountdownTarget.Part(activePart.partId)
+            activePart?.state == AttemptPartStateView.State.OPEN && activePart.partId != null ->
+                CountdownTarget.Part(activePart.partId)
             else -> CountdownTarget.None
         }
         return EngineState(

@@ -101,6 +101,13 @@ internal fun PartChoicePanel(
                                 color = colors.text,
                                 modifier = Modifier.semantics { heading() },
                             )
+                            if (panel.partName.isNotBlank()) {
+                                Text(
+                                    text = panel.partName,
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = colors.primaryText,
+                                )
+                            }
                             Text(
                                 text = stringResource(R.string.attempt_partChoice_description),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -145,7 +152,7 @@ internal fun PartChoicePanel(
                                         ChoiceOptionCard(
                                             option = option,
                                             selected = isSelected,
-                                            enabled = !panel.isExpired && !panel.isSending,
+                                            enabled = !panel.isLocked && !panel.isExpired && !panel.isSending,
                                             subjectsByCode = panel.subjectsByCode,
                                             onClick = { if (code.isNotEmpty()) onSelectOption(code) },
                                         )
@@ -203,7 +210,10 @@ internal fun PartChoicePanel(
                                         availableSubjects.forEach { subj ->
                                             val subjCode = subj.code.orEmpty()
                                             val isChecked = subjCode in panel.selectedSubjectCodes
-                                            val canToggle = !panel.isExpired && !panel.isSending && (isChecked || !limitReached)
+                                            val canToggle = !panel.isLocked &&
+                                                !panel.isExpired &&
+                                                !panel.isSending &&
+                                                (isChecked || !limitReached)
                                             val subjLabel = SubjectNames.resolveLocalized(
                                                 code = subjCode,
                                                 subjectsByCode = panel.subjectsByCode,
@@ -342,28 +352,30 @@ private fun ChoiceCountdownBanner(panel: ChoicePanelUi) {
                     tint = fg,
                     modifier = Modifier.size(18.dp),
                 )
-                Text(
-                    text = stringResource(R.string.attempt_partChoice_timerLabel),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = fg,
-                )
-                Text(
-                    text = TimerText.format(panel.remainingMs),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontFeatureSettings = "tnum",
-                    ),
-                    color = fg,
-                )
+                if (panel.isExpired) {
+                    Text(
+                        text = stringResource(R.string.attempt_partChoice_deadlineExpired),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.dangerText,
+                        modifier = Modifier.testTag(PlayerTestTags.CHOICE_DEADLINE_EXPIRED),
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.attempt_partChoice_timerLabel),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = fg,
+                    )
+                    Text(
+                        text = TimerText.format(panel.remainingMs),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontFeatureSettings = "tnum",
+                        ),
+                        color = fg,
+                    )
+                }
             }
-            if (panel.isExpired) {
-                Text(
-                    text = stringResource(R.string.attempt_partChoice_deadlineExpired),
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.dangerText,
-                    modifier = Modifier.testTag(PlayerTestTags.CHOICE_DEADLINE_EXPIRED),
-                )
-            } else {
+            if (panel.isUrgent && !panel.isExpired) {
                 Text(
                     text = stringResource(R.string.attempt_partChoice_deadlineWarning),
                     style = MaterialTheme.typography.bodySmall,
@@ -423,11 +435,31 @@ private fun ChoiceOptionCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = option.name?.takeIf { it.isNotBlank() } ?: code,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.text,
-                )
+                val optionName = option.name?.trim()?.takeIf { it.isNotBlank() }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = optionName ?: code,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.text,
+                    )
+                    if (code.isNotBlank() && optionName != null && !optionName.equals(code, ignoreCase = true)) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = colors.bgSubtle,
+                            border = BorderStroke(1.dp, colors.border),
+                        ) {
+                            Text(
+                                text = code,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = colors.textSecondary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                }
 
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -454,14 +486,14 @@ private fun ChoiceOptionCard(
                     Text(
                         text = stringResource(
                             R.string.attempt_partChoice_countsPerSubject,
-                            counts.joinToString("-"),
+                            counts.joinToString("/"),
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textSecondary,
                     )
                 }
 
-                val isFixedSubjects = option.kind != "SUBJECT_CHOICE" && !option.subjects.isNullOrEmpty()
+                val isFixedSubjects = (option.chooseSubjects ?: 0) <= 0 && !option.subjects.isNullOrEmpty()
                 if (isFixedSubjects) {
                     val resolvedNames = option.subjects.orEmpty()
                         .mapNotNull { it.code }

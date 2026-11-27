@@ -319,19 +319,11 @@ internal fun FinishPartDialog(
                                 )
                             }
                             Text(
-                                text = if (summary.missingCount > 0) {
-                                    stringResource(
-                                        R.string.attempt_dialogs_finishPart_missingSummary,
-                                        summary.missingCount,
-                                        summary.totalCount,
-                                    )
-                                } else {
-                                    stringResource(
-                                        R.string.attempt_dialogs_finishPart_allAnswered,
-                                        summary.answeredCount,
-                                        summary.totalCount,
-                                    )
-                                },
+                                text = stringResource(
+                                    R.string.attempt_dialogs_finishPart_missingSummary,
+                                    summary.missingCount,
+                                    summary.totalCount,
+                                ),
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                                 color = if (summary.missingCount > 0) statusColors.warning else statusColors.success,
                             )

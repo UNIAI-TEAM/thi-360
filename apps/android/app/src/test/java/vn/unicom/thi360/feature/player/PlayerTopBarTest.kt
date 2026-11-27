@@ -108,4 +108,25 @@ class PlayerTopBarTest {
             .fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ").orEmpty()
         assertTrue("Expected short TalkBack label: $a11yUrgent", a11yUrgent.contains("0 phút 45 giây"))
     }
+
+    @Test
+    fun perPartTimerHiddenWhenActivePartNotOpen() {
+        val generating = PlayerTestFixtures.withFutureDeadlines(PlayerTestFixtures.attemptState("generating"))
+        val genPart = vn.unicom.thi360.feature.attemptengine.PartSelection.sortedParts(generating)
+            .first { it.state == vn.unicom.thi360.core.network.generated.model.AttemptPartStateView.State.GENERATING }
+
+        composeRule.setContent {
+            PlayerTestTheme {
+                PlayerScreen(
+                    attemptId = generating.attemptId.toString(),
+                    engineState = PlayerTestFixtures.activeEngineState(generating).copy(
+                        clock = Countdown(target = CountdownTarget.Part(genPart.partId!!), remainingMs = 900_000L),
+                    ),
+                    localUi = PlayerLocalUi(),
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(PlayerTestTags.TOP_BAR_TIMER).assertDoesNotExist()
+    }
 }

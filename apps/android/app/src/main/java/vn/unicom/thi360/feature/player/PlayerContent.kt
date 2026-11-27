@@ -248,7 +248,7 @@ internal fun PlayerContent(
                                         host = attachmentHost,
                                         attempt = attempt,
                                         item = unit.parentItem,
-                                        isReadOnly = !ui.canEdit,
+                                        isReadOnly = !ui.canUseAttachments,
                                     ),
                                     childAttachments = { childIdStr ->
                                         val childItem = childById[childIdStr]
@@ -257,7 +257,7 @@ internal fun PlayerContent(
                                                 host = attachmentHost,
                                                 attempt = attempt,
                                                 item = childItem,
-                                                isReadOnly = !ui.canEdit,
+                                                isReadOnly = !ui.canUseAttachments,
                                             )
                                         } else {
                                             null
@@ -291,7 +291,7 @@ internal fun PlayerContent(
                                         host = attachmentHost,
                                         attempt = attempt,
                                         item = unit.parentItem,
-                                        isReadOnly = !ui.canEdit,
+                                        isReadOnly = !ui.canUseAttachments,
                                     ),
                                     modifier = if (leafId != null) {
                                         Modifier.testTag(PlayerTestTags.contentItem(leafId.toString()))

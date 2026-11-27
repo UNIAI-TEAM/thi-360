@@ -246,7 +246,6 @@ internal fun PlayerTopBar(
 
         if (ui.readOnlyBanner != ReadOnlyBannerKind.None) {
             val bannerText = when (ui.readOnlyBanner) {
-                ReadOnlyBannerKind.Acquiring -> stringResource(R.string.attempt_readOnly_acquiring)
                 ReadOnlyBannerKind.SessionUnavailable -> stringResource(R.string.attempt_readOnly_unavailable)
                 ReadOnlyBannerKind.PartClosed -> stringResource(R.string.attempt_readOnly_partClosed)
                 ReadOnlyBannerKind.None -> ""

@@ -7,8 +7,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertEquals
@@ -44,7 +48,7 @@ class PartChoicePanelTest {
         val subjects = subjectOption.subjects!!.mapNotNull { it.code }
 
         var localUi by mutableStateOf(PlayerLocalUi())
-        var remainingMs by mutableStateOf(25_000L)
+        var remainingMs by mutableStateOf(60_000L)
         var command by mutableStateOf<CommandState>(CommandState.Idle)
         var confirmCalls = 0
         var lastConfirmedCode: String? = null
@@ -83,11 +87,25 @@ class PartChoicePanelTest {
             }
         }
 
+        val subjectOptionCode = requireNotNull(subjectOption.code)
         composeRule.onNodeWithTag(PlayerTestTags.CHOICE_PANEL).assertIsDisplayed()
+        composeRule.onNode(
+            hasText(choicePart.partName!!, substring = true) and hasAnyAncestor(hasTestTag(PlayerTestTags.CHOICE_PANEL)),
+        ).assertIsDisplayed()
+        composeRule.onNode(
+            hasText(subjectOptionCode) and hasAnyAncestor(hasTestTag(PlayerTestTags.CHOICE_PANEL)),
+        ).assertIsDisplayed()
+        val expectedCounts = subjectOption.countsByPick.orEmpty()
+        if (expectedCounts.isNotEmpty()) {
+            composeRule.onNodeWithText(expectedCounts.joinToString("/"), substring = true).assertIsDisplayed()
+        }
         composeRule.onNodeWithTag(PlayerTestTags.CHOICE_TIMER).assertIsDisplayed()
+        composeRule.onNodeWithTag(PlayerTestTags.CHOICE_DEADLINE_WARNING).assertDoesNotExist()
+
+        composeRule.runOnIdle { remainingMs = 25_000L }
         composeRule.onNodeWithTag(PlayerTestTags.CHOICE_DEADLINE_WARNING).assertIsDisplayed()
 
-        composeRule.onNodeWithTag(PlayerTestTags.choiceOption(subjectOption.code!!)).performClick()
+        composeRule.onNodeWithTag(PlayerTestTags.choiceOption(subjectOptionCode)).performClick()
         composeRule.onNodeWithTag(PlayerTestTags.CHOICE_CONFIRM).assertIsNotEnabled()
 
         for (i in 0 until required) {
@@ -124,9 +142,9 @@ class PartChoicePanelTest {
             .assertIsDisplayed()
             .assertTextContains("đã xác nhận lựa chọn khác", substring = true)
 
-        // Timer expiry disables confirm and displays expired text
         composeRule.runOnIdle { remainingMs = 0L }
         composeRule.onNodeWithTag(PlayerTestTags.CHOICE_DEADLINE_EXPIRED).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(PlayerTestTags.CHOICE_DEADLINE_WARNING).assertDoesNotExist()
         composeRule.onNodeWithTag(PlayerTestTags.CHOICE_CONFIRM).performScrollTo().assertIsNotEnabled()
     }
 

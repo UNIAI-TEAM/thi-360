@@ -4,6 +4,10 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.saveable.Saver
 import java.time.OffsetDateTime
 import java.util.UUID
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import vn.unicom.thi360.core.network.generated.model.AfterStartChoiceView
 import vn.unicom.thi360.core.network.generated.model.AttemptItemView
 import vn.unicom.thi360.core.network.generated.model.AttemptPartStateView
@@ -107,7 +111,6 @@ enum class PlayerPrimarySurface {
 
 enum class ReadOnlyBannerKind {
     None,
-    Acquiring,
     SessionUnavailable,
     PartClosed,
 }
@@ -222,6 +225,7 @@ data class ChoicePanelUi(
     val selectedOptionCode: String?,
     val selectedSubjectCodes: List<String>,
     val requiredSubjectCount: Int,
+    val isLocked: Boolean,
     val canConfirm: Boolean,
     val isSending: Boolean,
     val errorCode: String?,
@@ -234,6 +238,7 @@ data class GenerationPanelUi(
     val partName: String,
     val isFailed: Boolean,
     val chosenOptionName: String?,
+    val isLocked: Boolean,
     val isRetrying: Boolean,
     val errorCode: String?,
 )
@@ -262,6 +267,7 @@ data class PlayerUi(
     val topActionEnabled: Boolean,
     val readOnlyBanner: ReadOnlyBannerKind,
     val canEdit: Boolean,
+    val canUseAttachments: Boolean,
     val questionMode: QuestionMode,
     val activePart: AttemptPartStateView?,
     val activePartDisplayName: String,
@@ -286,8 +292,6 @@ data class PlayerUi(
     val subjectsByCode: Map<String, ChoiceSubjectView>,
 ) {
     companion object {
-        private const val OPTION_KIND_SUBJECT_CHOICE = "SUBJECT_CHOICE"
-
         fun of(
             state: EngineState,
             layout: PlayerLayout,
@@ -299,19 +303,25 @@ data class PlayerUi(
             val surface = resolvePrimarySurface(state)
             val loadFailed = state.load as? LoadState.Failed
             val sortedParts = attempt?.let(PartSelection::sortedParts).orEmpty()
+            val loadedMetadata = (partChoiceLoad as? LoadState.Loaded)?.value
 
             val activePart = resolveActivePart(attempt, sortedParts, state.position?.partId)
             val activePartState = activePart?.state
             val isEditingSession = state.session is EditSessionState.Editing
-            val canEdit = surface == PlayerPrimarySurface.Active &&
-                isEditingSession &&
-                activePartState == AttemptPartStateView.State.OPEN &&
+            val isSessionEditable = isEditingSession || state.session is EditSessionState.Acquiring
+            val isSessionReadOnly = state.session is EditSessionState.OpenElsewhere ||
+                state.session is EditSessionState.Evicted ||
+                state.session is EditSessionState.ReadOnly
+            val isAttemptOpen = surface == PlayerPrimarySurface.Active &&
                 state.closed == null &&
                 attempt?.state == AttemptStateResponse.State.IN_PROGRESS
+            val canEdit = isAttemptOpen &&
+                isSessionEditable &&
+                activePartState == AttemptPartStateView.State.OPEN
+            val canUseAttachments = canEdit && isEditingSession
 
             val readOnlyBanner = when {
                 surface != PlayerPrimarySurface.Active -> ReadOnlyBannerKind.None
-                state.session is EditSessionState.Acquiring -> ReadOnlyBannerKind.Acquiring
                 state.session is EditSessionState.ReadOnly -> when (state.session.reason) {
                     ReadOnlyReason.PartClosed -> ReadOnlyBannerKind.PartClosed
                     ReadOnlyReason.SessionUnavailable -> ReadOnlyBannerKind.SessionUnavailable
@@ -324,8 +334,8 @@ data class PlayerUi(
             }
 
             val isFreeNavigation = attempt?.navigationMode == AttemptStateResponse.NavigationMode.FREE
-            val partTabs = sortedParts.mapNotNull { part ->
-                val partId = part.partId ?: return@mapNotNull null
+            val partTabs = sortedParts.mapIndexedNotNull { idx, part ->
+                val partId = part.partId ?: return@mapIndexedNotNull null
                 val pState = part.state ?: AttemptPartStateView.State.PENDING
                 val leaves = PartSelection.leafItems(part)
                 val answered = leaves.count { leaf ->
@@ -333,15 +343,20 @@ data class PlayerUi(
                     Completion.of(leaf, state.answers[id]?.value) == ItemCompletion.Answered
                 }
                 val isSelected = partId == activePart?.partId
-                val isClickable = if (isFreeNavigation) {
-                    PartSelection.isSelectableState(pState)
-                } else {
-                    isSelected
-                }
+                val isClickable = isFreeNavigation &&
+                    isAttemptOpen &&
+                    !isSessionReadOnly &&
+                    pState == AttemptPartStateView.State.OPEN &&
+                    !isSelected
                 PartTabUi(
                     partId = partId,
                     ord = part.ord ?: 0,
-                    name = part.partName.orEmpty(),
+                    name = resolvePartDisplayName(
+                        part = part,
+                        displayOrd = idx + 1,
+                        attempt = attempt,
+                        metadata = loadedMetadata,
+                    ),
                     state = pState,
                     isSelected = isSelected,
                     isClickable = isClickable,
@@ -353,6 +368,7 @@ data class PlayerUi(
             val topAction = resolveTopAction(attempt, sortedParts, activePart)
             val isCommandSending = state.command is CommandState.Sending
             val topActionEnabled = topAction != PlayerTopAction.None &&
+                isEditingSession &&
                 canEdit &&
                 !isCommandSending
 
@@ -402,11 +418,17 @@ data class PlayerUi(
                 .let { idx -> if (idx >= 0) idx + 1 else if (allGridCells.isNotEmpty()) 1 else 0 }
             val answeredInActivePart = allGridCells.count { it.completion == ItemCompletion.Answered }
 
-            val loadedMetadata = (partChoiceLoad as? LoadState.Loaded)?.value
             val subjectsByCode = loadedMetadata?.subjectsByCode.orEmpty()
 
             val effectiveRefusal = (state.command as? CommandState.Refused)
                 ?.takeUnless { it == dismissedRefusal }
+
+            val activeDisplayOrd = activePart?.let { ap ->
+                val idx = sortedParts.indexOfFirst { it.partId == ap.partId }
+                if (idx >= 0) idx + 1 else ((ap.ord ?: 0).takeIf { it > 0 } ?: 1)
+            } ?: 1
+
+            val isPanelLocked = !isAttemptOpen || isSessionReadOnly
 
             val choicePanel = if (surface == PlayerPrimarySurface.Active &&
                 activePart != null &&
@@ -414,7 +436,10 @@ data class PlayerUi(
             ) {
                 buildChoicePanelUi(
                     state = state,
+                    attempt = attempt,
                     part = activePart,
+                    displayOrd = activeDisplayOrd,
+                    isLocked = isPanelLocked,
                     local = local,
                     partChoiceLoad = partChoiceLoad,
                     refusal = effectiveRefusal,
@@ -430,7 +455,10 @@ data class PlayerUi(
             ) {
                 buildGenerationPanelUi(
                     state = state,
+                    attempt = attempt,
                     part = activePart,
+                    displayOrd = activeDisplayOrd,
+                    isLocked = isPanelLocked,
                     metadata = loadedMetadata,
                     refusal = effectiveRefusal,
                 )
@@ -451,18 +479,25 @@ data class PlayerUi(
             }
 
             val finishPartSummary = if (effectiveDialog == PlayerDialog.FinishPart && activePart != null) {
-                buildFinishPartSummary(activePart, sortedParts, state)
+                buildFinishPartSummary(activePart, activeDisplayOrd, sortedParts, attempt, loadedMetadata, state)
             } else {
                 null
             }
 
             val submitSummary = if (effectiveDialog == PlayerDialog.Submit && attempt != null) {
-                buildSubmitSummary(sortedParts, state)
+                buildSubmitSummary(sortedParts, attempt, loadedMetadata, state)
             } else {
                 null
             }
 
-            val activePartDisplayName = resolveActivePartLabel(activePart, loadedMetadata)
+            val activePartDisplayName = activePart?.let {
+                resolvePartDisplayName(
+                    part = it,
+                    displayOrd = activeDisplayOrd,
+                    attempt = attempt,
+                    metadata = loadedMetadata,
+                )
+            }.orEmpty()
 
             val hasUnsavedChanges = state.save is SaveStatus.Saving ||
                 state.save is SaveStatus.Unsaved ||
@@ -502,6 +537,7 @@ data class PlayerUi(
                 topActionEnabled = topActionEnabled,
                 readOnlyBanner = readOnlyBanner,
                 canEdit = canEdit,
+                canUseAttachments = canUseAttachments,
                 questionMode = if (canEdit) QuestionMode.Answering else QuestionMode.Locked,
                 activePart = activePart,
                 activePartDisplayName = activePartDisplayName,
@@ -599,7 +635,8 @@ data class PlayerUi(
             activePart: AttemptPartStateView?,
         ): TimerUi {
             val target = state.clock.target
-            val visible = target is CountdownTarget.Attempt || target is CountdownTarget.Part
+            val visible = target is CountdownTarget.Attempt ||
+                (target is CountdownTarget.Part && activePart?.state == AttemptPartStateView.State.OPEN)
             val remainingMs = if (visible) state.clock.remainingMs.coerceAtLeast(0L) else 0L
             val displayOrd = if (target is CountdownTarget.Part && activePart != null) {
                 val idx = sortedParts.indexOfFirst { it.partId == activePart.partId }
@@ -620,7 +657,10 @@ data class PlayerUi(
 
         private fun buildChoicePanelUi(
             state: EngineState,
+            attempt: AttemptStateResponse?,
             part: AttemptPartStateView,
+            displayOrd: Int,
+            isLocked: Boolean,
             local: PlayerLocalUi,
             partChoiceLoad: LoadState<PartChoiceMetadata>,
             refusal: CommandState.Refused?,
@@ -638,11 +678,7 @@ data class PlayerUi(
                 ?.takeIf { code -> options.any { it.code == code } }
                 ?: if (options.size == 1) options.first().code else null
             val selectedOption = options.firstOrNull { it.code == selectedCode }
-            val requiredSubjects = if (selectedOption?.kind == OPTION_KIND_SUBJECT_CHOICE) {
-                (selectedOption.chooseSubjects ?: 0).coerceAtLeast(0)
-            } else {
-                0
-            }
+            val requiredSubjects = (selectedOption?.chooseSubjects ?: 0).coerceAtLeast(0)
             val validSubjectSet = selectedOption?.subjects.orEmpty()
                 .mapNotNull { it.code }
                 .toSet()
@@ -658,6 +694,7 @@ data class PlayerUi(
             val isSending = state.command is CommandState.Sending &&
                 state.command.kind == AttemptCommandKind.Choice
             val canConfirm = state.session is EditSessionState.Editing &&
+                !isLocked &&
                 !isExpired &&
                 !isSending &&
                 selectedOption != null &&
@@ -667,18 +704,20 @@ data class PlayerUi(
             return ChoicePanelUi(
                 partId = partId,
                 partOrd = part.ord ?: 3,
-                partName = part.partName.orEmpty(),
+                partName = resolvePartDisplayName(part, displayOrd, attempt, metadata),
                 metadataState = partChoiceLoad,
                 matchedChoice = matched,
                 options = options,
                 subjectsByCode = metadata?.subjectsByCode.orEmpty(),
                 remainingMs = remainingMs,
                 isTimerVisible = isChoiceCountdown || part.choiceDeadlineAt != null,
-                isUrgent = isChoiceCountdown && TimerText.isUrgent(remainingMs, TimerText.CHOICE_URGENT_THRESHOLD_MS),
+                isUrgent = isChoiceCountdown && !isExpired &&
+                    TimerText.isUrgent(remainingMs, TimerText.CHOICE_URGENT_THRESHOLD_MS),
                 isExpired = isExpired,
                 selectedOptionCode = selectedCode,
                 selectedSubjectCodes = selectedSubjects,
                 requiredSubjectCount = requiredSubjects,
+                isLocked = isLocked,
                 canConfirm = canConfirm,
                 isSending = isSending,
                 errorCode = refusal?.code,
@@ -688,83 +727,114 @@ data class PlayerUi(
 
         private fun buildGenerationPanelUi(
             state: EngineState,
+            attempt: AttemptStateResponse?,
             part: AttemptPartStateView,
+            displayOrd: Int,
+            isLocked: Boolean,
             metadata: PartChoiceMetadata?,
             refusal: CommandState.Refused?,
         ): GenerationPanelUi {
             val partId = part.partId ?: UUID(0L, 0L)
-            val parsedChoice = UnitGrouping.parseChoice(part.choice)
-            val chosenName = parsedChoice.optionCode?.let { code ->
-                metadata?.choiceForPart(part)
-                    ?.options
-                    .orEmpty()
-                    .firstOrNull { it.code == code }
-                    ?.name
-                    ?: code
-            }
+            val chosenName = resolveChosenOptionName(part, attempt, metadata)
+            val basePartName = part.partName?.trim()?.takeIf(String::isNotBlank)
+                ?: part.partCode?.trim()?.takeIf(String::isNotBlank)
+                ?: "#$displayOrd"
             val isRetrying = state.command is CommandState.Sending &&
                 state.command.kind == AttemptCommandKind.Retry
             return GenerationPanelUi(
                 partId = partId,
-                partName = part.partName.orEmpty(),
+                partName = basePartName,
                 isFailed = part.state == AttemptPartStateView.State.GENERATION_FAILED,
                 chosenOptionName = chosenName,
+                isLocked = isLocked,
                 isRetrying = isRetrying,
                 errorCode = refusal?.code,
             )
         }
 
-        private fun resolveActivePartLabel(
-            activePart: AttemptPartStateView?,
+        private fun resolveChosenOptionName(
+            part: AttemptPartStateView,
+            attempt: AttemptStateResponse?,
             metadata: PartChoiceMetadata?,
-        ): String {
-            if (activePart == null) return ""
-            val parsed = UnitGrouping.parseChoice(activePart.choice)
-            val optionName = parsed.optionCode?.let { code ->
-                metadata?.choiceForPart(activePart)
+        ): String? {
+            val partChoiceMap = part.choice
+            val directName = (partChoiceMap?.get("name") as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotBlank)
+            if (directName != null) return directName
+
+            var optionCode = UnitGrouping.parseChoice(partChoiceMap).optionCode
+            val attemptChoiceElement: JsonElement? = attempt?.choices?.let { map ->
+                part.ord?.toString()?.let { map[it] }
+                    ?: part.partCode?.let { map[it] }
+            }
+            if (attemptChoiceElement is JsonObject) {
+                val objName = (attemptChoiceElement["name"] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotBlank)
+                if (objName != null) return objName
+                if (optionCode == null) {
+                    optionCode = (attemptChoiceElement["optionCode"] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotBlank)
+                        ?: (attemptChoiceElement["code"] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotBlank)
+                }
+            } else if (optionCode == null && attemptChoiceElement is JsonPrimitive) {
+                optionCode = attemptChoiceElement.contentOrNull?.trim()?.takeIf(String::isNotBlank)
+            }
+
+            return optionCode?.let { code ->
+                metadata?.choiceForPart(part)
                     ?.options
                     .orEmpty()
                     .firstOrNull { it.code == code }
                     ?.name
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    ?: code
             }
-            val baseName = activePart.partName.orEmpty()
-            return if (!optionName.isNullOrBlank() && !baseName.contains(optionName, ignoreCase = true)) {
-                "$baseName · $optionName"
-            } else {
-                baseName
-            }
+        }
+
+        private fun resolvePartDisplayName(
+            part: AttemptPartStateView,
+            displayOrd: Int,
+            attempt: AttemptStateResponse?,
+            metadata: PartChoiceMetadata?,
+        ): String {
+            val chosenName = resolveChosenOptionName(part, attempt, metadata)
+            if (!chosenName.isNullOrBlank()) return chosenName
+            val partName = part.partName?.trim()
+            if (!partName.isNullOrBlank()) return partName
+            val partCode = part.partCode?.trim()
+            if (!partCode.isNullOrBlank()) return partCode
+            return "#$displayOrd"
         }
 
         private fun buildFinishPartSummary(
             activePart: AttemptPartStateView,
+            activeDisplayOrd: Int,
             sortedParts: List<AttemptPartStateView>,
+            attempt: AttemptStateResponse?,
+            metadata: PartChoiceMetadata?,
             state: EngineState,
         ): FinishPartSummaryUi {
             val leaves = PartSelection.leafItems(activePart)
             var answered = 0
             var partial = 0
+            var blank = 0
             for (leaf in leaves) {
                 val id = leaf.itemId ?: continue
                 when (Completion.of(leaf, state.answers[id]?.value)) {
                     ItemCompletion.Answered -> answered += 1
                     ItemCompletion.Partial -> partial += 1
-                    ItemCompletion.Blank -> Unit
+                    ItemCompletion.Blank -> blank += 1
                 }
             }
             val total = leaves.size
-            val missing = (total - answered).coerceAtLeast(0)
             val activeOrd = activePart.ord ?: 0
             val nextPart = sortedParts.firstOrNull { (it.ord ?: 0) > activeOrd }
-            val nextNeedsChoice = nextPart?.state == AttemptPartStateView.State.AWAITING_CHOICE ||
-                (nextPart != null && nextPart.items.isNullOrEmpty() && nextPart.choiceDeadlineAt != null) ||
-                (nextPart?.state == AttemptPartStateView.State.PENDING && (nextPart.questionCount ?: 0) == 0 && nextPart.items.isNullOrEmpty())
+            val nextNeedsChoice = nextPart?.state == AttemptPartStateView.State.AWAITING_CHOICE
 
             return FinishPartSummaryUi(
                 partId = activePart.partId ?: UUID(0L, 0L),
-                partName = activePart.partName.orEmpty(),
+                partName = resolvePartDisplayName(activePart, activeDisplayOrd, attempt, metadata),
                 answeredCount = answered,
                 partialCount = partial,
-                missingCount = missing,
+                missingCount = blank,
                 totalCount = total,
                 nextPartNeedsChoice = nextNeedsChoice,
                 hasNextPart = nextPart != null,
@@ -773,6 +843,8 @@ data class PlayerUi(
 
         private fun buildSubmitSummary(
             sortedParts: List<AttemptPartStateView>,
+            attempt: AttemptStateResponse,
+            metadata: PartChoiceMetadata?,
             state: EngineState,
         ): SubmitSummaryUi {
             var answered = 0
@@ -787,9 +859,9 @@ data class PlayerUi(
             var hasUnsavedEssay = false
             val essayWarnings = mutableListOf<EssayUnderLimitUi>()
 
-            for (part in sortedParts) {
+            sortedParts.forEachIndexed { idx, part ->
                 val leaves = PartSelection.leafItems(part)
-                if (leaves.isEmpty()) continue
+                if (leaves.isEmpty()) return@forEachIndexed
                 var partAnswered = 0
                 for (leaf in leaves) {
                     val id = leaf.itemId ?: continue
@@ -827,18 +899,16 @@ data class PlayerUi(
                     }
                 }
                 val partMissing = (leaves.size - partAnswered).coerceAtLeast(0)
-                if (partMissing > 0) {
-                    partBreakdown.add(
-                        PartMissingRowUi(
-                            partId = part.partId ?: UUID(0L, 0L),
-                            ord = part.ord ?: 0,
-                            partName = part.partName.orEmpty(),
-                            answeredCount = partAnswered,
-                            totalCount = leaves.size,
-                            missingCount = partMissing,
-                        ),
-                    )
-                }
+                partBreakdown.add(
+                    PartMissingRowUi(
+                        partId = part.partId ?: UUID(0L, 0L),
+                        ord = part.ord ?: 0,
+                        partName = resolvePartDisplayName(part, idx + 1, attempt, metadata),
+                        answeredCount = partAnswered,
+                        totalCount = leaves.size,
+                        missingCount = partMissing,
+                    ),
+                )
             }
 
             return SubmitSummaryUi(
