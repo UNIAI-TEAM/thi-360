@@ -4,16 +4,7 @@ enum AuthStrings {
     static let tableName = "Auth"
 
     static func text(_ key: String, locale: AppLocale, bundle: Bundle = .main) -> String {
-        if let lprojPath = bundle.path(forResource: locale.rawValue, ofType: "lproj"),
-           let localizedBundle = Bundle(path: lprojPath)
-        {
-            let value = localizedBundle.localizedString(forKey: key, value: nil, table: tableName)
-            if value != key {
-                return value
-            }
-        }
-
-        return String(localized: String.LocalizationValue(key), table: tableName, bundle: bundle, locale: locale.locale)
+        AppStrings.text(key, table: tableName, locale: locale, bundle: bundle)
     }
 }
 
@@ -37,11 +28,12 @@ enum LoginBannerKind: Equatable, Sendable {
     case error(LoginErrorCode)
     case sessionExpired
     case passwordResetDone
+    case accountDeleted
 
     var isDestructive: Bool {
         switch self {
         case .error, .sessionExpired: true
-        case .passwordResetDone: false
+        case .passwordResetDone, .accountDeleted: false
         }
     }
 
@@ -53,6 +45,8 @@ enum LoginBannerKind: Equatable, Sendable {
             AuthStrings.text("auth.login.sessionExpired", locale: locale, bundle: bundle)
         case .passwordResetDone:
             AuthStrings.text("auth.login.passwordResetDone", locale: locale, bundle: bundle)
+        case .accountDeleted:
+            AppStrings.common("account.deletion.deletedNotice", locale: locale, bundle: bundle)
         }
     }
 }

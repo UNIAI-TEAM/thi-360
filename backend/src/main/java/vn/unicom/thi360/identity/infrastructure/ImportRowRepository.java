@@ -58,4 +58,11 @@ public interface ImportRowRepository extends JpaRepository<ImportRow, UUID> {
     boolean existsByBatchIdAndClassCodeNormalizedIsNotNull(UUID batchId);
 
     int countByBatchIdAndStatus(UUID batchId, ImportRowStatus status);
+
+    @Query("""
+            SELECT r FROM ImportRow r
+            WHERE r.createdUserId = :userId
+               OR r.provisionalUserId = :userId
+            """)
+    List<ImportRow> findAllByCreatedUserIdOrProvisionalUserId(@Param("userId") UUID userId);
 }

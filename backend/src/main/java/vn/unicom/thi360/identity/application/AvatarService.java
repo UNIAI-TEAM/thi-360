@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import vn.unicom.thi360.audit.spi.AuditActorType;
 import vn.unicom.thi360.audit.spi.AuditEvent;
@@ -119,6 +121,17 @@ public class AvatarService {
         if (removedAssetId != null) {
             deleteOrQueue(storage, objectKey(removedAssetId), false);
         }
+    }
+
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void removeInCurrentTransaction(UUID userId) {
+        UserAvatar current = avatarRepository.findById(userId).orElse(null);
+        if (current == null) {
+            return;
+        }
+        avatarRepository.delete(current);
+        avatarRepository.flush();
+        queueObjectDeletion(current.getObjectKey());
     }
 
     /**

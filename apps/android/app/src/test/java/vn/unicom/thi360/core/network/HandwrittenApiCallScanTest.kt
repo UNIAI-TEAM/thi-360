@@ -22,6 +22,7 @@ class HandwrittenApiCallScanTest {
      * - core/network/Thi360ApiFactory.kt: constructs OkHttpClient / Retrofit ApiClient for generated APIs
      * - core/network/AuthInterceptors.kt: OkHttp interceptors / TokenAuthenticator for generated APIs
      * - core/network/RedactingHttpLogger.kt: OkHttp redacting logging interceptor
+     * - feature/richcontent/assets/AttemptAssetSource.kt: binary attempt/solution asset download via authenticatedOkHttpClient & /api/v1/ admin-path rewrite (AND-RICH, P2-D-44)
      */
     private val allowlist = setOf(
         "core/appearance/AppearanceRepository.kt",
@@ -29,6 +30,7 @@ class HandwrittenApiCallScanTest {
         "core/network/Thi360ApiFactory.kt",
         "core/network/AuthHeaderInterceptor.kt",
         "core/network/RedactingHttpLogger.kt",
+        "feature/richcontent/assets/AttemptAssetSource.kt",
     )
 
     private val forbiddenPatterns = listOf(

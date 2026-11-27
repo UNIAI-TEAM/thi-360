@@ -33,6 +33,37 @@ protocol MobileRecoveryClientProtocol: Sendable {
     func changePassword(oldPassword: String, newPassword: String) async throws
 }
 
+struct FlexibleISO8601DateTranscoder: DateTranscoder, Sendable {
+    func encode(_ date: Date) throws -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.string(from: date)
+    }
+
+    func decode(_ dateString: String) throws -> Date {
+        if let date = Self.parse(dateString) {
+            return date
+        }
+        throw DecodingError.dataCorrupted(
+            DecodingError.Context(
+                codingPath: [],
+                debugDescription: "Invalid ISO-8601 date: \(dateString)"
+            )
+        )
+    }
+
+    static func parse(_ dateString: String) -> Date? {
+        let withFraction = ISO8601DateFormatter()
+        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = withFraction.date(from: dateString) {
+            return date
+        }
+        let standard = ISO8601DateFormatter()
+        standard.formatOptions = [.withInternetDateTime]
+        return standard.date(from: dateString)
+    }
+}
+
 final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProtocol, Sendable {
     let serverURL: URL
     let publicClient: Client
@@ -48,13 +79,16 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
     ) {
         self.serverURL = serverURL
 
+        let configuration = Configuration(dateTranscoder: FlexibleISO8601DateTranscoder())
         let acceptLanguage = AcceptLanguageMiddleware(localeProvider: localeProvider)
+        let retryAfter = RetryAfterMiddleware()
         let logging = NetworkLoggingMiddleware(logger: logger)
 
         let publicClient = Client(
             serverURL: serverURL,
+            configuration: configuration,
             transport: transport,
-            middlewares: [acceptLanguage, logging]
+            middlewares: [acceptLanguage, retryAfter, logging]
         )
         self.publicClient = publicClient
 
@@ -69,9 +103,35 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         let bearer = AuthBearerMiddleware(tokenStore: tokenStore, refresher: refresher)
         self.authenticatedClient = Client(
             serverURL: serverURL,
+            configuration: configuration,
             transport: transport,
-            middlewares: [acceptLanguage, bearer, logging]
+            middlewares: [acceptLanguage, retryAfter, bearer, logging]
         )
+    }
+
+    static func makeJSONDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let raw = try container.decode(String.self)
+            guard let date = FlexibleISO8601DateTranscoder.parse(raw) else {
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Invalid ISO-8601 date: \(raw)"
+                )
+            }
+            return date
+        }
+        return decoder
+    }
+
+    static func decodeJSONBody<T: Decodable>(
+        _ type: T.Type,
+        from body: HTTPBody,
+        maxBytes: Int = 8_388_608
+    ) async throws -> T {
+        let data = try await Data(collecting: body, upTo: maxBytes)
+        return try makeJSONDecoder().decode(type, from: data)
     }
 
     func login(identifier: String, password: String) async throws -> SessionTokens {

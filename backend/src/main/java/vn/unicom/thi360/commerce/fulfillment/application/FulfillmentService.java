@@ -30,6 +30,7 @@ import vn.unicom.thi360.commerce.order.infrastructure.OrderHistoryRepository;
 import vn.unicom.thi360.commerce.order.infrastructure.PurchaseOrderItemRepository;
 import vn.unicom.thi360.commerce.order.infrastructure.PurchaseOrderRepository;
 import vn.unicom.thi360.commerce.promotion.application.PromotionRedemptionService;
+import vn.unicom.thi360.identity.spi.AccountDeletionState;
 import vn.unicom.thi360.identity.spi.UserDirectory;
 import vn.unicom.thi360.identity.spi.UserDirectory.MailContact;
 import vn.unicom.thi360.shared.ids.Ids;
@@ -45,6 +46,9 @@ import vn.unicom.thi360.shared.mail.MailQueue;
 public class FulfillmentService {
 
     private static final Logger log = LoggerFactory.getLogger(FulfillmentService.class);
+    private static final String REVIEW_REASON_ACCOUNT_DELETED = "ACCOUNT_DELETED";
+    private static final String HISTORY_REASON_ACCOUNT_DELETED = "FULFILLMENT_SKIPPED_ACCOUNT_DELETED";
+    private static final String AUDIT_ACTION_ACCOUNT_DELETED = "ORDER_FULFILLMENT_SKIPPED_ACCOUNT_DELETED";
 
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final PurchaseOrderItemRepository purchaseOrderItemRepository;
@@ -52,6 +56,7 @@ public class FulfillmentService {
     private final EntitlementGrantService entitlementGrantService;
     private final PromotionRedemptionService promotionRedemptionService;
     private final RefundProgress refundProgress;
+    private final AccountDeletionState accountDeletionState;
     private final UserDirectory userDirectory;
     private final MailQueue mailQueue;
     private final AuditRecorder auditRecorder;
@@ -65,6 +70,7 @@ public class FulfillmentService {
             EntitlementGrantService entitlementGrantService,
             PromotionRedemptionService promotionRedemptionService,
             RefundProgress refundProgress,
+            AccountDeletionState accountDeletionState,
             UserDirectory userDirectory,
             MailQueue mailQueue,
             AuditRecorder auditRecorder,
@@ -76,6 +82,7 @@ public class FulfillmentService {
         this.entitlementGrantService = Objects.requireNonNull(entitlementGrantService);
         this.promotionRedemptionService = Objects.requireNonNull(promotionRedemptionService);
         this.refundProgress = Objects.requireNonNull(refundProgress);
+        this.accountDeletionState = Objects.requireNonNull(accountDeletionState);
         this.userDirectory = Objects.requireNonNull(userDirectory);
         this.mailQueue = Objects.requireNonNull(mailQueue);
         this.auditRecorder = Objects.requireNonNull(auditRecorder);
@@ -164,6 +171,10 @@ public class FulfillmentService {
         if (order.getState() != OrderState.PAID) {
             return false;
         }
+        if (accountDeletionState.lockAndIsDeleted(order.getUserId())) {
+            recordSkippedDeletedAccount(order, actorName);
+            return false;
+        }
 
         List<PurchaseOrderItem> items = purchaseOrderItemRepository.findByOrderIdOrderByPositionAsc(order.getId());
         if (items.isEmpty()) {
@@ -210,6 +221,37 @@ public class FulfillmentService {
 
         enqueueVerifiedOrderFulfilledMail(order, items);
         return true;
+    }
+
+    private void recordSkippedDeletedAccount(PurchaseOrder order, String actorName) {
+        boolean alreadyLogged = orderHistoryRepository.findByOrderIdOrderByAtAsc(order.getId())
+                .stream()
+                .anyMatch(h -> HISTORY_REASON_ACCOUNT_DELETED.equals(h.getReason()));
+        if (alreadyLogged) {
+            return;
+        }
+        Instant now = clock.instant();
+        if (!order.isNeedsReview()) {
+            order.flagNeedsReview(REVIEW_REASON_ACCOUNT_DELETED, now);
+            purchaseOrderRepository.save(order);
+        }
+        orderHistoryRepository.save(new OrderHistory(
+                Ids.newId(),
+                order.getId(),
+                OrderState.PAID,
+                OrderState.PAID,
+                StringUtils.hasText(actorName) ? actorName : "SYSTEM",
+                HISTORY_REASON_ACCOUNT_DELETED,
+                now));
+        auditRecorder.record(AuditEvent.builder("commerce", AUDIT_ACTION_ACCOUNT_DELETED)
+                .actor(null, "SYSTEM", List.of(), AuditActorType.SYSTEM)
+                .target("PURCHASE_ORDER", order.getId().toString(), order.getCode())
+                .reason(HISTORY_REASON_ACCOUNT_DELETED)
+                .after(Map.of(
+                        "orderCode", order.getCode(),
+                        "state", OrderState.PAID.name(),
+                        "reviewReason", order.getReviewReason() == null ? "" : order.getReviewReason()))
+                .build());
     }
 
     private void enqueueVerifiedOrderFulfilledMail(PurchaseOrder order, List<PurchaseOrderItem> items) {

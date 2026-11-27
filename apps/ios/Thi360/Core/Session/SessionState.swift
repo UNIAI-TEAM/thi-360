@@ -5,6 +5,7 @@ enum SignedOutReason: Equatable, Sendable {
     case expired
     case studentOnly(username: String)
     case passwordReset
+    case accountDeleted
 }
 
 enum SessionState: Equatable, Sendable {

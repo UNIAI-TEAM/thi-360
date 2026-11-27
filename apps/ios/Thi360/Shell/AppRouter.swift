@@ -17,7 +17,18 @@ enum RecoveryOverlay: Equatable, Sendable {
 @Observable
 @MainActor
 final class AppRouter {
-    var selectedDestination: Destination = .home
+    var selectedDestination: Destination = .home {
+        didSet {
+            if oldValue == .history && selectedDestination != .history {
+                historyResetFilters = false
+            }
+        }
+    }
+    var paths: [Destination: [AppRoute]] = [:]
+    var presentedAttempt: AttemptRef?
+    var reloadTokens: [Destination: Int] = [:]
+    var historyResetFilters: Bool = false
+    var signedOutPath: [AppRoute] = []
     var draftProbeText: String = ""
     let stateProbeEnabled: Bool
     var forcedSizeClassForUITest: UserInterfaceSizeClass?
@@ -25,14 +36,19 @@ final class AppRouter {
     var recoveryOverlay: RecoveryOverlay?
     var isPresentingChangePassword: Bool
 
+    let routeStateStore = RouteStateStore()
+    let inboundLinkRouter = InboundLinkRouter()
+
     @ObservationIgnored private var cachedVoluntaryPasswordVM: NewPasswordViewModel?
     @ObservationIgnored private var cachedResetPasswordVM: NewPasswordViewModel?
     @ObservationIgnored private var cachedResetLinkID: UUID?
     @ObservationIgnored private var cachedAccountVM: AccountViewModel?
     @ObservationIgnored private var cachedLockVM: LockViewModel?
+    @ObservationIgnored private var cachedRegisterVM: RegisterViewModel?
 
     init(
         initialDestination: Destination = .home,
+        initialRoute: AppRoute? = nil,
         stateProbeEnabled: Bool = false,
         initialResetLink: ResetLink? = nil,
         isPresentingChangePassword: Bool = false
@@ -41,6 +57,37 @@ final class AppRouter {
         self.stateProbeEnabled = stateProbeEnabled
         self.recoveryOverlay = initialResetLink.map { .resetPassword($0) }
         self.isPresentingChangePassword = isPresentingChangePassword
+
+        if let initialRoute {
+            switch initialRoute {
+            case .catalog:
+                self.selectedDestination = .home
+            case .myExams:
+                self.selectedDestination = .myExams
+            case let .history(resetFilters):
+                self.selectedDestination = .history
+                self.historyResetFilters = resetFilters
+            case let .attempt(attemptId):
+                self.presentedAttempt = AttemptRef(
+                    attemptId: attemptId,
+                    originDestination: initialDestination
+                )
+            default:
+                self.paths[initialDestination] = [initialRoute]
+            }
+        }
+
+        self.inboundLinkRouter.register(
+            id: "auth.resetLink",
+            requiresUnlockedSession: false
+        ) { [weak self] url, environment in
+            guard let resetLink = ResetLink.parse(url, environment: environment) else {
+                return nil
+            }
+            return { [weak self] in
+                self?.openResetLink(resetLink)
+            }
+        }
     }
 
     var activeResetLink: ResetLink? {
@@ -63,11 +110,7 @@ final class AppRouter {
         _ url: URL,
         environment: AppEnvironment = .current
     ) -> Bool {
-        guard let resetLink = ResetLink.parse(url, environment: environment) else {
-            return false
-        }
-        openResetLink(resetLink)
-        return true
+        inboundLinkRouter.handleIncomingURL(url, environment: environment)
     }
 
     @discardableResult
@@ -75,11 +118,7 @@ final class AppRouter {
         _ userActivity: NSUserActivity,
         environment: AppEnvironment = .current
     ) -> Bool {
-        guard let resetLink = ResetLink.fromUserActivity(userActivity, environment: environment) else {
-            return false
-        }
-        openResetLink(resetLink)
-        return true
+        inboundLinkRouter.handleUserActivity(userActivity, environment: environment)
     }
 
     func openResetLink(_ resetLink: ResetLink) {
@@ -177,6 +216,26 @@ final class AppRouter {
         return viewModel
     }
 
+    func registerViewModel(
+        sessionStore: SessionStore,
+        legalRepository: LegalRepository = LegalRepository()
+    ) -> RegisterViewModel {
+        if let existing = cachedRegisterVM {
+            return existing
+        }
+        let viewModel = RegisterViewModel(
+            sessionStore: sessionStore,
+            legalRepository: legalRepository
+        )
+        cachedRegisterVM = viewModel
+        return viewModel
+    }
+
+    func clearRegisterViewModel() {
+        cachedRegisterVM = nil
+        signedOutPath = []
+    }
+
     func dismissChangePassword() {
         cachedVoluntaryPasswordVM?.clearSensitiveInputs()
         cachedVoluntaryPasswordVM = nil
@@ -189,6 +248,14 @@ final class AppRouter {
         cachedAccountVM = nil
         cachedLockVM?.reset()
         cachedLockVM = nil
+        cachedRegisterVM = nil
+        paths.removeAll()
+        presentedAttempt = nil
+        reloadTokens.removeAll()
+        historyResetFilters = false
+        signedOutPath.removeAll()
+        routeStateStore.removeAll()
+        inboundLinkRouter.resetPendingWorkForSignOut()
         selectedDestination = .home
     }
 
@@ -198,6 +265,13 @@ final class AppRouter {
         cachedAccountVM = nil
         cachedLockVM?.reset()
         cachedLockVM = nil
+        cachedRegisterVM = nil
+        paths.removeAll()
+        presentedAttempt = nil
+        reloadTokens.removeAll()
+        historyResetFilters = false
+        signedOutPath.removeAll()
+        routeStateStore.removeAll()
         selectedDestination = .home
     }
 
@@ -217,11 +291,18 @@ final class AppRouter {
         {
             initialDestination = parsed
         }
+        var initialRoute: AppRoute?
+        if let index = arguments.firstIndex(of: "-uitest-route"),
+           index + 1 < arguments.count
+        {
+            initialRoute = AppRoute.decode(path: arguments[index + 1])
+        }
         let initialResetLink = ResetLink.fromLaunchArguments(arguments, environment: environment)
         let openChangePassword = arguments.contains("-uitest-open-change-password")
 
         return AppRouter(
             initialDestination: initialDestination,
+            initialRoute: initialRoute,
             stateProbeEnabled: probeEnabled,
             initialResetLink: initialResetLink,
             isPresentingChangePassword: openChangePassword
@@ -235,6 +316,11 @@ struct AppRootView: View {
     var sessionStore: SessionStore? = nil
     var appearanceRepository: AppearanceRepository? = nil
     var biometricManager: BiometricManager? = nil
+    var imageLoader: ImageLoader? = nil
+    var catalogOptionsCache: CatalogOptionsCache? = nil
+    var connectivityMonitor: ConnectivityMonitor? = nil
+    var legalRepository: LegalRepository = LegalRepository()
+    var webBaseURL: URL = AppEnvironment.current.webBaseURL
     var paletteSet: BrandPaletteSet = .defaultThi360Green
     var idiomOverride: UIUserInterfaceIdiom?
 
@@ -251,6 +337,10 @@ struct AppRootView: View {
 
     private var activePalette: BrandPalette {
         resolvedPaletteSet.palette(for: effectiveThemeMode)
+    }
+
+    private var activeStatusPalette: StatusPalette {
+        StatusPalette.forMode(effectiveThemeMode)
     }
 
     private var resolvedIdiom: UIUserInterfaceIdiom {
@@ -279,6 +369,12 @@ struct AppRootView: View {
             }
         }
         .environment(\.brandPalette, activePalette)
+        .environment(\.statusPalette, activeStatusPalette)
+        .environment(\.sessionStore, sessionStore)
+        .environment(\.appRouter, router)
+        .environment(\.imageLoader, imageLoader)
+        .environment(\.catalogOptionsCache, catalogOptionsCache)
+        .environment(\.connectivityMonitor, connectivityMonitor)
         .environment(\.locale, preferences.locale.locale)
         .tint(activePalette.primaryFillColor)
         .preferredColorScheme(effectiveThemeMode.colorScheme)
@@ -286,8 +382,12 @@ struct AppRootView: View {
             guard let newState else { return }
             if newState.isAuthenticated {
                 router.signedOutRoute = .login
+                router.clearRegisterViewModel()
             } else {
                 router.resetForSessionCleared()
+            }
+            Task {
+                await router.inboundLinkRouter.notifySessionStateChanged(newState)
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -296,6 +396,10 @@ struct AppRootView: View {
                 if shouldLock {
                     sessionStore.lockSession()
                 }
+            }
+            let currentState = sessionStore?.state ?? .active
+            Task {
+                await router.inboundLinkRouter.notifyScenePhaseChanged(newPhase, sessionState: currentState)
             }
             if newPhase == .active {
                 Task {
@@ -311,6 +415,9 @@ struct AppRootView: View {
                 await sessionStore?.validateSessionOnLaunch()
             }()
             _ = await (appearanceTask, sessionTask)
+            await router.inboundLinkRouter.notifyAppStarted(
+                sessionState: sessionStore?.state ?? .active
+            )
         }
     }
 
@@ -330,13 +437,15 @@ struct AppRootView: View {
                             sessionStore.acknowledgeRoleNotice()
                         }
                     )
-                case .none, .expired, .passwordReset:
+                case .none, .expired, .passwordReset, .accountDeleted:
                     SignedOutFlowHostView(
                         router: router,
                         sessionStore: sessionStore,
                         preferences: preferences,
                         idiom: resolvedIdiom,
-                        reason: reason
+                        reason: reason,
+                        legalRepository: legalRepository,
+                        webBaseURL: webBaseURL
                     )
                 }
 
@@ -384,6 +493,13 @@ struct AppRootView: View {
                                     : nil
                             )
                             .environment(\.horizontalSizeClass, effectiveSizeClass)
+                        } else if let attempt = router.presentedAttempt {
+                            AttemptRoutes.attempt(
+                                attemptId: attempt.attemptId,
+                                destination: attempt.originDestination,
+                                router: router,
+                                preferences: preferences
+                            )
                         } else {
                             AdaptiveShellView(
                                 router: router,
@@ -393,7 +509,9 @@ struct AppRootView: View {
                                 accountViewModel: resolvedBiometricManager.map {
                                     router.accountViewModel(sessionStore: sessionStore, biometricManager: $0)
                                 },
-                                serverDefaultThemeMode: resolvedPaletteSet.defaultMode
+                                serverDefaultThemeMode: resolvedPaletteSet.defaultMode,
+                                legalRepository: legalRepository,
+                                webBaseURL: webBaseURL
                             )
                         }
                     }
@@ -416,12 +534,23 @@ struct AppRootView: View {
                 }
             }
         } else {
-            AdaptiveShellView(
-                router: router,
-                preferences: preferences,
-                idiom: resolvedIdiom,
-                serverDefaultThemeMode: resolvedPaletteSet.defaultMode
-            )
+            if let attempt = router.presentedAttempt {
+                AttemptRoutes.attempt(
+                    attemptId: attempt.attemptId,
+                    destination: attempt.originDestination,
+                    router: router,
+                    preferences: preferences
+                )
+            } else {
+                AdaptiveShellView(
+                    router: router,
+                    preferences: preferences,
+                    idiom: resolvedIdiom,
+                    serverDefaultThemeMode: resolvedPaletteSet.defaultMode,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
+                )
+            }
         }
     }
 
@@ -532,6 +661,8 @@ private struct SignedOutFlowHostView: View {
     @Bindable var preferences: AppPreferences
     let idiom: UIUserInterfaceIdiom
     let reason: SignedOutReason
+    let legalRepository: LegalRepository
+    let webBaseURL: URL
 
     var body: some View {
         switch router.signedOutRoute {
@@ -542,14 +673,39 @@ private struct SignedOutFlowHostView: View {
                 idiom: idiom,
                 reason: reason,
                 onForgotPassword: { router.signedOutRoute = .forgotPassword },
-                onRegister: { router.signedOutRoute = .register }
+                onRegister: {
+                    router.signedOutPath = []
+                    router.signedOutRoute = .register
+                }
             )
         case .register:
-            RegisterFlowHostView(
-                sessionStore: sessionStore,
-                preferences: preferences,
-                onBackToLogin: { router.signedOutRoute = .login }
-            )
+            NavigationStack(path: $router.signedOutPath) {
+                RegisterView(
+                    viewModel: router.registerViewModel(
+                        sessionStore: sessionStore,
+                        legalRepository: legalRepository
+                    ),
+                    preferences: preferences,
+                    onBackToLogin: {
+                        router.clearRegisterViewModel()
+                        router.signedOutRoute = .login
+                    },
+                    onOpenLegal: { legalId in
+                        router.openSignedOutLegal(legalId)
+                    }
+                )
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: AppRoute.self) { route in
+                    AppRouteView(
+                        route: route,
+                        destination: .home,
+                        router: router,
+                        preferences: preferences,
+                        legalRepository: legalRepository,
+                        webBaseURL: webBaseURL
+                    )
+                }
+            }
         case .forgotPassword:
             ForgotPasswordHostView(
                 apiClient: sessionStore.apiClient,
@@ -600,30 +756,6 @@ private struct LoginFlowHostView: View {
         .onChange(of: reason) { _, newReason in
             viewModel.updateSignedOutReason(newReason)
         }
-    }
-}
-
-private struct RegisterFlowHostView: View {
-    @Bindable var preferences: AppPreferences
-    let onBackToLogin: () -> Void
-    @State private var viewModel: RegisterViewModel
-
-    init(
-        sessionStore: SessionStore,
-        preferences: AppPreferences,
-        onBackToLogin: @escaping () -> Void
-    ) {
-        self.preferences = preferences
-        self.onBackToLogin = onBackToLogin
-        _viewModel = State(initialValue: RegisterViewModel(sessionStore: sessionStore))
-    }
-
-    var body: some View {
-        RegisterView(
-            viewModel: viewModel,
-            preferences: preferences,
-            onBackToLogin: onBackToLogin
-        )
     }
 }
 
@@ -678,5 +810,16 @@ private struct ForcedPasswordChangeHostView: View {
                 Task { await sessionStore.signOut() }
             }
         )
+    }
+}
+
+private struct AppRouterEnvironmentKey: EnvironmentKey {
+    static let defaultValue: AppRouter? = nil
+}
+
+extension EnvironmentValues {
+    var appRouter: AppRouter? {
+        get { self[AppRouterEnvironmentKey.self] }
+        set { self[AppRouterEnvironmentKey.self] = newValue }
     }
 }

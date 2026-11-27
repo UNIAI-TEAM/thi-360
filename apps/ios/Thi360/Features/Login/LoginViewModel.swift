@@ -91,6 +91,8 @@ final class LoginViewModel {
             .sessionExpired
         case .passwordReset:
             .passwordResetDone
+        case .accountDeleted:
+            .accountDeleted
         case .none, .studentOnly:
             nil
         }

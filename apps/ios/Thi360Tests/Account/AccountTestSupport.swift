@@ -161,13 +161,15 @@ enum AccountTestFactory {
     struct Stack {
         let sessionStore: SessionStore
         let tokenStore: InMemoryTokenStore
-        let transport: MockClientTransport
+        let transport: ContractFakeTransport
         let preferences: AppPreferences
         let biometricManager: BiometricManager
         let authenticator: FakeBiometricAuthenticator
         let secretStore: InMemoryBiometricSecretStore
         let enrollmentStore: InMemoryBiometricEnrollmentStore
         let promptMemoryStore: InMemoryPromptMemoryStore
+        let storeProvider: AccountScopedStoreProvider
+        let sessionCleanup: SessionCleanup
         let clock: ManualClock
         let defaultsSuiteName: String
     }
@@ -182,6 +184,33 @@ enum AccountTestFactory {
         themeMode: ThemeMode? = nil,
         lockTimeout: TimeInterval = LockPolicy.defaultTimeoutSeconds,
         handler: @escaping MockClientTransport.Handler
+    ) -> Stack {
+        makeContractStack(
+            initialTokens: initialTokens,
+            capability: capability,
+            enableResults: enableResults,
+            initialEnrolled: initialEnrolled,
+            initialPromptAnswer: initialPromptAnswer,
+            locale: locale,
+            themeMode: themeMode,
+            lockTimeout: lockTimeout
+        ) { transport in
+            transport.setFallback(handler)
+        }
+    }
+
+    static func makeContractStack(
+        initialTokens: SessionTokens? = nil,
+        capability: BiometricCapability = .faceIDAvailable,
+        enableResults: [BiometricEvaluationResult] = [.succeeded],
+        initialEnrolled: Bool = false,
+        initialPromptAnswer: PromptAnswer? = nil,
+        locale: AppLocale = .vi,
+        themeMode: ThemeMode? = nil,
+        lockTimeout: TimeInterval = LockPolicy.defaultTimeoutSeconds,
+        storeProvider: AccountScopedStoreProvider? = nil,
+        sessionCleanup: SessionCleanup? = nil,
+        configure: (ContractFakeTransport) -> Void = { _ in }
     ) -> Stack {
         let suite = "vn.unicom.thi360.tests.account.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -216,7 +245,8 @@ enum AccountTestFactory {
         )
 
         let tokenStore = InMemoryTokenStore(initialTokens: initialTokens)
-        let transport = MockClientTransport(handler: handler)
+        let transport = ContractFakeTransport()
+        configure(transport)
         let client = MobileAPIClient(
             serverURL: URL(string: "https://api.thi360.test")!,
             tokenStore: tokenStore,
@@ -225,10 +255,17 @@ enum AccountTestFactory {
                 await MainActor.run { preferences.locale }
             }
         )
+        let resolvedStoreProvider = storeProvider ?? AccountScopedStoreProvider(
+            rootDirectoryURL: FileManager.default.temporaryDirectory
+                .appendingPathComponent("thi360-account-store-\(UUID().uuidString)", isDirectory: true)
+        )
+        let resolvedCleanup = sessionCleanup ?? SessionCleanup(storeProvider: resolvedStoreProvider)
         let sessionStore = SessionStore(
             tokenStore: tokenStore,
             apiClient: client,
-            biometricManager: biometricManager
+            biometricManager: biometricManager,
+            storeProvider: resolvedStoreProvider,
+            sessionCleanup: resolvedCleanup
         )
 
         return Stack(
@@ -241,6 +278,8 @@ enum AccountTestFactory {
             secretStore: secretStore,
             enrollmentStore: enrollmentStore,
             promptMemoryStore: promptMemoryStore,
+            storeProvider: resolvedStoreProvider,
+            sessionCleanup: resolvedCleanup,
             clock: clock,
             defaultsSuiteName: suite
         )
@@ -248,6 +287,7 @@ enum AccountTestFactory {
 
     static func sampleTokens(
         username: String = "student.demo",
+        accountId: String? = "019320a0-0000-7000-8000-000000000001",
         accessToken: String = "access-token-1",
         refreshToken: String = "refresh-token-1",
         mustChangePassword: Bool = false
@@ -258,7 +298,8 @@ enum AccountTestFactory {
             accessExpiresIn: 300,
             refreshExpiresIn: 604_800,
             mustChangePassword: mustChangePassword,
-            username: username
+            username: username,
+            accountId: accountId
         )
     }
 }

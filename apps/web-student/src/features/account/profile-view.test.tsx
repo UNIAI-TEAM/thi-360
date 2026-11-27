@@ -399,3 +399,19 @@ describe("ProfileView email (AC-17)", () => {
     expect(await screen.findByText("Mã chưa đúng. Bạn còn 2 lần thử.")).toBeInTheDocument();
   });
 });
+
+describe("ProfileView phần Xóa tài khoản (AC-13)", () => {
+  it("#deletionSection: có phần Xóa tài khoản ở cuối trang Hồ sơ với liên kết tới /account/delete", async () => {
+    renderView();
+
+    const passwordHeading = await screen.findByRole("heading", { name: "Mật khẩu", level: 2 });
+    const deletionHeading = screen.getByRole("heading", { name: "Xóa tài khoản", level: 2 });
+    const deletionSection = deletionHeading.closest("section")!;
+    const deletionLink = within(deletionSection).getByRole("link", { name: "Xóa tài khoản" });
+
+    expect(deletionLink).toHaveAttribute("href", "/account/delete");
+    expect(
+      passwordHeading.compareDocumentPosition(deletionHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});

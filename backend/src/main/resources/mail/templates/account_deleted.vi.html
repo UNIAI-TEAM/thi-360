@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout.vi.html :: shell(~{::#mail-body})}">
+<body>
+<div id="mail-body">
+    <p style="margin:0 0 16px 0;">Xin chào <span th:text="${fullName}">Nguyễn Văn A</span>,</p>
+    <p style="margin:0 0 16px 0;">Chúng tôi xác nhận tài khoản <span th:text="${productName}">Hệ thống</span> này đã được đóng vĩnh viễn theo yêu cầu của bạn. Thông tin cá nhân đã được gỡ và mọi phiên đăng nhập đã bị thu hồi.</p>
+    <p style="margin:0;color:#6B6B72;">Nếu bạn không thực hiện yêu cầu này, hãy liên hệ bộ phận hỗ trợ của <span th:text="${productName}">Hệ thống</span>.</p>
+</div>
+</body>
+</html>

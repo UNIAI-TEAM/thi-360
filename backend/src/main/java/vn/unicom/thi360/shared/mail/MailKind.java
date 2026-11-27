@@ -19,7 +19,8 @@ public enum MailKind {
     EMAIL_CHANGED_NOTICE(List.of("fullName", "newEmail")),
     PASSWORD_RESET(List.of("fullName", "resetUrl")),
     ORDER_FULFILLED(List.of("fullName", "orderCode", "items")),
-    REFUND_DONE(List.of("fullName", "orderCode", "refundAmount"));
+    REFUND_DONE(List.of("fullName", "orderCode", "refundAmount")),
+    ACCOUNT_DELETED(List.of("fullName"));
 
     private final List<String> requiredModelKeys;
 

@@ -142,4 +142,51 @@ final class LogRedactionTests: XCTestCase {
             }
         }
     }
+
+    func testVoucherCodeAndVnpParametersRedactedAcrossJSONStructsAndURLs() {
+        struct SamplePaymentPayload {
+            let voucherCode: String?
+            let vnp_SecureHash: String?
+            let vnp_Amount: Int?
+        }
+
+        let sink = InMemoryLogSink()
+        let logger = RedactingAppLogger(environment: .demo, sink: sink)
+
+        let voucher = "SUMMER2026VIP"
+        let snakeVoucher = "VIPSECRET50"
+        let vnpHash = "HASH99887766AABB"
+        let vnpAmount = "987654321"
+        let vnpTxnRef = "ORD-2026-SECRET-77"
+
+        logger.log(
+            .info,
+            category: "payment",
+            message: #"{"voucherCode":"\#(voucher)","voucher_code":"\#(snakeVoucher)","vnp_Amount":\#(vnpAmount),"vnp_SecureHash":"\#(vnpHash)","vnp_TxnRef":"\#(vnpTxnRef)"}"#
+        )
+        let payload = SamplePaymentPayload(
+            voucherCode: voucher,
+            vnp_SecureHash: vnpHash,
+            vnp_Amount: Int(vnpAmount)
+        )
+        logger.log(.info, category: "payment", message: String(describing: payload))
+        logger.logHTTP(
+            method: "GET",
+            path: "/api/v1/me/orders/vnpay-return?vnp_TxnRef=\(vnpTxnRef)&vnp_Amount=\(vnpAmount)&vnp_SecureHash=\(vnpHash)&voucherCode=\(voucher)",
+            statusCode: 200
+        )
+
+        let entries = sink.recordedEntries
+        XCTAssertEqual(entries.count, 3)
+
+        let secrets = [voucher, snakeVoucher, vnpHash, vnpAmount, vnpTxnRef]
+        for entry in entries {
+            for secret in secrets {
+                XCTAssertFalse(
+                    entry.message.contains(secret),
+                    "Demo log leaked payment/voucher secret '\(secret)' in entry: \(entry.message)"
+                )
+            }
+        }
+    }
 }

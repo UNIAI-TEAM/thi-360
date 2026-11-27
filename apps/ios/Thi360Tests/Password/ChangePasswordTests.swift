@@ -16,14 +16,13 @@ final class ChangePasswordTests: XCTestCase {
             username: "minhanh.tran"
         )
 
-        let (sessionStore, tokenStore, transport, preferences) = SessionTestFactory.makeStack(
+        let (sessionStore, tokenStore, transport, preferences) = try SessionTestFactory.makeContractStack(
             initialTokens: initialTokens
-        ) { request in
-            if request.path.hasSuffix("/api/v1/auth/change-password") {
+        ) { transport in
+            transport.register(method: .post, path: "/api/v1/auth/change-password") { _ in
                 await gate.enterAndWait()
-                return MockClientTransport.emptyResponse(statusCode: 204)
+                return ContractFakeTransport.emptyResponse(statusCode: 204)
             }
-            return MockClientTransport.emptyResponse(statusCode: 500)
         }
 
         let vm = NewPasswordViewModel(
@@ -44,7 +43,7 @@ final class ChangePasswordTests: XCTestCase {
             await vm.submit()
         }
         await duplicate.value
-        XCTAssertEqual(transport.recordedRequests.count, 1)
+        XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/change-password"), 1)
 
         await gate.release()
         await first.value
@@ -81,8 +80,8 @@ final class ChangePasswordTests: XCTestCase {
             username: "Ab1!xxxx"
         )
 
-        let (session1, _, transport1, _) = SessionTestFactory.makeStack(initialTokens: initialTokens) { _ in
-            MockClientTransport.jsonResponse(statusCode: 400, data: wrongOldFixture)
+        let (session1, _, transport1, _) = try SessionTestFactory.makeContractStack(initialTokens: initialTokens) { transport in
+            transport.registerJSON(method: .post, path: "/api/v1/auth/change-password", statusCode: 400, data: wrongOldFixture)
         }
         let vm1 = NewPasswordViewModel(mode: .voluntary(username: "Ab1!xxxx"), sessionStore: session1)
 
@@ -107,8 +106,8 @@ final class ChangePasswordTests: XCTestCase {
         XCTAssertEqual(vm1.oldPasswordError?.message(locale: .en), "Current password is incorrect.")
         XCTAssertEqual(session1.state, .active)
 
-        let (session2, _, _, _) = SessionTestFactory.makeStack(initialTokens: initialTokens) { _ in
-            MockClientTransport.jsonResponse(statusCode: 400, data: weakFixture)
+        let (session2, _, _, _) = try SessionTestFactory.makeContractStack(initialTokens: initialTokens) { transport in
+            transport.registerJSON(method: .post, path: "/api/v1/auth/change-password", statusCode: 400, data: weakFixture)
         }
         let vm2 = NewPasswordViewModel(mode: .voluntary(username: "other.user"), sessionStore: session2)
         vm2.oldPassword = "OldPassword1!"
@@ -117,8 +116,8 @@ final class ChangePasswordTests: XCTestCase {
         await vm2.submit()
         XCTAssertEqual(vm2.newPasswordError, .newPasswordWeak)
 
-        let (session3, _, _, _) = SessionTestFactory.makeStack(initialTokens: initialTokens) { _ in
-            MockClientTransport.jsonResponse(statusCode: 400, data: sameAsUsernameJSON)
+        let (session3, _, _, _) = try SessionTestFactory.makeContractStack(initialTokens: initialTokens) { transport in
+            transport.registerJSON(method: .post, path: "/api/v1/auth/change-password", statusCode: 400, data: sameAsUsernameJSON)
         }
         let vm3 = NewPasswordViewModel(mode: .voluntary(username: "other.user"), sessionStore: session3)
         vm3.oldPassword = "OldPassword1!"
@@ -139,11 +138,8 @@ final class ChangePasswordTests: XCTestCase {
         )
 
         for statusCode in [204, 200] {
-            let (sessionStore, _, _, _) = SessionTestFactory.makeStack(initialTokens: initialTokens) { request in
-                if request.path.hasSuffix("/api/v1/auth/change-password") {
-                    return MockClientTransport.emptyResponse(statusCode: statusCode)
-                }
-                return MockClientTransport.emptyResponse(statusCode: 500)
+            let (sessionStore, _, _, _) = try SessionTestFactory.makeContractStack(initialTokens: initialTokens) { transport in
+                transport.registerEmpty(method: .post, path: "/api/v1/auth/change-password", statusCode: statusCode)
             }
 
             let vm = NewPasswordViewModel(mode: .voluntary(username: "minhanh.tran"), sessionStore: sessionStore)

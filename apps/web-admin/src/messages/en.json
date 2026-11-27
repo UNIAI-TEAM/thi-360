@@ -2913,6 +2913,7 @@
       "backToList": "Back to accounts",
       "codeLabel": "Account code",
       "createdAtLabel": "Created at",
+      "deleteReasonSelfDeleted": "Deleted by the student",
       "deletedBanner": "Account was deleted at {time}. Reason: {reason}",
       "emailLabel": "Email",
       "errorDescription": "Could not load account details. Please try again.",
