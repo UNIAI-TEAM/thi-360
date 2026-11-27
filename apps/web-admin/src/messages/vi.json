@@ -8509,9 +8509,7 @@
           "vectorColumn2": "Vectơ cột hai tọa độ",
           "vectorSingle": "Vectơ một chữ",
           "xi": "Xi",
-          "zeta": "Zêta",
-          "space": "Dấu cách",
-          "wideSpace": "Khoảng cách rộng (tách hai công thức)"
+          "zeta": "Zêta"
         },
         "previewEmpty": "Nhập công thức để xem trước",
         "previewLabel": "Xem trước",
@@ -8538,6 +8536,13 @@
         "visualAriaLabel": "Vùng soạn công thức",
         "visualFailed": "Không tải được ô soạn trực quan. Bạn vẫn có thể gõ mã LaTeX bên dưới.",
         "visualHint": "Tab sang ô kế tiếp · gõ / tạo phân số · ^ tạo mũ · _ tạo chỉ số · → ra khỏi mũ hoặc chỉ số",
+        "spacing": {
+          "label": "Chèn khoảng cách",
+          "space": "Dấu cách",
+          "spaceHint": "Chèn một dấu cách",
+          "wideSpace": "Cách rộng",
+          "wideSpaceHint": "Chèn khoảng cách rộng để tách hai công thức"
+        },
         "visualLabel": "Soạn trực quan",
         "visualLoading": "Đang tải ô soạn công thức…"
       },

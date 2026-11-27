@@ -8509,9 +8509,7 @@
           "vectorColumn2": "Two-coordinate column vector",
           "vectorSingle": "Single-letter vector",
           "xi": "Xi",
-          "zeta": "Zeta",
-          "space": "Space",
-          "wideSpace": "Wide space (separates two formulas)"
+          "zeta": "Zeta"
         },
         "previewEmpty": "Type a formula to preview it",
         "previewLabel": "Preview",
@@ -8538,6 +8536,13 @@
         "visualAriaLabel": "Formula editing area",
         "visualFailed": "The visual editor could not be loaded. You can still type LaTeX below.",
         "visualHint": "Tab moves to the next slot · type / for a fraction · ^ for a power · _ for a subscript · → leaves a power or subscript",
+        "spacing": {
+          "label": "Insert spacing",
+          "space": "Space",
+          "spaceHint": "Insert a space",
+          "wideSpace": "Wide space",
+          "wideSpaceHint": "Insert a wide space to separate two formulas"
+        },
         "visualLabel": "Visual editor",
         "visualLoading": "Loading the formula editor…"
       },
