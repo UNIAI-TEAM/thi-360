@@ -8537,7 +8537,7 @@
         "update": "Cập nhật công thức",
         "visualAriaLabel": "Vùng soạn công thức",
         "visualFailed": "Không tải được ô soạn trực quan. Bạn vẫn có thể gõ mã LaTeX bên dưới.",
-        "visualHint": "Tab sang ô kế tiếp · gõ / tạo phân số · ^ tạo mũ · _ tạo chỉ số",
+        "visualHint": "Tab sang ô kế tiếp · gõ / tạo phân số · ^ tạo mũ · _ tạo chỉ số · → ra khỏi mũ hoặc chỉ số",
         "visualLabel": "Soạn trực quan",
         "visualLoading": "Đang tải ô soạn công thức…"
       },

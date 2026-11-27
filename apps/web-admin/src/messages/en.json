@@ -8537,7 +8537,7 @@
         "update": "Update formula",
         "visualAriaLabel": "Formula editing area",
         "visualFailed": "The visual editor could not be loaded. You can still type LaTeX below.",
-        "visualHint": "Tab moves to the next slot · type / for a fraction · ^ for a power · _ for a subscript",
+        "visualHint": "Tab moves to the next slot · type / for a fraction · ^ for a power · _ for a subscript · → leaves a power or subscript",
         "visualLabel": "Visual editor",
         "visualLoading": "Loading the formula editor…"
       },

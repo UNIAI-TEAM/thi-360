@@ -263,7 +263,8 @@ export function Combobox({
           )}
           {...triggerProps}
         >
-          <span className="min-w-0 truncate">{selected ? selected.label : placeholder}</span>
+          {/* Chữ dài xuống dòng như Select thường, không cắt "…" (bị tính là tràn ở 390px). */}
+          <span className="min-w-0 [overflow-wrap:anywhere]">{selected ? selected.label : placeholder}</span>
           <ChevronDown aria-hidden className="size-4 shrink-0 text-text-muted" />
         </button>
       </PopoverPrimitive.Trigger>

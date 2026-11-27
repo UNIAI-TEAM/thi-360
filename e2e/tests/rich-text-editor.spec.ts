@@ -42,7 +42,10 @@ test("ED-QA flow 1: Toan question with a formula built in the visual math field"
   const field = dialog.locator("math-field");
   await expect(field).toBeVisible();
   await field.click();
-  await page.keyboard.type("x^2+1/2");
+  // Mũ giữ nhiều chữ số (smartSuperscript tắt, UNI-2878): → để ra khỏi mũ trước khi gõ tiếp.
+  await page.keyboard.type("x^2");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.type("+1/2");
   await expect(dialog.getByLabel("LaTeX code")).toHaveValue("x^2+\\frac12");
   await dialog.getByRole("button", { name: "Insert formula" }).click();
   await expect(dialog).toBeHidden();
