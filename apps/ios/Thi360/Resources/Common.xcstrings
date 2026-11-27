@@ -425,6 +425,57 @@
           }
         }
       }
+    },
+    "attempt.waiting.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparing your exam"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang chuẩn bị đề"
+          }
+        }
+      }
+    },
+    "prepare.errorLoad.description" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please check your connection and try again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vui lòng kiểm tra kết nối mạng và thử lại."
+          }
+        }
+      }
+    },
+    "prepare.errorLoad.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unable to load exam preparation details"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không tải được thông tin chuẩn bị bài thi"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
