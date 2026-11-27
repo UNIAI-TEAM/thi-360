@@ -2006,6 +2006,7 @@
       "toCatalog": "Back to the exam catalog"
     },
     "listPriceLabel": "List price",
+    "promoLabel": "Promotion:",
     "notFound": {
       "description": "The link is wrong or the exam has not been published.",
       "eyebrow": "Not found",

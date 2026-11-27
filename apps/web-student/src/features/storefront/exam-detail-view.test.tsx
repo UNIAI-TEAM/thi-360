@@ -78,7 +78,10 @@ describe("ExamDetailView", () => {
     expect(within(aside).getByText("199.000 đ")).toBeInTheDocument();
     expect(within(aside).getByText("249.000 đ").closest("s")).not.toBeNull();
     expect(within(aside).getByText("Giảm 20%")).toBeInTheDocument();
-    expect(within(aside).getByText(/Uu dai thang 11/).closest("p")).toHaveTextContent("Kết thúc 30/11");
+    // Ô khuyến mãi: tên chương trình, chip mức giảm, giá gốc và ngày kết thúc cùng một khối (UNI-2888).
+    const promo = within(aside).getByText(/Uu dai thang 11/).closest("p")?.parentElement;
+    expect(promo).toHaveTextContent("-20%");
+    expect(promo).toHaveTextContent("Kết thúc 30/11");
     expect(within(aside).getByText("Đã gồm thuế, phí")).toBeInTheDocument();
     expect(within(aside).getByText("150 câu · 195 phút mỗi lượt")).toBeInTheDocument();
   });

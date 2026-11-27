@@ -15,7 +15,9 @@
 - **Bổ sung `UNI-2878`, nhánh `fix/UNI-2878-nut-dau-cach-goc`:** hai nút khoảng cách rời khỏi bảng mẫu thành nút chữ nhỏ ở góc ô Soạn trực quan; dấu điện tích trong điều kiện trên mũi tên đậm (nét tối thiểu 0,5px).
 - **`UNI-2888`, nhánh `fix/UNI-2888-the-bai-da-mua`:** thẻ danh mục đã mua cùng khung thẻ chưa mua (nút chính kèm số lượt, hàng phụ Mua thêm lượt | Xem chi tiết); dải danh mục bỏ phân trang, cuộn gần cuối tự tải trang kế, hết thì vòng về đầu.
 - **`UNI-2889`, nhánh `fix/UNI-2889-loi-than-thien`:** rà lỗi hiện cho người dùng: trang lỗi bỏ số HTTP, mã yêu cầu ghi "Khi cần hỗ trợ, gửi kèm mã này"; bỏ "(412)" ở Khuyến mãi; kiểm tra bài thi không hiện mã kỹ thuật, mã mới ra câu chung; MAPID không in mã quy tắc/nút cây; lý do gán quyền hàng loạt, lý do đóng/kết thúc lượt lạ ra câu chung; ô Kỳ thi có câu lỗi tiếng Việt.
-- **Tiếp theo:** người cho commit/PR ba nhánh `UNI-2878` bổ sung, `UNI-2888`, `UNI-2889`; sau merge deploy demo. Vẫn chờ người trả lời: Phần II "Dữ liệu tổng hợp" SP2E 2026 và cảnh báo năm cấu trúc ≠ năm ma trận.
+- **Đã xong:** #244, #245, #246 merge vào `develop` (`b39b12e3`), demo deploy lại, worktree đã dọn.
+- **`UNI-2888` bổ sung, nhánh `fix/UNI-2888-the-ke-lo-ra` (chưa commit):** bề rộng thẻ danh mục chia theo bề ngang dải để luôn lộ 1/4 thẻ kế; ít bài thì căn giữa, ẩn nút ←/→; ô khuyến mãi trong giá ghi tên chương trình, chip `-n%` đỏ đặc, giá gốc, ngày kết thúc (thẻ và trang chi tiết); nhãn `-n%` vàng trên bìa to và nổi hơn, có cả trên ảnh bìa riêng. web-student 569 test qua; đã xem thật (server máy trỏ API demo) sáng/tối.
+- **Tiếp theo:** người cho commit/PR nhánh trên rồi merge, deploy. Vẫn chờ người trả lời: Phần II "Dữ liệu tổng hợp" SP2E 2026 và cảnh báo năm cấu trúc ≠ năm ma trận.
 
 ### App học viên native: port cổng thi — kế hoạch bản 8 đã duyệt; bản 9 đối chiếu lại với `develop`, chờ duyệt (2026-11-26, `UNI-2820`)
 

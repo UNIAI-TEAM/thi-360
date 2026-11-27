@@ -5,7 +5,7 @@ import Link from "next/link";
 import { withCallbackUrl } from "@/features/account/account-links";
 import { AccessAction, checkoutPath } from "./access-action";
 import { useExamAccess } from "./exam-access";
-import { formatDayMonth, rangeText } from "./format";
+import { rangeText } from "./format";
 import { ProductPrice } from "./product-price";
 import type { ProductDetail } from "./types";
 
@@ -33,13 +33,6 @@ export function BuyPanel({ product }: { product: ProductDetail }) {
         promotion={promotion}
         priceClassName="text-h1"
       />
-      {promotion && (
-        <p className="text-field-label font-medium text-warning">
-          <span data-exam-content>{promotion.name}</span>
-          {" · "}
-          {t("promoEnds", { date: formatDayMonth(promotion.endsAt) })}
-        </p>
-      )}
       <ul className="flex flex-col gap-2 border-t border-border pt-3 text-text-secondary">
         <li>{t("includesTax")}</li>
         <li>{t("attemptsPerPurchase", { count: product.attemptsGranted })}</li>

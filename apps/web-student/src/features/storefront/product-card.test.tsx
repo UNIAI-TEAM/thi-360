@@ -197,6 +197,21 @@ describe("ProductCard", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(within(article).getByText("Danh gia nang luc")).toBeInTheDocument();
     expect(within(article).getByText("HSA-FULL-01")).toBeInTheDocument();
-    expect(within(article).getByText("-20%")).toBeInTheDocument();
+    // Một nhãn trên bìa, một chip trong ô khuyến mãi cạnh giá.
+    expect(within(article).getAllByText("-20%")).toHaveLength(2);
+  });
+
+  it("có khuyến mãi: ô giá ghi tên chương trình, chip mức giảm, giá gốc và ngày kết thúc (UNI-2888)", () => {
+    const { container } = renderWithProviders(<ProductCard product={FULL_CARD} action={action} />);
+    const article = card(FULL_CARD.name);
+    const name = within(article).getByText(FULL_CARD.promotion!.name);
+    const promo = name.closest("p")?.parentElement;
+    expect(promo).toHaveTextContent("Khuyến mãi:");
+    expect(promo).toHaveTextContent("Giảm 20%");
+    expect(promo).toHaveTextContent("Kết thúc");
+    // Bìa ảnh riêng cũng có nhãn -% ở góc, cùng chip trong ô giá.
+    expect(container.querySelector("img")).not.toBeNull();
+    expect(within(article).getAllByText("-20%")).toHaveLength(2);
+    expect(within(promo as HTMLElement).getByText(/đ$/, { selector: "s" })).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { pickName } from "@thi360/web-kit/i18n";
-import { BookOpen, LayoutGrid, Package, PenLine } from "lucide-react";
+import { BadgePercent, BookOpen, LayoutGrid, Package, PenLine } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -57,6 +57,15 @@ function CoverOrbitDecoration() {
   );
 }
 
+/** Nhãn giảm giá trên bìa phải nổi nhất thẻ: chữ lớn, viền sáng tách khỏi nền bìa, bóng vàng (UNI-2888). */
+function DiscountBadge({ percent }: { percent: number }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-yellow-400 px-3 py-1 text-title font-extrabold text-on-accent tabular-nums shadow-[0_6px_18px_-4px_rgb(250_204_21/0.75)] ring-2 ring-white/90 forced-colors:ring-[CanvasText]">
+      <BadgePercent aria-hidden className="size-4.5 shrink-0" strokeWidth={2.5} />-{percent}%
+    </span>
+  );
+}
+
 function DefaultProductCover({
   product,
   isBundle,
@@ -69,11 +78,7 @@ function DefaultProductCover({
   locale: string;
 }) {
   const percent = product.promotion ? discountPercent(product.listPrice, product.price) : null;
-  const discountBadge = percent !== null && (
-    <span className="shrink-0 rounded-full bg-yellow-400 px-2.5 py-0.5 text-caption font-bold text-on-accent shadow-xs">
-      -{percent}%
-    </span>
-  );
+  const discountBadge = percent !== null && <DiscountBadge percent={percent} />;
 
   if (isBundle) {
     return (
@@ -163,13 +168,22 @@ export function ProductCard({ product, action }: { product: ProductCardData; act
       : t("units.attempts", { count: product.attemptsGranted }),
   ].filter(Boolean);
 
+  const coverPercent = product.promotion ? discountPercent(product.listPrice, product.price) : null;
+
   return (
     <article className="group flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface/92 shadow-xs backdrop-blur-sm transition-[transform,box-shadow,border-color] duration-200 hover:border-primary-600 hover:shadow-lg motion-safe:hover:-translate-y-1 motion-reduce:transition-none">
       <Link href={href} tabIndex={-1} aria-hidden className="block">
         {!isBundle && product.coverUrl ? (
           // Ảnh bìa do máy chủ phát qua proxy cùng nguồn (TM 10.2); tên bài đã có ở tiêu đề thẻ nên ảnh chỉ để trang trí.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.coverUrl} alt="" loading="lazy" className="aspect-video w-full object-cover" />
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={product.coverUrl} alt="" loading="lazy" className="aspect-video w-full object-cover" />
+            {coverPercent !== null && (
+              <span className="absolute top-3 right-3">
+                <DiscountBadge percent={coverPercent} />
+              </span>
+            )}
+          </div>
         ) : (
           <DefaultProductCover
             product={product}
