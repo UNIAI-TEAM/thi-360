@@ -29,22 +29,7 @@
         "description" : "Thay đổi câu trả lời của một câu hỏi trong lượt thi (LT §7.1)",
         "properties" : {
           "answer" : {
-            "description" : "Nội dung câu trả lời; null để xóa đáp án",
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/ClozeAnswer"
-            }, {
-              "$ref" : "#/components/schemas/EssayAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MatchingAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MultipleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/ShortAnswerValue"
-            }, {
-              "$ref" : "#/components/schemas/SingleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/TrueFalseAnswer"
-            } ]
+            "$ref" : "#/components/schemas/AnswerValue"
           },
           "itemId" : {
             "description" : "Id câu hỏi trong lượt",
@@ -383,21 +368,7 @@
       "AttemptItemView" : {
         "properties" : {
           "answer" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/ClozeAnswer"
-            }, {
-              "$ref" : "#/components/schemas/EssayAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MatchingAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MultipleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/ShortAnswerValue"
-            }, {
-              "$ref" : "#/components/schemas/SingleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/TrueFalseAnswer"
-            } ]
+            "$ref" : "#/components/schemas/AnswerValue"
           },
           "answerSeq" : {
             "format" : "int64",
@@ -462,9 +433,7 @@
       "AttemptPartStateView" : {
         "properties" : {
           "choice" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : true,
             "type" : "object"
           },
           "choiceDeadlineAt" : {
@@ -662,23 +631,25 @@
       },
       "AttemptQuestionBody" : {
         "description" : "Thân câu hỏi đã lọc theo allowlist cho học viên — tuyệt đối không chứa đáp án hay hướng dẫn chấm",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/SingleChoice"
-        }, {
-          "$ref" : "#/components/schemas/MultipleChoice"
-        }, {
-          "$ref" : "#/components/schemas/ShortAnswer"
-        }, {
-          "$ref" : "#/components/schemas/Cloze"
-        }, {
-          "$ref" : "#/components/schemas/QuestionSet"
-        }, {
-          "$ref" : "#/components/schemas/TrueFalse"
-        }, {
-          "$ref" : "#/components/schemas/Matching"
-        }, {
-          "$ref" : "#/components/schemas/Essay"
-        } ],
+        "discriminator" : {
+          "mapping" : {
+            "CLOZE" : "#/components/schemas/Cloze",
+            "ESSAY" : "#/components/schemas/Essay",
+            "MATCHING" : "#/components/schemas/Matching",
+            "MULTIPLE_CHOICE" : "#/components/schemas/MultipleChoice",
+            "QUESTION_SET" : "#/components/schemas/QuestionSet",
+            "SHORT_ANSWER" : "#/components/schemas/ShortAnswer",
+            "SINGLE_CHOICE" : "#/components/schemas/SingleChoice",
+            "TRUE_FALSE" : "#/components/schemas/TrueFalse"
+          },
+          "propertyName" : "type"
+        },
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "type" ],
         "type" : "object"
       },
       "AttemptResultPart" : {
@@ -1209,21 +1180,7 @@
             "type" : "string"
           },
           "studentAnswer" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/ClozeAnswer"
-            }, {
-              "$ref" : "#/components/schemas/EssayAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MatchingAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MultipleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/ShortAnswerValue"
-            }, {
-              "$ref" : "#/components/schemas/SingleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/TrueFalseAnswer"
-            } ]
+            "$ref" : "#/components/schemas/AnswerValue"
           },
           "unitCount" : {
             "format" : "int32",
@@ -1465,9 +1422,7 @@
             "description" : "Chính sách nghe khi đề có audio; không có khi STARTING hoặc ABORTED"
           },
           "choices" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : true,
             "type" : "object"
           },
           "deadlineAt" : {
@@ -1489,9 +1444,7 @@
             "type" : "integer"
           },
           "lastPosition" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : true,
             "type" : "object"
           },
           "maxScore" : {
@@ -1903,10 +1856,6 @@
             },
             "passage" : {
               "type" : "string"
-            },
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
-              "type" : "string"
             }
           },
           "type" : "object"
@@ -2242,10 +2191,6 @@
           "$ref" : "#/components/schemas/AttemptQuestionBody"
         }, {
           "properties" : {
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
-              "type" : "string"
-            },
             "wordLimit" : {
               "format" : "int32",
               "type" : "integer"
@@ -2408,22 +2353,7 @@
         "description" : "Thay đổi câu trả lời cuối cùng gửi kèm khi hoàn thành phần hoặc nộp bài (LT §6.3, §7.1)",
         "properties" : {
           "answer" : {
-            "description" : "Nội dung câu trả lời; null để xóa đáp án",
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/ClozeAnswer"
-            }, {
-              "$ref" : "#/components/schemas/EssayAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MatchingAnswer"
-            }, {
-              "$ref" : "#/components/schemas/MultipleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/ShortAnswerValue"
-            }, {
-              "$ref" : "#/components/schemas/SingleChoiceAnswer"
-            }, {
-              "$ref" : "#/components/schemas/TrueFalseAnswer"
-            } ]
+            "$ref" : "#/components/schemas/AnswerValue"
           },
           "itemId" : {
             "description" : "Id câu hỏi trong lượt",
@@ -2669,10 +2599,6 @@
                 "$ref" : "#/components/schemas/SideView"
               },
               "type" : "array"
-            },
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
-              "type" : "string"
             }
           },
           "type" : "object"
@@ -2818,10 +2744,6 @@
               "type" : "array"
             },
             "scoringRule" : {
-              "type" : "string"
-            },
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
               "type" : "string"
             }
           },
@@ -3063,9 +2985,7 @@
             "type" : "integer"
           },
           "benefits" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : true,
             "type" : "object"
           },
           "bundleId" : {
@@ -3237,9 +3157,7 @@
             "type" : "integer"
           },
           "benefits" : {
-            "additionalProperties" : {
-              "type" : "object"
-            },
+            "additionalProperties" : true,
             "type" : "object"
           },
           "examCode" : {
@@ -3345,7 +3263,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "code", "fieldErrors", "message", "quote" ],
+        "required" : [ "code", "fieldErrors", "message" ],
         "type" : "object"
       },
       "OrderSummary" : {
@@ -4301,10 +4219,6 @@
             },
             "passage" : {
               "type" : "string"
-            },
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
-              "type" : "string"
             }
           },
           "type" : "object"
@@ -4629,10 +4543,6 @@
             },
             "inputHint" : {
               "type" : "string"
-            },
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
-              "type" : "string"
             }
           },
           "type" : "object"
@@ -4671,10 +4581,6 @@
                 "$ref" : "#/components/schemas/OptionView"
               },
               "type" : "array"
-            },
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
-              "type" : "string"
             }
           },
           "type" : "object"
@@ -4941,10 +4847,6 @@
                 "$ref" : "#/components/schemas/StatementView"
               },
               "type" : "array"
-            },
-            "type" : {
-              "enum" : [ "SINGLE_CHOICE", "MULTIPLE_CHOICE", "SHORT_ANSWER", "CLOZE", "QUESTION_SET", "TRUE_FALSE", "MATCHING", "ESSAY" ],
-              "type" : "string"
             }
           },
           "type" : "object"
