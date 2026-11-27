@@ -284,21 +284,7 @@ struct LoginView: View {
     }
 
     private func loginBrandBadge(compact: Bool) -> some View {
-        HStack(spacing: compact ? 8 : 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: compact ? 8 : 12, style: .continuous)
-                    .fill(palette.primaryFillColor)
-                    .frame(width: compact ? 30 : 44, height: compact ? 30 : 44)
-                Image(systemName: "checkmark.circle")
-                    .font(.system(size: compact ? 16 : 22, weight: .semibold))
-                    .foregroundStyle(palette.onPrimaryColor)
-            }
-            .accessibilityHidden(true)
-
-            Text(ShellStrings.text("shell.app.name", locale: locale))
-                .font((compact ? Font.headline : Font.title2).weight(.bold))
-                .foregroundStyle(palette.textColor)
-        }
+        BrandMark(markSize: compact ? 30 : 44, locale: locale)
     }
 
     private func headingBlock(showsSubtitle: Bool) -> some View {

@@ -1,5 +1,26 @@
 {
   "account": {
+    "deletion": {
+      "acknowledge": "I understand that a deleted account cannot be recovered.",
+      "blockedAttempt": "You have an unsubmitted exam attempt. Please submit it and come back.",
+      "blockedOrder": "You have an order being checked. Please wait for the exam to be granted or contact support and come back.",
+      "blockedPendingPayment": "You have an order pending payment. Please cancel the order or wait for it to expire and come back.",
+      "confirmAction": "Delete account",
+      "confirmCancel": "Cancel",
+      "confirmTitle": "Delete account permanently?",
+      "deletedNotice": "Your account has been deleted.",
+      "explanation": "When you delete your account, you will be signed out of all devices and will not be able to sign in again. Your full name, email, phone number, and profile photo will be removed from your profile. Your exam submissions will be kept without being linked to you. Orders, payments, system logs, and sent emails are retained in accordance with legal requirements and retention periods.",
+      "failed": "Could not delete your account. Please try again.",
+      "openMyExams": "My exams",
+      "openMyOrders": "My orders",
+      "passwordLabel": "Current password",
+      "pendingGradingWarning": "You have an exam waiting to be graded. If you delete your account, you will not be able to view the results.",
+      "submit": "Delete account",
+      "throttled": "You have entered the wrong password too many times. Please try again later.",
+      "title": "Delete account",
+      "unusedAttemptsWarning": "You have {n} unused exam attempts left. These attempts will be lost and will not be refunded.",
+      "wrongPassword": "Current password is incorrect."
+    },
     "forgotPassword": {
       "backToLogin": "Back to sign in",
       "cooldownEnd": "You can send it again now.",

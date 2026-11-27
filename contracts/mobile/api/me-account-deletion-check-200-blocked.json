@@ -1,0 +1,6 @@
+{
+  "canDelete" : false,
+  "blockers" : [ "ATTEMPT_IN_PROGRESS", "ORDER_BEING_CHECKED", "ORDER_PENDING_PAYMENT" ],
+  "unusedAttempts" : 0,
+  "pendingGrading" : false
+}

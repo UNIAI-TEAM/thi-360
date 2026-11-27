@@ -1,14 +1,92 @@
 import SwiftUI
 
+struct RegisterConsentSentence: Equatable {
+    static let termsLinkURL = URL(string: "thi360-legal://terms")!
+    static let privacyLinkURL = URL(string: "thi360-legal://privacy")!
+
+    let attributedText: AttributedString
+    let plainText: String
+    let termsLabel: String?
+    let privacyLabel: String?
+
+    static func parse(_ template: String, linkColor: Color) -> RegisterConsentSentence {
+        var attributed = AttributedString()
+        var plain = ""
+        var termsLabel: String?
+        var privacyLabel: String?
+
+        var cursor = template.startIndex
+        while cursor < template.endIndex {
+            let termsRange = template.range(of: "<terms>", range: cursor..<template.endIndex)
+            let privacyRange = template.range(of: "<privacy>", range: cursor..<template.endIndex)
+
+            let nextTag: (id: LegalId, openRange: Range<String.Index>, closeTag: String)?
+            switch (termsRange, privacyRange) {
+            case let (t?, p?):
+                if t.lowerBound <= p.lowerBound {
+                    nextTag = (.terms, t, "</terms>")
+                } else {
+                    nextTag = (.privacy, p, "</privacy>")
+                }
+            case let (t?, nil):
+                nextTag = (.terms, t, "</terms>")
+            case let (nil, p?):
+                nextTag = (.privacy, p, "</privacy>")
+            case (nil, nil):
+                nextTag = nil
+            }
+
+            guard let tag = nextTag,
+                  let closeRange = template.range(of: tag.closeTag, range: tag.openRange.upperBound..<template.endIndex)
+            else {
+                let tail = String(template[cursor..<template.endIndex])
+                attributed.append(AttributedString(tail))
+                plain.append(tail)
+                break
+            }
+
+            let prefix = String(template[cursor..<tag.openRange.lowerBound])
+            if !prefix.isEmpty {
+                attributed.append(AttributedString(prefix))
+                plain.append(prefix)
+            }
+
+            let linkText = String(template[tag.openRange.upperBound..<closeRange.lowerBound])
+            var run = AttributedString(linkText)
+            run.link = (tag.id == .terms) ? Self.termsLinkURL : Self.privacyLinkURL
+            run.foregroundColor = linkColor
+            run.underlineStyle = .single
+            attributed.append(run)
+            plain.append(linkText)
+
+            switch tag.id {
+            case .terms:
+                termsLabel = linkText
+            case .privacy:
+                privacyLabel = linkText
+            }
+
+            cursor = closeRange.upperBound
+        }
+
+        return RegisterConsentSentence(
+            attributedText: attributed,
+            plainText: plain,
+            termsLabel: termsLabel,
+            privacyLabel: privacyLabel
+        )
+    }
+}
+
 struct RegisterView: View {
     @Bindable var viewModel: RegisterViewModel
     @Bindable var preferences: AppPreferences
     let onBackToLogin: () -> Void
+    var onOpenLegal: (LegalId) -> Void = { _ in }
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.brandPalette) private var palette
     @FocusState private var focusedField: RegisterField?
-    @State private var isShowingTermsSheet = false
 
     private enum RegisterField: Hashable {
         case fullName
@@ -35,9 +113,6 @@ struct RegisterView: View {
         }
         .onChange(of: horizontalSizeClass) { _, newValue in
             Thi360AppDelegate.refreshSupportedOrientations(for: newValue)
-        }
-        .sheet(isPresented: $isShowingTermsSheet) {
-            termsSheet
         }
     }
 
@@ -212,12 +287,16 @@ struct RegisterView: View {
     }
 
     private var termsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button {
-                viewModel.acceptTerms.toggle()
-                viewModel.clearFieldErrorOnEdit(terms: true)
-            } label: {
-                HStack(alignment: .top, spacing: 10) {
+        let template = RecoveryStrings.text("recovery.register.termsLabel", locale: locale)
+        let consent = RegisterConsentSentence.parse(template, linkColor: palette.primaryTextColor)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 6) {
+                Button {
+                    focusedField = nil
+                    viewModel.acceptTerms.toggle()
+                    viewModel.clearFieldErrorOnEdit(terms: true)
+                } label: {
                     ZStack {
                         Circle()
                             .fill(viewModel.acceptTerms ? palette.primaryFillColor : Color.clear)
@@ -237,35 +316,85 @@ struct RegisterView: View {
                                 .foregroundStyle(palette.onPrimaryColor)
                         }
                     }
-                    .padding(.top, 1)
-
-                    Text(RecoveryStrings.text("recovery.register.termsLabel", locale: locale))
-                        .font(.subheadline)
-                        .foregroundStyle(palette.textSecondaryColor)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Spacer(minLength: 0)
-                }
-                .frame(minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(viewModel.acceptTerms ? [.isSelected] : [])
-            .accessibilityIdentifier("register.termsCheckbox")
-
-            Button {
-                isShowingTermsSheet = true
-            } label: {
-                Text(RecoveryStrings.text("recovery.register.termsView", locale: locale))
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(palette.primaryTextColor)
-                    .underline()
-                    .frame(minHeight: 44, alignment: .leading)
+                    .frame(minWidth: 44, minHeight: 44)
                     .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(consent.plainText)
+                .accessibilityAddTraits(viewModel.acceptTerms ? [.isSelected] : [])
+                .accessibilityIdentifier("register.termsCheckbox")
+
+                Text(consent.attributedText)
+                    .font(.subheadline)
+                    .foregroundStyle(palette.textSecondaryColor)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineSpacing(4)
+                    .padding(.top, 10)
+                    .environment(\.openURL, OpenURLAction { url in
+                        if url == RegisterConsentSentence.termsLinkURL {
+                            focusedField = nil
+                            onOpenLegal(.terms)
+                            return .handled
+                        }
+                        if url == RegisterConsentSentence.privacyLinkURL {
+                            focusedField = nil
+                            onOpenLegal(.privacy)
+                            return .handled
+                        }
+                        return .systemAction
+                    })
+                    .accessibilityIdentifier("register.termsSentence")
+
+                Spacer(minLength: 0)
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("register.viewTermsButton")
+
+            if let termsLabel = consent.termsLabel, let privacyLabel = consent.privacyLabel {
+                VStack(alignment: .leading, spacing: 2) {
+                    Button {
+                        focusedField = nil
+                        onOpenLegal(.terms)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "doc.text")
+                                .font(.footnote.weight(.semibold))
+                                .accessibilityHidden(true)
+                            Text(termsLabel)
+                                .font(.footnote.weight(.semibold))
+                                .underline()
+                                .multilineTextAlignment(.leading)
+                        }
+                        .foregroundStyle(palette.primaryTextColor)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(.isLink)
+                    .accessibilityIdentifier("register.termsLinkTerms")
+
+                    Button {
+                        focusedField = nil
+                        onOpenLegal(.privacy)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "lock.shield")
+                                .font(.footnote.weight(.semibold))
+                                .accessibilityHidden(true)
+                            Text(privacyLabel)
+                                .font(.footnote.weight(.semibold))
+                                .underline()
+                                .multilineTextAlignment(.leading)
+                        }
+                        .foregroundStyle(palette.primaryTextColor)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(.isLink)
+                    .accessibilityIdentifier("register.termsLinkPrivacy")
+                }
+                .padding(.leading, 48)
+            }
 
             if let error = viewModel.termsError {
                 Text(error.message(locale: locale))
@@ -274,40 +403,6 @@ struct RegisterView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, 4)
                     .accessibilityIdentifier("register.termsError")
-            }
-        }
-    }
-
-    private var termsSheet: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(RecoveryStrings.text("recovery.register.termsDraft", locale: locale))
-                        .font(.footnote)
-                        .foregroundStyle(palette.textMutedColor)
-
-                    Text(RecoveryStrings.text("recovery.register.termsBody", locale: locale))
-                        .font(.body)
-                        .foregroundStyle(palette.textSecondaryColor)
-                        .padding(16)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(palette.bgSubtleColor)
-                        )
-                }
-                .padding(20)
-            }
-            .background(palette.bgSurfaceColor.ignoresSafeArea())
-            .navigationTitle(RecoveryStrings.text("recovery.register.termsTitle", locale: locale))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(RecoveryStrings.text("recovery.common.close", locale: locale)) {
-                        isShowingTermsSheet = false
-                    }
-                    .accessibilityIdentifier("register.termsCloseButton")
-                }
             }
         }
     }

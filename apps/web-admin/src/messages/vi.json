@@ -2913,6 +2913,7 @@
       "backToList": "Quay lại danh sách",
       "codeLabel": "Mã tài khoản",
       "createdAtLabel": "Ngày tạo",
+      "deleteReasonSelfDeleted": "Học viên tự xóa tài khoản",
       "deletedBanner": "Tài khoản đã bị xóa lúc {time}. Lý do: {reason}",
       "emailLabel": "Email",
       "errorDescription": "Không tải được thông tin tài khoản. Hãy thử lại.",

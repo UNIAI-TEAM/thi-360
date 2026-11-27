@@ -1,0 +1,6 @@
+{
+  "code" : "ACCOUNT_DELETION_NOT_ALLOWED",
+  "message" : "Chỉ tài khoản học viên mới có thể tự xóa tài khoản",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

@@ -137,6 +137,17 @@ public class ImportRow {
         this.retryable = false;
     }
 
+    public void anonymizeForSelfDeletion(String anonymous) {
+        Objects.requireNonNull(anonymous, "anonymous must not be null");
+        String classCode = this.raw == null ? null : this.raw.classCode();
+        this.raw = new ImportRowRaw(anonymous, null, anonymous, null, null, classCode);
+        this.usernameNormalized = anonymous;
+        this.emailNormalized = null;
+        this.generatedPasswordEnc = null;
+        this.failureReason = null;
+        this.errors = List.of();
+    }
+
     public void setProvisionalUserId(UUID provisionalUserId) {
         this.provisionalUserId = provisionalUserId;
     }

@@ -1,0 +1,8 @@
+Tài khoản [(${productName})] của bạn đã được xóa
+Xin chào [(${fullName})],
+
+Chúng tôi xác nhận tài khoản [(${productName})] này đã được đóng vĩnh viễn theo yêu cầu của bạn. Thông tin cá nhân đã được gỡ và mọi phiên đăng nhập đã bị thu hồi.
+
+Nếu bạn không thực hiện yêu cầu này, hãy liên hệ bộ phận hỗ trợ của [(${productName})].
+
+[(${productName})]

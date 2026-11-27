@@ -10,6 +10,8 @@ import { type ReactNode, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import {
+  ACCOUNT_DELETED_PARAM,
+  ACCOUNT_DELETED_VALUE,
   PASSWORD_RESET_DONE_PARAM,
   PASSWORD_RESET_DONE_VALUE,
   withCallbackUrl,
@@ -52,12 +54,14 @@ export function LoginView({
   headerActions?: ReactNode;
 }) {
   const t = useTranslations("login");
+  const accountDeletionT = useTranslations("account.deletion");
   const common = useTranslations("common");
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? undefined;
   const reason = searchParams.get("reason");
   // Vừa đặt lại mật khẩu xong (về từ `/reset-password`): báo thành công, không tự đăng nhập (TM 5.4).
   const passwordResetDone = searchParams.get(PASSWORD_RESET_DONE_PARAM) === PASSWORD_RESET_DONE_VALUE;
+  const accountDeleted = searchParams.get(ACCOUNT_DELETED_PARAM) === ACCOUNT_DELETED_VALUE;
 
   const [serverErrorCode, setServerErrorCode] = useState<LoginErrorCode | null>(() =>
     reason === "inactive" ? "ACCOUNT_INACTIVE" : null,
@@ -134,6 +138,15 @@ export function LoginView({
             >
               <CheckCircle2 aria-hidden className="mt-0.5 size-4.5 shrink-0" />
               <span>{t("resetDone")}</span>
+            </div>
+          )}
+          {accountDeleted && (
+            <div
+              role="status"
+              className="flex items-start gap-2.5 rounded-lg border border-success/30 bg-success-bg px-3.5 py-3 text-body text-success"
+            >
+              <CheckCircle2 aria-hidden className="mt-0.5 size-4.5 shrink-0" />
+              <span>{accountDeletionT("deletedNotice")}</span>
             </div>
           )}
           {serverErrorCode && (

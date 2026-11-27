@@ -1266,16 +1266,22 @@ public class UserAdminService {
         return messages.get(messageKey, args);
     }
 
-    private void performSoftDeleteLocal(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
+    UserAccount softDeleteAndPublish(UserAccount user, String reason, UUID actorId, Instant now) {
         UUID userId = user.getId();
-        UserStatus oldStatus = user.getStatus();
-        user.softDelete(trimmedReason, now, actor.id());
-        user = userAccountRepository.saveAndFlush(user);
+        user.softDelete(reason, now, actorId);
+        UserAccount saved = userAccountRepository.saveAndFlush(user);
         sessionStore.deleteAllSessions(userId);
         authzSnapshotService.evict(userId);
         outboxPublisher.publish(
                 UserDeleted.OUTBOX_TOPIC,
-                new UserDeleted(userId, user.getUsername(), now, actor.id()));
+                new UserDeleted(userId, saved.getUsername(), now, actorId));
+        return saved;
+    }
+
+    private void performSoftDeleteLocal(CurrentUser actor, UserAccount user, String trimmedReason, Instant now) {
+        UUID userId = user.getId();
+        UserStatus oldStatus = user.getStatus();
+        UserAccount saved = softDeleteAndPublish(user, trimmedReason, actor.id(), now);
 
         Map<String, Object> before = new LinkedHashMap<>();
         Map<String, Object> after = new LinkedHashMap<>();
@@ -1286,10 +1292,10 @@ public class UserAdminService {
         before.put("deletedAt", null);
         after.put("deletedAt", now.toString());
         after.put("deleteReason", trimmedReason);
-        recordAudit(actor, "USER_DELETED", userId, user.getUsername(), before, after, trimmedReason);
+        recordAudit(actor, "USER_DELETED", userId, saved.getUsername(), before, after, trimmedReason);
     }
 
-    private void cleanupDeletedUserInKeycloak(UUID userId) {
+    void cleanupDeletedUserInKeycloak(UUID userId) {
         try {
             keycloakClient.deleteUser(userId);
             requiresNewTx.executeWithoutResult(status ->

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_pageTitle">My exams</string>
+    <string name="home_subtitle">Hello %1$s. Here are the exams you have bought and your remaining attempts.</string>
+    <string name="home_sectionTitle">Purchased exams</string>
+    <plurals name="home_examCount">
+        <item quantity="one">%1$d exam</item>
+        <item quantity="other">%1$d exams</item>
+    </plurals>
+    <string name="home_exploreExams">Explore exams</string>
+    <string name="home_emptyTitle">You have no exams yet</string>
+    <string name="home_emptyDescription">Choose an exam from the catalog to start practicing.</string>
+    <string name="home_errorTitle">Unable to load exam list</string>
+    <string name="home_errorDescription">Check your internet connection and try again.</string>
+    <string name="home_staleTitle">Data may be out of date.</string>
+    <string name="home_staleDescription">Could not refresh the list; showing the version loaded at %1$s.</string>
+    <string name="home_staleDescriptionNoTime">Could not refresh the list; showing the previously loaded version.</string>
+
+    <string name="home_status_IN_PROGRESS">In progress</string>
+    <string name="home_status_CAN_START">Ready to start</string>
+    <string name="home_status_EXHAUSTED">No attempts left</string>
+
+    <string name="home_card_purchased">Purchased</string>
+    <string name="home_card_classAssigned">Class exam · %1$s</string>
+    <string name="home_card_classAssignedNoName">Class exam</string>
+    <string name="home_card_minutesPerAttempt">%1$s minutes per attempt</string>
+    <string name="home_card_attemptsLeft">Remaining attempts</string>
+
+    <string name="home_actions_continue">Continue</string>
+    <string name="home_actions_start">Start</string>
+    <string name="home_actions_viewResult">View result</string>
+    <string name="home_actions_history">History</string>
+    <string name="home_actions_rebuy">Buy again</string>
+    <string name="home_actions_buyMore">Buy more attempts</string>
+
+    <string name="home_notes_lastAttempt">You are taking your last attempt of this exam.</string>
+    <string name="home_notes_classExhausted">All assigned attempts for this exam have been used.</string>
+    <string name="home_notes_classExhaustedWithHistory">All assigned attempts for this exam have been used. Results and history are still available.</string>
+    <string name="home_notes_discontinuedCanStart">This exam is no longer on sale. You can still use your remaining attempts.</string>
+    <string name="home_notes_discontinuedExhausted">This exam is no longer on sale and cannot be bought again.</string>
+    <string name="home_notes_discontinuedExhaustedWithHistory">This exam is no longer on sale and cannot be bought again. Results and history are still available.</string>
+    <string name="home_notes_pendingTopUp">Your top-up order %1$s is being checked. You do not need to pay again.</string>
+
+    <string name="home_checking_sectionTitle">Checking</string>
+    <string name="home_checking_status">Checking</string>
+    <string name="home_checking_viewOrder">View order</string>
+    <string name="home_checking_reload">Reload</string>
+    <string name="home_checking_message">Payment received for order %1$s. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support via %2$s and include your order code.</string>
+    <string name="home_checking_messageNoContact">Payment received for order %1$s. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support with your order code. %2$s</string>
+    <string name="home_checking_messageNoOrder">Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support via %1$s.</string>
+    <string name="home_checking_messageNoOrderNoContact">Payment has been received for your order. The exam is being granted to your account and you do not need to pay again. Reload the screen in a few minutes; if the exam still does not appear, contact support. %1$s</string>
+
+    <string name="bundle_home_standaloneHeading">Individual exams</string>
+    <string name="bundle_home_viewBundle">View bundle</string>
+    <string name="bundle_home_crossReference">%1$s is shown under %2$s</string>
+    <string name="bundle_home_groupFootnote">Submitting one exam only ends that exam\'s attempt; other exams in the bundle stay unchanged. Remaining attempts include standalone purchases of the same exam.</string>
+
+    <string name="history_pageTitle">Practice history</string>
+    <string name="history_subtitle">Your exam attempts, newest first. Select View result to open the exact result for each attempt.</string>
+    <plurals name="history_count">
+        <item quantity="one">%1$d attempt</item>
+        <item quantity="other">%1$d attempts</item>
+    </plurals>
+    <string name="history_listTitle">Attempts</string>
+    <string name="history_loading">Loading practice history</string>
+    <string name="history_noChoice">—</string>
+    <string name="history_noScore">No score yet</string>
+    <string name="history_attemptNo">Attempt %1$d</string>
+    <string name="history_regradingNote">Score before regrading</string>
+    <string name="history_vactPracticeNote">Practice score</string>
+
+    <string name="history_actions_continue">Continue</string>
+    <string name="history_actions_viewResult">View result</string>
+
+    <string name="history_columns_score">Score</string>
+    <string name="history_columns_choice">Selection</string>
+    <string name="history_columns_attemptStarted">Attempt · Started</string>
+
+    <string name="history_choiceOptions_ANH">English</string>
+    <string name="history_choiceOptions_CS">Computer science</string>
+    <string name="history_choiceOptions_ENGLISH">English</string>
+    <string name="history_choiceOptions_ICT">Applied informatics</string>
+    <string name="history_choiceOptions_KH">Science</string>
+    <string name="history_choiceOptions_SCIENCE">Science</string>
+    <string name="history_choiceOptions_TA">English</string>
+
+    <string name="history_empty_noAttemptsTitle">You have no practice attempts yet</string>
+    <string name="history_empty_noAttemptsDescription">Open an exam in My exams to start practicing. Your completed and active attempts will appear here.</string>
+    <string name="history_empty_toMyExams">My exams</string>
+    <string name="history_empty_title">No matching attempts found</string>
+    <string name="history_empty_description">Try another keyword, date range, or remove some filters.</string>
+    <string name="history_empty_clearFilters">Clear filters</string>
+
+    <string name="history_error_title">Unable to load practice history</string>
+    <string name="history_error_description">Your attempts are still safe. Please try again in a few minutes.</string>
+
+    <string name="history_fault_compensated">This attempt was affected by a system fault; 1 replacement attempt has been granted</string>
+    <string name="history_fault_systemFault">Attempt ended due to a system fault</string>
+
+    <string name="history_filters_label">Filter practice history</string>
+    <string name="history_filters_q">Search by exam name</string>
+    <string name="history_filters_qPlaceholder">For example: HSA full</string>
+    <string name="history_filters_kind">Exam</string>
+    <string name="history_filters_kindAll">All exams</string>
+    <string name="history_filters_scope">Scope</string>
+    <string name="history_filters_scopeAll">All scopes</string>
+    <string name="history_filters_from">From date</string>
+    <string name="history_filters_to">To date</string>
+    <string name="history_filters_clear">Clear filters</string>
+    <string name="history_filters_clearFrom">Clear From date</string>
+    <string name="history_filters_clearTo">Clear To date</string>
+    <string name="history_filters_clearQuery">Clear search query</string>
+    <string name="history_filters_dateConfirm">OK</string>
+    <string name="history_filters_dateCancel">Cancel</string>
+
+    <string name="history_scopes_FULL">FULL exam</string>
+    <string name="history_scopes_PART">Section exam</string>
+    <string name="history_scopes_SUBJECT">Subject exam</string>
+    <string name="history_scopeDetails_PART">Section %1$s</string>
+    <string name="history_scopeDetails_SUBJECT">Subject %1$s</string>
+
+    <string name="history_stale_title">Data may be out of date.</string>
+    <string name="history_stale_description">Could not refresh data; showing the version loaded at %1$s.</string>
+    <string name="history_stale_descriptionNoTime">Could not refresh data; showing the previously loaded version.</string>
+
+    <string name="history_states_GRADING">Grading</string>
+    <string name="history_states_GRADING_ERROR">Processing result</string>
+    <string name="history_states_IN_PROGRESS">In progress</string>
+    <string name="history_states_PENDING_REVIEW">Pending review</string>
+    <string name="history_states_REGRADING">Regrading</string>
+    <string name="history_states_SCORED">Scored</string>
+</resources>

@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -260,6 +261,21 @@ public class UserAccount {
         this.mustChangePassword = mustChangePassword;
         this.updatedAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedBy = actorId;
+    }
+
+    public String anonymizeForSelfDeletion(Instant now) {
+        String anonymous = "deleted-" + this.id.toString().toLowerCase(Locale.ROOT);
+        this.username = anonymous;
+        this.usernameNormalized = anonymous;
+        this.fullName = anonymous;
+        this.email = null;
+        this.emailNormalized = null;
+        this.emailVerifiedAt = null;
+        this.phone = null;
+        this.pendingEmail = null;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+        this.updatedBy = this.id;
+        return anonymous;
     }
 
     public void softDelete(String reason, Instant now, UUID actorId) {

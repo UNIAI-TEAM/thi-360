@@ -292,7 +292,10 @@ function UserDetailContent({ userId, deps }: { userId: string; deps: UsersApiDep
         >
           {t("detail.deletedBanner", {
             time: formatUserDateTime(user.deletedAt),
-            reason: user.deleteReason ?? "—",
+            reason:
+              user.deleteReason === "SELF_DELETED"
+                ? t("detail.deleteReasonSelfDeleted")
+                : (user.deleteReason ?? "—"),
           })}
         </div>
       )}

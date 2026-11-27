@@ -1,4 +1,5 @@
 import Foundation
+import HTTPTypes
 import OpenAPIRuntime
 
 struct ApiFieldError: Codable, Equatable, Sendable {
@@ -53,6 +54,16 @@ enum MobileApiError: Error, Equatable, Sendable {
         }
     }
 
+    var retryAfterSeconds: Int? {
+        switch self {
+        case let .api(_, error):
+            guard let seconds = error.retryAfter, seconds > 0 else { return nil }
+            return seconds
+        case .network, .unexpectedResponse:
+            return nil
+        }
+    }
+
     var isOfflineOrConnectivity: Bool {
         guard case let .network(code) = self else {
             return false
@@ -78,7 +89,28 @@ enum MobileApiError: Error, Equatable, Sendable {
             return mobileError
         }
         if let clientError = error as? ClientError {
-            return classify(clientError.underlyingError)
+            let classified = classify(clientError.underlyingError)
+            if let retryAfter = RetryAfter.parseSeconds(from: clientError.response?.headerFields) {
+                switch classified {
+                case let .api(statusCode, payload):
+                    return .api(
+                        statusCode: statusCode,
+                        error: ApiError(
+                            code: payload.code,
+                            message: payload.message,
+                            fieldErrors: payload.fieldErrors,
+                            traceId: payload.traceId,
+                            retryAfter: retryAfter,
+                            remainingAttempts: payload.remainingAttempts
+                        )
+                    )
+                case let .unexpectedResponse(statusCode) where statusCode == 429:
+                    return .api(statusCode: 429, error: ApiError(code: "RATE_LIMITED", retryAfter: retryAfter))
+                default:
+                    break
+                }
+            }
+            return classified
         }
         if let urlError = error as? URLError {
             return .network(urlError.code)
@@ -90,13 +122,34 @@ enum MobileApiError: Error, Equatable, Sendable {
         return .unexpectedResponse(statusCode: 0)
     }
 
-    static func decodeErrorBody(statusCode: Int, body: HTTPBody) async -> MobileApiError {
+    static func decodeErrorBody(
+        statusCode: Int,
+        body: HTTPBody,
+        retryAfterHeader: String? = nil
+    ) async -> MobileApiError {
+        let parsedHeader = RetryAfter.parseSeconds(retryAfterHeader)
         guard let data = try? await Data(collecting: body, upTo: 65_536),
               !data.isEmpty,
               let decoded = try? JSONDecoder().decode(ApiError.self, from: data)
         else {
+            if statusCode == 429, let parsedHeader {
+                return .api(statusCode: 429, error: ApiError(code: "RATE_LIMITED", retryAfter: parsedHeader))
+            }
             return .unexpectedResponse(statusCode: statusCode)
         }
-        return .api(statusCode: statusCode, error: decoded)
+
+        let resolvedRetryAfter = RetryAfter.resolve(
+            headerValue: retryAfterHeader,
+            bodyRetryAfter: decoded.retryAfter
+        )
+        let merged = ApiError(
+            code: decoded.code,
+            message: decoded.message,
+            fieldErrors: decoded.fieldErrors,
+            traceId: decoded.traceId,
+            retryAfter: resolvedRetryAfter,
+            remainingAttempts: decoded.remainingAttempts
+        )
+        return .api(statusCode: statusCode, error: merged)
     }
 }

@@ -72,7 +72,7 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
 
         JsonNode exportedRoot = objectMapper.readTree(mobileOpenApiJson);
         JsonNode exportedPaths = exportedRoot.path("paths");
-        assertThat(MOBILE_OPERATIONS).hasSize(47);
+        assertThat(MOBILE_OPERATIONS).hasSize(49);
         assertThat(exportedPaths.size()).isEqualTo(MOBILE_OPERATIONS.size());
         for (Map.Entry<String, List<String>> entry : MOBILE_OPERATIONS.entrySet()) {
             JsonNode pathItem = exportedPaths.path(entry.getKey());
@@ -98,6 +98,20 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
         assertThat(exportedPaths.path("/api/v1/me/email/verify").has("post")).isTrue();
         assertThat(exportedPaths.path("/api/v1/me/email/change").has("post")).isTrue();
         assertThat(exportedPaths.path("/api/v1/me/email/change/confirm").has("post")).isTrue();
+        JsonNode deletionCheckOp = exportedPaths.path("/api/v1/me/account/deletion-check").path("get");
+        assertThat(deletionCheckOp.isObject()).isTrue();
+        for (String code : List.of("200", "401", "403")) {
+            assertThat(deletionCheckOp.path("responses").has(code))
+                    .as("GET /api/v1/me/account/deletion-check response %s", code)
+                    .isTrue();
+        }
+        JsonNode deletionOp = exportedPaths.path("/api/v1/me/account/deletion").path("post");
+        assertThat(deletionOp.isObject()).isTrue();
+        for (String code : List.of("204", "400", "401", "403", "409", "429")) {
+            assertThat(deletionOp.path("responses").has(code))
+                    .as("POST /api/v1/me/account/deletion response %s", code)
+                    .isTrue();
+        }
 
         JsonNode startAttemptOp = exportedPaths.path("/api/v1/me/attempts").path("post");
         assertRequiredHeader(startAttemptOp, "Idempotency-Key");
@@ -118,11 +132,28 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
                 "AttemptReviewResponse",
                 "MyExamsResponse",
                 "PageResponseAttemptHistoryItem",
-                "CatalogOptionResponse")) {
+                "CatalogOptionResponse",
+                "AccountDeletionCheckResponse",
+                "AccountDeletionRequest",
+                "AccountDeletionBlockedResponse")) {
             assertThat(schemas.has(requiredSchema))
                     .as("mobile schema %s must exist", requiredSchema)
                     .isTrue();
         }
+        JsonNode deletionCheckProps = schemas.path("AccountDeletionCheckResponse").path("properties");
+        for (String prop : List.of("canDelete", "blockers", "unusedAttempts", "pendingGrading")) {
+            assertThat(deletionCheckProps.has(prop))
+                    .as("AccountDeletionCheckResponse.%s must exist", prop)
+                    .isTrue();
+        }
+        JsonNode blockerEnum = deletionCheckProps.path("blockers").path("items").path("enum");
+        if (blockerEnum.isMissingNode() || !blockerEnum.isArray()) {
+            blockerEnum = schemas.path("AccountDeletionBlocker").path("enum");
+        }
+        assertThat(blockerEnum)
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder(
+                        "ATTEMPT_IN_PROGRESS", "ORDER_BEING_CHECKED", "ORDER_PENDING_PAYMENT");
         JsonNode fullNameSchema = schemas.path("ProfileUpdateRequest").path("properties").path("fullName");
         assertThat(fullNameSchema.path("maxLength").asInt()).isEqualTo(200);
         assertThat(fullNameSchema.path("description").asText()).contains("200");
@@ -607,6 +638,8 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
         ops.put("/api/v1/me/email/verify", List.of("post"));
         ops.put("/api/v1/me/email/change", List.of("post"));
         ops.put("/api/v1/me/email/change/confirm", List.of("post"));
+        ops.put("/api/v1/me/account/deletion-check", List.of("get"));
+        ops.put("/api/v1/me/account/deletion", List.of("post"));
         ops.put("/api/v1/public/storefront/filters", List.of("get"));
         ops.put("/api/v1/public/storefront/products", List.of("get"));
         ops.put("/api/v1/public/storefront/products/{code}", List.of("get"));

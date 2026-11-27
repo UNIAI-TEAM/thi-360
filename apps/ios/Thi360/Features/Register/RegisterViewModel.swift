@@ -35,17 +35,20 @@ final class RegisterViewModel {
 
     private let sessionStore: SessionStore
     private let apiClient: any MobileRecoveryClientProtocol
+    private let legalRepository: LegalRepository
     private let clock: any AppClock
     private let logger: RedactingAppLogger
 
     init(
         sessionStore: SessionStore,
         apiClient: (any MobileRecoveryClientProtocol)? = nil,
+        legalRepository: LegalRepository = LegalRepository(),
         clock: any AppClock = SystemClock(),
         logger: RedactingAppLogger = RedactingAppLogger()
     ) {
         self.sessionStore = sessionStore
         self.apiClient = apiClient ?? sessionStore.apiClient
+        self.legalRepository = legalRepository
         self.clock = clock
         self.logger = logger
         self.currentTime = clock.now
@@ -194,7 +197,7 @@ final class RegisterViewModel {
                 email: trimmedEmail,
                 password: submittedPassword,
                 acceptTerms: true,
-                termsVersion: RegistrationValidation.termsVersion,
+                termsVersion: legalRepository.termsVersion(),
                 registrationId: pendingId
             )
 

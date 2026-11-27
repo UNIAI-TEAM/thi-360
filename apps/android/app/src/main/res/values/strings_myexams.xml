@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_pageTitle">Bài thi của tôi</string>
+    <string name="home_subtitle">Chào %1$s. Đây là các bài thi bạn đã mua và số lượt còn lại.</string>
+    <string name="home_sectionTitle">Bài đã mua</string>
+    <plurals name="home_examCount">
+        <item quantity="other">%1$d bài</item>
+    </plurals>
+    <string name="home_exploreExams">Khám phá bài thi</string>
+    <string name="home_emptyTitle">Bạn chưa có bài thi nào</string>
+    <string name="home_emptyDescription">Chọn bài thi phù hợp trong danh mục để bắt đầu luyện tập.</string>
+    <string name="home_errorTitle">Không tải được danh sách bài thi</string>
+    <string name="home_errorDescription">Kiểm tra kết nối mạng rồi thử lại.</string>
+    <string name="home_staleTitle">Dữ liệu chưa được cập nhật.</string>
+    <string name="home_staleDescription">Không tải lại được danh sách; đang hiện bản đã tải lúc %1$s.</string>
+    <string name="home_staleDescriptionNoTime">Không tải lại được danh sách; đang hiện bản đã tải trước đó.</string>
+
+    <string name="home_status_IN_PROGRESS">Đang làm</string>
+    <string name="home_status_CAN_START">Có thể bắt đầu</string>
+    <string name="home_status_EXHAUSTED">Hết lượt</string>
+
+    <string name="home_card_purchased">Đã mua</string>
+    <string name="home_card_classAssigned">Bài theo lớp · %1$s</string>
+    <string name="home_card_classAssignedNoName">Bài theo lớp</string>
+    <string name="home_card_minutesPerAttempt">%1$s phút mỗi lượt</string>
+    <string name="home_card_attemptsLeft">Lượt còn lại</string>
+
+    <string name="home_actions_continue">Tiếp tục</string>
+    <string name="home_actions_start">Bắt đầu</string>
+    <string name="home_actions_viewResult">Xem kết quả</string>
+    <string name="home_actions_history">Lịch sử</string>
+    <string name="home_actions_rebuy">Mua lại</string>
+    <string name="home_actions_buyMore">Mua thêm lượt</string>
+
+    <string name="home_notes_lastAttempt">Bạn đang làm lượt cuối cùng của bài này.</string>
+    <string name="home_notes_classExhausted">Đã hết lượt được giao cho bài thi này.</string>
+    <string name="home_notes_classExhaustedWithHistory">Đã hết lượt được giao cho bài thi này. Kết quả và lịch sử vẫn xem được.</string>
+    <string name="home_notes_discontinuedCanStart">Bài thi đã ngừng bán. Bạn vẫn dùng được các lượt còn lại.</string>
+    <string name="home_notes_discontinuedExhausted">Bài thi đã ngừng bán, không mua thêm được.</string>
+    <string name="home_notes_discontinuedExhaustedWithHistory">Bài thi đã ngừng bán, không mua thêm được. Kết quả và lịch sử vẫn xem được.</string>
+    <string name="home_notes_pendingTopUp">Đơn mua thêm lượt %1$s đang được kiểm tra. Bạn không cần thanh toán lại.</string>
+
+    <string name="home_checking_sectionTitle">Đang kiểm tra</string>
+    <string name="home_checking_status">Đang kiểm tra</string>
+    <string name="home_checking_viewOrder">Xem đơn</string>
+    <string name="home_checking_reload">Tải lại</string>
+    <string name="home_checking_message">Đã nhận thanh toán cho đơn %1$s. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua %2$s và gửi kèm mã đơn.</string>
+    <string name="home_checking_messageNoContact">Đã nhận thanh toán cho đơn %1$s. Bài thi đang được cấp cho tài khoản của bạn, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ kèm mã đơn. %2$s</string>
+    <string name="home_checking_messageNoOrder">Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, liên hệ hỗ trợ qua %1$s.</string>
+    <string name="home_checking_messageNoOrderNoContact">Đã nhận thanh toán cho đơn hàng của bạn. Bài thi đang được cấp cho tài khoản, bạn không cần thanh toán lại. Tải lại màn hình sau ít phút; nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ. %1$s</string>
+
+    <string name="bundle_home_standaloneHeading">Bài mua lẻ</string>
+    <string name="bundle_home_viewBundle">Xem bộ đề</string>
+    <string name="bundle_home_crossReference">Bài %1$s đang hiện ở nhóm %2$s</string>
+    <string name="bundle_home_groupFootnote">Nộp bài một môn chỉ kết thúc lượt của bài đó; các bài khác trong bộ không đổi. Lượt còn lại gồm cả lượt mua lẻ của cùng bài.</string>
+
+    <string name="history_pageTitle">Lịch sử luyện thi</string>
+    <string name="history_subtitle">Các lượt thi của bạn, lượt mới nhất ở trên. Chọn Xem kết quả để mở đúng kết quả của từng lượt.</string>
+    <plurals name="history_count">
+        <item quantity="other">%1$d lượt</item>
+    </plurals>
+    <string name="history_listTitle">Các lượt thi</string>
+    <string name="history_loading">Đang tải lịch sử luyện thi</string>
+    <string name="history_noChoice">—</string>
+    <string name="history_noScore">Chưa có điểm</string>
+    <string name="history_attemptNo">Lần %1$d</string>
+    <string name="history_regradingNote">Điểm trước khi chấm lại</string>
+    <string name="history_vactPracticeNote">Điểm luyện tập</string>
+
+    <string name="history_actions_continue">Tiếp tục</string>
+    <string name="history_actions_viewResult">Xem kết quả</string>
+
+    <string name="history_columns_score">Điểm</string>
+    <string name="history_columns_choice">Lựa chọn</string>
+    <string name="history_columns_attemptStarted">Lần làm · Bắt đầu</string>
+
+    <string name="history_choiceOptions_ANH">Tiếng Anh</string>
+    <string name="history_choiceOptions_CS">Khoa học máy tính</string>
+    <string name="history_choiceOptions_ENGLISH">Tiếng Anh</string>
+    <string name="history_choiceOptions_ICT">Tin học ứng dụng</string>
+    <string name="history_choiceOptions_KH">Khoa học</string>
+    <string name="history_choiceOptions_SCIENCE">Khoa học</string>
+    <string name="history_choiceOptions_TA">Tiếng Anh</string>
+
+    <string name="history_empty_noAttemptsTitle">Bạn chưa có lượt luyện thi nào</string>
+    <string name="history_empty_noAttemptsDescription">Chọn bài thi ở Bài thi của tôi để bắt đầu làm bài. Kết quả các lượt đã làm sẽ hiện tại đây.</string>
+    <string name="history_empty_toMyExams">Bài thi của tôi</string>
+    <string name="history_empty_title">Chưa có lượt thi phù hợp</string>
+    <string name="history_empty_description">Thử đổi từ khóa, khoảng ngày hoặc bỏ bớt điều kiện lọc.</string>
+    <string name="history_empty_clearFilters">Xóa bộ lọc</string>
+
+    <string name="history_error_title">Không tải được lịch sử luyện thi</string>
+    <string name="history_error_description">Các lượt thi của bạn vẫn được giữ. Hãy thử lại sau ít phút.</string>
+
+    <string name="history_fault_compensated">Lượt bị ảnh hưởng bởi lỗi hệ thống, đã cấp bù 1 lượt</string>
+    <string name="history_fault_systemFault">Lượt kết thúc do lỗi hệ thống</string>
+
+    <string name="history_filters_label">Lọc lịch sử luyện thi</string>
+    <string name="history_filters_q">Tìm theo tên bài</string>
+    <string name="history_filters_qPlaceholder">Ví dụ: HSA tổng hợp</string>
+    <string name="history_filters_kind">Kỳ thi</string>
+    <string name="history_filters_kindAll">Tất cả kỳ thi</string>
+    <string name="history_filters_scope">Phạm vi thi</string>
+    <string name="history_filters_scopeAll">Tất cả phạm vi</string>
+    <string name="history_filters_from">Từ ngày</string>
+    <string name="history_filters_to">Đến ngày</string>
+    <string name="history_filters_clear">Xóa bộ lọc</string>
+    <string name="history_filters_clearFrom">Xóa Từ ngày</string>
+    <string name="history_filters_clearTo">Xóa Đến ngày</string>
+    <string name="history_filters_clearQuery">Xóa từ khóa tìm kiếm</string>
+    <string name="history_filters_dateConfirm">Chọn</string>
+    <string name="history_filters_dateCancel">Hủy</string>
+
+    <string name="history_scopes_FULL">Bài thi FULL</string>
+    <string name="history_scopes_PART">Bài thi theo phần</string>
+    <string name="history_scopes_SUBJECT">Bài thi theo môn</string>
+    <string name="history_scopeDetails_PART">Phần %1$s</string>
+    <string name="history_scopeDetails_SUBJECT">Môn %1$s</string>
+
+    <string name="history_stale_title">Dữ liệu chưa được cập nhật.</string>
+    <string name="history_stale_description">Không tải lại được dữ liệu; đang hiện bản đã tải lúc %1$s.</string>
+    <string name="history_stale_descriptionNoTime">Không tải lại được dữ liệu; đang hiện bản đã tải trước đó.</string>
+
+    <string name="history_states_GRADING">Đang chấm</string>
+    <string name="history_states_GRADING_ERROR">Đang xử lý kết quả</string>
+    <string name="history_states_IN_PROGRESS">Đang làm</string>
+    <string name="history_states_PENDING_REVIEW">Chờ chấm</string>
+    <string name="history_states_REGRADING">Đang chấm lại</string>
+    <string name="history_states_SCORED">Đã chấm</string>
+</resources>

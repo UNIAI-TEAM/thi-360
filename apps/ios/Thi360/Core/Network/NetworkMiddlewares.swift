@@ -135,3 +135,52 @@ struct AuthBearerMiddleware: ClientMiddleware {
         return (retryResponse, retryBody)
     }
 }
+
+struct RetryAfterMiddleware: ClientMiddleware {
+    func intercept(
+        _ request: HTTPRequest,
+        body: HTTPBody?,
+        baseURL: URL,
+        operationID: String,
+        next: @Sendable (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
+    ) async throws -> (HTTPResponse, HTTPBody?) {
+        let (response, responseBody) = try await next(request, body, baseURL)
+        guard response.status.code >= 400,
+              let headerSeconds = RetryAfter.parseSeconds(from: response.headerFields)
+        else {
+            return (response, responseBody)
+        }
+
+        let collectedData: Data
+        if let responseBody {
+            collectedData = (try? await Data(collecting: responseBody, upTo: 65_536)) ?? Data()
+        } else {
+            collectedData = Data()
+        }
+
+        if !collectedData.isEmpty,
+           var jsonObject = (try? JSONSerialization.jsonObject(with: collectedData)) as? [String: Any]
+        {
+            jsonObject["retryAfter"] = headerSeconds
+            if let merged = try? JSONSerialization.data(withJSONObject: jsonObject) {
+                return (response, HTTPBody(merged))
+            }
+            return (response, HTTPBody(collectedData))
+        }
+
+        if response.status.code == 429 {
+            let synthetic: [String: Any] = [
+                "code": "RATE_LIMITED",
+                "message": "",
+                "fieldErrors": [],
+                "traceId": "",
+                "retryAfter": headerSeconds
+            ]
+            if let data = try? JSONSerialization.data(withJSONObject: synthetic) {
+                return (response, HTTPBody(data))
+            }
+        }
+
+        return (response, collectedData.isEmpty ? nil : HTTPBody(collectedData))
+    }
+}

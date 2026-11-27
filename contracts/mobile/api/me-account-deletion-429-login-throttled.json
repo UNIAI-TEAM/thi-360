@@ -1,0 +1,6 @@
+{
+  "code" : "LOGIN_THROTTLED",
+  "message" : "Đăng nhập sai quá nhiều lần, vui lòng thử lại sau",
+  "fieldErrors" : [ ],
+  "traceId" : "00000000-0000-0000-0000-000000000000"
+}

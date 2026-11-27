@@ -31,4 +31,5 @@
     <string name="storefront_units_questions">%1$s câu</string>
 
     <string name="account_deletion_deletedNotice">Tài khoản của bạn đã được xóa.</string>
+    <string name="common_close">Đóng</string>
 </resources>
