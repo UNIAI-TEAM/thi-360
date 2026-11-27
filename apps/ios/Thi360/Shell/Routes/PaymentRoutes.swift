@@ -6,8 +6,8 @@ final class PaymentRoutesCoordinator {
 
     private var activeResultVM: PaymentResultViewModel?
     private var activeResultSessionID: ObjectIdentifier?
+    private var activeResultTarget: PaymentResultTarget?
     private var activeCheckingOrderCodes: Set<String> = []
-    private var activeVerifiedReturnOrderCodes: Set<String> = []
 
     func register(
         router: AppRouter,
@@ -71,8 +71,8 @@ final class PaymentRoutesCoordinator {
     func resetMemory() {
         activeResultVM = nil
         activeResultSessionID = nil
+        activeResultTarget = nil
         activeCheckingOrderCodes.removeAll()
-        activeVerifiedReturnOrderCodes.removeAll()
     }
 
     func markOpenedFromChecking(orderCode: String) {
@@ -131,16 +131,20 @@ final class PaymentRoutesCoordinator {
         sessionStore: SessionStore,
         environment: AppEnvironment = .current
     ) -> PaymentResultViewModel {
-        let entry = makeEntry(for: target, environment: environment)
         let sessionID = ObjectIdentifier(sessionStore)
 
         if let existing = activeResultVM, activeResultSessionID == sessionID {
-            Task { @MainActor in
-                await existing.acceptEntry(entry)
+            if activeResultTarget != target {
+                activeResultTarget = target
+                let entry = makeEntry(for: target, environment: environment)
+                Task { @MainActor in
+                    await existing.acceptEntry(entry)
+                }
             }
             return existing
         }
 
+        let entry = makeEntry(for: target, environment: environment)
         let gateway = OpenApiPaymentGateway(apiClient: sessionStore.apiClient)
         let pendingStore = makePendingOrderStore(sessionStore: sessionStore)
         let browser = makePaymentBrowser(router: router, sessionStore: sessionStore, environment: environment)
@@ -157,15 +161,11 @@ final class PaymentRoutesCoordinator {
             onReturnCallback: { [weak router] callbackURL in
                 guard let router else { return }
                 _ = router.handleIncomingURL(callbackURL, environment: environment)
-            },
-            onOrderResolved: { [weak self] orderCode, verifiedFromLink in
-                if verifiedFromLink {
-                    self?.activeVerifiedReturnOrderCodes.insert(orderCode)
-                }
             }
         )
         activeResultVM = viewModel
         activeResultSessionID = sessionID
+        activeResultTarget = target
         return viewModel
     }
 
@@ -177,30 +177,20 @@ final class PaymentRoutesCoordinator {
         if !isAlreadyViewingPaymentResult(on: router) {
             activeResultVM = nil
             activeResultSessionID = nil
+            activeResultTarget = nil
             Task {
                 await viewModel.onLeaveScreen(clearPendingOrder: true)
             }
         }
     }
 
-    private func openReturnLink(_ url: URL, parsed: PaymentReturnLink, on router: AppRouter) {
-        if let existing = activeResultVM, isAlreadyViewingPaymentResult(on: router) {
-            Task { @MainActor in
-                await existing.acceptEntry(.byReturnLink(parsed))
-            }
-            return
-        }
-        router.openPaymentResult(.byReturnLink(url))
-    }
-
-    private func makeEntry(for target: PaymentResultTarget, environment: AppEnvironment) -> PaymentResultEntry {
+    func makeEntry(for target: PaymentResultTarget, environment: AppEnvironment) -> PaymentResultEntry {
         switch target {
         case let .byOrder(orderCode):
             let fromChecking = consumeOpenedFromChecking(orderCode: orderCode)
-            let verifiedFromLink = activeVerifiedReturnOrderCodes.contains(orderCode)
             return .byOrder(
                 orderCode: orderCode,
-                verifiedFromLink: verifiedFromLink,
+                verifiedFromLink: false,
                 openedFromChecking: fromChecking
             )
         case let .byReturnLink(url):
@@ -209,6 +199,25 @@ final class PaymentRoutesCoordinator {
             }
             return .byOrder(orderCode: "")
         }
+    }
+
+    private func openReturnLink(_ url: URL, parsed: PaymentReturnLink, on router: AppRouter) {
+        if isAlreadyViewingPaymentResult(on: router) {
+            if let existing = activeResultVM {
+                activeResultTarget = .byReturnLink(url)
+                Task { @MainActor in
+                    await existing.acceptEntry(.byReturnLink(parsed))
+                }
+            } else {
+                var stack = router.paths[router.selectedDestination] ?? []
+                if !stack.isEmpty {
+                    stack[stack.count - 1] = .paymentResult(.byReturnLink(url))
+                    router.paths[router.selectedDestination] = stack
+                }
+            }
+            return
+        }
+        router.openPaymentResult(.byReturnLink(url))
     }
 
     private func isAlreadyViewingPaymentResult(on router: AppRouter) -> Bool {
@@ -405,39 +414,57 @@ private struct PaymentResultRouteHostView: View {
     @Bindable var preferences: AppPreferences
 
     @Environment(\.sessionStore) private var sessionStore
+    @State private var viewModel: PaymentResultViewModel?
+    @State private var appliedTarget: PaymentResultTarget?
 
     var body: some View {
-        if let sessionStore {
-            let vm = PaymentRoutesCoordinator.shared.resultViewModel(
-                target: target,
-                router: router,
-                sessionStore: sessionStore
-            )
-            PaymentResultView(
-                viewModel: vm,
-                locale: preferences.locale,
-                supportContact: AppEnvironment.current.supportContact,
-                onGoMyExams: { router.switchTab(.myExams, reload: true) },
-                onViewOrderDetail: { orderCode in router.openOrder(orderCode: orderCode) },
-                onViewOrders: { router.openOrders() },
-                onBuyAgain: { productCode in router.openCheckout(code: productCode) },
-                onOpenCatalog: { router.switchTab(.home, reload: true) },
-                onSwitchAccount: {
-                    Task { await sessionStore.signOut() }
+        Group {
+            if let sessionStore {
+                if let vm = viewModel {
+                    PaymentResultView(
+                        viewModel: vm,
+                        locale: preferences.locale,
+                        supportContact: AppEnvironment.current.supportContact,
+                        onGoMyExams: { router.switchTab(.myExams, reload: true) },
+                        onViewOrderDetail: { orderCode in router.openOrder(orderCode: orderCode) },
+                        onViewOrders: { router.openOrders() },
+                        onBuyAgain: { productCode in router.openCheckout(code: productCode) },
+                        onOpenCatalog: { router.switchTab(.home, reload: true) },
+                        onSwitchAccount: {
+                            Task { await sessionStore.signOut() }
+                        }
+                    )
+                    .task(id: target) {
+                        guard appliedTarget != target else { return }
+                        appliedTarget = target
+                        let entry = PaymentRoutesCoordinator.shared.makeEntry(for: target, environment: AppEnvironment.current)
+                        await vm.acceptEntry(entry)
+                    }
+                    .onDisappear {
+                        PaymentRoutesCoordinator.shared.clearResultViewModelIfUnmounted(
+                            vm,
+                            router: router,
+                            sessionStore: sessionStore
+                        )
+                    }
+                } else {
+                    Color.clear
+                        .onAppear {
+                            let acquired = PaymentRoutesCoordinator.shared.resultViewModel(
+                                target: target,
+                                router: router,
+                                sessionStore: sessionStore
+                            )
+                            appliedTarget = target
+                            viewModel = acquired
+                        }
                 }
-            )
-            .onDisappear {
-                PaymentRoutesCoordinator.shared.clearResultViewModelIfUnmounted(
-                    vm,
-                    router: router,
-                    sessionStore: sessionStore
+            } else {
+                PaymentUnboundSessionFallbackView(
+                    title: PaymentStrings.text("checkout.pageTitle", locale: preferences.locale),
+                    identifier: AppRoute.paymentResult(target).accessibilityIdentifier
                 )
             }
-        } else {
-            PaymentUnboundSessionFallbackView(
-                title: PaymentStrings.text("checkout.pageTitle", locale: preferences.locale),
-                identifier: AppRoute.paymentResult(target).accessibilityIdentifier
-            )
         }
     }
 }

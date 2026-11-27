@@ -95,6 +95,26 @@ final class PaymentResultViewTests: XCTestCase {
             )
             await vm.startIfNeeded()
             XCTAssertEqual(vm.state, .verifyNotFound)
+            XCTAssertEqual(PaymentResultView.verifyNotFoundHeading(locale: .vi), "Không tìm thấy đơn hàng")
+            XCTAssertEqual(PaymentResultView.verifyNotFoundHeading(locale: .en), "Order not found")
+            XCTAssertNotEqual(
+                PaymentResultView.verifyNotFoundHeading(locale: .vi),
+                PaymentStrings.text("checkout.result.missingOrderHeading", locale: .vi)
+            )
+            let notFoundView = PaymentResultView(
+                viewModel: vm,
+                locale: .vi,
+                supportContact: .empty,
+                onGoMyExams: {},
+                onViewOrderDetail: { _ in },
+                onViewOrders: {},
+                onBuyAgain: { _ in },
+                onOpenCatalog: {},
+                onSwitchAccount: {}
+            )
+            let (window, controller) = RecoveryViewTestHelper.host(notFoundView, size: CGSize(width: 390, height: 844), sizeClass: .compact)
+            defer { window.isHidden = true }
+            XCTAssertGreaterThan(controller.view.bounds.width, 0)
         }
 
         do {
@@ -147,8 +167,102 @@ final class PaymentResultViewTests: XCTestCase {
             if case let .fulfilled(order) = vm.state {
                 XCTAssertEqual(order.amountDueVnd, 0)
                 XCTAssertGreaterThan(order.voucherDiscountVnd, 0)
+                XCTAssertEqual(PaymentResultView.fulfilledBodyKey(for: order), "checkout.result.successFreeBody")
             } else {
                 XCTFail("Expected .fulfilled")
+            }
+        }
+
+        do {
+            let zeroDueVnpayData = try PaymentFixtureHelper.mutatingFixture("orders-detail-200-free-voucher.json") { obj in
+                obj["paymentMethod"] = "VNPAY"
+                obj["amountDueVnd"] = 0
+                obj["voucherDiscountVnd"] = 200_000
+            }
+            let harness = try PaymentTestFactory.makeHarness { transport in
+                transport.registerJSON(
+                    method: .get,
+                    path: "/api/v1/me/orders/DH261126000001",
+                    statusCode: 200,
+                    data: zeroDueVnpayData
+                )
+            }
+            defer { try? FileManager.default.removeItem(at: harness.storeDirURL) }
+
+            let vm = PaymentResultViewModel(
+                initialEntry: .byOrder(orderCode: "DH261126000001"),
+                gateway: harness.gateway,
+                paymentBrowser: harness.browser,
+                pendingOrderStore: harness.pendingOrderStore,
+                apiBaseURL: harness.sessionStore.apiClient.serverURL
+            )
+            await vm.startIfNeeded()
+            if case let .fulfilled(order) = vm.state {
+                XCTAssertEqual(order.paymentMethod, .VNPAY)
+                XCTAssertEqual(PaymentResultView.fulfilledBodyKey(for: order), "checkout.result.successFreeBody")
+            } else {
+                XCTFail("Expected .fulfilled for zero-due voucher order")
+            }
+        }
+
+        do {
+            let pendingEmptyPayments = try PaymentFixtureHelper.mutatingFixture("orders-detail-200-pending-payment.json") { obj in
+                obj["payments"] = []
+            }
+            let harness = try PaymentTestFactory.makeHarness { transport in
+                try transport.registerFixture(
+                    method: .get,
+                    path: "/api/v1/public/payments/vnpay/return",
+                    statusCode: 200,
+                    relativeFixturePath: "api/vnpay-return-200-failed.json"
+                )
+                transport.registerJSON(
+                    method: .get,
+                    path: "/api/v1/me/orders/DH261126000001",
+                    statusCode: 200,
+                    data: pendingEmptyPayments
+                )
+            }
+            defer { try? FileManager.default.removeItem(at: harness.storeDirURL) }
+
+            let failedLink = try XCTUnwrap(PaymentReturnLink.parse(
+                URL(string: "https://thi360.zone17.click/checkout/result/app?vnp_TxnRef=DH26112600000101&vnp_ResponseCode=24")!,
+                environment: demoEnv
+            ))
+            let vm = PaymentResultViewModel(
+                initialEntry: .byReturnLink(failedLink),
+                gateway: harness.gateway,
+                paymentBrowser: harness.browser,
+                pendingOrderStore: harness.pendingOrderStore,
+                apiBaseURL: harness.sessionStore.apiClient.serverURL
+            )
+            await vm.startIfNeeded()
+
+            if case let .failed(order, reasonCode, txnRef, _) = vm.state {
+                XCTAssertEqual(reasonCode, "24")
+                XCTAssertEqual(txnRef, "DH26112600000101")
+                let line = PaymentResultView.failedTransactionLine(order: order, txnRef: txnRef, locale: .vi)
+                XCTAssertTrue(line.contains("Mã giao dịch: DH26112600000101"))
+                XCTAssertTrue(line.contains(PaymentFormatters.formatOrderDetailAmount(order: order, locale: .vi)))
+                let fallbackLine = PaymentResultView.failedTransactionLine(order: order, txnRef: nil, locale: .vi)
+                XCTAssertTrue(fallbackLine.hasPrefix("\(order.code) · "))
+
+                let failedView = PaymentResultView(
+                    viewModel: vm,
+                    locale: .vi,
+                    supportContact: .empty,
+                    onGoMyExams: {},
+                    onViewOrderDetail: { _ in },
+                    onViewOrders: {},
+                    onBuyAgain: { _ in },
+                    onOpenCatalog: {},
+                    onSwitchAccount: {}
+                )
+                let (window, controller) = RecoveryViewTestHelper.host(failedView, size: CGSize(width: 390, height: 844), sizeClass: .compact)
+                defer { window.isHidden = true }
+                XCTAssertGreaterThan(controller.view.bounds.width, 0)
+            } else {
+                XCTFail("Expected .failed with verifiedTxnRef fallback when order.payments is empty, got \(vm.state)")
             }
         }
 

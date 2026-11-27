@@ -108,6 +108,55 @@ final class CheckoutViewTests: XCTestCase {
             PaymentStrings.text("bundle.checkout.existingNote", locale: .vi),
             "Bài đã có quyền thì lượt mua thêm cộng vào lượt đang có. Quyền lợi theo từng lần cấp."
         )
+        XCTAssertEqual(
+            CheckoutView.quoteErrorDescription(locale: .vi),
+            "Vui lòng kiểm tra kết nối mạng và thử lại."
+        )
+        XCTAssertEqual(
+            CheckoutView.quoteErrorDescription(locale: .en),
+            "Please check your internet connection and try again."
+        )
+
+        do {
+            let noAccessData = try PaymentFixtureHelper.mutatingFixture("exam-access-query-200.json") { obj in
+                if var items = obj["items"] as? [[String: Any]], !items.isEmpty {
+                    items[0]["attemptsLeft"] = 0
+                    items[0]["state"] = "NONE"
+                    items[0]["items"] = []
+                    obj["items"] = items
+                }
+            }
+            let harnessNoAccess = try PaymentTestFactory.makeHarness { transport in
+                try PaymentTestFactory.registerBundleCheckoutDefaults(on: transport)
+                transport.registerJSON(method: .post, path: "/api/v1/me/exam-access/query", statusCode: 200, data: noAccessData)
+            }
+            defer { try? FileManager.default.removeItem(at: harnessNoAccess.storeDirURL) }
+
+            let vmNoAccess = CheckoutViewModel(
+                code: "BUNDLE-DEMO-01",
+                gateway: harnessNoAccess.gateway,
+                paymentBrowser: harnessNoAccess.browser,
+                pendingOrderStore: harnessNoAccess.pendingOrderStore,
+                apiBaseURL: harnessNoAccess.sessionStore.apiClient.serverURL
+            )
+            await vmNoAccess.loadAll()
+            let viewNoAccess = CheckoutView(
+                viewModel: vmNoAccess,
+                locale: .vi,
+                supportContact: .empty,
+                fallbackUsername: nil,
+                onBackToProduct: {},
+                onBackToCatalog: {},
+                onSwitchAccount: {},
+                onEnterExam: { _ in },
+                onContinueAttempt: { _ in },
+                onViewPendingOrder: { _ in }
+            )
+            let (win, ctrl) = RecoveryViewTestHelper.host(viewNoAccess, size: CGSize(width: 390, height: 1800), sizeClass: .compact)
+            defer { win.isHidden = true }
+            XCTAssertGreaterThan(ctrl.view.bounds.width, 0)
+            XCTAssertGreaterThan(vmNoAccess.loadedProduct?.detail.versionNo ?? 0, 0)
+        }
     }
 
     func testLoadingHasNoPayButton() async throws {
@@ -301,8 +350,25 @@ final class CheckoutViewTests: XCTestCase {
             )
             await vm.loadAll()
             XCTAssertNotNil(vm.loadedProduct)
+            XCTAssertNil(vm.activeQuote)
             XCTAssertTrue(vm.isBundleUnavailable)
+            XCTAssertTrue(vm.isVoucherDisabled)
             XCTAssertFalse(vm.isPayButtonEnabled)
+            let unavailableQuoteView = CheckoutView(
+                viewModel: vm,
+                locale: .vi,
+                supportContact: .empty,
+                fallbackUsername: nil,
+                onBackToProduct: {},
+                onBackToCatalog: {},
+                onSwitchAccount: {},
+                onEnterExam: { _ in },
+                onContinueAttempt: { _ in },
+                onViewPendingOrder: { _ in }
+            )
+            let (uWin, uCtrl) = RecoveryViewTestHelper.host(unavailableQuoteView, size: CGSize(width: 390, height: 1800), sizeClass: .compact)
+            defer { uWin.isHidden = true }
+            XCTAssertGreaterThan(uCtrl.view.bounds.width, 0)
         }
 
         do {
@@ -326,8 +392,25 @@ final class CheckoutViewTests: XCTestCase {
             await vm.loadAll()
             await vm.createOrder()
             XCTAssertNotNil(vm.loadedProduct)
+            XCTAssertNotNil(vm.activeQuote)
             XCTAssertTrue(vm.isBundleUnavailable)
+            XCTAssertTrue(vm.isVoucherDisabled)
             XCTAssertFalse(vm.isPayButtonEnabled)
+            let unavailableCreateView = CheckoutView(
+                viewModel: vm,
+                locale: .vi,
+                supportContact: .empty,
+                fallbackUsername: nil,
+                onBackToProduct: {},
+                onBackToCatalog: {},
+                onSwitchAccount: {},
+                onEnterExam: { _ in },
+                onContinueAttempt: { _ in },
+                onViewPendingOrder: { _ in }
+            )
+            let (cWin, cCtrl) = RecoveryViewTestHelper.host(unavailableCreateView, size: CGSize(width: 390, height: 1800), sizeClass: .compact)
+            defer { cWin.isHidden = true }
+            XCTAssertGreaterThan(cCtrl.view.bounds.width, 0)
         }
 
         do {

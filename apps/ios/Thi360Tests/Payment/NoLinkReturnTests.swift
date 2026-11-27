@@ -115,4 +115,64 @@ final class NoLinkReturnTests: XCTestCase {
             await vm.onLeaveScreen(clearPendingOrder: false)
         }
     }
+
+    func testDismissedBrowserAfterEarlierVerifiedReturnLinkEntersNoResultYet() async throws {
+        let demoEnv = AppEnvironment(
+            kind: .demo,
+            apiBaseURL: URL(string: "https://thi360.zone17.click")!,
+            webBaseURL: URL(string: "https://thi360.zone17.click")!
+        )
+        let harness = try PaymentTestFactory.makeHarness { transport in
+            try transport.registerFixture(
+                method: .get,
+                path: "/api/v1/public/payments/vnpay/return",
+                statusCode: 200,
+                relativeFixturePath: "api/vnpay-return-200-failed.json"
+            )
+            transport.enqueue(method: .get, path: "/api/v1/me/orders/DH261126000001", handlers: [
+                { _ in
+                    let data = try ContractFixtureLoader.loadApiFixture("orders-detail-200-payment-failed.json")
+                    return ContractFakeTransport.jsonResponse(statusCode: 200, data: data)
+                },
+                { _ in
+                    let data = try ContractFixtureLoader.loadApiFixture("orders-detail-200-pending-payment.json")
+                    return ContractFakeTransport.jsonResponse(statusCode: 200, data: data)
+                }
+            ])
+        }
+        defer { try? FileManager.default.removeItem(at: harness.storeDirURL) }
+
+        let router = AppRouter()
+        let failedURL = URL(string: "https://thi360.zone17.click/checkout/result/app?vnp_TxnRef=DH26112600000101&vnp_ResponseCode=24")!
+        router.openPaymentResult(.byReturnLink(failedURL))
+
+        let firstVM = PaymentRoutesCoordinator.shared.resultViewModel(
+            target: .byReturnLink(failedURL),
+            router: router,
+            sessionStore: harness.sessionStore,
+            environment: demoEnv
+        )
+        await firstVM.startIfNeeded()
+        XCTAssertTrue(firstVM.verifiedFromLink)
+
+        router.back()
+        PaymentRoutesCoordinator.shared.clearResultViewModelIfUnmounted(firstVM, router: router, sessionStore: harness.sessionStore)
+
+        router.openPaymentResult(.byOrder(orderCode: "DH261126000001"))
+        let retryVM = PaymentRoutesCoordinator.shared.resultViewModel(
+            target: .byOrder(orderCode: "DH261126000001"),
+            router: router,
+            sessionStore: harness.sessionStore,
+            environment: demoEnv
+        )
+        await retryVM.startIfNeeded()
+        defer { Task { await retryVM.onLeaveScreen(clearPendingOrder: false) } }
+
+        XCTAssertFalse(retryVM.verifiedFromLink)
+        if case let .noResultYet(order, _, _, _) = retryVM.state {
+            XCTAssertEqual(order.code, "DH261126000001")
+        } else {
+            XCTFail("Expected .noResultYet after dismissed browser following an earlier failed return link, got \(retryVM.state)")
+        }
+    }
 }

@@ -31,7 +31,6 @@ final class PaymentResultViewModel {
     private let usernameProvider: @MainActor () -> String?
     private let keyGenerator: @Sendable () -> String
     private let onReturnCallback: @MainActor (URL) -> Void
-    private let onOrderResolved: @MainActor (String, Bool) -> Void
 
     init(
         initialEntry: PaymentResultEntry,
@@ -43,8 +42,7 @@ final class PaymentResultViewModel {
         clock: any AppClock = SystemClock(),
         usernameProvider: @escaping @MainActor () -> String? = { nil },
         keyGenerator: @escaping @Sendable () -> String = { UUID().uuidString },
-        onReturnCallback: @escaping @MainActor (URL) -> Void = { _ in },
-        onOrderResolved: @escaping @MainActor (String, Bool) -> Void = { _, _ in }
+        onReturnCallback: @escaping @MainActor (URL) -> Void = { _ in }
     ) {
         self.initialEntry = initialEntry
         self.gateway = gateway
@@ -56,7 +54,6 @@ final class PaymentResultViewModel {
         self.usernameProvider = usernameProvider
         self.keyGenerator = keyGenerator
         self.onReturnCallback = onReturnCallback
-        self.onOrderResolved = onOrderResolved
 
         switch initialEntry {
         case let .byOrder(orderCode, fromLink, fromChecking):
@@ -101,7 +98,12 @@ final class PaymentResultViewModel {
             hasStarted = true
             poller.stop()
             currentOrderCode = trimmed
-            verifiedFromLink = verifiedFromLink || fromLink
+            verifiedFromLink = fromLink
+            if !fromLink {
+                verifiedPaymentState = nil
+                verifiedTxnRef = nil
+                verifiedResponseCode = nil
+            }
             openedFromChecking = openedFromChecking || fromChecking
             hasTimedOut = false
             await loadOrder(code: trimmed, isPoll: false)
@@ -256,7 +258,6 @@ final class PaymentResultViewModel {
             verifiedPaymentState = verified.paymentState.uppercased()
             verifiedTxnRef = link.txnRef
             verifiedResponseCode = link.responseCode
-            onOrderResolved(verified.orderCode, true)
             await loadOrder(code: verified.orderCode, isPoll: false)
 
         case .invalidSignature:
@@ -284,7 +285,6 @@ final class PaymentResultViewModel {
         do {
             let order = try await gateway.getOrder(orderCode: code)
             lastLoadedOrder = order
-            onOrderResolved(order.code, verifiedFromLink)
             let shouldPoll = await applyOrder(order, preservingRetryError: preservingRetryError)
             if shouldPoll && !hasTimedOut {
                 poller.start(
@@ -394,7 +394,7 @@ final class PaymentResultViewModel {
                 state = .failed(
                     order: order,
                     reasonCode: reasonCode,
-                    txnRef: latest?.txnRef,
+                    txnRef: latest?.txnRef ?? verifiedTxnRef,
                     retryPayError: preservingRetryError
                 )
                 return false

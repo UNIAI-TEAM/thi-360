@@ -72,7 +72,7 @@ struct PaymentResultView: View {
             statusCard(
                 symbolName: "questionmark.circle.fill",
                 tone: .danger,
-                heading: PaymentStrings.text("checkout.result.missingOrderHeading", locale: locale),
+                heading: Self.verifyNotFoundHeading(locale: locale),
                 badgeText: nil,
                 bodyText: PaymentStrings.text("checkout.result.verifyNotFoundBody", locale: locale),
                 identifier: "paymentResult.verifyNotFound"
@@ -81,11 +81,6 @@ struct PaymentResultView: View {
                     title: PaymentStrings.text("checkout.result.viewOrders", locale: locale),
                     identifier: "paymentResult.viewOrdersButton",
                     action: onViewOrders
-                )
-                PaymentSecondaryButton(
-                    title: PaymentStrings.text("checkout.result.viewMyExams", locale: locale),
-                    identifier: "paymentResult.goMyExamsButton",
-                    action: onGoMyExams
                 )
             }
 
@@ -140,9 +135,7 @@ struct PaymentResultView: View {
             }
 
         case let .fulfilled(order):
-            let bodyKey = (order.paymentMethod == .FREE && order.voucherDiscountVnd > 0)
-                ? "checkout.result.successFreeBody"
-                : "checkout.result.successBody"
+            let bodyKey = Self.fulfilledBodyKey(for: order)
             statusCard(
                 symbolName: "checkmark.circle.fill",
                 tone: .success,
@@ -187,14 +180,13 @@ struct PaymentResultView: View {
                     identifier: "paymentResult.failedReason"
                 )
 
-                if let txnRef, !txnRef.isEmpty {
-                    let amountText = PaymentFormatters.formatOrderDetailAmount(order: order, locale: locale)
-                    Text("\(PaymentStrings.text("checkout.result.txnRefLabel", locale: locale)) \(txnRef) · \(amountText)")
-                        .font(.footnote.monospaced())
-                        .foregroundStyle(palette.textSecondaryColor)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("paymentResult.txnRef")
-                }
+                orderSummaryBlock(order: order, includeFulfilledAt: false)
+
+                Text(Self.failedTransactionLine(order: order, txnRef: txnRef, locale: locale))
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(palette.textSecondaryColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("paymentResult.txnRef")
 
                 if let retryPayError {
                     retryErrorBanner(errorKey: retryPayError, productCode: order.productCode)
@@ -333,14 +325,6 @@ struct PaymentResultView: View {
                 }
 
                 PaymentSecondaryButton(
-                    title: PaymentStrings.text("checkout.result.checkAgain", locale: locale),
-                    isDisabled: viewModel.isCheckingAgain,
-                    identifier: "paymentResult.checkAgainButton"
-                ) {
-                    Task { await viewModel.checkAgainNow() }
-                }
-
-                PaymentSecondaryButton(
                     title: PaymentStrings.text("checkout.result.viewOrder", locale: locale),
                     identifier: "paymentResult.viewOrderButton"
                 ) {
@@ -433,18 +417,52 @@ struct PaymentResultView: View {
         }
     }
 
+    static func verifyNotFoundHeading(locale: AppLocale) -> String {
+        PaymentStrings.text("orders.notFound.title", locale: locale)
+    }
+
+    static func fulfilledBodyKey(for order: Components.Schemas.OrderDetail) -> String {
+        ((order.amountDueVnd == 0 || order.paymentMethod == .FREE) && order.voucherDiscountVnd > 0)
+            ? "checkout.result.successFreeBody"
+            : "checkout.result.successBody"
+    }
+
+    static func failedTransactionLine(
+        order: Components.Schemas.OrderDetail,
+        txnRef: String?,
+        locale: AppLocale
+    ) -> String {
+        let amountText = PaymentFormatters.formatOrderDetailAmount(order: order, locale: locale)
+        if let txnRef, !txnRef.isEmpty {
+            return "\(PaymentStrings.text("checkout.result.txnRefLabel", locale: locale)) \(txnRef) · \(amountText)"
+        }
+        return "\(order.code) · \(amountText)"
+    }
+
     private func orderSummaryBlock(order: Components.Schemas.OrderDetail, includeFulfilledAt: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider().overlay(palette.borderColor)
             PaymentKeyValueRow(
                 label: PaymentStrings.text("orders.detail.fields.product", locale: locale),
                 value: order.productName,
-                emphasizeValue: true
+                emphasizeValue: true,
+                identifier: "paymentResult.orderProduct"
             )
+            Text(
+                PaymentStrings.text(
+                    "orders.detail.heading",
+                    locale: locale,
+                    replacements: ["code": order.code]
+                )
+            )
+            .font(.footnote.monospaced())
+            .foregroundStyle(palette.textSecondaryColor)
+            .accessibilityIdentifier("paymentResult.orderCode")
             PaymentKeyValueRow(
                 label: PaymentStrings.text("orders.detail.fields.amountDue", locale: locale),
                 value: PaymentFormatters.formatOrderDetailAmount(order: order, locale: locale),
-                emphasizeValue: true
+                emphasizeValue: true,
+                identifier: "paymentResult.orderAmount"
             )
             if includeFulfilledAt, let fulfilledAt = order.fulfilledAt {
                 PaymentKeyValueRow(

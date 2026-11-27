@@ -189,4 +189,89 @@ final class PaymentReturnGatingTests: XCTestCase {
         XCTAssertEqual(router.path(for: .home).count, 1)
         XCTAssertEqual(harness.transport.callCount(method: .get, path: "/api/v1/public/payments/vnpay/return"), 1)
     }
+
+    func testPreMountRacingReturnLinksAndRestoreKeepSingleRoute() async throws {
+        let harness = try PaymentTestFactory.makeHarness()
+        defer { try? FileManager.default.removeItem(at: harness.storeDirURL) }
+
+        let router = AppRouter()
+        PaymentRoutesCoordinator.shared.register(
+            router: router,
+            sessionStore: harness.sessionStore,
+            sessionCleanup: harness.sessionStore.sessionCleanup,
+            environment: demoEnv,
+            clock: harness.clock
+        )
+        await router.inboundLinkRouter.notifySessionStateChanged(.active)
+
+        XCTAssertTrue(router.handleIncomingURL(sampleLink, environment: demoEnv))
+        XCTAssertTrue(router.handleIncomingURL(sampleLink, environment: demoEnv))
+        XCTAssertEqual(router.path(for: .home), [.paymentResult(.byReturnLink(sampleLink))])
+
+        let router2 = AppRouter()
+        PaymentRoutesCoordinator.shared.resetMemory()
+        await harness.pendingOrderStore.save(orderCode: "DH261126000001", openedAt: harness.clock.now)
+        PaymentRoutesCoordinator.shared.register(
+            router: router2,
+            sessionStore: harness.sessionStore,
+            sessionCleanup: harness.sessionStore.sessionCleanup,
+            environment: demoEnv,
+            clock: harness.clock
+        )
+        await router2.inboundLinkRouter.notifySessionStateChanged(.active)
+        await router2.inboundLinkRouter.notifyScenePhaseChanged(.background, sessionState: .active)
+        await router2.inboundLinkRouter.notifyScenePhaseChanged(.active, sessionState: .active)
+        XCTAssertEqual(router2.path(for: .home), [.paymentResult(.byOrder(orderCode: "DH261126000001"))])
+
+        XCTAssertTrue(router2.handleIncomingURL(sampleLink, environment: demoEnv))
+        XCTAssertEqual(
+            router2.path(for: .home),
+            [.paymentResult(.byReturnLink(sampleLink))],
+            "Pre-mount return link racing restorePendingOrder must replace top .paymentResult route in place"
+        )
+    }
+
+    func testRepeatedResultViewModelLookupForSameTargetDoesNotRestartCalls() async throws {
+        let harness = try PaymentTestFactory.makeHarness { transport in
+            try transport.registerFixture(
+                method: .get,
+                path: "/api/v1/me/orders/DH261126000001",
+                statusCode: 200,
+                relativeFixturePath: "api/orders-detail-200-fulfilled.json"
+            )
+        }
+        defer { try? FileManager.default.removeItem(at: harness.storeDirURL) }
+
+        let router = AppRouter()
+        let target = PaymentResultTarget.byOrder(orderCode: "DH261126000001")
+        let vm1 = PaymentRoutesCoordinator.shared.resultViewModel(
+            target: target,
+            router: router,
+            sessionStore: harness.sessionStore,
+            environment: demoEnv
+        )
+        await vm1.startIfNeeded()
+        XCTAssertEqual(harness.transport.callCount(method: .get, path: "/api/v1/me/orders/DH261126000001"), 1)
+
+        let vm2 = PaymentRoutesCoordinator.shared.resultViewModel(
+            target: target,
+            router: router,
+            sessionStore: harness.sessionStore,
+            environment: demoEnv
+        )
+        let vm3 = PaymentRoutesCoordinator.shared.resultViewModel(
+            target: target,
+            router: router,
+            sessionStore: harness.sessionStore,
+            environment: demoEnv
+        )
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertTrue(vm1 === vm2 && vm2 === vm3)
+        XCTAssertEqual(
+            harness.transport.callCount(method: .get, path: "/api/v1/me/orders/DH261126000001"),
+            1,
+            "Re-evaluating same target must not trigger acceptEntry or restart network/polling calls"
+        )
+    }
 }

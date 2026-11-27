@@ -246,11 +246,11 @@ struct CheckoutView: View {
         accountCard(loaded: loaded)
         productCard(loaded: loaded)
 
-        if !viewModel.isBundleUnavailable {
+        if viewModel.activeQuote != nil || viewModel.isBundleUnavailable {
             voucherCard
-            summaryCard
-                .id("checkout.summary.section")
         }
+        summaryCard(loaded: loaded)
+            .id("checkout.summary.section")
 
         refundPolicyCard
 
@@ -472,7 +472,7 @@ struct CheckoutView: View {
         let accessByCode: [String: Components.Schemas.BundleAccessExamItem] = Dictionary(
             uniqueKeysWithValues: (viewModel.accessRow?.items ?? []).map { ($0.code, $0) }
         )
-        let hasAnyExistingBundleAccess = (viewModel.accessRow?.items ?? []).contains { $0.attemptsLeft > 0 }
+        let resolvedVersionNo = viewModel.activeQuote?.versionNo ?? detail.versionNo
 
         return PaymentCard(identifier: "checkout.productCard") {
             HStack(alignment: .top, spacing: 8) {
@@ -487,17 +487,15 @@ struct CheckoutView: View {
 
                 Spacer(minLength: 8)
 
-                if let versionNo = viewModel.activeQuote?.versionNo {
-                    PaymentStatusChip(
-                        text: PaymentStrings.text(
-                            "checkout.product.version",
-                            locale: locale,
-                            replacements: ["version": String(versionNo)]
-                        ),
-                        tone: .neutral,
-                        identifier: "checkout.product.versionBadge"
-                    )
-                }
+                PaymentStatusChip(
+                    text: PaymentStrings.text(
+                        "checkout.product.version",
+                        locale: locale,
+                        replacements: ["version": String(resolvedVersionNo)]
+                    ),
+                    tone: .neutral,
+                    identifier: "checkout.product.versionBadge"
+                )
             }
 
             HStack(spacing: 8) {
@@ -522,8 +520,7 @@ struct CheckoutView: View {
             if loaded.isBundle {
                 bundleItemsSection(
                     loaded: loaded,
-                    accessByCode: accessByCode,
-                    hasExistingAccess: hasAnyExistingBundleAccess
+                    accessByCode: accessByCode
                 )
             } else {
                 singleExamMetadataSection(detail: detail)
@@ -604,8 +601,7 @@ struct CheckoutView: View {
     @ViewBuilder
     private func bundleItemsSection(
         loaded: LoadedProductDetail,
-        accessByCode: [String: Components.Schemas.BundleAccessExamItem],
-        hasExistingAccess: Bool
+        accessByCode: [String: Components.Schemas.BundleAccessExamItem]
     ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(
@@ -684,13 +680,11 @@ struct CheckoutView: View {
                 .accessibilityIdentifier("checkout.bundleItem.\(item.code)")
             }
 
-            if hasExistingAccess {
-                Text(PaymentStrings.text("bundle.checkout.existingNote", locale: locale))
-                    .font(.footnote)
-                    .foregroundStyle(statusPalette.infoColor)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("checkout.bundle.existingNote")
-            }
+            Text(PaymentStrings.text("bundle.checkout.existingNote", locale: locale))
+                .font(.footnote)
+                .foregroundStyle(statusPalette.infoColor)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("checkout.bundle.existingNote")
         }
     }
 
@@ -849,100 +843,129 @@ struct CheckoutView: View {
         }
     }
 
+    static func quoteErrorDescription(locale: AppLocale) -> String {
+        PaymentStrings.text("checkout.loadError.description", locale: locale)
+    }
+
     @ViewBuilder
-    private var summaryCard: some View {
+    private func summaryCard(loaded: LoadedProductDetail) -> some View {
         PaymentCard(identifier: "checkout.summaryCard") {
             Text(PaymentStrings.text("checkout.summary.title", locale: locale))
                 .font(.headline)
                 .foregroundStyle(palette.textColor)
 
-            switch viewModel.quote {
-            case .loading:
-                PaymentSkeletonCard(lines: 3)
-
-            case .failed, .empty:
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(PaymentStrings.text("checkout.loadError.title", locale: locale))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(palette.dangerTextColor)
-                    PaymentSecondaryButton(
-                        title: AppStrings.common("common.retry", locale: locale),
-                        fullWidth: false,
-                        identifier: "checkout.quote.retryButton"
-                    ) {
-                        Task { await viewModel.retryLoadQuote() }
-                    }
-                }
-
-            case let .loaded(quote, _):
+            if viewModel.isBundleUnavailable && viewModel.activeQuote == nil {
                 VStack(alignment: .leading, spacing: 10) {
                     PaymentKeyValueRow(
                         label: PaymentStrings.text("checkout.summary.listPrice", locale: locale),
-                        value: PaymentFormatters.formatVnd(quote.listPrice, locale: locale),
+                        value: PaymentFormatters.formatVnd(loaded.detail.listPrice, locale: locale),
                         identifier: "checkout.summary.listPrice"
                     )
-
-                    if let promotion = quote.promotion, promotion.discountVnd > 0 {
-                        let promoLabel = promotion.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? PaymentStrings.text("checkout.summary.promotionFallback", locale: locale)
-                            : PaymentStrings.text(
-                                "checkout.summary.promotion",
-                                locale: locale,
-                                replacements: ["name": promotion.name]
-                            )
-                        PaymentKeyValueRow(
-                            label: promoLabel,
-                            value: "-\(PaymentFormatters.formatVnd(promotion.discountVnd, locale: locale))",
-                            valueColor: statusPalette.successColor,
-                            identifier: "checkout.summary.promotion"
-                        )
-                    }
-
-                    if let voucher = quote.voucher, voucher.discountVnd > 0 {
-                        PaymentKeyValueRow(
-                            label: PaymentStrings.text(
-                                "checkout.summary.voucherDiscount",
-                                locale: locale,
-                                replacements: ["code": voucher.code]
-                            ),
-                            value: "-\(PaymentFormatters.formatVnd(voucher.discountVnd, locale: locale))",
-                            valueColor: statusPalette.successColor,
-                            identifier: "checkout.summary.voucherDiscount"
-                        )
-                    }
-
                     Divider().overlay(palette.borderColor)
-
-                    let totalDisplay: String = if quote.finalPrice == 0 && quote.voucher != nil {
-                        PaymentStrings.text("checkout.summary.freeVoucher", locale: locale)
-                    } else {
-                        PaymentFormatters.formatVnd(quote.finalPrice, locale: locale)
-                    }
-
                     PaymentKeyValueRow(
                         label: PaymentStrings.text("checkout.summary.totalDue", locale: locale),
-                        value: totalDisplay,
+                        value: PaymentFormatters.formatVnd(loaded.detail.price, locale: locale),
                         valueColor: palette.primaryTextColor,
                         emphasizeValue: true,
                         identifier: "checkout.summary.totalDue"
                     )
+                    PaymentPrimaryButton(
+                        title: PaymentStrings.text("checkout.summary.ctaVnpay", locale: locale),
+                        isDisabled: true,
+                        identifier: "checkout.payButton"
+                    ) {}
+                }
+            } else {
+                switch viewModel.quote {
+                case .loading:
+                    PaymentSkeletonCard(lines: 3)
 
-                    if case let .failed(submitError) = viewModel.submit {
-                        PaymentBanner(
-                            tone: .danger,
-                            symbolName: "exclamationmark.circle.fill",
-                            message: submitErrorMessage(submitError),
-                            identifier: "checkout.submitError"
-                        )
+                case .failed, .empty:
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(Self.quoteErrorDescription(locale: locale))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(palette.dangerTextColor)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("checkout.quote.errorDescription")
+                        PaymentSecondaryButton(
+                            title: AppStrings.common("common.retry", locale: locale),
+                            fullWidth: false,
+                            identifier: "checkout.quote.retryButton"
+                        ) {
+                            Task { await viewModel.retryLoadQuote() }
+                        }
                     }
 
-                    PaymentPrimaryButton(
-                        title: ctaTitle(for: quote),
-                        isLoading: viewModel.submit == .submitting,
-                        isDisabled: !viewModel.isPayButtonEnabled,
-                        identifier: "checkout.payButton"
-                    ) {
-                        Task { await viewModel.createOrder() }
+                case let .loaded(quote, _):
+                    VStack(alignment: .leading, spacing: 10) {
+                        PaymentKeyValueRow(
+                            label: PaymentStrings.text("checkout.summary.listPrice", locale: locale),
+                            value: PaymentFormatters.formatVnd(quote.listPrice, locale: locale),
+                            identifier: "checkout.summary.listPrice"
+                        )
+
+                        if let promotion = quote.promotion, promotion.discountVnd > 0 {
+                            let promoLabel = promotion.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? PaymentStrings.text("checkout.summary.promotionFallback", locale: locale)
+                                : PaymentStrings.text(
+                                    "checkout.summary.promotion",
+                                    locale: locale,
+                                    replacements: ["name": promotion.name]
+                                )
+                            PaymentKeyValueRow(
+                                label: promoLabel,
+                                value: "-\(PaymentFormatters.formatVnd(promotion.discountVnd, locale: locale))",
+                                valueColor: statusPalette.successColor,
+                                identifier: "checkout.summary.promotion"
+                            )
+                        }
+
+                        if let voucher = quote.voucher, voucher.discountVnd > 0 {
+                            PaymentKeyValueRow(
+                                label: PaymentStrings.text(
+                                    "checkout.summary.voucherDiscount",
+                                    locale: locale,
+                                    replacements: ["code": voucher.code]
+                                ),
+                                value: "-\(PaymentFormatters.formatVnd(voucher.discountVnd, locale: locale))",
+                                valueColor: statusPalette.successColor,
+                                identifier: "checkout.summary.voucherDiscount"
+                            )
+                        }
+
+                        Divider().overlay(palette.borderColor)
+
+                        let totalDisplay: String = if quote.finalPrice == 0 && quote.voucher != nil {
+                            PaymentStrings.text("checkout.summary.freeVoucher", locale: locale)
+                        } else {
+                            PaymentFormatters.formatVnd(quote.finalPrice, locale: locale)
+                        }
+
+                        PaymentKeyValueRow(
+                            label: PaymentStrings.text("checkout.summary.totalDue", locale: locale),
+                            value: totalDisplay,
+                            valueColor: palette.primaryTextColor,
+                            emphasizeValue: true,
+                            identifier: "checkout.summary.totalDue"
+                        )
+
+                        if case let .failed(submitError) = viewModel.submit {
+                            PaymentBanner(
+                                tone: .danger,
+                                symbolName: "exclamationmark.circle.fill",
+                                message: submitErrorMessage(submitError),
+                                identifier: "checkout.submitError"
+                            )
+                        }
+
+                        PaymentPrimaryButton(
+                            title: ctaTitle(for: quote),
+                            isLoading: viewModel.submit == .submitting,
+                            isDisabled: !viewModel.isPayButtonEnabled,
+                            identifier: "checkout.payButton"
+                        ) {
+                            Task { await viewModel.createOrder() }
+                        }
                     }
                 }
             }

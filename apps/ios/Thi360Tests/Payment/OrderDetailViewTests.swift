@@ -44,9 +44,40 @@ final class OrderDetailViewTests: XCTestCase {
             "Miễn phí nhờ voucher"
         )
 
+        XCTAssertEqual(
+            OrderDetailView.formatJoinedPair("minhanh.tran", "Trần Minh Anh"),
+            "minhanh.tran · Trần Minh Anh"
+        )
+        XCTAssertEqual(OrderDetailView.formatJoinedPair("minhanh.tran", ""), "minhanh.tran")
+        XCTAssertEqual(OrderDetailView.formatJoinedPair("  ", "Trần Minh Anh"), "Trần Minh Anh")
+        XCTAssertNil(OrderDetailView.formatJoinedPair(" ", nil))
+        XCTAssertEqual(
+            OrderDetailView.formatBundleItemTitle(examName: "Đề Toán", examCode: "EXAM-MATH-01"),
+            "Đề Toán (EXAM-MATH-01)"
+        )
+        XCTAssertEqual(
+            OrderDetailView.formatBundleItemTitle(examName: "Đề Toán", examCode: "  "),
+            "Đề Toán"
+        )
+
         let nullVersionData = try PaymentFixtureHelper.mutatingFixture("orders-detail-200-free-voucher.json") { obj in
             obj["examVersionNo"] = NSNull()
             obj["bundleVersionNo"] = NSNull()
+            obj["productType"] = "BUNDLE"
+            obj["items"] = [
+                [
+                    "id": "00000000-0000-7000-8000-000000000021",
+                    "position": 1,
+                    "examId": "00000000-0000-7000-8000-000000000031",
+                    "examCode": "EXAM-DEMO-02",
+                    "examName": "Đề thi Toán HSA",
+                    "examVersionNo": 1,
+                    "attemptsGranted": 2,
+                    "resultView": "FULL",
+                    "optionCodes": [],
+                    "benefits": ["aiExplanation": true, "strengthWeakness": true, "practice": false]
+                ]
+            ]
         }
         let harness = try PaymentTestFactory.makeHarness { transport in
             transport.registerJSON(method: .get, path: "/api/v1/me/orders/DH261126000001", statusCode: 200, data: nullVersionData)
@@ -77,6 +108,15 @@ final class OrderDetailViewTests: XCTestCase {
         defer { window.isHidden = true }
 
         XCTAssertGreaterThan(controller.view.bounds.width, 0)
+        XCTAssertEqual(
+            OrderDetailView.formatJoinedPair(vm.loadedOrder?.buyerUsername, vm.loadedOrder?.buyerFullName),
+            "\(vm.loadedOrder?.buyerUsername ?? "") · \(vm.loadedOrder?.buyerFullName ?? "")"
+        )
+        XCTAssertEqual(
+            OrderDetailView.formatJoinedPair(vm.loadedOrder?.productName, vm.loadedOrder?.productCode),
+            "\(vm.loadedOrder?.productName ?? "") · \(vm.loadedOrder?.productCode ?? "")"
+        )
+        XCTAssertEqual(vm.loadedOrder?.items.first?.examCode, "EXAM-DEMO-02")
         XCTAssertNil(vm.loadedOrder?.examVersionNo)
         XCTAssertNil(vm.loadedOrder?.bundleVersionNo)
         XCTAssertEqual(vm.loadedOrder?.payments.count, 0)

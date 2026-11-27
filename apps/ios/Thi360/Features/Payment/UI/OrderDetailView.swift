@@ -354,15 +354,21 @@ struct OrderDetailView: View {
                 .foregroundStyle(palette.textColor)
 
             VStack(alignment: .leading, spacing: 10) {
-                PaymentKeyValueRow(
-                    label: PaymentStrings.text("orders.detail.fields.buyer", locale: locale),
-                    value: order.buyerUsername
-                )
-                PaymentKeyValueRow(
-                    label: PaymentStrings.text("orders.detail.fields.product", locale: locale),
-                    value: order.productName,
-                    emphasizeValue: true
-                )
+                if let buyerDisplay = Self.formatJoinedPair(order.buyerUsername, order.buyerFullName) {
+                    PaymentKeyValueRow(
+                        label: PaymentStrings.text("orders.detail.fields.buyer", locale: locale),
+                        value: buyerDisplay,
+                        identifier: "orderDetail.field.buyer"
+                    )
+                }
+                if let productDisplay = Self.formatJoinedPair(order.productName, order.productCode) {
+                    PaymentKeyValueRow(
+                        label: PaymentStrings.text("orders.detail.fields.product", locale: locale),
+                        value: productDisplay,
+                        emphasizeValue: true,
+                        identifier: "orderDetail.field.product"
+                    )
+                }
                 PaymentKeyValueRow(
                     label: PaymentStrings.text("orders.detail.fields.version", locale: locale),
                     value: versionText,
@@ -479,9 +485,11 @@ struct OrderDetailView: View {
                     ForEach(order.items, id: \.id) { item in
                         let itemBenefits = OrderBenefitsSnapshot.parse(from: item.benefits.additionalProperties)
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(item.examName)
+                            Text(Self.formatBundleItemTitle(examName: item.examName, examCode: item.examCode))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(palette.textColor)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("orderDetail.item.\(item.examCode)")
                             let subtitleParts = [
                                 PaymentStrings.plural(
                                     "orders.detail.attemptsValue",
@@ -506,6 +514,25 @@ struct OrderDetailView: View {
                 }
             }
         }
+    }
+
+    static func formatJoinedPair(_ first: String?, _ second: String?) -> String? {
+        let parts = [first, second]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    static func formatBundleItemTitle(examName: String, examCode: String?) -> String {
+        let trimmedName = examName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCode = examCode?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmedCode.isEmpty {
+            return trimmedName
+        }
+        if trimmedName.isEmpty {
+            return trimmedCode
+        }
+        return "\(trimmedName) (\(trimmedCode))"
     }
 
     @ViewBuilder
