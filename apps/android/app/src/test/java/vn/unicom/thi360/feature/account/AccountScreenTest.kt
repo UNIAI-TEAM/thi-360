@@ -203,7 +203,8 @@ class AccountScreenTest {
                 sessionManager = stack.sessionManager,
                 validateOnLaunch = false,
                 startDestination = Destination.Account.route,
-                profileGateway = OpenApiAccountProfileGateway(stack.profileApi),
+                profileGateway = OpenApiProfileGateway.fromSessionStack(stack, server.url("/")),
+                apiBaseUrl = server.url("/"),
             )
         }
 
@@ -239,7 +240,8 @@ class AccountScreenTest {
                 sessionManager = stack.sessionManager,
                 validateOnLaunch = false,
                 startDestination = Destination.Account.route,
-                profileGateway = OpenApiAccountProfileGateway(stack.profileApi),
+                profileGateway = OpenApiProfileGateway.fromSessionStack(stack, server.url("/")),
+                apiBaseUrl = server.url("/"),
             )
         }
 
@@ -254,14 +256,15 @@ class AccountScreenTest {
         composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_TWO_PANE).assertIsDisplayed()
         composeRule.onNodeWithTag(ShellTestTags.ACCOUNT_SINGLE_PANE).assertDoesNotExist()
         composeRule.onNodeWithTag(AccountTestTags.DETAIL_PANE).assertIsDisplayed()
-        composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
-        composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsSelected()
+        composeRule.onNodeWithTag(ProfileTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(AccountTestTags.PROFILE_ROW).assertIsSelected()
+        composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsNotSelected()
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).assertIsNotSelected()
         composeRule.onNodeWithTag(AccountTestTags.THEME_ROW).assertIsNotSelected()
 
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_ROW).assertIsSelected()
-        composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsNotSelected()
+        composeRule.onNodeWithTag(AccountTestTags.PROFILE_ROW).assertIsNotSelected()
         composeRule.onNodeWithTag(AccountTestTags.LANGUAGE_OPTION_EN).performClick()
         assertEquals(AppLocale.EN, preferences.locale)
         composeRule.onNodeWithText("Security").assertIsDisplayed()
@@ -289,7 +292,18 @@ class AccountScreenTest {
         var isTwoPaneWidth by mutableStateOf(true)
         var selectedPane by mutableStateOf(AccountDetailPane.CHANGE_PASSWORD)
         var showSinglePaneChangePassword by mutableStateOf(false)
-        var profileState by mutableStateOf<ProfileLoadState>(ProfileLoadState.Loaded(profile))
+        val profileStore = AccountProfileStore(
+            gateway = object : ProfileGateway {
+                override suspend fun fetch(): ApiResult<UserProfile> = ApiResult.Success(profile)
+                override suspend fun update(fullName: String, phone: String?) = error("unused")
+                override suspend fun uploadAvatar(avatar: PreparedAvatar) = error("unused")
+                override suspend fun removeAvatar() = error("unused")
+                override suspend fun sendVerification() = error("unused")
+                override suspend fun verify(code: String) = error("unused")
+                override suspend fun requestEmailChange(newEmail: String, currentPassword: String) = error("unused")
+                override suspend fun confirmEmailChange(code: String) = error("unused")
+            },
+        ).apply { replace(profile) }
 
         composeRule.setContent {
             Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT)) {
@@ -300,17 +314,13 @@ class AccountScreenTest {
                     onSelectLocale = {},
                     onSelectThemeMode = {},
                     sessionManager = stack.sessionManager,
-                    profileGateway = object : AccountProfileGateway {
-                        override suspend fun fetchProfile(): ApiResult<UserProfile> = ApiResult.Success(profile)
-                    },
+                    profileStore = profileStore,
                     recoveryGateway = OpenApiRecoveryGateway(
                         publicAuthApi = stack.publicAuthApi,
                         authenticatedAuthApi = stack.authenticatedAuthApi,
                     ),
                     biometricController = null,
                     biometricAuthenticator = null,
-                    profileState = profileState,
-                    onProfileStateChanged = { profileState = it },
                     selectedPane = selectedPane,
                     onSelectPane = { selectedPane = it },
                     showSinglePaneChangePassword = showSinglePaneChangePassword,

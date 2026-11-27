@@ -18,6 +18,7 @@ import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.theme.BrandPalette
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.core.ui.LoadState
 import vn.unicom.thi360.feature.lock.BiometricEnablePromptContent
 import vn.unicom.thi360.feature.lock.LockScreenContent
 import vn.unicom.thi360.feature.password.NewPasswordMode
@@ -52,7 +53,7 @@ class AccountAndLockScreenshotTest {
             ) {
                 AccountScreenContent(
                     isTwoPaneWidth = isTwoPane,
-                    profileState = ProfileLoadState.Loaded(sampleProfile),
+                    profileState = LoadState.Loaded(sampleProfile),
                     preferences = AppPreferences(locale = AppLocale.VI, themeMode = themeMode),
                     biometricState = BiometricState.On,
                     selectedPane = AccountDetailPane.CHANGE_PASSWORD,
