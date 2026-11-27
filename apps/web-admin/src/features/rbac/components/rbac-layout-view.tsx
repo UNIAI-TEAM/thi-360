@@ -28,11 +28,16 @@ import type { RbacTabKey } from "../types";
 export interface RbacLayoutContextValue {
   /** Mã quyền đang chọn trên URL (`?permission=CODE`). */
   selectedPermissionCode: string | null;
+  /** Mã vai trò đang chọn trên URL (`?role=CODE`), chỉ tab "Người dùng theo vai trò" đọc. */
+  selectedRoleCode: string | null;
   /** Hộp thoại "Tạo vai trò": nút mở nằm ở tiêu đề trang (layout), hộp thoại nằm trong trang Vai trò. */
   createRoleOpen: boolean;
   setCreateRoleOpen: (open: boolean) => void;
-  /** Chuyển sang tab khác (hoặc đổi quyền đang chọn ở tab hiện tại); bỏ qua tab người dùng không được xem. */
-  navigateToTab: (nextTab: RbacTabKey, permissionCode?: string) => void;
+  /**
+   * Chuyển sang tab khác (hoặc đổi mã đang chọn ở tab hiện tại); bỏ qua tab người dùng không được xem.
+   * `code` là mã vai trò khi sang "Người dùng theo vai trò", mã quyền với tab khác.
+   */
+  navigateToTab: (nextTab: RbacTabKey, code?: string) => void;
 }
 
 const RbacLayoutContext = createContext<RbacLayoutContextValue | null>(null);
@@ -50,7 +55,7 @@ function replaceQueryUrl(nextUrl: string): void {
 }
 
 /**
- * Khung chung của bốn trang con Phân quyền: tiêu đề, thanh điều hướng dạng tab và vùng nội dung.
+ * Khung chung của năm trang con Phân quyền: tiêu đề, thanh điều hướng dạng tab và vùng nội dung.
  * Đặt ở layout của đoạn `rbac` nên tiêu đề và thanh tab không bị dựng lại khi đổi trang con.
  * `/rbac` và trang con không được xem đều chuyển sang trang con đầu tiên được phép.
  */
@@ -71,10 +76,11 @@ export function RbacLayoutView({ children }: { children: ReactNode }) {
 
   const requestedTab = rbacTabFromPathname(pathname);
   const selectedPermissionCode = searchParams.get("permission");
+  const selectedRoleCode = searchParams.get("role");
   const activeTab = resolveActiveRbacTab(requestedTab, allowedTabs);
   const redirectHref =
     sessionState.status === "ready" && activeTab && requestedTab !== activeTab
-      ? rbacTabHref(activeTab, selectedPermissionCode)
+      ? rbacTabHref(activeTab, activeTab === "role-users" ? selectedRoleCode : selectedPermissionCode)
       : null;
 
   useEffect(() => {
@@ -82,26 +88,26 @@ export function RbacLayoutView({ children }: { children: ReactNode }) {
   }, [redirectHref, router]);
 
   const navigateToTab = useCallback(
-    (nextTab: RbacTabKey, permissionCode?: string) => {
+    (nextTab: RbacTabKey, code?: string) => {
       if (!activeTab || !allowedTabs.includes(nextTab)) return;
       const href = rbacNavigationHref(
         nextTab,
-        { tab: activeTab, permission: selectedPermissionCode },
-        permissionCode,
+        { tab: activeTab, permission: selectedPermissionCode, role: selectedRoleCode },
+        code,
       );
       if (nextTab === activeTab) {
-        // Cùng trang, chỉ đổi `?permission=`: cập nhật URL tại chỗ, không tải lại trang con và không cuộn.
+        // Cùng trang, chỉ đổi `?permission=` hoặc `?role=`: cập nhật URL tại chỗ, không tải lại trang con và không cuộn.
         replaceQueryUrl(href);
       } else {
         router.push(href);
       }
     },
-    [activeTab, allowedTabs, router, selectedPermissionCode],
+    [activeTab, allowedTabs, router, selectedPermissionCode, selectedRoleCode],
   );
 
   const contextValue = useMemo<RbacLayoutContextValue>(
-    () => ({ selectedPermissionCode, createRoleOpen, setCreateRoleOpen, navigateToTab }),
-    [selectedPermissionCode, createRoleOpen, navigateToTab],
+    () => ({ selectedPermissionCode, selectedRoleCode, createRoleOpen, setCreateRoleOpen, navigateToTab }),
+    [selectedPermissionCode, selectedRoleCode, createRoleOpen, navigateToTab],
   );
 
   if (sessionState.status === "loading") {
@@ -160,6 +166,7 @@ export function RbacLayoutView({ children }: { children: ReactNode }) {
                 href={rbacNavigationHref(tabKey, {
                   tab: activeTab,
                   permission: selectedPermissionCode,
+                  role: selectedRoleCode,
                 })}
               >
                 {t(`tabs.${tabKey}`)}
@@ -170,7 +177,7 @@ export function RbacLayoutView({ children }: { children: ReactNode }) {
 
         {requestedTab === activeTab ? (
           // `key` theo đường dẫn: đổi trang con thì vùng nội dung là phần tử mới nên hiệu ứng vào chạy lại;
-          // đổi `?permission=` trong cùng trang thì không. Tiêu đề và thanh tab nằm ngoài nên đứng yên.
+          // đổi `?permission=`, `?role=` trong cùng trang thì không. Tiêu đề và thanh tab nằm ngoài nên đứng yên.
           <div key={pathname} className="animate-route-in motion-reduce:animate-none">
             {children}
           </div>

@@ -53,6 +53,8 @@ import { RoleDialog, type RoleDialogProps } from "./role-dialog";
 export interface RolesTabProps {
   createOpen?: boolean;
   onCreateOpenChange?: (open: boolean) => void;
+  /** Bấm số tài khoản đang giữ: sang tab "Người dùng theo vai trò" với vai trò này. */
+  onSelectRoleUsers?: (roleCode: string) => void;
   listRoles?: (params?: ListRolesParams) => Promise<PageResponseRoleSummaryResponse>;
   listPermissions?: () => Promise<PermissionResponse[]>;
   deleteRole?: (id: string) => Promise<void>;
@@ -85,6 +87,7 @@ function buildFallbackPermissions(t: RbacTranslator): PermissionResponse[] {
 export function RolesTab({
   createOpen = false,
   onCreateOpenChange,
+  onSelectRoleUsers,
   listRoles = defaultListRoles,
   listPermissions = defaultListPermissions,
   deleteRole = defaultDeleteRole,
@@ -97,6 +100,7 @@ export function RolesTab({
 
   const canModify = can("ROLE.MODIFY");
   const canViewPermissions = can("PERMISSION.VIEW");
+  const canOpenRoleUsers = can("ROLE.VIEW") && can("USER.VIEW") && onSelectRoleUsers !== undefined;
 
   const [search, setSearch] = useState("");
   const [accessFilter, setAccessFilter] = useState<"ALL" | AccessScope>("ALL");
@@ -240,6 +244,32 @@ export function RolesTab({
     );
   }
 
+  /**
+   * Số tài khoản đang giữ vai trò. Như cột "Tài khoản đang có" của tab Quyền: là liên kết sang tab "Người dùng theo
+   * vai trò" chọn sẵn vai trò này; số 0 hoặc thiếu quyền xem thì chỉ là chữ (UNI-2892).
+   */
+  function userCountCell(r: RoleSummaryResponse) {
+    const label = t("rolesTab.userCountValue", { count: r.userCount });
+    if (!canOpenRoleUsers || r.userCount === 0) {
+      return <span className="text-text-secondary tabular-nums">{label}</span>;
+    }
+    return (
+      <button
+        type="button"
+        aria-label={t("rolesTab.userCountAria", {
+          name: resolveRoleName(rbacT, r.code, r.name, r.system),
+        })}
+        onClick={() => onSelectRoleUsers?.(r.code)}
+        className={cn(
+          "inline-flex min-h-11 cursor-pointer items-center font-semibold text-primary-text tabular-nums hover:underline focus-visible:rounded-sm",
+          focusRing,
+        )}
+      >
+        {label}
+      </button>
+    );
+  }
+
   const columns = useMemo<ColumnDef<RoleSummaryResponse>[]>(() => {
     const baseColumns: ColumnDef<RoleSummaryResponse>[] = [
       {
@@ -273,7 +303,7 @@ export function RolesTab({
         id: "userCount",
         header: t("rolesTab.columns.users"),
         enableSorting: false,
-        cell: ({ row }) => row.original.userCount,
+        cell: ({ row }) => userCountCell(row.original),
       },
       {
         id: "kind",
@@ -298,7 +328,7 @@ export function RolesTab({
     ];
 
     return baseColumns;
-  }, [canModify, t]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canModify, canOpenRoleUsers, onSelectRoleUsers, t]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Dạng thẻ khi khung hẹp hơn 640px (mặc định của `Table`, DESIGN.md mục 5.9): tên vai trò và nút thao tác, mã ở dòng
@@ -319,9 +349,11 @@ export function RolesTab({
           </>
         }
       >
-        <p className="text-caption text-text-muted tabular-nums">
-          {t("rolesTab.cardCounts", { permissions: r.permissionCount, users: r.userCount })}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-1.5 text-caption text-text-muted tabular-nums">
+          <span>{t("rolesTab.cardPermissionCount", { count: r.permissionCount })}</span>
+          <span aria-hidden>·</span>
+          {userCountCell(r)}
+        </div>
       </ListCard>
     ),
   };

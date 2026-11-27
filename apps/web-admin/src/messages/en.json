@@ -2610,7 +2610,6 @@
         "status": "Status",
         "users": "Assigned users"
       },
-      "cardCounts": "Permissions: {permissions} · Assigned users: {users}",
       "createButton": "+ Create role",
       "deleteAria": "Delete role {name}",
       "deleteConfirmAction": "Delete role",
@@ -2648,7 +2647,31 @@
       "statusInactive": "Inactive",
       "totalCount": "{count} roles",
       "viewAria": "View role {name}",
-      "viewTooltip": "View details"
+      "viewTooltip": "View details",
+      "cardPermissionCount": "Permissions: {count}",
+      "userCountAria": "View accounts holding the role {name}",
+      "userCountValue": "{count} accounts"
+    },
+    "roleUsers": {
+      "pickerLabel": "Choose a role",
+      "pickerSearchLabel": "Search roles",
+      "pickerSearchPlaceholder": "Role code or name",
+      "pickerEmptyTitle": "No matching roles",
+      "pickerEmptyDescription": "Try another keyword.",
+      "summaryCount": "{count} accounts hold this role",
+      "columns": {
+        "account": "Account",
+        "otherRoles": "Other roles",
+        "lastLogin": "Last sign-in",
+        "status": "Status"
+      },
+      "neverLoggedIn": "Never signed in",
+      "lastLoginInline": "Last sign-in: {value}",
+      "emptyTitle": "No accounts",
+      "emptyDescription": "No account holds this role yet, or none matches the filters.",
+      "errorTitle": "Could not load accounts",
+      "errorDescription": "Check your connection and try again.",
+      "footnote": "Select an account name to open its details on the Roles & permissions tab when you need to assign or remove a role."
     },
     "sessionErrorDescription": "Could not load session details. Please try again.",
     "sessionErrorTitle": "Could not load permissions page",
@@ -2662,12 +2685,14 @@
       "ariaLabel": "Permission management tabs",
       "bulk-assign": "Bulk assignment",
       "permissions": "Permissions",
+      "role-users": "Users by role",
       "roles": "Roles",
       "users": "Users by permission"
     },
     "tabsDescription": {
       "bulk-assign": "Bulk assignment tab: grant or revoke roles and permissions for multiple accounts at once. Preview per-account outcomes before applying.",
       "permissions": "Permissions tab: read-only system permission catalog. Permissions are assigned to roles and accounts in the other tabs.",
+      "role-users": "Users by role tab: pick a role to see the accounts that hold it.",
       "roles": "Roles tab: each role has an access scope and a set of permissions. Scope determines which portal holders enter after sign-in.",
       "users": "Users by permission tab: pick a permission to inspect which accounts hold it and how it was granted."
     },

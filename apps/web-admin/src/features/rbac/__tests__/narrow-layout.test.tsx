@@ -178,7 +178,8 @@ describe("Phân quyền: bảng thành danh sách thẻ ở khung hẹp (UNI-258
       "Quản trị",
       "Tự tạo",
     ]);
-    expect(within(card!).getByText("Số quyền: 5 · Tài khoản đang giữ: 3")).toBeInTheDocument();
+    expect(within(card!).getByText("Số quyền: 5")).toBeInTheDocument();
+    expect(within(card!).getByText("3 tài khoản")).toBeInTheDocument();
 
     // Nút thao tác giống bảng, nằm trên vùng bấm của thẻ; vai trò đang có người giữ thì không xóa được.
     const edit = within(card!).getByRole("button", { name: "Sửa vai trò Vận hành" });
