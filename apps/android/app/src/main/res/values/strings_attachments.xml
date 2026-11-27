@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="attempt_player_attachmentsLabel">Tệp đính kèm</string>
+    <string name="attempt_attachments_openError">Không mở được tệp. Vui lòng thử lại.</string>
+
+    <string name="question_audioPlayer_regionLabel">Trình phát audio</string>
+    <string name="question_audioPlayer_play">Nghe</string>
+    <string name="question_audioPlayer_playing">Đang phát…</string>
+    <string name="question_audioPlayer_resume">Phát lại</string>
+    <string name="question_audioPlayer_playsRemaining">Còn %1$s/%2$s lần nghe</string>
+    <string name="question_audioPlayer_playsExhaustedBadge">Đã hết lượt nghe (0/%1$s)</string>
+    <string name="question_audioPlayer_exhaustedReason">Bạn đã dùng hết số lần nghe cho tệp audio này.</string>
+    <string name="question_audioPlayer_partClosedReason">Phần thi đã đóng, không thể nghe tiếp audio.</string>
+    <string name="question_audioPlayer_timeUpReason">Đã hết giờ làm bài, audio đã dừng phát.</string>
+    <string name="question_audioPlayer_submittedReason">Bài thi đã nộp, audio đã dừng phát.</string>
+    <string name="question_audioPlayer_evictedReason">Phiên làm bài đã chuyển sang thiết bị khác, audio đã dừng.</string>
+    <string name="question_audioPlayer_disabledReason">Trình phát audio đang tạm khóa.</string>
+    <string name="question_audioPlayer_pausedResumable">Âm thanh đã tạm dừng. Bấm Phát lại để nghe tiếp mà không mất lượt nghe.</string>
+    <string name="question_audioPlayer_offlineWaiting">Mất kết nối mạng, đang chờ kết nối lại để phát tiếp.</string>
+    <string name="question_audioPlayer_playErrorRetry">Không thể phát audio lúc này. Bấm lại để thử tiếp.</string>
+    <string name="question_audioPlayer_progressLabel">Tiến độ phát audio</string>
+</resources>

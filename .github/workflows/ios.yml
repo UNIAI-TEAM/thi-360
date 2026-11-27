@@ -105,7 +105,8 @@ jobs:
             -only-testing:Thi360Tests/ResetTokenHandlingTests \
             -only-testing:Thi360Tests/RecoveryLogRedactionTests \
             -only-testing:Thi360Tests/AppearanceFallbackTests \
-            -only-testing:Thi360Tests/BiometricInvalidationStateTests
+            -only-testing:Thi360Tests/BiometricInvalidationStateTests \
+            -only-testing:Thi360Tests/AttemptLogRedactionTests
 
   build-and-test:
     runs-on: macos-26

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="attempt_player_attachmentsLabel">Attachments</string>
+    <string name="attempt_attachments_openError">Could not open the file. Please try again.</string>
+
+    <string name="question_audioPlayer_regionLabel">Audio player</string>
+    <string name="question_audioPlayer_play">Play</string>
+    <string name="question_audioPlayer_playing">Playing…</string>
+    <string name="question_audioPlayer_resume">Resume playback</string>
+    <string name="question_audioPlayer_playsRemaining">%1$s/%2$s plays left</string>
+    <string name="question_audioPlayer_playsExhaustedBadge">No plays left (0/%1$s)</string>
+    <string name="question_audioPlayer_exhaustedReason">You have used all plays for this audio.</string>
+    <string name="question_audioPlayer_partClosedReason">This part is closed; audio playback is unavailable.</string>
+    <string name="question_audioPlayer_timeUpReason">Time is up; audio playback has stopped.</string>
+    <string name="question_audioPlayer_submittedReason">Attempt submitted; audio playback has stopped.</string>
+    <string name="question_audioPlayer_evictedReason">Session moved to another device; audio playback stopped.</string>
+    <string name="question_audioPlayer_disabledReason">Audio player is currently disabled.</string>
+    <string name="question_audioPlayer_pausedResumable">Audio paused. Tap Resume to continue without using a play.</string>
+    <string name="question_audioPlayer_offlineWaiting">Connection lost; waiting to reconnect to resume playback.</string>
+    <string name="question_audioPlayer_playErrorRetry">Could not start audio right now. Click again to retry.</string>
+    <string name="question_audioPlayer_progressLabel">Audio playback progress</string>
+</resources>

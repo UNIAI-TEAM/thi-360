@@ -41,7 +41,6 @@
     <string name="attempt_player_pageTitle">Exam attempt</string>
     <string name="attempt_player_offlineBanner">Connection lost. Latest answers are not saved yet. The timer is still running.</string>
     <string name="attempt_player_noActiveQuestion">No question available to display.</string>
-    <string name="attempt_player_attachmentsLabel">Attachments</string>
 
     <string name="attempt_timer_sharedRemaining">Exam time left</string>
     <string name="attempt_timer_partRemaining">Section %1$d left</string>

@@ -41,7 +41,6 @@
     <string name="attempt_player_pageTitle">Làm bài thi</string>
     <string name="attempt_player_offlineBanner">Mất kết nối. Câu trả lời mới nhất chưa được lưu. Thời gian làm bài vẫn tiếp tục.</string>
     <string name="attempt_player_noActiveQuestion">Không có câu hỏi để hiển thị.</string>
-    <string name="attempt_player_attachmentsLabel">Tệp đính kèm</string>
 
     <string name="attempt_timer_sharedRemaining">Cả bài còn</string>
     <string name="attempt_timer_partRemaining">Phần %1$d còn</string>
