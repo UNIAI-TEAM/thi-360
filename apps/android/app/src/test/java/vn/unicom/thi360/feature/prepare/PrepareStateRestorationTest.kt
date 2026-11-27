@@ -1,33 +1,34 @@
 package vn.unicom.thi360.feature.prepare
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.junit4.StateRestorationTester
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowLooper
 import vn.unicom.thi360.Thi360Application
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.InMemoryTokenStore
@@ -42,14 +43,14 @@ import vn.unicom.thi360.feature.richcontent.ui.LocalFormulaEngine
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.routes.AppNavigator
+import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = "w1280dp-h915dp")
 class PrepareStateRestorationTest {
 
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     private lateinit var app: Thi360Application
     private lateinit var server: ContractFakeServer
@@ -90,40 +91,45 @@ class PrepareStateRestorationTest {
     )
 
     @Test
+    @Config(qualifiers = "w412dp-h915dp")
     fun rotationFoldAndResizePreserveSelectionWithoutDuplicateApiCalls() {
         val response = PrepareTestFixtures.prepareWithSubjectChoice(entitlementId = entitlementId)
         server.respondJson("GET", preparePath, 200, PrepareTestFixtures.encodePrepare(response))
 
         val stack = createActiveStack()
         AppSessionContainer.setTestStack(app, stack)
-        var widthDp by mutableStateOf(412.dp)
-        var heightDp by mutableStateOf(915.dp)
-        lateinit var navigator: AppNavigator
-        val restorationTester = StateRestorationTester(composeRule)
+        var currentNavigator: AppNavigator? = null
 
-        restorationTester.setContent {
-            val navController = rememberNavController()
-            navigator = AppNavigator(navController)
-            CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
-                Box(modifier = Modifier.size(width = widthDp, height = heightDp)) {
-                    AppRoot(
-                        preferences = AppPreferences(locale = AppLocale.VI),
-                        onSelectLocale = {},
-                        onSelectThemeMode = {},
-                        navController = navController,
-                        navigator = navigator,
-                        sessionManager = stack.sessionManager,
-                        validateOnLaunch = false,
-                    )
+        fun mountAppRoot() {
+            composeRule.activityRule.scenario.onActivity { activity ->
+                activity.setContent {
+                    val navController = rememberNavController()
+                    val navigator = remember(navController) { AppNavigator(navController) }
+                    currentNavigator = navigator
+                    CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
+                        AppRoot(
+                            preferences = AppPreferences(locale = AppLocale.VI),
+                            onSelectLocale = {},
+                            onSelectThemeMode = {},
+                            navController = navController,
+                            navigator = navigator,
+                            sessionManager = stack.sessionManager,
+                            validateOnLaunch = false,
+                        )
+                    }
                 }
             }
         }
 
+        mountAppRoot()
+
         composeRule.runOnIdle {
-            navigator.switchTab(Destination.MyExams, reload = false)
-            navigator.openPrepare(entitlementId.toString())
+            val nav = checkNotNull(currentNavigator)
+            nav.switchTab(Destination.MyExams, reload = false)
+            nav.openPrepare(entitlementId.toString())
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
             runCatching {
                 composeRule.onNodeWithTag(PrepareTestTags.preChoiceOption("SCIENCE")).assertIsDisplayed()
                 true
@@ -138,44 +144,172 @@ class PrepareStateRestorationTest {
         composeRule.onNodeWithTag(PrepareTestTags.subjectCheckbox("HOA")).performClick()
         composeRule.onNodeWithTag(PrepareTestTags.SUBJECT_PROGRESS).assertTextContains("2/3", substring = true)
 
-        restorationTester.emulateSavedInstanceStateRestore()
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithTag(PrepareTestTags.preChoiceOption("SCIENCE")).assertIsSelected()
-        composeRule.onNodeWithTag(PrepareTestTags.SUBJECT_PROGRESS).assertTextContains("2/3", substring = true)
-        assertEquals(1, server.requestCount("GET", preparePath))
-
-        for ((w, h) in listOf(840.dp to 720.dp, 1280.dp to 800.dp, 360.dp to 640.dp)) {
-            composeRule.runOnIdle {
-                widthDp = w
-                heightDp = h
+        for (qualifiers in listOf("w840dp-h720dp", "w1280dp-h800dp", "w360dp-h640dp", "w412dp-h915dp")) {
+            RuntimeEnvironment.setQualifiers(qualifiers)
+            composeRule.activityRule.scenario.recreate()
+            mountAppRoot()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                ShadowLooper.idleMainLooper()
+                runCatching {
+                    composeRule.onNodeWithTag(PrepareTestTags.preChoiceOption("SCIENCE")).assertIsSelected()
+                    composeRule.onNodeWithTag(PrepareTestTags.SUBJECT_PROGRESS)
+                        .assertTextContains("2/3", substring = true)
+                    true
+                }.getOrDefault(false)
             }
-            composeRule.waitForIdle()
-            composeRule.onNodeWithTag(PrepareTestTags.preChoiceOption("SCIENCE")).assertIsSelected()
-            composeRule.onNodeWithTag(PrepareTestTags.SUBJECT_PROGRESS).assertTextContains("2/3", substring = true)
             assertEquals(1, server.requestCount("GET", preparePath))
         }
     }
 
     @Test
-    fun rotationAndResizePreserveWaitingPhaseWithoutDuplicateStartCalls() {
+    @Config(qualifiers = "w412dp-h915dp")
+    fun rotationDuringInFlightStartAndWaitingPreservesStateWithoutDuplicateCalls() {
         val perPart = PrepareTestFixtures.loadPrepare("per-part")
-        val abortedStart = PrepareTestFixtures.loadStart(200, "aborted")
+        val startingStart = PrepareTestFixtures.loadStart(202, "starting")
+        val attemptId = startingStart.attemptId
+        val attemptPath = "/api/v1/me/attempts/$attemptId"
+
+        val startEntered = CountDownLatch(1)
+        val allowStartFinish = CountDownLatch(1)
+        val pollCounter = AtomicInteger(0)
+
         server.respondJson("GET", preparePath, 200, PrepareTestFixtures.encodePrepare(perPart))
-        server.respondJson("POST", "/api/v1/me/attempts", 200, PrepareTestFixtures.encodeStart(abortedStart))
+        server.respond("POST", "/api/v1/me/attempts") {
+            startEntered.countDown()
+            allowStartFinish.await(5, TimeUnit.SECONDS)
+            ContractFakeServer.jsonResponse(202, PrepareTestFixtures.encodeStart(startingStart))
+        }
+        server.respond("GET", attemptPath) {
+            val count = pollCounter.incrementAndGet()
+            if (count == 1) {
+                ContractFakeServer.jsonResponse(200, PrepareTestFixtures.readAttemptStateRaw(200, "starting"))
+            } else {
+                ContractFakeServer.jsonResponse(200, PrepareTestFixtures.readAttemptStateRaw(200, "aborted"))
+            }
+        }
 
         val stack = createActiveStack()
         AppSessionContainer.setTestStack(app, stack)
-        var widthDp by mutableStateOf(412.dp)
-        var heightDp by mutableStateOf(915.dp)
-        lateinit var navigator: AppNavigator
-        val restorationTester = StateRestorationTester(composeRule)
+        var currentNavigator: AppNavigator? = null
 
-        restorationTester.setContent {
-            val navController = rememberNavController()
-            navigator = AppNavigator(navController)
-            CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
-                Box(modifier = Modifier.size(width = widthDp, height = heightDp)) {
+        fun mountAppRoot() {
+            composeRule.activityRule.scenario.onActivity { activity ->
+                activity.setContent {
+                    val navController = rememberNavController()
+                    val navigator = remember(navController) { AppNavigator(navController) }
+                    currentNavigator = navigator
+                    CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
+                        AppRoot(
+                            preferences = AppPreferences(locale = AppLocale.VI),
+                            onSelectLocale = {},
+                            onSelectThemeMode = {},
+                            navController = navController,
+                            navigator = navigator,
+                            sessionManager = stack.sessionManager,
+                            validateOnLaunch = false,
+                        )
+                    }
+                }
+            }
+        }
+
+        mountAppRoot()
+
+        composeRule.runOnIdle {
+            val nav = checkNotNull(currentNavigator)
+            nav.switchTab(Destination.MyExams, reload = false)
+            nav.openPrepare(entitlementId.toString())
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
+            runCatching {
+                composeRule.onNodeWithTag(PrepareTestTags.LIST)
+                    .performScrollToNode(hasTestTag(PrepareTestTags.START_BUTTON))
+                composeRule.onNodeWithTag(PrepareTestTags.START_BUTTON).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        assertEquals(1, server.requestCount("GET", preparePath))
+
+        composeRule.onNodeWithTag(PrepareTestTags.START_BUTTON).performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
+            startEntered.count == 0L
+        }
+
+        RuntimeEnvironment.setQualifiers("w840dp-h720dp")
+        composeRule.activityRule.scenario.recreate()
+        mountAppRoot()
+        composeRule.waitForIdle()
+        allowStartFinish.countDown()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
+            runCatching {
+                composeRule.onNodeWithTag(PrepareTestTags.WAITING_POLLING_SECTION).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        assertEquals(1, server.requestCount("GET", preparePath))
+        assertEquals(1, server.requestCount("POST", "/api/v1/me/attempts"))
+
+        val pollsBeforePollingRotate = server.requestCount("GET", attemptPath)
+        RuntimeEnvironment.setQualifiers("w412dp-h915dp")
+        composeRule.activityRule.scenario.recreate()
+        mountAppRoot()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
+            runCatching {
+                composeRule.onNodeWithTag(PrepareTestTags.WAITING_POLLING_SECTION).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        assertEquals(1, server.requestCount("GET", preparePath))
+        assertEquals(1, server.requestCount("POST", "/api/v1/me/attempts"))
+        assertEquals(pollsBeforePollingRotate, server.requestCount("GET", attemptPath))
+
+        composeRule.waitUntil(timeoutMillis = 6_000) {
+            ShadowLooper.idleMainLooper(1_100, TimeUnit.MILLISECONDS)
+            runCatching {
+                composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_SECTION).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_REASON)
+            .assertTextContains("Việc chuẩn bị đề bị gián đoạn.")
+
+        RuntimeEnvironment.setQualifiers("w1280dp-h800dp")
+        composeRule.activityRule.scenario.recreate()
+        mountAppRoot()
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
+            runCatching {
+                composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_SECTION).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_REASON)
+            .assertTextContains("Việc chuẩn bị đề bị gián đoạn.")
+        assertEquals(1, server.requestCount("GET", preparePath))
+        assertEquals(1, server.requestCount("POST", "/api/v1/me/attempts"))
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun offScreenPrepareUnderCheckoutClearsViewModelWhenTabBackStackCleared() {
+        val exhausted = PrepareTestFixtures.loadPrepare("exhausted-purchase")
+        server.respondJson("GET", preparePath, 200, PrepareTestFixtures.encodePrepare(exhausted))
+
+        val stack = createActiveStack()
+        AppSessionContainer.setTestStack(app, stack)
+        var currentNavigator: AppNavigator? = null
+
+        composeRule.activityRule.scenario.onActivity { activity ->
+            activity.setContent {
+                val navController = rememberNavController()
+                val navigator = remember(navController) { AppNavigator(navController) }
+                currentNavigator = navigator
+                CompositionLocalProvider(LocalFormulaEngine provides SourceBoxFormulaEngine()) {
                     AppRoot(
                         preferences = AppPreferences(locale = AppLocale.VI),
                         onSelectLocale = {},
@@ -190,43 +324,39 @@ class PrepareStateRestorationTest {
         }
 
         composeRule.runOnIdle {
-            navigator.switchTab(Destination.MyExams, reload = false)
-            navigator.openPrepare(entitlementId.toString())
+            val nav = checkNotNull(currentNavigator)
+            nav.switchTab(Destination.MyExams, reload = false)
+            nav.openPrepare(entitlementId.toString())
         }
         composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
             runCatching {
                 composeRule.onNodeWithTag(PrepareTestTags.LIST)
-                    .performScrollToNode(hasTestTag(PrepareTestTags.START_BUTTON))
-                composeRule.onNodeWithTag(PrepareTestTags.START_BUTTON).assertIsDisplayed()
+                    .performScrollToNode(hasTestTag(PrepareTestTags.BUY_MORE_BUTTON))
+                composeRule.onNodeWithTag(PrepareTestTags.BUY_MORE_BUTTON).assertIsDisplayed()
                 true
             }.getOrDefault(false)
         }
+        assertEquals(1, PrepareSessionMemory.activeEntryCountForTesting())
 
-        composeRule.onNodeWithTag(PrepareTestTags.START_BUTTON).performClick()
+        composeRule.onNodeWithTag(PrepareTestTags.BUY_MORE_BUTTON).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
             runCatching {
-                composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_SECTION).assertIsDisplayed()
+                composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME)
+                    .assertTextContains("checkout")
                 true
             }.getOrDefault(false)
         }
-        assertEquals(1, server.requestCount("POST", "/api/v1/me/attempts"))
-        assertEquals(1, server.requestCount("GET", preparePath))
-
-        restorationTester.emulateSavedInstanceStateRestore()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_SECTION).assertIsDisplayed()
-        composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_REASON)
-            .assertTextContains("Chưa tạo được bộ câu hỏi cho đề này.")
-        assertEquals(1, server.requestCount("POST", "/api/v1/me/attempts"))
-        assertEquals(1, server.requestCount("GET", preparePath))
+        assertEquals(1, PrepareSessionMemory.activeEntryCountForTesting())
 
         composeRule.runOnIdle {
-            widthDp = 840.dp
-            heightDp = 720.dp
+            checkNotNull(currentNavigator).switchTab(Destination.MyExams, reload = true)
         }
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag(PrepareTestTags.WAITING_FAILED_SECTION).assertIsDisplayed()
-        assertEquals(1, server.requestCount("POST", "/api/v1/me/attempts"))
-        assertEquals(1, server.requestCount("GET", preparePath))
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            ShadowLooper.idleMainLooper()
+            PrepareSessionMemory.activeEntryCountForTesting() == 0
+        }
+        assertTrue(PrepareSessionMemory.activeEntryCountForTesting() == 0)
     }
 }

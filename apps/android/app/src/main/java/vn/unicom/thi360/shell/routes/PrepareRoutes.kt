@@ -1,5 +1,8 @@
 package vn.unicom.thi360.shell.routes
 
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -14,6 +17,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -30,6 +34,7 @@ import vn.unicom.thi360.core.session.SessionState
 import vn.unicom.thi360.core.theme.LocalAppLocale
 import vn.unicom.thi360.feature.prepare.OpenApiPrepareApi
 import vn.unicom.thi360.feature.prepare.PrepareApi
+import vn.unicom.thi360.feature.prepare.PrepareRouteHolderViewModel
 import vn.unicom.thi360.feature.prepare.PrepareSavedSnapshot
 import vn.unicom.thi360.feature.prepare.PrepareScreen
 import vn.unicom.thi360.feature.prepare.PrepareSessionMemory
@@ -41,6 +46,12 @@ internal val LocalPrepareSupportContactOverride = staticCompositionLocalOf<Suppo
 internal val LocalPrepareClockOverride = staticCompositionLocalOf<(() -> Long)?> { null }
 internal val LocalPrepareApiOverride = staticCompositionLocalOf<PrepareApi?> { null }
 internal val LocalPrepareStartContextStoreOverride = staticCompositionLocalOf<StartContextStore?> { null }
+
+private tailrec fun Context.findComponentActivityOrNull(): ComponentActivity? = when (this) {
+    is ComponentActivity -> this
+    is ContextWrapper -> baseContext.findComponentActivityOrNull()
+    else -> null
+}
 
 private val PrepareSavedSnapshotSaver = Saver<PrepareSavedSnapshot, List<Any?>>(
     save = { snap ->
@@ -100,6 +111,7 @@ private fun PrepareRoute(
     navigator: AppNavigator,
 ) {
     val context = LocalContext.current
+    val activity = remember(context) { context.findComponentActivityOrNull() }
     val app = remember(context) { context.applicationContext as? Thi360Application }
     val sessionStack = remember(context) { AppSessionContainer.get(context) }
     val sessionState by sessionStack.sessionManager.state.collectAsStateWithLifecycle()
@@ -137,6 +149,13 @@ private fun PrepareRoute(
         )
     }
 
+    val holder = remember(backStackEntry) {
+        ViewModelProvider(
+            backStackEntry,
+            PrepareRouteHolderViewModel.FACTORY,
+        )[PrepareRouteHolderViewModel::class.java]
+    }
+
     var savedSnapshot by rememberSaveable(
         backStackEntry.id,
         entitlementId,
@@ -146,13 +165,15 @@ private fun PrepareRoute(
         mutableStateOf(PrepareSavedSnapshot())
     }
 
-    val openAttemptAndCleanup: (String) -> Unit = { attemptId ->
-        memory.remove(entryKey)
-        navigator.openAttemptAfterStart(attemptId)
+    val openAttemptAndCleanup = remember(holder, navigator) {
+        { attemptId: String ->
+            holder.clearCurrent()
+            navigator.openAttemptAfterStart(attemptId)
+        }
     }
 
-    val viewModel = remember(memory, entryKey) {
-        memory.getOrCreate(entryKey) { vmScope ->
+    val viewModel = remember(holder, memory, entryKey) {
+        holder.getOrCreate(memory, entryKey) { vmScope ->
             PrepareViewModel(
                 entitlementId = entitlementId,
                 api = prepareApi,
@@ -171,7 +192,17 @@ private fun PrepareRoute(
     }
 
     SideEffect {
-        viewModel.updateOnOpenAttempt(openAttemptAndCleanup)
+        viewModel.updateRuntimeBindings(
+            localeProvider = { locale },
+            isOnlineProvider = { app?.connectivityMonitor?.online?.value ?: true },
+        )
+    }
+
+    DisposableEffect(viewModel, openAttemptAndCleanup) {
+        viewModel.attachOpenAttemptHandler(openAttemptAndCleanup)
+        onDispose {
+            viewModel.detachOpenAttemptHandler(openAttemptAndCleanup)
+        }
     }
 
     val uiState by viewModel.state.collectAsStateWithLifecycle()
@@ -186,42 +217,34 @@ private fun PrepareRoute(
         }
     }
 
-    DisposableEffect(lifecycleOwner, backStackEntry, viewModel, memory, entryKey) {
+    DisposableEffect(lifecycleOwner, viewModel, activity) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> viewModel.setForeground(true)
                 Lifecycle.Event.ON_STOP -> {
                     savedSnapshot = viewModel.exportSnapshot()
-                    viewModel.setForeground(false)
+                    if (activity?.isChangingConfigurations != true) {
+                        viewModel.setForeground(false)
+                    }
                 }
 
                 else -> Unit
             }
         }
-        val entryObserver = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_DESTROY) {
-                memory.remove(entryKey)
-            }
-        }
         lifecycleOwner.lifecycle.addObserver(observer)
-        backStackEntry.lifecycle.addObserver(entryObserver)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            backStackEntry.lifecycle.removeObserver(entryObserver)
             savedSnapshot = viewModel.exportSnapshot()
-            if (backStackEntry.lifecycle.currentState == Lifecycle.State.DESTROYED) {
-                memory.remove(entryKey)
-            }
         }
     }
 
     val leaveToMyExams: () -> Unit = {
-        memory.remove(entryKey)
+        holder.clearCurrent()
         navigator.switchTab(Destination.MyExams, reload = true)
     }
 
     val leaveBack: () -> Unit = {
-        memory.remove(entryKey)
+        holder.clearCurrent()
         navigator.back()
     }
 
@@ -235,7 +258,7 @@ private fun PrepareRoute(
         onToggleSubject = viewModel::toggleSubject,
         onStartAttempt = viewModel::startAttempt,
         onContinueAttempt = { attemptId ->
-            memory.remove(entryKey)
+            holder.clearCurrent()
             navigator.openAttemptAfterStart(attemptId.toString())
         },
         onBuyMoreAttempts = { code -> navigator.openCheckout(code) },

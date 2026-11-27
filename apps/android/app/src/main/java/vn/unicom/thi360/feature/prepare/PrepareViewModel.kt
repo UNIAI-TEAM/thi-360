@@ -51,10 +51,48 @@ class PrepareViewModel(
     onOpenAttempt: (String) -> Unit = {},
 ) {
     @Volatile
-    private var openAttemptCallback: (String) -> Unit = onOpenAttempt
+    private var openAttemptCallback: ((String) -> Unit)? = onOpenAttempt
 
-    fun updateOnOpenAttempt(callback: (String) -> Unit) {
-        openAttemptCallback = callback
+    @Volatile
+    private var pendingOpenAttemptId: String? = null
+
+    @Volatile
+    private var currentLocaleProvider: () -> AppLocale = localeProvider
+
+    @Volatile
+    private var currentIsOnlineProvider: () -> Boolean = isOnlineProvider
+
+    fun updateRuntimeBindings(
+        localeProvider: () -> AppLocale,
+        isOnlineProvider: () -> Boolean,
+    ) {
+        currentLocaleProvider = localeProvider
+        currentIsOnlineProvider = isOnlineProvider
+    }
+
+    fun attachOpenAttemptHandler(handler: (String) -> Unit) {
+        openAttemptCallback = handler
+        val pending = pendingOpenAttemptId
+        if (pending != null) {
+            pendingOpenAttemptId = null
+            handler(pending)
+        }
+    }
+
+    fun detachOpenAttemptHandler(handler: (String) -> Unit) {
+        if (openAttemptCallback === handler) {
+            openAttemptCallback = null
+        }
+    }
+
+    private fun dispatchOpenAttempt(attemptId: String) {
+        val callback = openAttemptCallback
+        if (callback != null) {
+            pendingOpenAttemptId = null
+            callback(attemptId)
+        } else {
+            pendingOpenAttemptId = attemptId
+        }
     }
 
     private val waitingRetry = WaitingRetry(
@@ -316,6 +354,7 @@ class PrepareViewModel(
     fun clear() {
         loadJob?.cancel()
         loadJob = null
+        pendingOpenAttemptId = null
         stopWaitingPoller()
     }
 
@@ -376,7 +415,7 @@ class PrepareViewModel(
                         }
                         _state.update {
                             it.copy(
-                                load = result.toLoadFailed(isOnlineProvider()).copy(canRetry = true),
+                                load = result.toLoadFailed(currentIsOnlineProvider()).copy(canRetry = true),
                             )
                         }
                         return@launch
@@ -460,7 +499,7 @@ class PrepareViewModel(
                         waitingAttemptId = null,
                     )
                 }
-                openAttemptCallback(attemptId.toString())
+                dispatchOpenAttempt(attemptId.toString())
             }
 
             StartOutcome.OpenedState.Starting -> {
@@ -515,7 +554,7 @@ class PrepareViewModel(
             initialElapsedMs = initialElapsedMs,
             onReady = { readyId ->
                 stopWaitingPoller()
-                openAttemptCallback(readyId.toString())
+                dispatchOpenAttempt(readyId.toString())
             },
             onAborted = { reason ->
                 _state.update { current ->
@@ -568,7 +607,7 @@ class PrepareViewModel(
             nameVi = response.examKind.nameVi,
             nameEn = response.examKind.nameEn,
             code = response.examKind.code,
-            locale = localeProvider(),
+            locale = currentLocaleProvider(),
         )
         return StartContext(
             entitlementId = response.entitlementId.toString(),
