@@ -32,7 +32,7 @@ final class LockOnPortalRoutesUITests: XCTestCase {
             "-uitest-keychain-service", keychainService,
             "-uitest-reset-session",
             "-uitest-lock-timeout", "2",
-            "-uitest-route", "result/att-lock",
+            "-uitest-route", "attempt/att-lock",
             "-uitest-api-base-url", baseURL
         ]
         app.launch()

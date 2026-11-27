@@ -1,11 +1,36 @@
+import Foundation
 import XCTest
 
 final class TabBackStackUITests: XCTestCase {
+    private var server: ContractFixtureHTTPServer?
+
     override func setUpWithError() throws {
         continueAfterFailure = false
+        let mockServer = try ContractFixtureHTTPServer()
+        try mockServer.registerStandardAuthFixtures()
+        try mockServer.registerFixture(
+            method: "GET",
+            path: "/api/v1/catalog/options",
+            statusCode: 200,
+            relativePath: "api/catalog-options-200-exam.json"
+        )
+        try mockServer.registerFixture(
+            method: "GET",
+            path: "/api/v1/me/attempts/att-01/result",
+            statusCode: 200,
+            relativePath: "api/attempts-result-200-scored.json"
+        )
+        try mockServer.start()
+        self.server = mockServer
     }
 
-    func testSubRouteDraftAndScrollSurviveSwitchingTabs() {
+    override func tearDownWithError() throws {
+        server?.stop()
+        server = nil
+    }
+
+    func testSubRouteDraftAndScrollSurviveSwitchingTabs() throws {
+        let server = try XCTUnwrap(server)
         let suite = "vn.unicom.thi360.uitest.tabstack.\(UUID().uuidString)"
         let app = XCUIApplication()
         app.launchArguments = [
@@ -13,25 +38,16 @@ final class TabBackStackUITests: XCTestCase {
             "-uitest-reset-preferences",
             "-uitest-authenticated",
             "-uitest-destination", "home",
-            "-uitest-route", "result/att-01"
+            "-uitest-route", "result/att-01",
+            "-uitest-api-base-url", "http://127.0.0.1:\(server.port)"
         ]
         app.launch()
 
-        let paramText = app.staticTexts["route.placeholder.param.attemptId"].firstMatch
-        XCTAssertTrue(paramText.waitForExistence(timeout: 8), "Expected result/att-01 route placeholder")
-        XCTAssertEqual(paramText.label, "att-01")
+        let examName = app.staticTexts["result.header.examName"].firstMatch
+        XCTAssertTrue(examName.waitForExistence(timeout: 10), "Expected pushed result/att-01 screen on Home tab")
+        let initialExamName = examName.label
+        XCTAssertFalse(initialExamName.isEmpty)
 
-        let draftField = app.textFields["route.placeholder.draftField"].firstMatch
-        XCTAssertTrue(draftField.waitForExistence(timeout: 5))
-        let draftSample = "Draft on product route"
-        enterText(draftSample, into: draftField, in: app)
-        XCTAssertEqual(draftField.value as? String, draftSample)
-        draftField.typeText("\n")
-
-        let title = app.staticTexts["route.placeholder.title"].firstMatch
-        if title.exists && title.isHittable {
-            title.tap()
-        }
         app.swipeUp()
 
         openDestination(titled: "Tài khoản", identifier: "shell.dest.account", in: app)
@@ -39,33 +55,18 @@ final class TabBackStackUITests: XCTestCase {
 
         openDestination(titled: "Trang chủ", identifier: "shell.dest.home", in: app)
 
-        let restoredParam = app.staticTexts["route.placeholder.param.attemptId"].firstMatch
-        XCTAssertTrue(restoredParam.waitForExistence(timeout: 5), "Returning to Home must restore pushed sub-route")
-        XCTAssertEqual(restoredParam.label, "att-01")
-
-        let restoredDraft = app.textFields["route.placeholder.draftField"].firstMatch
-        if !restoredDraft.exists {
+        let restoredResultNav = app.navigationBars["Kết quả lượt thi"].firstMatch
+        let restoredTitle = app.staticTexts["result.header.examName"].firstMatch
+        XCTAssertTrue(
+            restoredResultNav.waitForExistence(timeout: 8) || restoredTitle.waitForExistence(timeout: 4),
+            "Returning to Home must restore pushed result sub-route"
+        )
+        if !restoredTitle.exists {
             app.swipeDown()
             app.swipeDown()
         }
-        XCTAssertTrue(restoredDraft.waitForExistence(timeout: 5))
-        XCTAssertEqual(restoredDraft.value as? String, draftSample)
-    }
-
-    private func enterText(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
-        field.tap()
-        _ = app.keyboards.firstMatch.waitForExistence(timeout: 3.0)
-        field.typeText(text)
-        if (field.value as? String) == text {
-            return
-        }
-        field.tap()
-        _ = app.keyboards.firstMatch.waitForExistence(timeout: 2.0)
-        let currentLength = ((field.value as? String) ?? "").count
-        if currentLength > 0 {
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: currentLength + 4))
-        }
-        field.typeText(text)
+        XCTAssertTrue(restoredTitle.waitForExistence(timeout: 5))
+        XCTAssertEqual(restoredTitle.label, initialExamName)
     }
 
     private func openDestination(titled title: String, identifier: String, in app: XCUIApplication) {

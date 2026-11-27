@@ -14,7 +14,7 @@ final class RefreshableContainerUITests: XCTestCase {
             "-uitest-state-probe",
             "-uitest-authenticated",
             "-uitest-destination", "home",
-            "-uitest-route", "result/att-refresh"
+            "-uitest-route", "attempt/att-refresh"
         ]
         app.launch()
 
