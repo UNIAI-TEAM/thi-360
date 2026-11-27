@@ -54,6 +54,10 @@
                     android:scheme="https"
                     android:host="${webHost}"
                     android:path="/reset-password" />
+                <data
+                    android:scheme="https"
+                    android:host="${webHost}"
+                    android:path="/checkout/result/app" />
             </intent-filter>
         </activity>
     </application>

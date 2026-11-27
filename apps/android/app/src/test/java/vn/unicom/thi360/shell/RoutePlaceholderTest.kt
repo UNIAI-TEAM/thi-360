@@ -46,30 +46,23 @@ class RoutePlaceholderTest {
         composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("code=TOEIC-2026", substring = true)
 
         composeRule.runOnIdle { nav.openCheckout("TOEIC-2026", seenVersionNo = 2, seenPrice = 150_000L) }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("checkout")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)
-            .assertTextContains("code=TOEIC-2026", substring = true)
-            .assertTextContains("seenVersionNo=2", substring = true)
-            .assertTextContains("seenPrice=150000", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.payment.ui.PaymentTestTags.CHECKOUT_SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openPaymentResult(AppRoute.PaymentResult.ByOrder("ORD-77")) }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("payment-result")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("orderCode=ORD-77", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.payment.ui.PaymentTestTags.RESULT_SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle {
             nav.openPaymentResult(
                 AppRoute.PaymentResult.ByReturnLink("https://thi360.zone17.click/return?vnp_ResponseCode=00"),
             )
         }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("payment-result")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("source=returnLink", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.payment.ui.PaymentTestTags.RESULT_SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openOrders() }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("orders")
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.payment.ui.PaymentTestTags.ORDERS_SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openOrder("ORD-88") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("order")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("orderCode=ORD-88", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.payment.ui.PaymentTestTags.ORDER_DETAIL_SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openPrepare("ent-99") }
         composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("prepare")

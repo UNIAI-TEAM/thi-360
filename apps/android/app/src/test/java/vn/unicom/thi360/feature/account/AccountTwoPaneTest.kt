@@ -6,7 +6,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -27,11 +26,11 @@ import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.ui.ListDetailTestTags
+import vn.unicom.thi360.feature.payment.ui.PaymentTestTags
 import vn.unicom.thi360.feature.recovery.PasswordTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
-import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
@@ -91,9 +90,7 @@ class AccountTwoPaneTest {
         composeRule.onNodeWithTag(AccountTestTags.ORDERS_ROW).performClick()
         composeRule.onNodeWithTag(AccountTestTags.ORDERS_ROW).assertIsSelected()
         composeRule.onNodeWithTag(AccountTestTags.PROFILE_ROW).assertIsNotSelected()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME)
-            .assertIsDisplayed()
-            .assertTextContains("orders")
+        composeRule.onNodeWithTag(PaymentTestTags.ORDERS_SCREEN).assertIsDisplayed()
 
         composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).performScrollTo().performClick()
         composeRule.onNodeWithTag(AccountTestTags.CHANGE_PASSWORD_ROW).assertIsSelected()

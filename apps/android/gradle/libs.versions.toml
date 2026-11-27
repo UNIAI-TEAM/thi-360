@@ -24,6 +24,8 @@ coil = "3.6.3"
 # AND-RICH: Pinned RaTeX native LaTeX renderer and Jsoup HTML tree parser (D-5, D-6, B1.13).
 ratex = "0.1.16"
 jsoup = "1.24.1"
+# AND-PAY: Custom Tabs browser launcher for VNPAY checkout (R-39, Spec 7.1, B1.13).
+browser = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +62,9 @@ coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp"
 # AND-RICH: RaTeX native LaTeX engine (exact pin 0.1.16) and Jsoup for HTML tree parsing.
 ratex-android = { group = "io.github.erweixin", name = "ratex-android", version.ref = "ratex" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
+
+# AND-PAY: Custom Tabs browser launcher for VNPAY checkout (R-39, Spec 7.1, B1.13).
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
