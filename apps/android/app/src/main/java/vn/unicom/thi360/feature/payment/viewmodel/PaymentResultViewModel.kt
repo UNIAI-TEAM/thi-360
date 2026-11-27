@@ -146,23 +146,28 @@ class PaymentResultViewModel(
             }
 
             is PaymentResultEntry.ByOrder -> {
+                if (resolvedOrderCode == newEntry.orderCode && _uiState.value.state is PaymentResultState.Loading) {
+                    return
+                }
                 if (resolvedOrderCode == newEntry.orderCode && _uiState.value.activeOrder != null) {
                     scope.launch {
                         loadOrderOnce(newEntry.orderCode, isInitialLoad = false)
                     }
                     return
                 }
+                val preserveVerifiedFromLink = newEntry.verifiedFromLink ||
+                    (resolvedOrderCode == newEntry.orderCode && verifiedFromLink)
                 poller.stop()
                 hasTimedOut = false
-                verifiedFromLink = newEntry.verifiedFromLink
+                verifiedFromLink = preserveVerifiedFromLink
                 verifiedPaymentState = null
                 verifiedTxnRef = null
                 verifiedResponseCode = null
                 lastProcessedLink = null
-                currentEntry = newEntry
+                currentEntry = newEntry.copy(verifiedFromLink = preserveVerifiedFromLink)
                 resolvedOrderCode = newEntry.orderCode
                 if (newEntry.orderCode.isNotBlank()) {
-                    onOrderCodeResolved(newEntry.orderCode, newEntry.verifiedFromLink)
+                    onOrderCodeResolved(newEntry.orderCode, preserveVerifiedFromLink)
                 }
                 payIdempotency.reset()
                 _uiState.update {

@@ -14,6 +14,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.navigation.compose.rememberNavController
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -433,6 +436,104 @@ class PaymentReturnGatingTest {
                 pendingStore.readValid(nowMillis)?.orderCode,
             )
         } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun byReturnLinkCheckingLockAndUnlockWithPendingOrderPreservesCheckingWithoutDuplicateGetOrder() {
+        val host = ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
+        val unlockGetOrderGate = CountDownLatch(1)
+        val unlockGetOrderEntered = CountDownLatch(1)
+        val orderRequestSeq = AtomicInteger(0)
+        val harness = PaymentTestFixtures.createHarness {
+            respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
+            respondApiFixture("GET", "/api/v1/public/payments/vnpay/return", 200, "vnpay-return-200-pending.json")
+            respond("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}") {
+                // Hold the post-unlock getOrder request in Loading so checkPendingOrder deterministically
+                // collides with the initial Loading window (R2-2).
+                if (orderRequestSeq.incrementAndGet() == 2) {
+                    unlockGetOrderEntered.countDown()
+                    unlockGetOrderGate.await(5, TimeUnit.SECONDS)
+                }
+                ContractFakeServer.apiFixtureResponse(200, "orders-detail-200-pending-payment.json")
+            }
+        }
+        val pendingStore = PendingPaymentOrderStore { harness.accountScopedStoreProvider.current() }
+        var nowMillis = 100_000L
+        pendingStore.save(PaymentTestFixtures.ORDER_CODE, openedAtMillis = nowMillis)
+        PaymentRoutesConfig.setTestOverrides(
+            PaymentRuntimeOverrides(
+                gateway = PaymentTestFixtures.createGateway(harness),
+                pendingOrderStore = pendingStore,
+                apiBaseUrl = harness.server.url("/"),
+                clockMillis = { nowMillis },
+            ),
+        )
+        registerPaymentHooks(
+            inboundLinkRouter = harness.inboundLinkRouter,
+            sessionCleanup = harness.sessionCleanup,
+            pendingOrderStoreProvider = { pendingStore },
+            allowedHostProvider = { host },
+            clockMillisProvider = { { nowMillis } },
+        )
+        val returnUrl = "https://$host/checkout/result/app?vnp_TxnRef=DH26112600000101&vnp_ResponseCode=00&vnp_SecureHash=siglockchk"
+        try {
+            composeRule.setContent {
+                AppRoot(
+                    preferences = AppPreferences(locale = AppLocale.VI),
+                    onSelectLocale = {},
+                    onSelectThemeMode = {},
+                    sessionManager = harness.stack.sessionManager,
+                    validateOnLaunch = false,
+                    recoveryGateway = harness.recoveryGateway,
+                    initialIntent = Intent(Intent.ACTION_VIEW, Uri.parse(returnUrl)),
+                    lockedContent = {
+                        Text("LockGate", modifier = Modifier.testTag("payment_lock_gate"))
+                    },
+                    inboundLinkRouter = harness.inboundLinkRouter,
+                    legalRepository = harness.legalRepository,
+                )
+            }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CHECK_AGAIN_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            val ordersRequestsBeforeLock = harness.server.requestCount("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}")
+
+            // Lock after 6 minutes (> 5-min biometric lock, < 15-min PendingPaymentOrder TTL) while in Checking
+            nowMillis += 6L * 60L * 1000L
+            composeRule.runOnIdle {
+                harness.stack.sessionManager.lockSession()
+            }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag("payment_lock_gate").fetchSemanticsNodes().isNotEmpty()
+            }
+            assertEquals(PaymentTestFixtures.ORDER_CODE, pendingStore.readValid(nowMillis)?.orderCode)
+
+            // Queue foreground return while locked, then unlock: post-unlock getOrder holds in Loading
+            // while checkPendingOrder -> acceptEntry(ByOrder) executes and must short-circuit cleanly.
+            composeRule.runOnIdle {
+                harness.inboundLinkRouter.notifyForegroundReturn()
+            }
+            runBlocking { harness.stack.sessionManager.unlockAndRefresh() }
+            composeRule.waitForIdle()
+            unlockGetOrderEntered.await(5, TimeUnit.SECONDS)
+            composeRule.waitForIdle()
+            unlockGetOrderGate.countDown()
+
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CHECK_AGAIN_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Đang chờ xác nhận thanh toán").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_CONTINUE_PAYMENT_BUTTON).assertDoesNotExist()
+            assertEquals(1, harness.server.requestCount("GET", "/api/v1/public/payments/vnpay/return"))
+            assertEquals(
+                "Unlocking into Checking must not duplicate GET /api/v1/me/orders/{code} during initial Loading",
+                ordersRequestsBeforeLock + 1,
+                harness.server.requestCount("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}"),
+            )
+        } finally {
+            unlockGetOrderGate.countDown()
             harness.close()
         }
     }

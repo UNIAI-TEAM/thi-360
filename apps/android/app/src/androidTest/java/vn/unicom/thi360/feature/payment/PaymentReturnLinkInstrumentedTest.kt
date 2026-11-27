@@ -3,9 +3,9 @@ package vn.unicom.thi360.feature.payment
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -204,7 +204,8 @@ class PaymentReturnLinkInstrumentedTest {
                     true
                 }.getOrDefault(false)
             }
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
             assertEquals("DH26112600000101", captured.get()?.get("vnp_TxnRef"))
             assertEquals("00", captured.get()?.get("vnp_ResponseCode"))
             assertEquals("cold123", captured.get()?.get("vnp_SecureHash"))
@@ -250,7 +251,8 @@ class PaymentReturnLinkInstrumentedTest {
                     true
                 }.getOrDefault(false)
             }
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
             assertEquals("DH26112600000101", captured.get()?.get("vnp_TxnRef"))
             assertEquals("warm456", captured.get()?.get("vnp_SecureHash"))
         }
