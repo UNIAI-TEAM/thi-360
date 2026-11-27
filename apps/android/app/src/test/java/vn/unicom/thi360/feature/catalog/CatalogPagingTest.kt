@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -102,6 +103,7 @@ class CatalogPagingTest {
             }
 
             composeRule.waitUntilIdle {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(CatalogTestTags.SHOWING_SUMMARY).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(CatalogTestTags.SHOWING_SUMMARY)
@@ -110,11 +112,13 @@ class CatalogPagingTest {
             val ctrl1 = store1.getOrCreate("acc-catalog-1", 0L, d1)
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("PG-12")
             composeRule.waitUntilIdle {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 (ctrl1.state.value.loadState as? LoadState.Loaded)?.value?.items?.size == 23
             }
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("PG-23")
             composeRule.waitUntilIdle {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 (ctrl1.state.value.loadState as? LoadState.Loaded)?.value?.items?.size == 30
             }
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("PG-30")
@@ -134,6 +138,7 @@ class CatalogPagingTest {
                 scenarioKey = 2
             }
             composeRule.waitUntilIdle {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty() &&
                     (store2.getOrCreate("acc-catalog-1", 0L, d2).state.value.loadState as? LoadState.Loaded)
                         ?.value?.items?.size == 12
@@ -141,6 +146,7 @@ class CatalogPagingTest {
             val ctrl2 = store2.getOrCreate("acc-catalog-1", 0L, d2)
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EMP-12")
             composeRule.waitUntilIdle {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 (ctrl2.state.value.loadState as? LoadState.Loaded)?.value?.tail == TailState.End
             }
             val loaded2 = ctrl2.state.value.loadState as LoadState.Loaded
@@ -200,12 +206,19 @@ class CatalogPagingTest {
             }
 
             composeRule.waitUntilIdle {
-                composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                if (composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isEmpty()) {
+                    false
+                } else {
+                    val accessMap = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.accessMap
+                    accessMap.size >= 12 && accessMap.values.all { it is AccessCell.Ready }
+                }
             }
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("RT-12")
             composeRule.waitUntilIdle {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 val loaded = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? LoadState.Loaded
                 loaded?.value?.tail is TailState.Error
             }
@@ -213,10 +226,15 @@ class CatalogPagingTest {
 
             composeRule.onNodeWithTag(CatalogTestTags.productCard("RT-12")).assertIsDisplayed()
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("__tail__")
+            composeRule.waitForIdle()
             composeRule.onNodeWithTag(CatalogTestTags.TAIL_ERROR).assertIsDisplayed()
-            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).assertIsDisplayed().performClick()
+            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY)
+                .performScrollTo()
+                .assertIsDisplayed()
+                .performClick()
 
             composeRule.waitUntilIdle {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
                 val loaded = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? LoadState.Loaded
                 loaded?.value?.items?.size == 24
             }
@@ -287,7 +305,12 @@ class CatalogPagingTest {
 
             composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
-                composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
+                if (composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isEmpty()) {
+                    false
+                } else {
+                    val accessMap = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.accessMap
+                    accessMap.size >= 12 && accessMap.values.all { it is AccessCell.Ready }
+                }
             }
             composeRule.waitForIdle()
 
@@ -299,10 +322,14 @@ class CatalogPagingTest {
                 (loaded?.value?.tail as? TailState.Error)?.isOffline == true
             }
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("__tail__")
+            composeRule.waitForIdle()
             composeRule.onNodeWithText("Kiểm tra kết nối mạng rồi thử lại.").assertIsDisplayed()
 
             harness.connectivityMonitor.setOnline(true)
-            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).assertIsEnabled().performClick()
+            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY)
+                .performScrollTo()
+                .assertIsEnabled()
+                .performClick()
             composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 val loaded = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? LoadState.Loaded
@@ -319,7 +346,7 @@ class CatalogPagingTest {
                     true
                 }.getOrDefault(false)
             }
-            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).performClick()
+            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).performScrollTo().performClick()
             composeRule.waitUntilIdle {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 val loaded = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? LoadState.Loaded

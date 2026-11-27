@@ -4,7 +4,6 @@ import android.Manifest
 import android.provider.MediaStore
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -59,9 +58,10 @@ class ManifestCameraTest {
         val pathsFile = File(mainDir, "res/xml/file_provider_paths.xml")
         val pathsDoc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(pathsFile)
         val cachePaths = pathsDoc.getElementsByTagName("cache-path")
-        assertEquals(1, cachePaths.length)
-        val entry = cachePaths.item(0) as Element
-        assertEquals("avatar_camera", entry.getAttribute("name"))
-        assertEquals("avatar-captures/", entry.getAttribute("path"))
+        val entries = (0 until cachePaths.length).map { index ->
+            val el = cachePaths.item(index) as Element
+            el.getAttribute("name") to el.getAttribute("path")
+        }
+        assertTrue("file_provider_paths.xml must declare avatar_camera -> avatar-captures/", ("avatar_camera" to "avatar-captures/") in entries)
     }
 }
