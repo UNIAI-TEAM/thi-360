@@ -308,15 +308,35 @@ data class CatalogDependencies(
     val clockMillis: () -> Long = { System.nanoTime() / 1_000_000L },
 ) {
     companion object {
-        private val storesByStack = WeakHashMap<Thi360SessionStack, CatalogFeedStore>()
+        private class StackCatalogEntry(
+            val baseUrl: String,
+            val gateway: CatalogGateway,
+            val feedStore: CatalogFeedStore,
+        )
 
-        private fun feedStoreFor(
+        private val entriesByStack = WeakHashMap<Thi360SessionStack, StackCatalogEntry>()
+
+        private fun entryFor(
             stack: Thi360SessionStack,
+            resolvedBaseUrl: String,
             app: Thi360Application?,
-        ): CatalogFeedStore = synchronized(storesByStack) {
-            storesByStack[stack] ?: CatalogFeedStore().also { created ->
-                storesByStack[stack] = created
-                app?.sessionCleanup?.register { created.clearAll() }
+        ): StackCatalogEntry = synchronized(entriesByStack) {
+            val existing = entriesByStack[stack]
+            if (existing != null && existing.baseUrl == resolvedBaseUrl) {
+                return@synchronized existing
+            }
+            existing?.feedStore?.clearAll()
+            val feedStore = CatalogFeedStore()
+            app?.sessionCleanup?.register { feedStore.clearAll() }
+            StackCatalogEntry(
+                baseUrl = resolvedBaseUrl,
+                gateway = OpenApiCatalogGateway.create(
+                    baseUrl = resolvedBaseUrl,
+                    sessionStack = stack,
+                ),
+                feedStore = feedStore,
+            ).also { created ->
+                entriesByStack[stack] = created
             }
         }
 
@@ -334,18 +354,15 @@ data class CatalogDependencies(
             val app = appContext as? Thi360Application
             val stack = AppSessionContainer.get(appContext)
             val resolvedBaseUrl = resolveBaseUrl(stack)
-            val feedStore = feedStoreFor(stack, app)
+            val entry = entryFor(stack, resolvedBaseUrl, app)
             return CatalogDependencies(
-                gateway = OpenApiCatalogGateway.create(
-                    baseUrl = resolvedBaseUrl,
-                    sessionStack = stack,
-                ),
+                gateway = entry.gateway,
                 sessionManager = stack.sessionManager,
                 connectivityMonitor = app?.connectivityMonitor,
                 apiBaseUrl = resolvedBaseUrl,
                 imageLoader = app?.imageLoader?.imageLoader,
                 supportContact = SupportContact.fromBuildConfig(),
-                feedStore = feedStore,
+                feedStore = entry.feedStore,
             )
         }
     }

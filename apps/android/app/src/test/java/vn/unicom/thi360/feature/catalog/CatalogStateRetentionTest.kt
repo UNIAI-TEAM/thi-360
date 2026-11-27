@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToKey
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -17,6 +18,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.core.session.AppSessionContainer
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
@@ -144,6 +146,102 @@ class CatalogStateRetentionTest {
                 productsCallsBeforeTrips,
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products"),
             )
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun defaultDependenciesRetainFilterAcrossDetailAndTabRoundtripsWithoutRefetchingProducts() {
+        val app = RuntimeEnvironment.getApplication()
+        PortalTestHarness.create(
+            initialTokens = CatalogTestFixtures.activeStudentTokens(),
+        ) {
+            CatalogTestFixtures.installDefaultStorefrontRoutes(this)
+        }.use { harness ->
+            AppSessionContainer.setTestStack(app, harness.stack)
+            try {
+                val firstDefault = CatalogDependencies.defaultFor(app)
+                val secondDefault = CatalogDependencies.defaultFor(app)
+                assertSame(firstDefault.gateway, secondDefault.gateway)
+                assertSame(firstDefault.feedStore, secondDefault.feedStore)
+
+                composeRule.setContent {
+                    Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
+                }
+
+                composeRule.waitUntilIdle {
+                    composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("HSA")).fetchSemanticsNodes().isNotEmpty() &&
+                        composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-DEMO-01"))
+                            .fetchSemanticsNodes().isNotEmpty()
+                }
+                composeRule.waitForIdle()
+
+                composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).performClick()
+                composeRule.waitUntilIdle {
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
+                        composeRule.onAllNodesWithTag(CatalogTestTags.ACTIVE_FILTERS_ROW)
+                            .fetchSemanticsNodes().isNotEmpty() &&
+                        composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-DEMO-01"))
+                            .fetchSemanticsNodes().isNotEmpty()
+                }
+                composeRule.waitForIdle()
+
+                val productsCallsBeforeTrips = harness.server.requestCount("GET", "/api/v1/public/storefront/products")
+
+                composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EXAM-DEMO-01")
+                composeRule.waitForIdle()
+                composeRule.onNodeWithTag(CatalogTestTags.productHeader("EXAM-DEMO-01"))
+                    .assertIsDisplayed()
+                    .performClick()
+                composeRule.waitUntilIdle {
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.SCREEN).fetchSemanticsNodes().isNotEmpty()
+                }
+                composeRule.waitForIdle()
+
+                composeRule.onNodeWithTag(ProductDetailTestTags.BACK_BUTTON).performClick()
+                composeRule.waitUntilIdle {
+                    composeRule.onAllNodesWithTag(CatalogTestTags.ACTIVE_FILTERS_ROW)
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+                composeRule.waitForIdle()
+                composeRule.onNodeWithTag(CatalogTestTags.ACTIVE_FILTERS_ROW).assertIsDisplayed()
+                val afterDetailDeps = CatalogDependencies.defaultFor(app)
+                assertEquals(
+                    "HSA",
+                    afterDetailDeps.feedStore.getOrCreate("acc-catalog-1", 0L, afterDetailDeps).state.value.query.kind,
+                )
+                assertEquals(
+                    "Default dependencies must not re-fetch products after detail roundtrip",
+                    productsCallsBeforeTrips,
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/products"),
+                )
+
+                composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
+                composeRule.waitUntilIdle {
+                    composeRule.onAllNodesWithTag(CatalogTestTags.SCREEN).fetchSemanticsNodes().isEmpty()
+                }
+                composeRule.waitForIdle()
+
+                composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
+                composeRule.waitUntilIdle {
+                    composeRule.onAllNodesWithTag(CatalogTestTags.ACTIVE_FILTERS_ROW)
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+                composeRule.waitForIdle()
+                composeRule.onNodeWithTag(CatalogTestTags.ACTIVE_FILTERS_ROW).assertIsDisplayed()
+                val afterTabDeps = CatalogDependencies.defaultFor(app)
+                assertEquals(
+                    "HSA",
+                    afterTabDeps.feedStore.getOrCreate("acc-catalog-1", 0L, afterTabDeps).state.value.query.kind,
+                )
+                assertEquals(
+                    "Default dependencies must not re-fetch products after tab roundtrip",
+                    productsCallsBeforeTrips,
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/products"),
+                )
+            } finally {
+                AppSessionContainer.setTestStack(app, null)
+            }
         }
     }
 }
