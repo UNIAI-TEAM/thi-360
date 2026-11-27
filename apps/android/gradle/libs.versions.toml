@@ -21,6 +21,9 @@ okhttp = "5.5.1"
 retrofit = "3.0.0"
 # AND-BASE: Coil 3 for authenticated and public image loading (B1.4, B1.13).
 coil = "3.6.3"
+# AND-RICH: Pinned RaTeX native LaTeX renderer and Jsoup HTML tree parser (D-5, D-6, B1.13).
+ratex = "0.1.16"
+jsoup = "1.24.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -54,6 +57,9 @@ retrofit-converter-scalars = { group = "com.squareup.retrofit2", name = "convert
 # AND-BASE: Coil 3 Compose + OkHttp network fetcher (B1.4, B1.13).
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+# AND-RICH: RaTeX native LaTeX engine (exact pin 0.1.16) and Jsoup for HTML tree parsing.
+ratex-android = { group = "io.github.erweixin", name = "ratex-android", version.ref = "ratex" }
+jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
