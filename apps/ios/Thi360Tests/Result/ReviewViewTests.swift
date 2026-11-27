@@ -222,7 +222,7 @@ final class ReviewViewTests: XCTestCase {
                             ["id": "s3", "content": "<p>Ý 3</p>"]
                         ]
                     ],
-                    "studentAnswer": ["type": "TRUE_FALSE_GROUP", "statements": ["s1": true, "s2": false]],
+                    "studentAnswer": ["type": "TRUE_FALSE", "statements": ["s1": true, "s2": false]],
                     "expectedAnswer": [
                         "trueFalseKeys": [
                             ["statementId": "s1", "expected": true],
@@ -329,6 +329,52 @@ final class ReviewViewTests: XCTestCase {
         XCTAssertTrue(matchSummary.contains("0 / 1"))
 
         XCTAssertNotNil(qSink.nodes["question.q-tf-4.tfReviewList"])
+        let tfGroup = try XCTUnwrap(model.groups.first(where: { $0.id == "q-tf-4" }))
+        XCTAssertEqual(
+            tfGroup.studentAnswer?.trueFalseStatements,
+            ["s1": true, "s2": false],
+            "TRUE_FALSE wire discriminator must extract student statements into ReviewGroup"
+        )
+        XCTAssertEqual(tfGroup.mode.reviewData?.detail["s1"]?.outcome, .correct)
+        XCTAssertEqual(tfGroup.mode.reviewData?.detail["s2"]?.outcome, .wrong)
+        XCTAssertEqual(tfGroup.mode.reviewData?.detail["s3"]?.outcome, .blank)
+
+        let answeredTFWindow = ResultViewTestHelper.host(
+            QuestionView(
+                item: tfGroup.item,
+                answer: tfGroup.studentAnswer,
+                answers: [:],
+                mode: tfGroup.mode,
+                assets: vm.assetSource,
+                locale: .vi,
+                fixedWidth: 358
+            ),
+            size: CGSize(width: 390, height: 600),
+            settleSeconds: 0.08
+        )
+        let (_, answeredTFPNG) = try CatalogViewInspector.renderPNG(window: answeredTFWindow.0, size: CGSize(width: 390, height: 600))
+        answeredTFWindow.0.isHidden = true
+
+        let blankTFWindow = ResultViewTestHelper.host(
+            QuestionView(
+                item: tfGroup.item,
+                answer: nil,
+                answers: [:],
+                mode: tfGroup.mode,
+                assets: vm.assetSource,
+                locale: .vi,
+                fixedWidth: 358
+            ),
+            size: CGSize(width: 390, height: 600),
+            settleSeconds: 0.08
+        )
+        let (_, blankTFPNG) = try CatalogViewInspector.renderPNG(window: blankTFWindow.0, size: CGSize(width: 390, height: 600))
+        blankTFWindow.0.isHidden = true
+        XCTAssertNotEqual(
+            answeredTFPNG,
+            blankTFPNG,
+            "True/False review view must visibly render student picks ('Đúng'/'Sai') instead of all 'Chưa trả lời'"
+        )
 
         XCTAssertEqual(qSink.nodes["question.q-set-5-c1.outcomeChip"]?.label, "Đúng")
         XCTAssertEqual(qSink.nodes["question.q-set-5-c1.reviewPoints"]?.label, "1 / 1 điểm")

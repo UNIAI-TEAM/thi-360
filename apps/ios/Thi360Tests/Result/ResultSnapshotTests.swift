@@ -58,32 +58,47 @@ final class ResultSnapshotTests: XCTestCase {
         let breakdown = try ResultTestFixtures.decodeResult(variant: "scored") { root in
             root["segments"] = [
                 [
+                    "partCode": "P1",
+                    "code": "SEG1",
                     "name": "Toán học",
-                    "fromQuestionNo": 1,
-                    "toQuestionNo": 50,
-                    "correct": 40,
-                    "partial": 0,
-                    "wrong": 8,
-                    "blank": 2,
+                    "fromPosition": 1,
+                    "toPosition": 50,
                     "score": 40.0,
-                    "maxScore": 50.0,
-                    "pendingReview": false
+                    "maxPoints": 50.0,
+                    "pendingReview": false,
+                    "stats": [
+                        "correctCount": 40,
+                        "partialCount": 0,
+                        "wrongCount": 8,
+                        "blankCount": 2,
+                        "pendingReviewCount": 0,
+                        "totalCount": 50
+                    ]
                 ]
             ]
             root["subjects"] = [
                 [
-                    "code": "MATH",
+                    "code": "TOAN",
                     "name": "Toán học",
-                    "correct": 40,
-                    "partial": 0,
-                    "wrong": 8,
-                    "blank": 2,
                     "score": 40.0,
                     "maxScore": 50.0,
-                    "pendingReview": false
+                    "pendingReview": false,
+                    "stats": [
+                        "correctCount": 40,
+                        "partialCount": 0,
+                        "wrongCount": 8,
+                        "blankCount": 2,
+                        "pendingReviewCount": 0,
+                        "totalCount": 50
+                    ]
                 ]
             ]
         }
+        XCTAssertEqual(breakdown.segments.first?.fromPosition, 1)
+        XCTAssertEqual(breakdown.segments.first?.toPosition, 50)
+        XCTAssertEqual(breakdown.segments.first?.maxPoints, 50.0)
+        XCTAssertEqual(breakdown.segments.first?.stats?.correctCount, 40)
+        XCTAssertEqual(breakdown.subjects.first?.stats?.correctCount, 40)
 
         let states: [(String, AttemptResult)] = [
             ("scored", scored),

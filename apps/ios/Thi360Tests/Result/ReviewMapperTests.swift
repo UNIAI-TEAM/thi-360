@@ -149,6 +149,7 @@ final class ReviewMapperTests: XCTestCase {
                             ["id": "s3", "content": "<p>S3</p>"]
                         ]
                     ],
+                    "studentAnswer": ["type": "TRUE_FALSE", "statements": ["s1": true, "s2": false]],
                     "gradingDetail": [
                         "statementResults": [
                             ["id": "s1", "answered": true, "matched": true],
@@ -203,6 +204,7 @@ final class ReviewMapperTests: XCTestCase {
         XCTAssertEqual(pairDetail["l3"]?.max ?? -1, 1.0, accuracy: 0.0001)
 
         let tf = model.groups[2]
+        XCTAssertEqual(tf.studentAnswer?.trueFalseStatements, ["s1": true, "s2": false])
         let stmtDetail = try XCTUnwrap(tf.mode.reviewData?.detail)
         XCTAssertEqual(stmtDetail["s1"]?.outcome, .correct)
         XCTAssertEqual(stmtDetail["s2"]?.outcome, .wrong)
