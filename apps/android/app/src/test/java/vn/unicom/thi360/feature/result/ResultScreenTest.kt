@@ -276,6 +276,21 @@ class ResultScreenTest {
         composeRule.onNodeWithTag(ResultTestTags.STAT_PENDING).assertExists()
         composeRule.onNodeWithText("Trên 27 câu phải làm.").assertExists()
 
+        activeResult = ResultTestFixtures.loadResult("pending-review").copy(
+            statistics = AttemptResultUnitStats(
+                correctCount = 5,
+                partialCount = 0,
+                wrongCount = 2,
+                blankCount = 3,
+                pendingReviewCount = 0,
+                totalCount = 10,
+            ),
+        )
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ResultTestTags.CONTENT_LIST)
+            .performScrollToNode(hasTestTag(ResultTestTags.STAT_PENDING))
+        composeRule.onNodeWithTag(ResultTestTags.STAT_PENDING).assertTextContains("0")
+
         activeResult = ResultTestFixtures.loadResult("regrading")
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(ResultTestTags.CONTENT_LIST)
@@ -283,5 +298,7 @@ class ResultScreenTest {
         composeRule.onNodeWithTag(ResultTestTags.TOTAL_SCORE_VALUE).assertTextContains("45,5/47,75")
         composeRule.onNodeWithTag(ResultTestTags.REGRADING_NOTE).assertIsDisplayed()
         composeRule.onNodeWithText("Điểm bên trên là điểm trước khi chấm lại", substring = true).assertExists()
+        composeRule.onNodeWithText("Tổng điểm các câu trong phạm vi bài làm. Câu bỏ trống được 0 điểm.")
+            .assertDoesNotExist()
     }
 }

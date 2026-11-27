@@ -352,7 +352,29 @@ class ReviewMapperTest {
         assertEquals(0, summary.partial)
 
         val certifiedPending = ReviewMapper.map(ResultTestFixtures.loadReview("pending-review"))
-        assertTrue(certifiedPending.parts.flatMap { it.groups }.none { it.outcome == ItemOutcome.PENDING_REVIEW })
+        val allCertifiedGroups = certifiedPending.parts.flatMap { it.groups }
+        assertTrue(allCertifiedGroups.none { it.outcome == ItemOutcome.PENDING_REVIEW })
+        assertTrue(allCertifiedGroups.none { it.displayNo <= 0 })
+        assertEquals(3, certifiedPending.parts.size)
+        assertEquals(0, certifiedPending.parts[0].groups.size)
+
+        val mandatoryPart = certifiedPending.parts[1]
+        assertEquals(2, mandatoryPart.groups.first().displayNo)
+        assertEquals(3, mandatoryPart.groups[1].rangeFrom)
+        assertEquals(5, mandatoryPart.groups[1].rangeTo)
+        val mandatorySet = mandatoryPart.groups[1].item as QuestionItem.QuestionSet
+        assertEquals(3, mandatorySet.children.size)
+        assertEquals(listOf(3, 4, 5), mandatorySet.children.map { it.displayNo })
+        assertEquals(
+            ReviewPaletteSummary(correct = 1, partial = 0, wrong = 0, blank = 21),
+            mandatoryPart.summary,
+        )
+
+        val electivePart = certifiedPending.parts[2]
+        assertTrue(electivePart.groups.isNotEmpty())
+        val electiveSetGroup = electivePart.groups.first { it.item is QuestionItem.QuestionSet }
+        assertTrue((electiveSetGroup.item as QuestionItem.QuestionSet).children.isNotEmpty())
+        assertTrue(electiveSetGroup.displayNo > 0)
     }
 
     private fun childItem(outcome: AttemptReviewItem.Outcome): AttemptReviewItem = AttemptReviewItem(

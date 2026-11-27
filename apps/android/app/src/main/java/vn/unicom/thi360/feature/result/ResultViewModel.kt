@@ -87,7 +87,7 @@ class ResultViewModel(
 
     fun onLeaveComposition() {
         leftComposition = true
-        poller.onBackground()
+        poller.stop()
     }
 
     fun onInitialAppear() {

@@ -87,13 +87,87 @@ data class ReviewModel(
 object ReviewMapper {
     fun map(response: AttemptReviewResponse): ReviewModel {
         val level = reviewLevel(response.resultView)
-        val includeSolution = level == ReviewLevel.FULL_SOLUTION
         val sortedParts = response.parts.orEmpty()
             .sortedBy { it.ord ?: Int.MAX_VALUE }
-
         val rawItems = response.items.orEmpty()
+
+        val parts = if (sortedParts.isEmpty()) {
+            val groupedBuckets = LinkedHashMap<String, MutableList<AttemptReviewItem>>()
+            for (item in rawItems) {
+                val bucketKey = item.partId?.toString() ?: item.partCode ?: ""
+                groupedBuckets.getOrPut(bucketKey) { mutableListOf() }.add(item)
+            }
+            val mappedGroups = groupedBuckets.values.flatMap { bucketItems ->
+                mapPartItems(bucketItems, level)
+            }
+            listOf(
+                ReviewPart(
+                    key = "default",
+                    partId = null,
+                    partCode = null,
+                    partName = null,
+                    ord = 0,
+                    isSkipped = false,
+                    pendingReview = false,
+                    score = null,
+                    maxScore = null,
+                    groups = mappedGroups,
+                    summary = computePaletteSummary(mappedGroups),
+                ),
+            )
+        } else {
+            val knownPartIds = sortedParts.mapNotNull { it.partId?.toString() }.toSet()
+            val itemsByPartIndex = Array(sortedParts.size) { mutableListOf<AttemptReviewItem>() }
+            for (item in rawItems) {
+                val partIndex = sortedParts.indexOfFirst { part ->
+                    matchesPart(
+                        itemPartId = item.partId?.toString(),
+                        itemPartCode = item.partCode,
+                        partId = part.partId?.toString(),
+                        partCode = part.partCode,
+                        knownPartIds = knownPartIds,
+                    )
+                }
+                if (partIndex >= 0) {
+                    itemsByPartIndex[partIndex].add(item)
+                }
+            }
+            sortedParts.mapIndexed { index, part ->
+                val partIdStr = part.partId?.toString()
+                val partCode = part.partCode
+                val partGroups = mapPartItems(itemsByPartIndex[index], level)
+                ReviewPart(
+                    key = partCode ?: partIdStr ?: "part-$index",
+                    partId = partIdStr,
+                    partCode = partCode,
+                    partName = part.partName,
+                    ord = part.ord ?: index,
+                    isSkipped = part.state == "SKIPPED",
+                    pendingReview = part.pendingReview == true,
+                    score = part.score,
+                    maxScore = part.maxScore,
+                    groups = partGroups,
+                    summary = computePaletteSummary(partGroups),
+                )
+            }
+        }
+
+        return ReviewModel(
+            state = response.state,
+            resultView = response.resultView,
+            level = level,
+            parts = parts,
+        )
+    }
+
+    private fun mapPartItems(
+        partItems: List<AttemptReviewItem>,
+        level: ReviewLevel,
+    ): List<ReviewGroup> {
+        if (partItems.isEmpty()) return emptyList()
+        val includeSolution = level == ReviewLevel.FULL_SOLUTION
         val setById = LinkedHashMap<String, AttemptReviewItem>()
-        for (item in rawItems) {
+        for (item in partItems) {
             if (item.questionType == AttemptReviewItem.QuestionType.QUESTION_SET) {
                 val id = item.itemId?.toString()
                 if (id != null) {
@@ -102,11 +176,10 @@ object ReviewMapper {
             }
         }
 
-        val sortedRaw = rawItems.sortedWith(ITEM_COMPARATOR)
+        val sortedRaw = partItems.sortedWith(ITEM_COMPARATOR)
         val childrenByParent = LinkedHashMap<String, MutableList<AttemptReviewItem>>()
         val topLevelItems = mutableListOf<AttemptReviewItem>()
         var lastSetId: String? = null
-        var lastSetPartCode: String? = null
         var remainingExpectedChildren = 0
 
         for (item in sortedRaw) {
@@ -115,9 +188,7 @@ object ReviewMapper {
                 val resolvedParent = when {
                     setById.containsKey(parentId) -> parentId
                     // BE-1 anonymized fixtures assign unique sequential UUIDs per occurrence; associate orphaned children with the preceding set in the same part.
-                    lastSetId != null &&
-                        (lastSetPartCode == null || item.partCode == null || lastSetPartCode == item.partCode) &&
-                        remainingExpectedChildren > 0 -> {
+                    lastSetId != null && remainingExpectedChildren > 0 -> {
                         remainingExpectedChildren -= 1
                         lastSetId
                     }
@@ -128,11 +199,9 @@ object ReviewMapper {
                 topLevelItems.add(item)
                 if (item.questionType == AttemptReviewItem.QuestionType.QUESTION_SET) {
                     lastSetId = item.itemId?.toString()
-                    lastSetPartCode = item.partCode
                     remainingExpectedChildren = item.gradingDetail?.childCount ?: Int.MAX_VALUE
                 } else {
                     lastSetId = null
-                    lastSetPartCode = null
                     remainingExpectedChildren = 0
                 }
             }
@@ -145,10 +214,7 @@ object ReviewMapper {
                 val rawChildren = childrenByParent[setId].orEmpty().sortedWith(ITEM_COMPARATOR)
                 val visibleChildren = rawChildren.filter { it.outcome != AttemptReviewItem.Outcome.PENDING_REVIEW }
 
-                if (
-                    (rawChildren.isNotEmpty() && visibleChildren.isEmpty()) ||
-                    (rawChildren.isEmpty() && item.outcome == AttemptReviewItem.Outcome.PENDING_REVIEW)
-                ) {
+                if (visibleChildren.isEmpty()) {
                     continue
                 }
 
@@ -174,11 +240,18 @@ object ReviewMapper {
                     }
                 }
 
+                if (childQuestionItems.isEmpty()) {
+                    continue
+                }
+
                 val parentQuestion = QuestionItemMapper.mapReviewItem(item, children = childQuestionItems)
                     ?: continue
 
+                val hasFilteredChildren = visibleChildren.size != rawChildren.size
                 val groupOutcome = if (
-                    item.outcome != null && item.outcome != AttemptReviewItem.Outcome.PENDING_REVIEW
+                    !hasFilteredChildren &&
+                    item.outcome != null &&
+                    item.outcome != AttemptReviewItem.Outcome.PENDING_REVIEW
                 ) {
                     mapOutcome(item.outcome)
                 } else {
@@ -261,57 +334,7 @@ object ReviewMapper {
             )
         }
 
-        val parts = if (sortedParts.isEmpty()) {
-            listOf(
-                ReviewPart(
-                    key = "default",
-                    partId = null,
-                    partCode = null,
-                    partName = null,
-                    ord = 0,
-                    isSkipped = false,
-                    pendingReview = false,
-                    score = null,
-                    maxScore = null,
-                    groups = mappedGroups,
-                    summary = computePaletteSummary(mappedGroups),
-                ),
-            )
-        } else {
-            val knownPartIds = sortedParts.mapNotNull { it.partId?.toString() }.toSet()
-            sortedParts.mapIndexed { index, part ->
-                val partIdStr = part.partId?.toString()
-                val partCode = part.partCode
-                val partGroups = mappedGroups.filter { group ->
-                    matchesPart(
-                        group = group,
-                        partId = partIdStr,
-                        partCode = partCode,
-                        knownPartIds = knownPartIds,
-                    )
-                }
-                ReviewPart(
-                    key = partCode ?: partIdStr ?: "part-$index",
-                    partId = partIdStr,
-                    partCode = partCode,
-                    partName = part.partName,
-                    ord = part.ord ?: index,
-                    isSkipped = part.state == "SKIPPED",
-                    pendingReview = part.pendingReview == true,
-                    score = part.score,
-                    maxScore = part.maxScore,
-                    groups = partGroups,
-                    summary = computePaletteSummary(partGroups),
-                )
-            }
-        }
-
-        return ReviewModel(
-            state = response.state,
-            resultView = response.resultView,
-            level = level,
-            parts = parts,
-        )
+        return mappedGroups
     }
 
     fun computePaletteSummary(groups: List<ReviewGroup>): ReviewPaletteSummary {
@@ -369,16 +392,17 @@ object ReviewMapper {
     }
 
     private fun matchesPart(
-        group: ReviewGroup,
+        itemPartId: String?,
+        itemPartCode: String?,
         partId: String?,
         partCode: String?,
         knownPartIds: Set<String>,
     ): Boolean {
-        if (partId != null && group.partId != null && group.partId in knownPartIds) {
-            return partId == group.partId
+        if (partId != null && itemPartId != null && itemPartId in knownPartIds) {
+            return partId == itemPartId
         }
-        if (partCode != null && group.partCode != null) {
-            return partCode == group.partCode
+        if (partCode != null && itemPartCode != null) {
+            return partCode == itemPartCode
         }
         return false
     }

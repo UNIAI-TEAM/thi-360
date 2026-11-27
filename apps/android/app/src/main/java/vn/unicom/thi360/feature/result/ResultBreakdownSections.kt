@@ -56,13 +56,13 @@ internal fun PartsBreakdownSection(
     attemptState: AttemptResultResponse.State?,
     endReason: AttemptResultResponse.EndReason?,
     modifier: Modifier = Modifier,
+    isRegrading: Boolean = false,
 ) {
     if (parts.isEmpty()) return
     val colors = Thi360Theme.colors
     val statusColors = Thi360Theme.statusColors
     val locale = LocalAppLocale.current
-    val isPendingAttempt = attemptState == AttemptResultResponse.State.PENDING_REVIEW ||
-        parts.any { it.pendingReview == true }
+    val isPendingAttempt = attemptState == AttemptResultResponse.State.PENDING_REVIEW && !isRegrading
 
     Column(
         modifier = modifier
@@ -215,13 +215,13 @@ internal fun SegmentsBreakdownSection(
     segments: List<AttemptResultSegment>,
     attemptState: AttemptResultResponse.State?,
     modifier: Modifier = Modifier,
+    isRegrading: Boolean = false,
 ) {
     if (segments.isEmpty()) return
     val colors = Thi360Theme.colors
     val statusColors = Thi360Theme.statusColors
     val locale = LocalAppLocale.current
-    val isPendingAttempt = attemptState == AttemptResultResponse.State.PENDING_REVIEW ||
-        segments.any { it.pendingReview == true }
+    val isPendingAttempt = attemptState == AttemptResultResponse.State.PENDING_REVIEW && !isRegrading
 
     Column(
         modifier = modifier
@@ -361,13 +361,13 @@ internal fun SubjectsBreakdownSection(
     subjectCatalog: Map<String, CatalogOptionItem>,
     attemptState: AttemptResultResponse.State?,
     modifier: Modifier = Modifier,
+    isRegrading: Boolean = false,
 ) {
     if (subjects.isEmpty()) return
     val colors = Thi360Theme.colors
     val statusColors = Thi360Theme.statusColors
     val locale = LocalAppLocale.current
-    val isPendingAttempt = attemptState == AttemptResultResponse.State.PENDING_REVIEW ||
-        subjects.any { it.pendingReview == true }
+    val isPendingAttempt = attemptState == AttemptResultResponse.State.PENDING_REVIEW && !isRegrading
 
     Column(
         modifier = modifier

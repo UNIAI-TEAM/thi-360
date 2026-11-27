@@ -3,9 +3,13 @@ package vn.unicom.thi360.feature.result
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -203,13 +207,14 @@ class ResultBreakdownTest {
                 ),
             ),
         )
+        var activeResult by mutableStateOf(vactResult)
 
         composeRule.setContent {
             Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
                 ResultScreen(
                     uiState = ResultUiState(
                         attemptId = ResultTestFixtures.ATTEMPT_UUID_1,
-                        loadState = LoadState.Loaded(vactResult),
+                        loadState = LoadState.Loaded(activeResult),
                         examKinds = examCatalog,
                         subjects = subjectCatalog,
                     ),
@@ -225,7 +230,14 @@ class ResultBreakdownTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(ResultTestTags.VACT_PRACTICE_BADGE).assertTextContains("Điểm luyện tập")
+        composeRule.onNode(
+            hasTestTag(ResultTestTags.VACT_PRACTICE_BADGE) and
+                hasAnyAncestor(hasTestTag(ResultTestTags.TOTAL_SCORE_CARD)),
+        ).assertTextContains("Điểm luyện tập")
+        composeRule.onNode(
+            hasTestTag(ResultTestTags.VACT_PRACTICE_BADGE) and
+                hasAnyAncestor(hasTestTag(ResultTestTags.HEADER)),
+        ).assertDoesNotExist()
         composeRule.onNodeWithTag(ResultTestTags.VACT_PRACTICE_NOTE)
             .assertTextContains("Không phải điểm V-ACT chính thức")
         composeRule.onNodeWithText("Điểm luyện tập quy từ điểm các câu về thang 1.200.").assertExists()
@@ -248,5 +260,9 @@ class ResultBreakdownTest {
         composeRule.onNodeWithText("18 câu").assertExists()
         composeRule.onNodeWithTag(ResultTestTags.VACT_SUBSECTIONS_TOGGLE)
             .assertTextContains("Ẩn chi tiết 2 tiểu mục")
+
+        activeResult = vactResult.copy(state = AttemptResultResponse.State.GRADING)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ResultTestTags.VACT_PRACTICE_BADGE).assertDoesNotExist()
     }
 }

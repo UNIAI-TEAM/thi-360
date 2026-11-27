@@ -226,7 +226,10 @@ fun ResultScreen(
 
                                 result.statistics?.let { stats ->
                                     item(key = "stats_card") {
-                                        ResultStatisticsCard(stats = stats)
+                                        ResultStatisticsCard(
+                                            stats = stats,
+                                            showPendingBucket = result.state == AttemptResultResponse.State.PENDING_REVIEW,
+                                        )
                                     }
                                 }
 
@@ -273,6 +276,7 @@ fun ResultScreen(
                                         parts = parts,
                                         attemptState = result.state,
                                         endReason = result.endReason,
+                                        isRegrading = result.regrading == true,
                                     )
                                 }
                             }
@@ -283,6 +287,7 @@ fun ResultScreen(
                                     SegmentsBreakdownSection(
                                         segments = segments,
                                         attemptState = result.state,
+                                        isRegrading = result.regrading == true,
                                     )
                                 }
                             }
@@ -294,6 +299,7 @@ fun ResultScreen(
                                         subjects = subjects,
                                         subjectCatalog = uiState.subjects,
                                         attemptState = result.state,
+                                        isRegrading = result.regrading == true,
                                     )
                                 }
                             }
@@ -357,7 +363,6 @@ private fun ResultHeaderSection(
     examKinds: Map<String, CatalogOptionItem>,
 ) {
     val colors = Thi360Theme.colors
-    val statusColors = Thi360Theme.statusColors
     val locale = LocalAppLocale.current
     val examKindLabel = ResultFormat.resolveCatalogLabel(result.examKindCode, examKinds, locale)
     val scopeLabel = scopeDisplayLabel(result.scope)
@@ -420,14 +425,6 @@ private fun ResultHeaderSection(
                     containerColor = statusBg,
                     contentColor = statusFg,
                     modifier = Modifier.testTag(ResultTestTags.STATUS_CHIP),
-                )
-            }
-            if (ResultFormat.isVact(result)) {
-                ResultPill(
-                    text = stringResource(R.string.result_vact_scoreLabel),
-                    containerColor = statusColors.infoBg,
-                    contentColor = statusColors.info,
-                    modifier = Modifier.testTag(ResultTestTags.VACT_PRACTICE_BADGE),
                 )
             }
         }
@@ -737,6 +734,15 @@ private fun ResultTotalScoreCard(
                 val maxFormatted = resolvedScore.max?.let { ResultFormat.formatScore(it, locale) }
                 val scoreDisplay = if (maxFormatted != null) "$scoreFormatted/$maxFormatted" else scoreFormatted
 
+                if (isVact) {
+                    ResultPill(
+                        text = stringResource(R.string.result_vact_scoreLabel),
+                        containerColor = statusColors.infoBg,
+                        contentColor = statusColors.info,
+                        modifier = Modifier.testTag(ResultTestTags.VACT_PRACTICE_BADGE),
+                    )
+                }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -765,18 +771,15 @@ private fun ResultTotalScoreCard(
                         color = statusColors.info,
                         modifier = Modifier.testTag(ResultTestTags.VACT_PRACTICE_NOTE),
                     )
+                }
+
+                if (!isRegrading) {
                     Text(
-                        text = if (maxFormatted != null) {
+                        text = if (isVact && maxFormatted != null) {
                             stringResource(R.string.result_total_vactScaleDescription, maxFormatted)
                         } else {
                             stringResource(R.string.result_total_scaleDescription)
                         },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.result_total_scaleDescription),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                     )
@@ -808,6 +811,7 @@ private fun ResultTotalScoreCard(
 @Composable
 private fun ResultStatisticsCard(
     stats: AttemptResultUnitStats,
+    showPendingBucket: Boolean,
 ) {
     val colors = Thi360Theme.colors
     val statusColors = Thi360Theme.statusColors
@@ -871,13 +875,14 @@ private fun ResultStatisticsCard(
                     valueColor = colors.textSecondary,
                     tag = ResultTestTags.STAT_BLANK,
                 )
-                if (pending > 0) {
+                if (pending > 0 || showPendingBucket) {
+                    val highlightPending = pending > 0
                     StatBucketTile(
                         label = stringResource(R.string.result_stats_pending),
                         value = ResultFormat.formatCount(pending, locale),
-                        containerColor = statusColors.warningBg,
-                        valueColor = statusColors.warning,
-                        borderColor = statusColors.warning,
+                        containerColor = if (highlightPending) statusColors.warningBg else colors.bgSubtle,
+                        valueColor = if (highlightPending) statusColors.warning else colors.textSecondary,
+                        borderColor = if (highlightPending) statusColors.warning else colors.border,
                         tag = ResultTestTags.STAT_PENDING,
                     )
                 }

@@ -266,4 +266,49 @@ class ReviewScreenStatesTest {
         }
         assertEquals(2, server.requestCount("GET", "/api/v1/me/attempts/$attemptId/review"))
     }
+
+    @Test
+    fun forbidden403WithoutReviewNotIncludedCodeShowsRetryableError() {
+        val attemptId = ResultTestFixtures.ATTEMPT_UUID_2
+        server.respondSequence(
+            "GET",
+            "/api/v1/me/attempts/$attemptId/review",
+            { ContractFakeServer.jsonResponse(403, "{}") },
+            { ContractFakeServer.jsonResponse(403, """{"code":"FORBIDDEN"}""") },
+            { ContractFakeServer.jsonResponse(200, ResultTestFixtures.readIndexedRaw("getReview", 200, "full-solution")) },
+        )
+        server.respondJson(
+            "GET",
+            "/api/v1/me/attempts/$attemptId/result",
+            200,
+            ResultTestFixtures.readIndexedRaw("getResult", 200, "scored"),
+        )
+
+        mountReview(attemptId = attemptId)
+
+        composeRule.waitUntil(5_000L) {
+            composeRule.onAllNodes(hasTestTag(LoadStateTestTags.ERROR_TITLE))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag(ReviewTestTags.NOT_INCLUDED).assertDoesNotExist()
+        composeRule.onNodeWithTag(LoadStateTestTags.ERROR_TITLE)
+            .assertTextContains("Không tải được bài làm")
+        composeRule.onNodeWithTag(LoadStateTestTags.RETRY_BUTTON).performClick()
+
+        composeRule.waitUntil(5_000L) {
+            server.requestCount("GET", "/api/v1/me/attempts/$attemptId/review") >= 2
+        }
+        composeRule.waitUntil(5_000L) {
+            composeRule.onAllNodes(hasTestTag(LoadStateTestTags.RETRY_BUTTON))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag(ReviewTestTags.NOT_INCLUDED).assertDoesNotExist()
+        composeRule.onNodeWithTag(LoadStateTestTags.RETRY_BUTTON).performClick()
+
+        composeRule.waitUntil(5_000L) {
+            composeRule.onAllNodes(hasTestTag(ReviewTestTags.QUESTION_LIST))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(3, server.requestCount("GET", "/api/v1/me/attempts/$attemptId/review"))
+    }
 }

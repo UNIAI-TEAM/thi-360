@@ -709,6 +709,11 @@ private fun ReviewPaletteSidePane(
                     onClick = onPrevious,
                     enabled = prevEnabled,
                     shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, if (prevEnabled) colors.borderStrong else colors.border),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = colors.text,
+                        disabledContentColor = colors.textMuted,
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp)
@@ -724,6 +729,11 @@ private fun ReviewPaletteSidePane(
                     onClick = onNext,
                     enabled = nextEnabled,
                     shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, if (nextEnabled) colors.borderStrong else colors.border),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = colors.text,
+                        disabledContentColor = colors.textMuted,
+                    ),
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp)

@@ -405,4 +405,43 @@ class ResultScreenStatesTest {
         }
         assertEquals(2, server.requestCount("GET", "/api/v1/me/attempts/$attemptId/result"))
     }
+
+    @Test
+    fun leavingAndReenteringCompositionResumesGradingPolling() {
+        val attemptId = ResultTestFixtures.ATTEMPT_UUID_2
+        ResultTestFixtures.installCatalogRoutes(server)
+        val gradingRaw = ResultTestFixtures.readIndexedRaw("getResult", 200, "grading")
+        val scoredRaw = ResultTestFixtures.readIndexedRaw("getResult", 200, "scored")
+
+        server.respondSequence(
+            "GET",
+            "/api/v1/me/attempts/$attemptId/result",
+            { ContractFakeServer.jsonResponse(200, gradingRaw) },
+            { ContractFakeServer.jsonResponse(200, gradingRaw) },
+            { ContractFakeServer.jsonResponse(200, scoredRaw) },
+        )
+
+        val poller = GradingPoller(intervalMillis = 120L, windowMillis = 10_000L)
+        val getVm = mountWithServer(attemptId, poller = poller)
+
+        composeRule.waitUntil(5_000L) {
+            composeRule.onAllNodes(hasTestTag(ResultTestTags.GRADING_CARD))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(1, server.requestCount("GET", "/api/v1/me/attempts/$attemptId/result"))
+
+        composeRule.runOnIdle { getVm().onLeaveComposition() }
+        composeRule.waitForIdle()
+        assertEquals(PollPhase.Idle, poller.phase.value)
+        Thread.sleep(300L)
+        assertEquals(1, server.requestCount("GET", "/api/v1/me/attempts/$attemptId/result"))
+
+        composeRule.runOnIdle { getVm().onEnterComposition() }
+        composeRule.waitUntil(5_000L) {
+            composeRule.onAllNodes(hasTestTag(ResultTestTags.TOTAL_SCORE_VALUE))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag(ResultTestTags.TOTAL_SCORE_VALUE).assertTextContains("1/5")
+        assertEquals(3, server.requestCount("GET", "/api/v1/me/attempts/$attemptId/result"))
+    }
 }

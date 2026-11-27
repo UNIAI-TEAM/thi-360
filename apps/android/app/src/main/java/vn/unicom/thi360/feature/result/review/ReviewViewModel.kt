@@ -152,11 +152,7 @@ class ReviewViewModel(
 
                     is ApiResult.HttpFailure -> {
                         val errorCode = outcome.error?.code
-                        val failed = if (
-                            outcome.statusCode == 403 &&
-                            !errorCode.isNullOrBlank() &&
-                            errorCode != REVIEW_NOT_INCLUDED_CODE
-                        ) {
+                        val failed = if (outcome.statusCode == 403 && errorCode != REVIEW_NOT_INCLUDED_CODE) {
                             LoadState.Failed(kind = LoadFailureKind.Server, canRetry = true)
                         } else {
                             outcome.toLoadFailed()
