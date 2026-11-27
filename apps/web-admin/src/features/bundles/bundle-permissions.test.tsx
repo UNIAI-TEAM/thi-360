@@ -50,7 +50,7 @@ describe("Bundle Permissions (AC-8)", () => {
       { permissions: ["ORDER.VIEW", "PROMOTION.VIEW"] },
     );
 
-    expect(await screen.findByText(/403/)).toBeInTheDocument();
+    expect(await screen.findByText("Không có quyền", { exact: true })).toBeInTheDocument();
     expect(screen.queryByText("Allowed content")).toBeNull();
   });
 
@@ -87,7 +87,7 @@ describe("Bundle Permissions (AC-8)", () => {
       </BundlesLayout>,
       { permissions: ["EXAM.VIEW"] },
     );
-    expect(await screen.findByText(/403/)).toBeInTheDocument();
+    expect(await screen.findByText("Không có quyền", { exact: true })).toBeInTheDocument();
     expect(screen.queryByText("Create bundle page")).toBeNull();
   });
 

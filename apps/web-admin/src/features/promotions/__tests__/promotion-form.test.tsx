@@ -243,7 +243,7 @@ describe("PromotionForm & PromotionEditPage (AC-2, AC-3, AC-4, AC-9, AC-10)", ()
     await user.type(nameInput, "Toi sua de");
     await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
-    expect(await screen.findByText("Xung đột phiên bản (412)")).toBeInTheDocument();
+    expect(await screen.findByText("Khuyến mãi vừa được sửa ở nơi khác")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Tải bản mới nhất" }));
 
     await waitFor(() => {

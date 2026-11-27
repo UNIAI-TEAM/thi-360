@@ -14,7 +14,7 @@ describe("web-admin global error page", () => {
     expect(html.match(/<main/g)).toHaveLength(1);
     expect(html).toContain("<h1");
     expect(html).toContain(viMessages.errorPage.title);
-    expect(html).toContain("Mã yêu cầu: digest-123");
+    expect(html).toContain("Khi cần hỗ trợ, gửi kèm mã này: digest-123");
     expect(html).toContain(viMessages.common.retry);
     expect(html).toContain(viMessages.common.backHome);
   });

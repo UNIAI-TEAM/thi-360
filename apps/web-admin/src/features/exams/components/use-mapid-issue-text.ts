@@ -31,11 +31,12 @@ export function useMapidIssueText(exam?: Pick<ExamDetail, "parts">, marked = fal
       const section = exam ? findSectionById(exam, issue.sectionId ?? where?.section?.id) : null;
       const ruleLabel = (ruleId: string) => {
         const rule = section?.mapidRules?.find((item) => item.id === ruleId);
-        return t("quoted", { sentence: section && rule ? sentence(section, rule, marked) : ruleId });
+        // Chưa có câu của quy tắc (cấu trúc chưa tải hoặc quy tắc không còn): không in mã của quy tắc (UNI-2889).
+        return section && rule ? t("quoted", { sentence: sentence(section, rule, marked) }) : t("ruleUnnamed");
       };
       const ruleIds = issue.ruleIds?.length ? issue.ruleIds : issue.ruleId ? [issue.ruleId] : [];
       // Danh mục chưa tải: không có mã để nêu, bỏ phần "(MAPID …)" thay vì in UUID của nút (R1-F9).
-      const topics = reference ? (issue.nodeIds ?? []).map((nodeId) => knowledge.get(nodeId)?.node.code || nodeId).join(", ") : "";
+      const topics = reference ? (issue.nodeIds ?? []).map((nodeId) => knowledge.get(nodeId)?.node.code || t("topicRemoved")).join(", ") : "";
       const setSize = where?.block.setSize ?? 0;
       const values = {
         rule: issue.ruleId ? ruleLabel(issue.ruleId) : "",

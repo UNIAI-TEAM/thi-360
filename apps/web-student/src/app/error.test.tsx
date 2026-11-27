@@ -14,6 +14,6 @@ describe("web-student error page", () => {
     );
 
     expect(screen.getByText("Đã có lỗi máy chủ")).toBeInTheDocument();
-    expect(screen.getByText("Mã yêu cầu: trace-xyz-123")).toBeInTheDocument();
+    expect(screen.getByText("Khi cần hỗ trợ, gửi kèm mã này: trace-xyz-123")).toBeInTheDocument();
   });
 });

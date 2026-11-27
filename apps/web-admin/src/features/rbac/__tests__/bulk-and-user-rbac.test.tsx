@@ -1250,6 +1250,9 @@ describe("BulkAssignTab & UserRbacTab", () => {
       expect(viText).not.toContain("reasonCodes.");
       expect(enText).not.toContain("reasonCodes.");
     }
+    // Mã lý do mới chưa có câu dịch: câu chung, không lộ mã (UNI-2889).
+    expect(resolveBulkReasonMessage(viT, "BRAND_NEW_REASON")).toBe("Không áp dụng được cho người dùng này.");
+    expect(resolveBulkReasonMessage(enT, "BRAND_NEW_REASON")).toBe("Could not be applied to this user.");
 
     const err = new RbacApiError(403, "Raw backend message", "DIRECT_PERMISSION_REQUIRES_MANAGE");
     expect(resolveRbacErrorMessage(viT, err, "bulk.applyFailed")).toContain("Quản trị");

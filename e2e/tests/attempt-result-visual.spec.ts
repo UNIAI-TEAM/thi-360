@@ -504,7 +504,7 @@ for (const cell of matrixCells()) {
             name: /Bài thi này không có phần xem lại bài làm|This exam does not include attempt review/,
           }),
         ).toBeVisible();
-        await expect(page.getByText(/MÃ LỖI 404|ERROR 404/)).toHaveCount(0);
+        await expect(page.getByRole("heading", { name: /Không tìm thấy trang|Page not found/ })).toHaveCount(0);
         await settle(page);
         await expect(page).toHaveURL(new RegExp(`/attempts/${ATTEMPT_FORBIDDEN}/review$`));
         await expect(page.locator("header nav")).toBeVisible();

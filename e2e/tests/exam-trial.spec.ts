@@ -848,7 +848,7 @@ test.describe("FA-4 Làm thử đề xem trước (Preview Trial)", () => {
 
       const page = await noCtx.newPage();
       await page.goto(`${ADMIN_URL}/exams/${sp2e.id}/preview/${previewId}/try`);
-      await expect(page.getByText("MÃ LỖI 403")).toBeVisible();
+      await expect(page.getByText("Không có quyền", { exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
 
       await page.goto(`${ADMIN_URL}/exams/${sp2e.id}/review`);
