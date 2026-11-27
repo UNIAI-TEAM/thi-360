@@ -16,7 +16,9 @@ actor SessionCleanup {
     private let storeProvider: AccountScopedStoreProvider
     private let markerFileURL: URL
     private let logger: RedactingAppLogger
-    private var participants: [any SessionCleanupParticipant] = []
+    private var participants: [any SessionCleanupParticipant] = [
+        AttemptAssetTempCleanupParticipant()
+    ]
 
     init(
         storeProvider: AccountScopedStoreProvider = AccountScopedStoreProvider(),

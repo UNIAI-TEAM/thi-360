@@ -9,6 +9,11 @@ final class CommonStringsMatchWebTests: XCTestCase {
         "account.deletion.deletedNotice"
     ]
 
+    // Shared UI-package keys sourced from packages/ui/src/messages/ui-strings.ts (A-118).
+    private static let uiPackageSharedKeys: [String: (vi: String, en: String)] = [
+        "common.close": (vi: "Đóng", en: "Close")
+    ]
+
     func testCommonCatalogKeysMatchWebMessagesWordForWordInViAndEn() throws {
         let repoRoot = ContractFixtureLoader.repoRootURL
         let viWeb = try Self.loadFlattenedWebMessages(
@@ -52,6 +57,16 @@ final class CommonStringsMatchWebTests: XCTestCase {
             let iosEn = try XCTUnwrap((localizations["en"]?["stringUnit"] as? [String: Any])?["value"] as? String)
 
             if Self.optionalUntilWeb2Keys.contains(key), viWeb[key] == nil, enWeb[key] == nil {
+                continue
+            }
+
+            if let uiExpected = Self.uiPackageSharedKeys[key], viWeb[key] == nil, enWeb[key] == nil {
+                let uiStringsURL = repoRoot.appendingPathComponent("packages/ui/src/messages/ui-strings.ts")
+                let uiStringsSource = try String(contentsOf: uiStringsURL, encoding: .utf8)
+                XCTAssertTrue(uiStringsSource.contains("close: \"\(uiExpected.vi)\""), "packages/ui ui-strings.ts must define vi '\(uiExpected.vi)' for '\(key)'")
+                XCTAssertTrue(uiStringsSource.contains("close: \"\(uiExpected.en)\""), "packages/ui ui-strings.ts must define en '\(uiExpected.en)' for '\(key)'")
+                XCTAssertEqual(iosVi, uiExpected.vi, "Common.xcstrings vi mismatch for ui-package key '\(key)'")
+                XCTAssertEqual(iosEn, uiExpected.en, "Common.xcstrings en mismatch for ui-package key '\(key)'")
                 continue
             }
 

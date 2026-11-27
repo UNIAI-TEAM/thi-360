@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -40,11 +40,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,6 +54,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -60,16 +64,24 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
+import androidx.navigation.compose.rememberNavController
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import vn.unicom.thi360.R
 import vn.unicom.thi360.core.biometric.BiometricAuthenticator
@@ -77,18 +89,34 @@ import vn.unicom.thi360.core.biometric.BiometricController
 import vn.unicom.thi360.core.biometric.BiometricEnableOutcome
 import vn.unicom.thi360.core.biometric.BiometricState
 import vn.unicom.thi360.core.biometric.BiometricUnavailableReason
-import vn.unicom.thi360.core.network.ApiResult
+import vn.unicom.thi360.core.legal.LegalId
+import vn.unicom.thi360.core.legal.LegalRepository
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.session.SessionManager
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.core.ui.ListDetailLayout
+import vn.unicom.thi360.core.ui.LoadFailureKind
+import vn.unicom.thi360.core.ui.LoadState
+import vn.unicom.thi360.core.ui.LocalShellWidth
+import vn.unicom.thi360.core.ui.ShellWidth
 import vn.unicom.thi360.feature.login.LoginIcons
 import vn.unicom.thi360.feature.password.ChangePasswordDraftViewModel
 import vn.unicom.thi360.feature.password.ChangePasswordScreen
 import vn.unicom.thi360.feature.recovery.RecoveryGateway
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.shell.routes.AppNavigator
+import vn.unicom.thi360.shell.routes.AppRoute
+import vn.unicom.thi360.shell.routes.LocalAppNavigator
+import vn.unicom.thi360.shell.routes.legalGraph
+import vn.unicom.thi360.shell.routes.paymentGraph
+import vn.unicom.thi360.shell.routes.profileGraph
+
+private const val DETAIL_CHANGE_PASSWORD_ROUTE = "account/detail/change_password"
+private const val DETAIL_LANGUAGE_ROUTE = "account/detail/language"
+private const val DETAIL_THEME_ROUTE = "account/detail/theme"
 
 @Composable
 fun AccountScreen(
@@ -98,52 +126,46 @@ fun AccountScreen(
     onSelectLocale: (AppLocale) -> Unit,
     onSelectThemeMode: (ThemeMode) -> Unit,
     sessionManager: SessionManager,
-    profileGateway: AccountProfileGateway,
+    profileStore: AccountProfileStore,
     recoveryGateway: RecoveryGateway,
     biometricController: BiometricController?,
     biometricAuthenticator: BiometricAuthenticator?,
-    profileState: ProfileLoadState,
-    onProfileStateChanged: (ProfileLoadState) -> Unit,
     selectedPane: AccountDetailPane,
     onSelectPane: (AccountDetailPane) -> Unit,
     showSinglePaneChangePassword: Boolean,
     onShowSinglePaneChangePassword: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    legalRepository: LegalRepository? = null,
+    navigator: AppNavigator? = null,
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val rootNavigator = navigator ?: LocalAppNavigator.current
+    val profileDeps = LocalProfileDependencies.current
+    val profileState by profileStore.state.collectAsStateWithLifecycle()
     val biometricState by (biometricController?.state
-        ?: remember { kotlinx.coroutines.flow.MutableStateFlow<BiometricState>(BiometricState.Unavailable(BiometricUnavailableReason.NO_HARDWARE)) })
+        ?: remember { MutableStateFlow<BiometricState>(BiometricState.Unavailable(BiometricUnavailableReason.NO_HARDWARE)) })
         .collectAsStateWithLifecycle()
 
     var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showLogoutDialog by rememberSaveable { mutableStateOf(false) }
+    var showSinglePaneProfileFallback by rememberSaveable { mutableStateOf(false) }
+    var paneReselectTick by remember { mutableIntStateOf(0) }
     var isUpdatingBiometric by remember { mutableStateOf(false) }
     var showBiometricError by remember { mutableStateOf(false) }
     var isLoggingOut by remember { mutableStateOf(false) }
     val biometricInFlight = remember { AtomicBoolean(false) }
     val logoutInFlight = remember { AtomicBoolean(false) }
-    val profileFetchInFlight = remember { AtomicBoolean(false) }
 
     fun loadProfile() {
-        if (!profileFetchInFlight.compareAndSet(false, true)) return
-        onProfileStateChanged(ProfileLoadState.Loading)
         scope.launch {
-            try {
-                val next = when (val result = profileGateway.fetchProfile()) {
-                    is ApiResult.Success -> ProfileLoadState.Loaded(result.data)
-                    is ApiResult.NetworkFailure -> ProfileLoadState.Offline
-                    is ApiResult.HttpFailure -> ProfileLoadState.Error
-                }
-                onProfileStateChanged(next)
-            } finally {
-                profileFetchInFlight.set(false)
-            }
+            profileStore.refresh()
         }
     }
 
-    LaunchedEffect(profileGateway, profileState is ProfileLoadState.Loading) {
-        if (profileState is ProfileLoadState.Loading) {
-            loadProfile()
+    LaunchedEffect(profileStore) {
+        if (profileStore.state.value is LoadState.Loading) {
+            profileStore.refresh()
         }
     }
 
@@ -152,7 +174,7 @@ fun AccountScreen(
     }
 
     val viewModelStoreOwner = LocalViewModelStoreOwner.current
-    val resolvedUsername = (profileState as? ProfileLoadState.Loaded)?.profile?.username
+    val resolvedUsername = (profileState as? LoadState.Loaded)?.value?.username
         ?: usernameFallback
     var previousTwoPaneWidth by rememberSaveable { mutableStateOf(isTwoPaneWidth) }
     val foldedFromChangePasswordWithDraft = previousTwoPaneWidth &&
@@ -163,11 +185,37 @@ fun AccountScreen(
     val effectiveShowSinglePaneChangePassword =
         showSinglePaneChangePassword || foldedFromChangePasswordWithDraft
 
+    var pendingOpenProfileOnFold by rememberSaveable { mutableStateOf(false) }
+    val foldedFromProfileWithDraft = previousTwoPaneWidth &&
+        !isTwoPaneWidth &&
+        selectedPane == AccountDetailPane.PROFILE &&
+        (profileDeps?.draftStore?.hasAnyDraft == true)
+
     SideEffect {
         if (foldedFromChangePasswordWithDraft) {
             onShowSinglePaneChangePassword(true)
         }
+        if (foldedFromProfileWithDraft) {
+            if (rootNavigator != null) {
+                pendingOpenProfileOnFold = true
+            } else {
+                showSinglePaneProfileFallback = true
+            }
+        }
+        if (isTwoPaneWidth && showSinglePaneProfileFallback) {
+            showSinglePaneProfileFallback = false
+        }
+        if (isTwoPaneWidth && pendingOpenProfileOnFold) {
+            pendingOpenProfileOnFold = false
+        }
         previousTwoPaneWidth = isTwoPaneWidth
+    }
+
+    LaunchedEffect(pendingOpenProfileOnFold, rootNavigator) {
+        if (pendingOpenProfileOnFold && rootNavigator != null) {
+            pendingOpenProfileOnFold = false
+            rootNavigator.openProfile()
+        }
     }
 
     if (!isTwoPaneWidth && effectiveShowSinglePaneChangePassword) {
@@ -176,6 +224,16 @@ fun AccountScreen(
             recoveryGateway = recoveryGateway,
             embeddedInPane = false,
             onBack = { onShowSinglePaneChangePassword(false) },
+            modifier = modifier,
+        )
+        return
+    }
+
+    if (!isTwoPaneWidth && showSinglePaneProfileFallback && rootNavigator == null) {
+        ProfileScreen(
+            embeddedInPane = false,
+            onBack = { showSinglePaneProfileFallback = false },
+            dependencies = profileDeps,
             modifier = modifier,
         )
         return
@@ -191,9 +249,37 @@ fun AccountScreen(
         showBiometricError = showBiometricError,
         isLoggingOut = isLoggingOut,
         onRetryProfile = ::loadProfile,
+        onProfileClick = {
+            if (isTwoPaneWidth) {
+                onShowSinglePaneChangePassword(false)
+                onSelectPane(AccountDetailPane.PROFILE)
+                paneReselectTick++
+            } else if (rootNavigator != null) {
+                rootNavigator.openProfile()
+            } else {
+                showSinglePaneProfileFallback = true
+            }
+        },
+        onOrdersClick = {
+            if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
+                onShowSinglePaneChangePassword(false)
+                onSelectPane(AccountDetailPane.ORDERS)
+                paneReselectTick++
+            } else {
+                rootNavigator?.openOrders()
+            }
+        },
         onChangePasswordClick = {
+            if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
+            }
             onSelectPane(AccountDetailPane.CHANGE_PASSWORD)
-            onShowSinglePaneChangePassword(true)
+            if (isTwoPaneWidth) {
+                paneReselectTick++
+            } else {
+                onShowSinglePaneChangePassword(true)
+            }
         },
         onToggleBiometric = { targetChecked ->
             val controller = biometricController ?: return@AccountScreenContent
@@ -234,48 +320,76 @@ fun AccountScreen(
         },
         onLanguageRowClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.LANGUAGE)
+                paneReselectTick++
             } else {
                 showLanguageDialog = true
             }
         },
         onThemeRowClick = {
             if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
                 onShowSinglePaneChangePassword(false)
                 onSelectPane(AccountDetailPane.THEME)
+                paneReselectTick++
             }
         },
         onSelectThemeMode = onSelectThemeMode,
+        onLegalTermsClick = {
+            if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
+                onShowSinglePaneChangePassword(false)
+                onSelectPane(AccountDetailPane.LEGAL_TERMS)
+                paneReselectTick++
+            } else {
+                rootNavigator?.openLegal(LegalId.TERMS)
+            }
+        },
+        onLegalPrivacyClick = {
+            if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
+                onShowSinglePaneChangePassword(false)
+                onSelectPane(AccountDetailPane.LEGAL_PRIVACY)
+                paneReselectTick++
+            } else {
+                rootNavigator?.openLegal(LegalId.PRIVACY)
+            }
+        },
         onLogoutClick = {
             if (!isLoggingOut) {
                 showLogoutDialog = true
             }
         },
-        detailContent = { pane ->
-            when (pane) {
-                AccountDetailPane.CHANGE_PASSWORD -> {
-                    ChangePasswordScreen(
-                        username = resolvedUsername,
-                        recoveryGateway = recoveryGateway,
-                        embeddedInPane = true,
-                    )
-                }
-
-                AccountDetailPane.LANGUAGE -> {
-                    AccountLanguageDetailPane(
-                        selectedLocale = preferences.effectiveLocale,
-                        onSelectLocale = onSelectLocale,
-                    )
-                }
-
-                AccountDetailPane.THEME -> {
-                    AccountThemeDetailPane(
-                        selectedMode = Thi360Theme.themeMode,
-                        onSelectThemeMode = onSelectThemeMode,
-                    )
-                }
+        onDeleteAccountClick = {
+            if (isTwoPaneWidth) {
+                profileDeps?.draftStore?.clear()
+                onShowSinglePaneChangePassword(false)
+                onSelectPane(AccountDetailPane.DELETE_ACCOUNT)
+                paneReselectTick++
+            } else {
+                rootNavigator?.openDeleteAccount()
             }
+        },
+        detailContent = { pane ->
+            AccountTwoPaneDetailNavHost(
+                selectedPane = pane,
+                paneReselectTick = paneReselectTick,
+                resolvedUsername = resolvedUsername,
+                preferences = preferences,
+                onSelectLocale = onSelectLocale,
+                onSelectThemeMode = onSelectThemeMode,
+                recoveryGateway = recoveryGateway,
+                legalRepository = legalRepository ?: remember(context) { LegalRepository.create(context) },
+                onOpenVerifyEmail = rootNavigator?.let { nav -> { nav.openProfileVerifyEmail() } },
+                onOpenMyExams = { rootNavigator?.switchTab(Destination.MyExams) },
+                onOpenOrders = {
+                    profileDeps?.draftStore?.clear()
+                    onSelectPane(AccountDetailPane.ORDERS)
+                    paneReselectTick++
+                },
+            )
         },
         modifier = modifier,
     )
@@ -317,9 +431,163 @@ fun AccountScreen(
 }
 
 @Composable
+private fun AccountTwoPaneDetailNavHost(
+    selectedPane: AccountDetailPane,
+    paneReselectTick: Int,
+    resolvedUsername: String?,
+    preferences: AppPreferences,
+    onSelectLocale: (AppLocale) -> Unit,
+    onSelectThemeMode: (ThemeMode) -> Unit,
+    recoveryGateway: RecoveryGateway,
+    legalRepository: LegalRepository,
+    onOpenVerifyEmail: (() -> Unit)?,
+    onOpenMyExams: () -> Unit,
+    onOpenOrders: () -> Unit,
+) {
+    val detailNavController = rememberNavController()
+    val detailNavigator = remember(detailNavController) { AppNavigator(detailNavController) }
+    val hostViewModelStoreOwner = LocalViewModelStoreOwner.current
+    val initialPane = remember { selectedPane }
+    val startSubRoute = remember(initialPane) { startRouteForDetailPane(initialPane) }
+    var appliedSyncKey by remember {
+        mutableStateOf(
+            if (initialPane != AccountDetailPane.LEGAL_TERMS && initialPane != AccountDetailPane.LEGAL_PRIVACY) {
+                initialPane to 0
+            } else {
+                null
+            },
+        )
+    }
+
+    LaunchedEffect(selectedPane, paneReselectTick, detailNavController) {
+        val syncKey = selectedPane to paneReselectTick
+        if (appliedSyncKey == syncKey) return@LaunchedEffect
+        appliedSyncKey = syncKey
+        detailNavController.popBackStack(route = startSubRoute, inclusive = false)
+        when (selectedPane) {
+            AccountDetailPane.PROFILE -> {
+                val profileRoute = AppRoute.tabRoute(Destination.Account, AppRoute.PROFILE_PATH)
+                if (detailNavController.currentDestination?.route != profileRoute) {
+                    detailNavigator.openProfile()
+                }
+            }
+
+            AccountDetailPane.ORDERS -> {
+                val ordersRoute = AppRoute.tabRoute(Destination.Account, AppRoute.ORDERS_PATH)
+                if (detailNavController.currentDestination?.route != ordersRoute) {
+                    detailNavigator.openOrders()
+                }
+            }
+
+            AccountDetailPane.CHANGE_PASSWORD -> {
+                if (detailNavController.currentDestination?.route != DETAIL_CHANGE_PASSWORD_ROUTE) {
+                    detailNavController.navigate(DETAIL_CHANGE_PASSWORD_ROUTE) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+
+            AccountDetailPane.LANGUAGE -> {
+                if (detailNavController.currentDestination?.route != DETAIL_LANGUAGE_ROUTE) {
+                    detailNavController.navigate(DETAIL_LANGUAGE_ROUTE) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+
+            AccountDetailPane.THEME -> {
+                if (detailNavController.currentDestination?.route != DETAIL_THEME_ROUTE) {
+                    detailNavController.navigate(DETAIL_THEME_ROUTE) {
+                        launchSingleTop = true
+                    }
+                }
+            }
+
+            AccountDetailPane.LEGAL_TERMS -> detailNavigator.openLegal(LegalId.TERMS)
+
+            AccountDetailPane.LEGAL_PRIVACY -> detailNavigator.openLegal(LegalId.PRIVACY)
+
+            AccountDetailPane.DELETE_ACCOUNT -> {
+                val deleteRoute = AppRoute.tabRoute(Destination.Account, AppRoute.DELETE_ACCOUNT_PATH)
+                if (detailNavController.currentDestination?.route != deleteRoute) {
+                    detailNavigator.openDeleteAccount()
+                }
+            }
+        }
+    }
+
+    NavHost(
+        navController = detailNavController,
+        startDestination = Destination.Account.route,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        navigation(
+            route = Destination.Account.route,
+            startDestination = startSubRoute,
+        ) {
+            profileGraph(
+                tab = Destination.Account,
+                navigator = detailNavigator,
+                embeddedInPane = true,
+                onOpenVerifyEmail = onOpenVerifyEmail,
+                onOpenMyExams = onOpenMyExams,
+                onOpenOrders = onOpenOrders,
+            )
+            paymentGraph(tab = Destination.Account, navigator = detailNavigator)
+            legalGraph(
+                tab = Destination.Account,
+                navigator = detailNavigator,
+                legalRepository = legalRepository,
+            )
+            composable(DETAIL_CHANGE_PASSWORD_ROUTE) {
+                if (hostViewModelStoreOwner != null) {
+                    CompositionLocalProvider(LocalViewModelStoreOwner provides hostViewModelStoreOwner) {
+                        ChangePasswordScreen(
+                            username = resolvedUsername,
+                            recoveryGateway = recoveryGateway,
+                            embeddedInPane = true,
+                        )
+                    }
+                } else {
+                    ChangePasswordScreen(
+                        username = resolvedUsername,
+                        recoveryGateway = recoveryGateway,
+                        embeddedInPane = true,
+                    )
+                }
+            }
+            composable(DETAIL_LANGUAGE_ROUTE) {
+                AccountLanguageDetailPane(
+                    selectedLocale = preferences.effectiveLocale,
+                    onSelectLocale = onSelectLocale,
+                )
+            }
+            composable(DETAIL_THEME_ROUTE) {
+                AccountThemeDetailPane(
+                    selectedMode = Thi360Theme.themeMode,
+                    onSelectThemeMode = onSelectThemeMode,
+                )
+            }
+        }
+    }
+}
+
+private fun startRouteForDetailPane(pane: AccountDetailPane): String = when (pane) {
+    AccountDetailPane.PROFILE -> AppRoute.tabRoute(Destination.Account, AppRoute.PROFILE_PATH)
+    AccountDetailPane.ORDERS -> AppRoute.tabRoute(Destination.Account, AppRoute.ORDERS_PATH)
+    AccountDetailPane.CHANGE_PASSWORD -> DETAIL_CHANGE_PASSWORD_ROUTE
+    AccountDetailPane.LANGUAGE -> DETAIL_LANGUAGE_ROUTE
+    AccountDetailPane.THEME -> DETAIL_THEME_ROUTE
+    AccountDetailPane.LEGAL_TERMS,
+    AccountDetailPane.LEGAL_PRIVACY,
+    -> AppRoute.tabRoute(Destination.Account, AppRoute.PROFILE_PATH)
+    AccountDetailPane.DELETE_ACCOUNT -> AppRoute.tabRoute(Destination.Account, AppRoute.DELETE_ACCOUNT_PATH)
+}
+
+@Composable
 fun AccountScreenContent(
     isTwoPaneWidth: Boolean,
-    profileState: ProfileLoadState,
+    profileState: LoadState<UserProfile>,
     preferences: AppPreferences,
     biometricState: BiometricState,
     selectedPane: AccountDetailPane,
@@ -335,20 +603,79 @@ fun AccountScreenContent(
     onLogoutClick: () -> Unit,
     detailContent: @Composable (AccountDetailPane) -> Unit,
     modifier: Modifier = Modifier,
+    onProfileClick: () -> Unit = {},
+    onOrdersClick: () -> Unit = {},
+    onLegalTermsClick: () -> Unit = {},
+    onLegalPrivacyClick: () -> Unit = {},
+    onDeleteAccountClick: () -> Unit = {},
 ) {
     val colors = Thi360Theme.colors
 
     if (isTwoPaneWidth) {
-        Row(
+        Box(
             modifier = modifier
                 .fillMaxSize()
                 .background(colors.bgPage)
-                .testTag(ShellTestTags.ACCOUNT_TWO_PANE)
-                .padding(vertical = 16.dp, horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .testTag(ShellTestTags.ACCOUNT_TWO_PANE),
+        ) {
+            CompositionLocalProvider(LocalShellWidth provides ShellWidth.TwoColumn) {
+                ListDetailLayout(
+                    selected = selectedPane,
+                    listPaneWidth = 312.dp,
+                    list = {
+                        AccountListColumn(
+                            compactTwoPane = true,
+                            profileState = profileState,
+                            preferences = preferences,
+                            biometricState = biometricState,
+                            selectedPane = selectedPane,
+                            isUpdatingBiometric = isUpdatingBiometric,
+                            showBiometricError = showBiometricError,
+                            isLoggingOut = isLoggingOut,
+                            onRetryProfile = onRetryProfile,
+                            onProfileClick = onProfileClick,
+                            onOrdersClick = onOrdersClick,
+                            onChangePasswordClick = onChangePasswordClick,
+                            onToggleBiometric = onToggleBiometric,
+                            onLanguageRowClick = onLanguageRowClick,
+                            onThemeRowClick = onThemeRowClick,
+                            onSelectThemeMode = onSelectThemeMode,
+                            onLegalTermsClick = onLegalTermsClick,
+                            onLegalPrivacyClick = onLegalPrivacyClick,
+                            onLogoutClick = onLogoutClick,
+                            onDeleteAccountClick = onDeleteAccountClick,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 8.dp),
+                        )
+                    },
+                    detail = { pane ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                                .testTag(AccountTestTags.DETAIL_PANE),
+                            shape = RoundedCornerShape(28.dp),
+                            color = colors.bgSurface,
+                            border = BorderStroke(1.dp, colors.border),
+                        ) {
+                            detailContent(pane)
+                        }
+                    },
+                    emptyDetail = {},
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    } else {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(colors.bgPage)
+                .testTag(ShellTestTags.ACCOUNT_SINGLE_PANE),
         ) {
             AccountListColumn(
-                compactTwoPane = true,
+                compactTwoPane = false,
                 profileState = profileState,
                 preferences = preferences,
                 biometricState = biometricState,
@@ -357,60 +684,27 @@ fun AccountScreenContent(
                 showBiometricError = showBiometricError,
                 isLoggingOut = isLoggingOut,
                 onRetryProfile = onRetryProfile,
+                onProfileClick = onProfileClick,
+                onOrdersClick = onOrdersClick,
                 onChangePasswordClick = onChangePasswordClick,
                 onToggleBiometric = onToggleBiometric,
                 onLanguageRowClick = onLanguageRowClick,
                 onThemeRowClick = onThemeRowClick,
                 onSelectThemeMode = onSelectThemeMode,
+                onLegalTermsClick = onLegalTermsClick,
+                onLegalPrivacyClick = onLegalPrivacyClick,
                 onLogoutClick = onLogoutClick,
-                modifier = Modifier
-                    .width(312.dp)
-                    .fillMaxHeight(),
+                onDeleteAccountClick = onDeleteAccountClick,
+                modifier = Modifier.fillMaxSize(),
             )
-
-            VerticalDivider(color = colors.border)
-
-            Surface(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .testTag(AccountTestTags.DETAIL_PANE),
-                shape = RoundedCornerShape(28.dp),
-                color = colors.bgSurface,
-                border = BorderStroke(1.dp, colors.border),
-            ) {
-                detailContent(selectedPane)
-            }
         }
-    } else {
-        AccountListColumn(
-            compactTwoPane = false,
-            profileState = profileState,
-            preferences = preferences,
-            biometricState = biometricState,
-            selectedPane = selectedPane,
-            isUpdatingBiometric = isUpdatingBiometric,
-            showBiometricError = showBiometricError,
-            isLoggingOut = isLoggingOut,
-            onRetryProfile = onRetryProfile,
-            onChangePasswordClick = onChangePasswordClick,
-            onToggleBiometric = onToggleBiometric,
-            onLanguageRowClick = onLanguageRowClick,
-            onThemeRowClick = onThemeRowClick,
-            onSelectThemeMode = onSelectThemeMode,
-            onLogoutClick = onLogoutClick,
-            modifier = modifier
-                .fillMaxSize()
-                .background(colors.bgPage)
-                .testTag(ShellTestTags.ACCOUNT_SINGLE_PANE),
-        )
     }
 }
 
 @Composable
 private fun AccountListColumn(
     compactTwoPane: Boolean,
-    profileState: ProfileLoadState,
+    profileState: LoadState<UserProfile>,
     preferences: AppPreferences,
     biometricState: BiometricState,
     selectedPane: AccountDetailPane,
@@ -418,12 +712,17 @@ private fun AccountListColumn(
     showBiometricError: Boolean,
     isLoggingOut: Boolean,
     onRetryProfile: () -> Unit,
+    onProfileClick: () -> Unit,
+    onOrdersClick: () -> Unit,
     onChangePasswordClick: () -> Unit,
     onToggleBiometric: (Boolean) -> Unit,
     onLanguageRowClick: () -> Unit,
     onThemeRowClick: () -> Unit,
     onSelectThemeMode: (ThemeMode) -> Unit,
+    onLegalTermsClick: () -> Unit,
+    onLegalPrivacyClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onDeleteAccountClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = Thi360Theme.colors
@@ -434,7 +733,8 @@ private fun AccountListColumn(
     Column(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(vertical = 16.dp),
+            .padding(vertical = 16.dp)
+            .testTag(AccountTestTags.LIST_COLUMN),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
@@ -451,8 +751,33 @@ private fun AccountListColumn(
             AccountProfileCard(
                 profileState = profileState,
                 onRetry = onRetryProfile,
+                onCardClick = onProfileClick,
             )
         }
+
+        AccountNavigationRow(
+            icon = AccountIcons.UserCircle,
+            title = stringResource(R.string.header_nav_profile),
+            trailingValue = null,
+            selected = compactTwoPane && selectedPane == AccountDetailPane.PROFILE,
+            isSelectablePaneItem = compactTwoPane,
+            showChevron = !compactTwoPane,
+            horizontalPad = horizontalPad,
+            onClick = onProfileClick,
+            testTag = AccountTestTags.PROFILE_ROW,
+        )
+
+        AccountNavigationRow(
+            icon = AccountIcons.Receipt,
+            title = stringResource(R.string.header_nav_orders),
+            trailingValue = null,
+            selected = compactTwoPane && selectedPane == AccountDetailPane.ORDERS,
+            isSelectablePaneItem = compactTwoPane,
+            showChevron = !compactTwoPane,
+            horizontalPad = horizontalPad,
+            onClick = onOrdersClick,
+            testTag = AccountTestTags.ORDERS_ROW,
+        )
 
         AccountSectionHeader(
             title = stringResource(R.string.account_section_security),
@@ -555,7 +880,36 @@ private fun AccountListColumn(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider(
+            color = colors.border,
+            modifier = Modifier.padding(horizontal = horizontalPad, vertical = 4.dp),
+        )
+
+        AccountNavigationRow(
+            icon = AccountIcons.Document,
+            title = stringResource(R.string.legal_terms_title),
+            trailingValue = null,
+            selected = compactTwoPane && selectedPane == AccountDetailPane.LEGAL_TERMS,
+            isSelectablePaneItem = compactTwoPane,
+            showChevron = !compactTwoPane,
+            horizontalPad = horizontalPad,
+            onClick = onLegalTermsClick,
+            testTag = AccountTestTags.LEGAL_TERMS_ROW,
+        )
+
+        AccountNavigationRow(
+            icon = AccountIcons.Shield,
+            title = stringResource(R.string.legal_privacy_title),
+            trailingValue = null,
+            selected = compactTwoPane && selectedPane == AccountDetailPane.LEGAL_PRIVACY,
+            isSelectablePaneItem = compactTwoPane,
+            showChevron = !compactTwoPane,
+            horizontalPad = horizontalPad,
+            onClick = onLegalPrivacyClick,
+            testTag = AccountTestTags.LEGAL_PRIVACY_ROW,
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Box(modifier = Modifier.padding(horizontal = horizontalPad)) {
             OutlinedButton(
@@ -580,18 +934,39 @@ private fun AccountListColumn(
                 Text(text = stringResource(R.string.account_logout))
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        HorizontalDivider(
+            color = colors.border,
+            modifier = Modifier.padding(horizontal = horizontalPad),
+        )
+
+        AccountNavigationRow(
+            icon = AccountIcons.Trash,
+            title = stringResource(R.string.account_deletion_title),
+            trailingValue = null,
+            selected = compactTwoPane && selectedPane == AccountDetailPane.DELETE_ACCOUNT,
+            isSelectablePaneItem = compactTwoPane,
+            showChevron = !compactTwoPane,
+            horizontalPad = horizontalPad,
+            onClick = onDeleteAccountClick,
+            testTag = AccountTestTags.DELETE_ACCOUNT_ROW,
+            isDanger = true,
+        )
     }
 }
 
 @Composable
 private fun AccountProfileCard(
-    profileState: ProfileLoadState,
+    profileState: LoadState<UserProfile>,
     onRetry: () -> Unit,
+    onCardClick: () -> Unit,
 ) {
     val colors = Thi360Theme.colors
 
     when (profileState) {
-        ProfileLoadState.Loading -> {
+        LoadState.Loading -> {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = colors.bgSubtle,
@@ -618,7 +993,25 @@ private fun AccountProfileCard(
             }
         }
 
-        ProfileLoadState.Error -> {
+        is LoadState.Failed -> {
+            if (profileState.kind == LoadFailureKind.Offline) {
+                ProfileFailureCard(
+                    message = stringResource(R.string.account_profile_offline),
+                    isError = false,
+                    cardTag = AccountTestTags.PROFILE_OFFLINE,
+                    onRetry = onRetry,
+                )
+            } else {
+                ProfileFailureCard(
+                    message = stringResource(R.string.account_profile_error),
+                    isError = true,
+                    cardTag = AccountTestTags.PROFILE_ERROR,
+                    onRetry = onRetry,
+                )
+            }
+        }
+
+        LoadState.Empty -> {
             ProfileFailureCard(
                 message = stringResource(R.string.account_profile_error),
                 isError = true,
@@ -627,22 +1020,26 @@ private fun AccountProfileCard(
             )
         }
 
-        ProfileLoadState.Offline -> {
-            ProfileFailureCard(
-                message = stringResource(R.string.account_profile_offline),
-                isError = false,
-                cardTag = AccountTestTags.PROFILE_OFFLINE,
-                onRetry = onRetry,
-            )
-        }
-
-        is ProfileLoadState.Loaded -> {
-            val profile = profileState.profile
+        is LoadState.Loaded -> {
+            val profile = profileState.value
+            val openProfileLabel = stringResource(R.string.header_nav_profile)
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = colors.bgSubtle,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .pointerInput(onCardClick) {
+                        detectTapGestures(onTap = { onCardClick() })
+                    }
+                    .semantics(mergeDescendants = false) {
+                        role = Role.Button
+                        contentDescription = openProfileLabel
+                        onClick(label = openProfileLabel) {
+                            onCardClick()
+                            true
+                        }
+                    }
                     .testTag(AccountTestTags.PROFILE_CARD),
             ) {
                 Row(
@@ -650,19 +1047,17 @@ private fun AccountProfileCard(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(colors.primaryContainerStrong),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = formatAvatarInitials(profile.fullName, profile.username),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = colors.primaryText,
-                        )
-                    }
+                    AuthenticatedAvatar(
+                        fullName = profile.fullName,
+                        username = profile.username,
+                        avatarAssetId = profile.avatarAssetId,
+                        avatarUrl = profile.avatarUrl,
+                        size = 56.dp,
+                        initialsStyle = MaterialTheme.typography.titleMedium,
+                        imageTestTag = AccountTestTags.PROFILE_AVATAR_IMAGE,
+                        initialsTestTag = AccountTestTags.PROFILE_AVATAR_INITIALS,
+                        includeSemantics = true,
+                    )
 
                     Column(
                         modifier = Modifier.weight(1f),
@@ -806,7 +1201,7 @@ private fun ProfileFailureCard(
 @Composable
 private fun AccountSectionHeader(
     title: String,
-    horizontalPad: androidx.compose.ui.unit.Dp,
+    horizontalPad: Dp,
 ) {
     Text(
         text = title,
@@ -823,20 +1218,34 @@ private fun AccountSectionHeader(
 
 @Composable
 private fun AccountNavigationRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     trailingValue: String?,
     selected: Boolean,
     isSelectablePaneItem: Boolean,
     showChevron: Boolean,
-    horizontalPad: androidx.compose.ui.unit.Dp,
+    horizontalPad: Dp,
     onClick: () -> Unit,
     testTag: String,
+    isDanger: Boolean = false,
 ) {
     val colors = Thi360Theme.colors
-    val rowBg = if (selected) colors.primaryContainer else colors.bgPage.copy(alpha = 0f)
-    val contentColor = if (selected) colors.primaryText else colors.text
-    val iconColor = if (selected) colors.primaryText else colors.textMuted
+    val rowBg = when {
+        selected && isDanger -> colors.dangerBg
+        selected -> colors.primaryContainer
+        else -> colors.bgPage.copy(alpha = 0f)
+    }
+    val borderColor = if (isDanger) colors.dangerText.copy(alpha = 0.4f) else colors.borderStrong
+    val contentColor = when {
+        isDanger -> colors.dangerText
+        selected -> colors.primaryText
+        else -> colors.text
+    }
+    val iconColor = when {
+        isDanger -> colors.dangerText
+        selected -> colors.primaryText
+        else -> colors.textMuted
+    }
     val pillShape = RoundedCornerShape(28.dp)
 
     Row(
@@ -847,7 +1256,7 @@ private fun AccountNavigationRow(
             .background(rowBg)
             .then(
                 if (selected) {
-                    Modifier.border(width = 1.dp, color = colors.borderStrong, shape = pillShape)
+                    Modifier.border(width = 1.dp, color = borderColor, shape = pillShape)
                 } else {
                     Modifier
                 },
@@ -889,7 +1298,7 @@ private fun AccountNavigationRow(
             Icon(
                 imageVector = AccountIcons.ChevronRight,
                 contentDescription = null,
-                tint = colors.textMuted,
+                tint = if (isDanger) colors.dangerText else colors.textMuted,
                 modifier = Modifier.size(20.dp),
             )
         }
@@ -900,7 +1309,7 @@ private fun AccountNavigationRow(
 private fun BiometricSettingRow(
     biometricState: BiometricState,
     isUpdating: Boolean,
-    horizontalPad: androidx.compose.ui.unit.Dp,
+    horizontalPad: Dp,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val colors = Thi360Theme.colors
@@ -974,7 +1383,7 @@ private fun BiometricSettingRow(
 @Composable
 private fun InlineThemeSettingRow(
     selectedMode: ThemeMode,
-    horizontalPad: androidx.compose.ui.unit.Dp,
+    horizontalPad: Dp,
     onSelectThemeMode: (ThemeMode) -> Unit,
 ) {
     val colors = Thi360Theme.colors

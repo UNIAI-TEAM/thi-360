@@ -1,2 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<paths />
+<paths>
+    <cache-path
+        name="avatar_camera"
+        path="avatar-captures/" />
+</paths>
