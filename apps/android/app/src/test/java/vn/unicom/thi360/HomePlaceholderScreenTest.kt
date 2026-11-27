@@ -1,29 +1,27 @@
 package vn.unicom.thi360
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Before
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import vn.unicom.thi360.core.config.Environment
-import vn.unicom.thi360.core.network.InMemoryTokenStore
-import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
-import vn.unicom.thi360.core.storage.Tokens
+import vn.unicom.thi360.feature.catalog.CatalogTestFixtures
+import vn.unicom.thi360.feature.catalog.CatalogTestTags
+import vn.unicom.thi360.feature.catalog.LocalCatalogDependencies
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
-import vn.unicom.thi360.testing.ContractFakeServer
+import vn.unicom.thi360.testing.PortalTestHarness
 
 @RunWith(RobolectricTestRunner::class)
 class HomePlaceholderScreenTest {
@@ -31,76 +29,63 @@ class HomePlaceholderScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: ContractFakeServer
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun homeCatalogShowsVietnameseTitleAndProducts() {
+        PortalTestHarness.create(
+            initialTokens = CatalogTestFixtures.activeStudentTokens(),
+        ) {
+            CatalogTestFixtures.installDefaultStorefrontRoutes(this)
+        }.use { harness ->
+            val deps = CatalogTestFixtures.createDependencies(harness)
 
-    @Before
-    fun setUp() {
-        server = ContractFakeServer().start()
-    }
+            composeRule.setContent {
+                CompositionLocalProvider(LocalCatalogDependencies provides deps) {
+                    AppRoot(
+                        preferences = AppPreferences(locale = AppLocale.VI),
+                        onSelectLocale = {},
+                        onSelectThemeMode = {},
+                        sessionManager = harness.stack.sessionManager,
+                        validateOnLaunch = false,
+                    )
+                }
+            }
 
-    @After
-    fun tearDown() {
-        server.shutdown()
+            composeRule.waitUntil(5_000) {
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1
+            }
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
+            composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home))
+                .assertIsDisplayed()
+                .assertTextEquals("Chọn bài thi")
+            composeRule.onNodeWithTag(CatalogTestTags.SHOWING_SUMMARY)
+                .assertIsDisplayed()
+                .assertTextEquals("Hiển thị 1–2 trong 2 bài thi đang mở bán")
+
+            assertTrue(harness.server.requestCount("GET", "/api/v1/public/storefront/filters") >= 1)
+            assertTrue(harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1)
+        }
     }
 
     @Test
     @Config(qualifiers = "w412dp-h915dp")
-    fun homePlaceholderShowsVietnameseTitleAndEmptyStateOffline() {
-        val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/"),
-            environment = Environment.DEV,
-            tokenStore = InMemoryTokenStore(
-                Tokens(
-                    accessToken = "active-access",
-                    refreshToken = "active-refresh",
-                    accessExpiresIn = 300,
-                    refreshExpiresIn = 604800,
-                    mustChangePassword = false,
-                    username = "student.demo",
-                    accountId = "acc-demo",
-                ),
-            ),
-            localeProvider = { AppLocale.VI },
-        )
-
+    fun homeCatalogShowsEnglishTitleAndProducts() {
+        val deps = CatalogTestFixtures.createDeterministicFixtureDependencies()
         composeRule.setContent {
-            AppRoot(
-                preferences = AppPreferences(locale = AppLocale.VI),
-                onSelectLocale = {},
-                onSelectThemeMode = {},
-                sessionManager = stack.sessionManager,
-                validateOnLaunch = false,
-            )
+            CompositionLocalProvider(LocalCatalogDependencies provides deps) {
+                Thi360App(preferences = AppPreferences(locale = AppLocale.EN))
+            }
         }
+        composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home))
             .assertIsDisplayed()
-            .assertTextEquals("Trang chủ")
-        composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
+            .assertTextEquals("Choose an exam")
+        composeRule.onNodeWithTag(CatalogTestTags.SHOWING_SUMMARY)
             .assertIsDisplayed()
-            .assertTextEquals("Chưa có nội dung")
-
-        assertEquals(
-            "Opening Home placeholder tab must trigger zero business API requests",
-            0,
-            server.totalRequestCount,
-        )
-    }
-
-    @Test
-    @Config(qualifiers = "w412dp-h915dp")
-    fun homePlaceholderShowsEnglishTitleAndEmptyState() {
-        composeRule.setContent {
-            Thi360App(preferences = AppPreferences(locale = AppLocale.EN))
-        }
-
-        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
-        composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.Home))
-            .assertIsDisplayed()
-            .assertTextEquals("Home")
-        composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
-            .assertIsDisplayed()
-            .assertTextEquals("No content yet")
+            .assertTextEquals("Showing 1–2 of 2 exams on sale")
     }
 }

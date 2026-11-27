@@ -1,5 +1,6 @@
 package vn.unicom.thi360.shell
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -34,6 +35,9 @@ import vn.unicom.thi360.core.ui.LoadStateView
 import vn.unicom.thi360.feature.account.AccountProfileGateway
 import vn.unicom.thi360.feature.account.AccountTestTags
 import vn.unicom.thi360.feature.account.UserProfile
+import vn.unicom.thi360.feature.catalog.CatalogTestFixtures
+import vn.unicom.thi360.feature.catalog.LocalCatalogDependencies
+import vn.unicom.thi360.feature.catalog.ProductDetailTestTags
 import vn.unicom.thi360.shell.routes.AppNavigator
 import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
@@ -69,30 +73,34 @@ class LocaleSwitchOnPortalRoutesTest {
         )
         var preferences by mutableStateOf(AppPreferences(locale = AppLocale.VI))
         var navigator: AppNavigator? = null
+        val catalogDeps = CatalogTestFixtures.createDeterministicFixtureDependencies()
 
         composeRule.setContent {
             val navController = rememberNavController()
             val appNav = AppNavigator(navController)
             navigator = appNav
-            AppRoot(
-                preferences = preferences,
-                onSelectLocale = { preferences = preferences.copy(locale = it) },
-                onSelectThemeMode = {},
-                navController = navController,
-                navigator = appNav,
-                sessionManager = stack.sessionManager,
-                validateOnLaunch = false,
-                profileGateway = object : AccountProfileGateway {
-                    override suspend fun fetchProfile(): ApiResult<UserProfile> =
-                        ApiResult.Success(UserProfile("student.locale", "Học viên", "hv@thi360.vn", true))
-                },
-            )
+            CompositionLocalProvider(LocalCatalogDependencies provides catalogDeps) {
+                AppRoot(
+                    preferences = preferences,
+                    onSelectLocale = { preferences = preferences.copy(locale = it) },
+                    onSelectThemeMode = {},
+                    navController = navController,
+                    navigator = appNav,
+                    sessionManager = stack.sessionManager,
+                    validateOnLaunch = false,
+                    profileGateway = object : AccountProfileGateway {
+                        override suspend fun fetchProfile(): ApiResult<UserProfile> =
+                            ApiResult.Success(UserProfile("student.locale", "Học viên", "hv@thi360.vn", true))
+                    },
+                )
+            }
         }
 
         val nav = checkNotNull(navigator)
         composeRule.runOnIdle { nav.openProduct("EXAM-SERVER-ID-99") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)
-            .assertTextContains("code=EXAM-SERVER-ID-99", substring = true)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ProductDetailTestTags.PRODUCT_CODE)
+            .assertTextContains("Mã sản phẩm EXAM-SERVER-ID-99")
 
         // Switch to Account tab and change language to EN.
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
@@ -107,9 +115,9 @@ class LocaleSwitchOnPortalRoutesTest {
         // Return to Home tab: sub-route parameter preserved while UI strings switched to English immediately.
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)
-            .assertTextContains("code=EXAM-SERVER-ID-99", substring = true)
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(ProductDetailTestTags.PRODUCT_CODE)
+            .assertTextContains("Product code EXAM-SERVER-ID-99")
+        composeRule.onNodeWithTag(ProductDetailTestTags.SCREEN).assertIsDisplayed()
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).assertTextContains("Home")
     }
 

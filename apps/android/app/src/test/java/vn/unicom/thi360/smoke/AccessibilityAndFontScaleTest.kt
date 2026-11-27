@@ -44,6 +44,9 @@ import vn.unicom.thi360.feature.account.AccountScreenContent
 import vn.unicom.thi360.feature.account.AccountTestTags
 import vn.unicom.thi360.feature.account.ProfileLoadState
 import vn.unicom.thi360.feature.account.UserProfile
+import vn.unicom.thi360.feature.catalog.CatalogTestFixtures
+import vn.unicom.thi360.feature.catalog.CatalogTestTags
+import vn.unicom.thi360.feature.catalog.LocalCatalogDependencies
 import vn.unicom.thi360.feature.lock.LockScreenContent
 import vn.unicom.thi360.feature.lock.LockTestTags
 import vn.unicom.thi360.feature.login.LoginScreenContent
@@ -208,13 +211,14 @@ class AccessibilityAndFontScaleTest {
         assertInteractiveNodesHaveAccessibleLabel("Home")
         assertTouchTargetsAtLeast48Dp(
             screenName = "Home",
-            tags = Destination.entries.map(ShellTestTags::navItem),
+            tags = listOf(CatalogTestTags.FILTER_BUTTON) + Destination.entries.map(ShellTestTags::navItem),
         )
         assertTopToBottomOrder(
             screenName = "Home",
             orderedTags = listOf(
                 ShellTestTags.screenTitle(Destination.Home),
-                ShellTestTags.PLACEHOLDER_EMPTY_TITLE,
+                CatalogTestTags.SEARCH_FIELD,
+                CatalogTestTags.LIST,
                 ShellTestTags.BOTTOM_BAR,
             ),
         )
@@ -403,13 +407,10 @@ class AccessibilityAndFontScaleTest {
             screenName = "Home@$scale",
             tags = listOf(
                 ShellTestTags.screenTitle(Destination.Home),
-                ShellTestTags.PLACEHOLDER_EMPTY_TITLE,
+                CatalogTestTags.FILTER_BUTTON,
+                CatalogTestTags.SEARCH_FIELD,
                 ShellTestTags.BOTTOM_BAR,
             ) + Destination.entries.map(ShellTestTags::navItem),
-            scrollableTags = setOf(
-                ShellTestTags.screenTitle(Destination.Home),
-                ShellTestTags.PLACEHOLDER_EMPTY_TITLE,
-            ),
         )
 
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams))
@@ -666,10 +667,15 @@ class AccessibilityAndFontScaleTest {
 
     @Composable
     private fun HomeSurface() {
-        Thi360App(
-            preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT),
-            startDestination = Destination.Home.route,
-        )
+        val deps = androidx.compose.runtime.remember {
+            CatalogTestFixtures.createDeterministicFixtureDependencies()
+        }
+        CompositionLocalProvider(LocalCatalogDependencies provides deps) {
+            Thi360App(
+                preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT),
+                startDestination = Destination.Home.route,
+            )
+        }
     }
 
     @Composable

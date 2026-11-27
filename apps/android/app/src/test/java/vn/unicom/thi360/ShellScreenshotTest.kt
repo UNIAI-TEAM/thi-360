@@ -1,17 +1,24 @@
 package vn.unicom.thi360
 
+import android.os.Looper
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
+import vn.unicom.thi360.feature.catalog.CatalogTestFixtures
+import vn.unicom.thi360.feature.catalog.CatalogTestTags
+import vn.unicom.thi360.feature.catalog.LocalCatalogDependencies
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.Thi360App
 
@@ -27,14 +34,24 @@ class ShellScreenshotTest {
         themeMode: ThemeMode,
         destination: Destination = Destination.Home,
     ) {
+        val catalogDeps = CatalogTestFixtures.createDeterministicFixtureDependencies()
         composeRule.setContent {
-            Thi360App(
-                preferences = AppPreferences(
-                    locale = AppLocale.VI,
-                    themeMode = themeMode,
-                ),
-                startDestination = destination.route,
-            )
+            CompositionLocalProvider(LocalCatalogDependencies provides catalogDeps) {
+                Thi360App(
+                    preferences = AppPreferences(
+                        locale = AppLocale.VI,
+                        themeMode = themeMode,
+                    ),
+                    startDestination = destination.route,
+                )
+            }
+        }
+        if (destination == Destination.Home) {
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                composeRule.onAllNodesWithTag(CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
         }
         composeRule.waitForIdle()
         composeRule.onRoot().captureRoboImage("src/test/snapshots/$name.png")
