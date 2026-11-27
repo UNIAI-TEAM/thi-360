@@ -32,4 +32,7 @@
 
     <string name="account_deletion_deletedNotice">Tài khoản của bạn đã được xóa.</string>
     <string name="common_close">Đóng</string>
+    <string name="attempt_waiting_title">Đang chuẩn bị đề</string>
+    <string name="prepare_errorLoad_title">Không tải được thông tin chuẩn bị bài thi</string>
+    <string name="prepare_errorLoad_description">Vui lòng kiểm tra kết nối mạng và thử lại.</string>
 </resources>

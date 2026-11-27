@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="prepare_pageTitle">Chuẩn bị làm bài</string>
+    <string name="prepare_backToMyExams">Về Bài thi của tôi</string>
+    <string name="prepare_notFound_title">Không tìm thấy bài thi trong tài khoản đang đăng nhập</string>
+    <string name="prepare_notFound_description">Quyền làm bài không tồn tại hoặc thuộc về tài khoản khác.</string>
+
+    <string name="prepare_scope_FULL">Bài thi FULL</string>
+    <string name="prepare_scope_PART">Bài thi theo phần</string>
+    <string name="prepare_scope_SUBJECT">Bài thi theo môn</string>
+    <string name="prepare_reviewBadge">Bài ôn</string>
+
+    <plurals name="prepare_units_partCount">
+        <item quantity="other">%1$d phần</item>
+    </plurals>
+    <plurals name="prepare_units_questions">
+        <item quantity="other">%1$d câu</item>
+    </plurals>
+    <plurals name="prepare_units_minutes">
+        <item quantity="other">%1$d phút</item>
+    </plurals>
+    <string name="prepare_units_points">%1$s điểm</string>
+
+    <string name="prepare_structure_title">Cấu trúc bài thi</string>
+    <string name="prepare_timing_FREE_title">Một đồng hồ chung, chuyển phần tự do</string>
+    <string name="prepare_timing_FREE_description">Bạn có thể chuyển qua lại giữa các phần và chỉnh sửa câu trả lời trong thời gian làm bài chung.</string>
+    <string name="prepare_timing_PER_PART_title">Tính giờ từng phần</string>
+    <string name="prepare_timing_PER_PART_description">Làm lần lượt từng phần. Hoàn thành phần hoặc hết giờ thì phần sau mở ngay, không có giờ nghỉ và không quay lại phần đã xong.</string>
+    <string name="prepare_timing_SHARED_title">Một đồng hồ chung cho cả bài</string>
+    <string name="prepare_timing_SHARED_description">Các phần làm lần lượt trong một đồng hồ chung. Hoàn thành phần hoặc hết giờ thì phần sau mở ngay; hết giờ chung thì lượt thi kết thúc.</string>
+
+    <string name="prepare_required">Bắt buộc</string>
+    <string name="prepare_optional">Tự chọn</string>
+
+    <string name="prepare_answerFormatsLabel">Dạng câu hỏi</string>
+    <string name="prepare_answerFormats_SINGLE_CHOICE">Trắc nghiệm một đáp án</string>
+    <string name="prepare_answerFormats_MULTIPLE_CHOICE">Trắc nghiệm nhiều đáp án</string>
+    <string name="prepare_answerFormats_TRUE_FALSE">Đúng/Sai</string>
+    <string name="prepare_answerFormats_SHORT_ANSWER">Trả lời ngắn</string>
+    <string name="prepare_answerFormats_CLOZE">Điền khuyết</string>
+    <string name="prepare_answerFormats_MATCHING">Ghép đôi</string>
+    <string name="prepare_answerFormats_ESSAY">Tự luận</string>
+    <string name="prepare_answerFormats_QUESTION_SET">Chùm câu hỏi</string>
+
+    <string name="prepare_listeningPolicy_title">Chính sách nghe</string>
+    <string name="prepare_listeningPolicy_maxPlays">Mỗi tệp âm thanh được nghe tối đa %1$d lần.</string>
+    <string name="prepare_listeningPolicy_noSeek">Không có thanh tua, không tạm dừng và không đổi tốc độ phát.</string>
+
+    <string name="prepare_omittedGroupsLabel">Nhóm tự luận tạm lược khỏi đề tự động:</string>
+
+    <string name="prepare_afterStartChoices_title">Lựa chọn sẽ gặp trong bài</string>
+    <string name="prepare_afterStartChoices_chooseSubjects" tools:ignore="PluralsCandidate">chọn đúng %1$d trong %2$d môn</string>
+    <string name="prepare_afterStartChoices_deadlineNote">Thời gian chọn: tối đa 15 phút kể từ lúc phần trước đóng. Quá thời gian mà chưa xác nhận thì lượt thi kết thúc, phần tự chọn được 0 điểm.</string>
+    <string name="prepare_afterStartChoices_timerNote">Đồng hồ của phần tự chọn chỉ chạy khi bộ câu hỏi đã sẵn sàng.</string>
+
+    <string name="prepare_instructions_title">Hướng dẫn làm bài</string>
+    <string name="prepare_instructions_noteAutoSave">Câu trả lời được lưu tự động. Thanh trên cho biết Đang lưu, Đã lưu hoặc Chưa lưu.</string>
+    <string name="prepare_instructions_noteClock">Thời gian còn lại lấy theo giờ máy chủ; đổi giờ trên thiết bị không làm thay đổi thời gian.</string>
+    <string name="prepare_instructions_noteOffline">Mất kết nối vẫn làm bài tiếp được. Câu trả lời được giữ trên thiết bị và gửi khi có mạng lại; đồng hồ vẫn chạy.</string>
+    <string name="prepare_instructions_noteSingleDevice">Mỗi lượt chỉ làm trên một thiết bị tại một thời điểm. Mở ở thiết bị khác thì phải xác nhận chuyển sang thiết bị đó.</string>
+
+    <string name="prepare_sidebar_title">Sẵn sàng làm bài</string>
+    <string name="prepare_sidebar_attemptsLeft">Số lượt còn lại</string>
+    <plurals name="prepare_sidebar_attemptsValue">
+        <item quantity="other">%1$d lượt</item>
+    </plurals>
+    <string name="prepare_sidebar_grantSource">Lượt này dùng từ</string>
+    <string name="prepare_sidebar_questions">Số câu phải làm</string>
+    <string name="prepare_sidebar_duration">Tổng thời gian</string>
+    <string name="prepare_sidebar_maxPoints">Điểm tối đa</string>
+    <string name="prepare_sidebar_startNote">Bấm Bắt đầu thì hệ thống chuẩn bị đề, mất khoảng vài giây. Đồng hồ chỉ chạy khi đề đã sẵn sàng. Nếu không chuẩn bị được đề, lượt được trả lại.</string>
+
+    <string name="prepare_grantSource_compensation">Cấp bù</string>
+    <string name="prepare_grantSource_classAssigned">Giao theo lớp ngày %1$s</string>
+    <string name="prepare_grantSource_classAssignedNoDate">Giao theo lớp</string>
+    <string name="prepare_grantSource_purchase">Mua ngày %1$s, đơn %2$s</string>
+    <string name="prepare_grantSource_purchaseNoOrder">Mua ngày %1$s</string>
+
+    <string name="prepare_preChoice_title">Lựa chọn trước khi bắt đầu</string>
+    <string name="prepare_preChoice_legend">Phương án trước khi bắt đầu</string>
+    <string name="prepare_preChoice_chooseSubjectsCount" tools:ignore="PluralsCandidate">Chọn đúng %1$d trong %2$d môn</string>
+    <string name="prepare_preChoice_subjectLegend">Chọn môn tự chọn</string>
+    <string name="prepare_preChoice_chooseSubjectsProgress">Đã chọn %1$d/%2$d</string>
+    <string name="prepare_preChoice_selectedPathSummary">Đường %1$s</string>
+    <string name="prepare_preChoice_hintSelectOption">Vui lòng chọn một phương án trước khi bắt đầu.</string>
+    <string name="prepare_preChoice_hintSelectSubjects">Vui lòng chọn đủ %1$d môn trước khi bắt đầu.</string>
+
+    <string name="prepare_noServingOption_title">Các mã bạn đã mua hiện không còn được phục vụ.</string>
+    <string name="prepare_noServingOption_descriptionWithContact">Vui lòng liên hệ hỗ trợ qua %1$s để được hoàn tiền hoặc cấp bù.</string>
+    <string name="prepare_noServingOption_contactPending">Thông tin liên hệ hỗ trợ đang được cập nhật.</string>
+
+    <string name="prepare_inProgressBanner">Bạn đang có lượt làm bài chưa hoàn tất. Tiếp tục để làm tiếp, không tạo lượt mới.</string>
+    <string name="prepare_continueAttempt">Tiếp tục</string>
+
+    <string name="prepare_exhaustedTitle">Bạn đã dùng hết lượt của bài này.</string>
+    <string name="prepare_exhaustedDescription">Bạn có thể mua thêm lượt để tiếp tục luyện tập bài thi này.</string>
+    <string name="prepare_exhaustedDescriptionClass">Bạn đã dùng hết số lượt được giao cho bài thi này.</string>
+    <string name="prepare_exhaustedDescriptionDiscontinued">Bài thi này đã ngừng mở bán nên không thể mua thêm lượt.</string>
+    <string name="prepare_buyMoreAttempts">Mua thêm lượt</string>
+
+    <string name="prepare_startCta">Bắt đầu bài thi</string>
+    <string name="prepare_startErrors_NO_ATTEMPTS_LEFT">Bạn đã dùng hết lượt của bài thi này.</string>
+    <string name="prepare_startErrors_CHOICE_NOT_ALLOWED">Lựa chọn hiện tại không hợp lệ hoặc không thuộc phạm vi bạn đã mua.</string>
+    <string name="prepare_startErrors_NO_SERVING_OPTION">Các phương án bạn đã mua hiện không còn được phục vụ.</string>
+    <string name="prepare_startErrors_SUBJECTS_INVALID">Danh sách môn đã chọn chưa đúng số lượng hoặc không hợp lệ.</string>
+    <string name="prepare_startErrors_RATE_LIMITED">Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.</string>
+    <string name="prepare_startErrors_generic">Không thể bắt đầu bài thi lúc này. Vui lòng thử lại.</string>
+
+    <string name="attempt_waiting_pageTitle">Đang chuẩn bị đề</string>
+    <string name="attempt_waiting_clockPaused">Chưa tính giờ</string>
+    <string name="attempt_waiting_description">Hệ thống đang tạo bộ câu hỏi cho lượt thi của bạn. Đồng hồ chỉ bắt đầu khi đề đã sẵn sàng, nên bạn không mất thời gian làm bài trong lúc chờ.</string>
+    <string name="attempt_waiting_firstPartLabel">Phần mở đầu</string>
+    <string name="attempt_waiting_durationLabel">Thời gian của phần</string>
+    <string name="attempt_waiting_durationSharedLabel">Thời gian làm bài</string>
+    <string name="attempt_waiting_minutesValue">%1$d phút</string>
+    <string name="attempt_waiting_reassureNote">Đề sẵn sàng thì màn làm bài tự mở. Lỡ thoát ra thì mở lại từ %1$s và bấm Tiếp tục; lượt không bị bắt đầu lại.</string>
+    <string name="attempt_waiting_reassureNoteLink">Bài thi của tôi</string>
+    <string name="attempt_waiting_busyNoticeLabel">Sau 90 giây vẫn chưa xong</string>
+    <string name="attempt_waiting_busyTitle">Hệ thống đang bận</string>
+    <string name="attempt_waiting_busyDescription">Đề vẫn đang được chuẩn bị. Ứng dụng tự kiểm tra lại, bạn không cần bấm gì. Đồng hồ chưa chạy.</string>
+    <string name="attempt_waiting_failedNoticeLabel">Chuẩn bị đề thất bại</string>
+    <string name="attempt_waiting_failedHeading">Chưa chuẩn bị được đề</string>
+    <string name="attempt_waiting_failedRefundNote">Lượt đã được trả lại, bạn chưa mất lượt nào. Đồng hồ chưa chạy.</string>
+    <string name="attempt_waiting_backToMyExams">Về Bài thi của tôi</string>
+    <string name="attempt_waiting_retry">Thử lại</string>
+
+    <string name="attempt_abortReasons_GENERATION_FAILED">Chưa tạo được bộ câu hỏi cho đề này.</string>
+    <string name="attempt_abortReasons_GENERATION_TIMEOUT">Tạo đề quá thời gian cho phép.</string>
+    <string name="attempt_abortReasons_GENERATION_BUSY">Hệ thống đang có nhiều yêu cầu tạo đề. Vui lòng thử lại sau giây lát.</string>
+    <string name="attempt_abortReasons_STALE_STARTING">Việc chuẩn bị đề bị gián đoạn.</string>
+    <string name="attempt_abortReasons_AUDIO_ASSET_MISSING">Thiếu tệp âm thanh cần thiết cho đề thi.</string>
+    <string name="attempt_abortReasons_AUDIO_ASSET_INVALID">Tệp âm thanh của đề thi không hợp lệ hoặc không đọc được.</string>
+    <string name="attempt_abortReasons_generic">Không thể chuẩn bị đề thi lúc này.</string>
+</resources>

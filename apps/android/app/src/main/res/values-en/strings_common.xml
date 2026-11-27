@@ -34,4 +34,7 @@
 
     <string name="account_deletion_deletedNotice">Your account has been deleted.</string>
     <string name="common_close">Close</string>
+    <string name="attempt_waiting_title">Preparing your exam</string>
+    <string name="prepare_errorLoad_title">Unable to load exam preparation details</string>
+    <string name="prepare_errorLoad_description">Please check your connection and try again.</string>
 </resources>

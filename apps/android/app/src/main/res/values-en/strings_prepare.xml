@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="prepare_pageTitle">Prepare for exam</string>
+    <string name="prepare_backToMyExams">Back to My exams</string>
+    <string name="prepare_notFound_title">Exam not found in the signed-in account</string>
+    <string name="prepare_notFound_description">This exam access does not exist or belongs to a different account.</string>
+
+    <string name="prepare_scope_FULL">FULL exam</string>
+    <string name="prepare_scope_PART">Section exam</string>
+    <string name="prepare_scope_SUBJECT">Subject exam</string>
+    <string name="prepare_reviewBadge">Review exam</string>
+
+    <plurals name="prepare_units_partCount">
+        <item quantity="one">%1$d section</item>
+        <item quantity="other">%1$d sections</item>
+    </plurals>
+    <plurals name="prepare_units_questions">
+        <item quantity="one">%1$d question</item>
+        <item quantity="other">%1$d questions</item>
+    </plurals>
+    <plurals name="prepare_units_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <string name="prepare_units_points">%1$s points</string>
+
+    <string name="prepare_structure_title">Exam structure</string>
+    <string name="prepare_timing_FREE_title">Shared clock, free section navigation</string>
+    <string name="prepare_timing_FREE_description">You can move freely between sections and edit answers within the shared timer.</string>
+    <string name="prepare_timing_PER_PART_title">Timed per section</string>
+    <string name="prepare_timing_PER_PART_description">Complete each section in order. Finishing a section or running out of time opens the next section immediately with no break and no going back.</string>
+    <string name="prepare_timing_SHARED_title">Shared clock for the whole exam</string>
+    <string name="prepare_timing_SHARED_description">Sections are taken sequentially under one shared clock. Finishing a section or running out of time opens the next section; when the shared clock ends, the attempt closes.</string>
+
+    <string name="prepare_required">Required</string>
+    <string name="prepare_optional">Optional</string>
+
+    <string name="prepare_answerFormatsLabel">Question formats</string>
+    <string name="prepare_answerFormats_SINGLE_CHOICE">Single choice</string>
+    <string name="prepare_answerFormats_MULTIPLE_CHOICE">Multiple choice</string>
+    <string name="prepare_answerFormats_TRUE_FALSE">True/False</string>
+    <string name="prepare_answerFormats_SHORT_ANSWER">Short answer</string>
+    <string name="prepare_answerFormats_CLOZE">Fill in the blank</string>
+    <string name="prepare_answerFormats_MATCHING">Matching</string>
+    <string name="prepare_answerFormats_ESSAY">Essay</string>
+    <string name="prepare_answerFormats_QUESTION_SET">Question set</string>
+
+    <string name="prepare_listeningPolicy_title">Listening policy</string>
+    <string name="prepare_listeningPolicy_maxPlays" tools:ignore="PluralsCandidate">Each audio file can be played up to %1$d times.</string>
+    <string name="prepare_listeningPolicy_noSeek">No seek bar, pause button, or playback speed controls.</string>
+
+    <string name="prepare_omittedGroupsLabel">Essay groups temporarily omitted from automatic generation:</string>
+
+    <string name="prepare_afterStartChoices_title">Choices during the exam</string>
+    <string name="prepare_afterStartChoices_chooseSubjects" tools:ignore="PluralsCandidate">choose %1$d of %2$d subjects</string>
+    <string name="prepare_afterStartChoices_deadlineNote">Selection time limit: up to 15 minutes after the previous section closes. If not confirmed in time, the attempt ends and the optional section scores 0.</string>
+    <string name="prepare_afterStartChoices_timerNote">The optional section timer starts only once the question set is ready.</string>
+
+    <string name="prepare_instructions_title">Exam instructions</string>
+    <string name="prepare_instructions_noteAutoSave">Answers are saved automatically. The top bar shows Saving, Saved, or Unsaved.</string>
+    <string name="prepare_instructions_noteClock">Remaining time follows the server clock; changing your device clock does not affect the timer.</string>
+    <string name="prepare_instructions_noteOffline">If you lose connection, you can keep working. Answers stay saved on this device and sync when reconnected while the clock keeps running.</string>
+    <string name="prepare_instructions_noteSingleDevice">Each attempt runs on one device at a time. Opening it on another device requires confirming takeover.</string>
+
+    <string name="prepare_sidebar_title">Ready to start</string>
+    <string name="prepare_sidebar_attemptsLeft">Remaining attempts</string>
+    <plurals name="prepare_sidebar_attemptsValue">
+        <item quantity="one">%1$d attempt</item>
+        <item quantity="other">%1$d attempts</item>
+    </plurals>
+    <string name="prepare_sidebar_grantSource">Credit source</string>
+    <string name="prepare_sidebar_questions">Questions</string>
+    <string name="prepare_sidebar_duration">Total duration</string>
+    <string name="prepare_sidebar_maxPoints">Max points</string>
+    <string name="prepare_sidebar_startNote">Clicking Start prepares your exam in a few seconds. The timer starts only when the paper is ready. If preparation fails, your attempt credit is returned.</string>
+
+    <string name="prepare_grantSource_compensation">Compensation</string>
+    <string name="prepare_grantSource_classAssigned">Assigned to class on %1$s</string>
+    <string name="prepare_grantSource_classAssignedNoDate">Assigned to class</string>
+    <string name="prepare_grantSource_purchase">Purchased %1$s, order %2$s</string>
+    <string name="prepare_grantSource_purchaseNoOrder">Purchased %1$s</string>
+
+    <string name="prepare_preChoice_title">Choose before starting</string>
+    <string name="prepare_preChoice_legend">Pre-start selection</string>
+    <string name="prepare_preChoice_chooseSubjectsCount" tools:ignore="PluralsCandidate">Choose %1$d of %2$d subjects</string>
+    <string name="prepare_preChoice_subjectLegend">Select subjects</string>
+    <string name="prepare_preChoice_chooseSubjectsProgress">Selected %1$d/%2$d</string>
+    <string name="prepare_preChoice_selectedPathSummary">Path %1$s</string>
+    <string name="prepare_preChoice_hintSelectOption">Please select an option before starting.</string>
+    <string name="prepare_preChoice_hintSelectSubjects" tools:ignore="PluralsCandidate">Please choose %1$d subjects before starting.</string>
+
+    <string name="prepare_noServingOption_title">None of your purchased options are currently served.</string>
+    <string name="prepare_noServingOption_descriptionWithContact">Please contact support via %1$s for a refund or compensation.</string>
+    <string name="prepare_noServingOption_contactPending">Support contact details are being updated.</string>
+
+    <string name="prepare_inProgressBanner">You have an unfinished attempt in progress. Continue where you left off without creating a new attempt.</string>
+    <string name="prepare_continueAttempt">Continue</string>
+
+    <string name="prepare_exhaustedTitle">You have used all attempts for this exam.</string>
+    <string name="prepare_exhaustedDescription">You can buy more attempts to keep practicing this exam.</string>
+    <string name="prepare_exhaustedDescriptionClass">You have used all assigned attempts for this exam.</string>
+    <string name="prepare_exhaustedDescriptionDiscontinued">This exam is no longer on sale, so more attempts cannot be purchased.</string>
+    <string name="prepare_buyMoreAttempts">Buy more attempts</string>
+
+    <string name="prepare_startCta">Start exam</string>
+    <string name="prepare_startErrors_NO_ATTEMPTS_LEFT">You have no attempts left for this exam.</string>
+    <string name="prepare_startErrors_CHOICE_NOT_ALLOWED">The selected option is not valid or not included in your purchase.</string>
+    <string name="prepare_startErrors_NO_SERVING_OPTION">None of your purchased options are currently available.</string>
+    <string name="prepare_startErrors_SUBJECTS_INVALID">The selected subjects are incomplete or invalid.</string>
+    <string name="prepare_startErrors_RATE_LIMITED">Too many requests. Please wait a moment and try again.</string>
+    <string name="prepare_startErrors_generic">Unable to start the exam right now. Please try again.</string>
+
+    <string name="attempt_waiting_pageTitle">Preparing exam</string>
+    <string name="attempt_waiting_clockPaused">Timer not started</string>
+    <string name="attempt_waiting_description">The system is assembling your exam questions. The timer only starts once your exam is ready, so you do not lose any test time while waiting.</string>
+    <string name="attempt_waiting_firstPartLabel">Opening section</string>
+    <string name="attempt_waiting_durationLabel">Section duration</string>
+    <string name="attempt_waiting_durationSharedLabel">Exam duration</string>
+    <string name="attempt_waiting_minutesValue" tools:ignore="PluralsCandidate">%1$d minutes</string>
+    <string name="attempt_waiting_reassureNote">The exam screen will open automatically once ready. If you leave this screen, reopen it from %1$s and choose Continue; a new attempt will not be created.</string>
+    <string name="attempt_waiting_reassureNoteLink">My exams</string>
+    <string name="attempt_waiting_busyNoticeLabel">Still preparing after 90 seconds</string>
+    <string name="attempt_waiting_busyTitle">System is busy</string>
+    <string name="attempt_waiting_busyDescription">Your exam is still being prepared. The app checks automatically—you do not need to tap anything. The timer has not started.</string>
+    <string name="attempt_waiting_failedNoticeLabel">Exam preparation failed</string>
+    <string name="attempt_waiting_failedHeading">Could not prepare the exam</string>
+    <string name="attempt_waiting_failedRefundNote">Your attempt credit has been returned, so no attempt was lost. The timer has not started.</string>
+    <string name="attempt_waiting_backToMyExams">Back to My exams</string>
+    <string name="attempt_waiting_retry">Try again</string>
+
+    <string name="attempt_abortReasons_GENERATION_FAILED">Could not generate the question set for this exam.</string>
+    <string name="attempt_abortReasons_GENERATION_TIMEOUT">Exam generation took longer than allowed.</string>
+    <string name="attempt_abortReasons_GENERATION_BUSY">The system is busy handling many exam requests. Please try again in a moment.</string>
+    <string name="attempt_abortReasons_STALE_STARTING">Exam preparation was interrupted.</string>
+    <string name="attempt_abortReasons_AUDIO_ASSET_MISSING">A required audio file for this exam is missing.</string>
+    <string name="attempt_abortReasons_AUDIO_ASSET_INVALID">An audio file in this exam is invalid or unreadable.</string>
+    <string name="attempt_abortReasons_generic">Unable to prepare the exam right now.</string>
+</resources>
