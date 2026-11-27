@@ -82,6 +82,7 @@ targets:
         DEVELOPMENT_ASSET_PATHS: ""
         ENABLE_PREVIEWS: YES
         INFOPLIST_KEY_NSFaceIDUsageDescription: "Thi360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn."
+        INFOPLIST_KEY_NSCameraUsageDescription: "Thi360 dùng máy ảnh để chụp ảnh đại diện của bạn."
         SWIFT_EMIT_LOC_STRINGS: YES
       configs:
         DevDebug:

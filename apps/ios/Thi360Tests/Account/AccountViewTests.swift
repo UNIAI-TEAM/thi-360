@@ -35,10 +35,12 @@ final class AccountViewTests: XCTestCase {
             sessionStore: stack.sessionStore,
             biometricManager: stack.biometricManager
         )
-        XCTAssertEqual(viewModel.profileState, .loading)
+        guard case .loading = viewModel.profileState else {
+            return XCTFail("Expected initial loading state")
+        }
 
         await viewModel.loadProfile()
-        guard case let .loaded(verifiedProfile) = viewModel.profileState else {
+        guard case let .loaded(verifiedProfile, _) = viewModel.profileState else {
             return XCTFail("Expected loaded profile")
         }
         XCTAssertEqual(verifiedProfile.fullName, "Nguyễn Văn An")
@@ -48,6 +50,8 @@ final class AccountViewTests: XCTestCase {
         XCTAssertTrue(verifiedProfile.hasEmail)
         XCTAssertEqual(AccountStrings.text("account.profile.emailVerified", locale: .vi), "Email đã xác minh")
         XCTAssertEqual(AccountStrings.text("account.profile.emailUnverified", locale: .vi), "Chưa xác minh")
+        XCTAssertEqual(ProfileStrings.text("header.nav.profile", locale: .vi), "Hồ sơ")
+        XCTAssertEqual(ProfileStrings.text("header.nav.orders", locale: .vi), "Đơn của tôi")
 
         let router = AppRouter(initialDestination: .account)
         let view = AccountView(
@@ -72,7 +76,7 @@ final class AccountViewTests: XCTestCase {
 
         stack.transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: unverifiedData)
         await viewModel.loadProfile()
-        guard case let .loaded(unverifiedProfile) = viewModel.profileState else {
+        guard case let .loaded(unverifiedProfile, _) = viewModel.profileState else {
             return XCTFail("Expected unverified profile")
         }
         XCTAssertEqual(unverifiedProfile.trimmedEmail, "chau@thi360.vn")
@@ -80,7 +84,7 @@ final class AccountViewTests: XCTestCase {
 
         stack.transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: noEmailData)
         await viewModel.loadProfile()
-        guard case let .loaded(noEmailProfile) = viewModel.profileState else {
+        guard case let .loaded(noEmailProfile, _) = viewModel.profileState else {
             return XCTFail("Expected no-email profile")
         }
         XCTAssertEqual(noEmailProfile.fullName, "Nguyễn Văn Bình")
@@ -113,11 +117,23 @@ final class AccountViewTests: XCTestCase {
             await viewModel.loadProfile()
         }
         await gate.waitUntilEntered()
-        XCTAssertEqual(viewModel.profileState, .loading)
+        guard case .loading = viewModel.profileState else {
+            return XCTFail("Expected loading state during request")
+        }
 
         await gate.release()
         await loadTask.value
-        XCTAssertEqual(viewModel.profileState, .error)
+        guard case let .failed(errorKind, _, _) = viewModel.profileState, errorKind != .offline else {
+            return XCTFail("Expected server error state, got \(viewModel.profileState)")
+        }
+
+        let router = AppRouter(initialDestination: .account)
+        router.openProfile()
+        XCTAssertEqual(router.path(for: .account).last, .profile)
+        router.back()
+        router.openOrders()
+        XCTAssertEqual(router.path(for: .account).last, .orders)
+        router.back()
 
         stack.preferences.locale = .en
         stack.preferences.themeMode = .dark
@@ -128,14 +144,16 @@ final class AccountViewTests: XCTestCase {
 
         stack.transport.registerNetworkError(method: .get, path: "/api/v1/me/profile", code: .notConnectedToInternet)
         await viewModel.loadProfile()
-        XCTAssertEqual(viewModel.profileState, .offline)
+        guard case let .failed(offlineKind, _, _) = viewModel.profileState, offlineKind == .offline else {
+            return XCTFail("Expected offline state, got \(viewModel.profileState)")
+        }
 
         await viewModel.setBiometricEnabled(false, locale: .en)
         XCTAssertFalse(viewModel.isBiometricSwitchOn)
 
         stack.transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: verifiedData)
         await viewModel.loadProfile()
-        guard case let .loaded(profile) = viewModel.profileState else {
+        guard case let .loaded(profile, _) = viewModel.profileState else {
             return XCTFail("Retry after offline must load profile")
         }
         XCTAssertEqual(profile.username, "student.demo")

@@ -95,17 +95,19 @@ final class StartupBenchmarkUITests: XCTestCase {
             "Persisted session cold launch must not fall back to Login screen"
         )
         verifyApp.terminate()
+        _ = verifyApp.wait(for: .notRunning, timeout: 5)
 
         let options = XCTMeasureOptions()
         options.iterationCount = 5
         options.invocationOptions = [.manuallyStop]
-        // Stop measuring right after launch and terminate so back-to-back iterations never contend on automation sessions.
         measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
             let app = XCUIApplication()
             app.launchArguments = coldLaunchArguments
             app.launch()
+            _ = app.staticTexts["catalog.heading"].firstMatch.waitForExistence(timeout: 5)
             stopMeasuring()
             app.terminate()
+            _ = app.wait(for: .notRunning, timeout: 5)
         }
     }
 

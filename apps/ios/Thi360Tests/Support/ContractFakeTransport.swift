@@ -196,7 +196,7 @@ final class ContractFakeTransport: ClientTransport, @unchecked Sendable {
     ) async throws -> (HTTPResponse, HTTPBody?) {
         let bodyData: Data?
         if let body {
-            bodyData = try await Data(collecting: body, upTo: 1_048_576)
+            bodyData = try await Data(collecting: body, upTo: 6_291_456)
         } else {
             bodyData = nil
         }

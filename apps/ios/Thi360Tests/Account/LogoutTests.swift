@@ -1,14 +1,24 @@
 import Foundation
+import HTTPTypes
+import OpenAPIRuntime
+import UIKit
 import XCTest
 @testable import Thi360
 
 @MainActor
 final class LogoutTests: XCTestCase {
     func testConfirmedLogoutCallsMobileLogoutClearsTokensBiometricsAndProfileAndPreservesPreferences() async throws {
-        let userAProfile = try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
+        let userAProfile = try ContractFixtureLoader.loadApiFixture("me-profile-200-avatar-pending-email.json")
         let userBProfile = try ContractFixtureLoader.loadApiFixture("me-profile-200-no-email.json")
         let userBLogin = try ContractFixtureLoader.loadAuthFixture("login-200.json")
         let meData = try ContractFixtureLoader.loadApiFixture("me-200.json")
+        let avatarPNG = try XCTUnwrap(
+            UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { ctx in
+                UIColor.systemBlue.setFill()
+                ctx.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+            }.pngData()
+        )
+        let avatarPath = "/api/v1/avatars/00000000-0000-7000-8000-000000000001"
 
         let stack = AccountTestFactory.makeContractStack(
             initialTokens: AccountTestFactory.sampleTokens(username: "userA", refreshToken: "refresh-user-a"),
@@ -19,19 +29,37 @@ final class LogoutTests: XCTestCase {
         ) { transport in
             transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 200, data: userAProfile)
             transport.registerJSON(method: .get, path: "/api/v1/me", statusCode: 200, data: meData)
+            transport.register(method: .get, path: avatarPath) { _ in
+                var fields = HTTPFields()
+                fields[.contentType] = "image/png"
+                return (HTTPResponse(status: .ok, headerFields: fields), HTTPBody(avatarPNG))
+            }
             transport.registerEmpty(method: .post, path: "/api/v1/auth/mobile/logout", statusCode: 204)
             transport.registerJSON(method: .post, path: "/api/v1/auth/mobile/login", statusCode: 200, data: userBLogin)
         }
         defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
 
+        let imageLoader = ImageLoader(
+            apiBaseURL: stack.sessionStore.apiClient.serverURL,
+            tokenStore: stack.tokenStore,
+            refresher: stack.sessionStore.apiClient.refresher,
+            fetcher: ClientTransportImageDataFetcher(transport: stack.transport)
+        )
+        await stack.sessionCleanup.register(imageLoader)
+
         let accountVM = AccountViewModel(
             sessionStore: stack.sessionStore,
             biometricManager: stack.biometricManager
         )
+        await accountVM.ensureCleanupRegistered()
         await accountVM.loadProfile()
         XCTAssertEqual(accountVM.loadedProfile?.username, "student.demo")
         XCTAssertEqual(stack.biometricManager.state, .on)
         XCTAssertTrue(stack.secretStore.hasProtectedSecret())
+
+        let avatarURL = try XCTUnwrap(imageLoader.resolveURL(avatarPath))
+        _ = try await imageLoader.loadImage(from: avatarPath, authenticated: true)
+        XCTAssertNotNil(imageLoader.cachedImage(for: avatarURL), "Avatar must be cached before logout")
 
         accountVM.requestLogout()
         XCTAssertTrue(accountVM.isShowingLogoutConfirmation)
@@ -55,6 +83,10 @@ final class LogoutTests: XCTestCase {
         XCTAssertEqual(stack.biometricManager.state, .off, "Logout must disable biometric unlock")
         XCTAssertEqual(stack.sessionStore.state, .signedOut(reason: .none))
         XCTAssertNil(accountVM.loadedProfile, "Logout must wipe previous user's profile from memory")
+        guard case .loading = accountVM.profileStore.state else {
+            return XCTFail("Logout must wipe AccountProfileStore back to loading")
+        }
+        XCTAssertNil(imageLoader.cachedImage(for: avatarURL), "Logout must clear cached avatar image from ImageLoader")
 
         XCTAssertEqual(stack.preferences.locale, .en)
         XCTAssertEqual(stack.preferences.themeMode, .dark)

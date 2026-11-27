@@ -37,6 +37,7 @@ final class BundleInfoTests: XCTestCase {
             "CFBundleVersion",
             "LSRequiresIPhoneOS",
             "NSAppTransportSecurity",
+            "NSCameraUsageDescription",
             "NSFaceIDUsageDescription",
             "THI360_API_BASE_URL",
             "THI360_ENV",
@@ -64,7 +65,11 @@ final class BundleInfoTests: XCTestCase {
             XCTAssertTrue(unexpected.isEmpty, "\(filename) added unexpected Info.plist keys: \(unexpected)")
 
             let privacyKeys = actualKeys.filter { $0.hasPrefix("NS") && $0.hasSuffix("UsageDescription") }
-            XCTAssertEqual(privacyKeys, ["NSFaceIDUsageDescription"], "\(filename) must not declare extra privacy keys")
+            XCTAssertEqual(
+                privacyKeys,
+                ["NSCameraUsageDescription", "NSFaceIDUsageDescription"],
+                "\(filename) must declare only Face ID and Camera usage description privacy keys"
+            )
         }
     }
 

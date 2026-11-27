@@ -1,42 +1,87 @@
 import Foundation
 import Observation
+import UIKit
 
 @Observable
 @MainActor
 final class AccountViewModel {
     typealias ProfileLoader = @Sendable () async throws -> Components.Schemas.ProfileResponse
 
-    private(set) var profileState: AccountProfileLoadState = .loading
+    let profileStore: AccountProfileStore
+    let profileService: any ProfileServiceProtocol
+    let accountDeletionService: any AccountDeletionServiceProtocol
+    let clock: any AppClock
+    let cameraAccess: any CameraAccessProviding
+    let openSettings: @MainActor () -> Void
+    let announce: @MainActor (String) -> Void
+
     private(set) var biometricFeedbackKey: String?
     private(set) var isUpdatingBiometric: Bool = false
     private(set) var isLoggingOut: Bool = false
     var isShowingLogoutConfirmation: Bool = false
-    var selectedDetail: AccountDetailSelection = .changePassword
-
-    private var hasLoadedProfile: Bool = false
-    private var isLoadingProfile: Bool = false
+    var selectedDetail: AccountDetailSelection = .profile
+    var hasExplicitDetailSelection: Bool = false
 
     let sessionStore: SessionStore
     let biometricManager: BiometricManager
-    private let profileLoader: ProfileLoader
+
+    @ObservationIgnored private var cachedProfileVM: ProfileViewModel?
+    @ObservationIgnored private var cachedVerifyEmailModel: VerifyEmailModel?
+    @ObservationIgnored private var cachedDeleteAccountVM: DeleteAccountViewModel?
+    @ObservationIgnored private var cleanupRegistrationTask: Task<Void, Never>?
 
     init(
         sessionStore: SessionStore,
         biometricManager: BiometricManager,
-        profileLoader: ProfileLoader? = nil
+        profileService: (any ProfileServiceProtocol)? = nil,
+        accountDeletionService: (any AccountDeletionServiceProtocol)? = nil,
+        profileLoader: ProfileLoader? = nil,
+        clock: any AppClock = SystemClock(),
+        cameraAccess: (any CameraAccessProviding)? = nil,
+        openSettings: (@MainActor () -> Void)? = nil,
+        announce: (@MainActor (String) -> Void)? = nil
     ) {
         self.sessionStore = sessionStore
         self.biometricManager = biometricManager
-        self.profileLoader = profileLoader ?? {
-            try await sessionStore.apiClient.getMyProfile()
+        let resolvedProfileService: any ProfileServiceProtocol = profileService
+            ?? OpenAPIProfileService(apiClient: sessionStore.apiClient)
+        self.profileService = resolvedProfileService
+        self.accountDeletionService = accountDeletionService
+            ?? OpenAPIAccountDeletionService(apiClient: sessionStore.apiClient)
+        self.clock = clock
+        self.cameraAccess = cameraAccess ?? SystemCameraAccess()
+        self.openSettings = openSettings ?? {
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        }
+        self.announce = announce ?? { message in
+            UIAccessibility.post(notification: .announcement, argument: message)
+        }
+
+        if let profileLoader {
+            self.profileStore = AccountProfileStore(
+                fetchProfile: { AccountProfile(from: try await profileLoader()) },
+                isAuthenticatedProvider: { sessionStore.state.isAuthenticated }
+            )
+        } else {
+            self.profileStore = AccountProfileStore(
+                profileService: resolvedProfileService,
+                sessionStore: sessionStore
+            )
+        }
+
+        let participant = self.profileStore.makeCleanupParticipant()
+        self.cleanupRegistrationTask = Task {
+            await sessionStore.sessionCleanup.register(participant)
         }
     }
 
+    var profileState: LoadState<AccountProfile> {
+        profileStore.state
+    }
+
     var loadedProfile: AccountProfile? {
-        if case let .loaded(profile) = profileState {
-            return profile
-        }
-        return nil
+        profileStore.loadedProfile
     }
 
     var isBiometricSwitchOn: Bool {
@@ -45,6 +90,85 @@ final class AccountViewModel {
 
     var isBiometricSwitchDisabled: Bool {
         !biometricManager.capability.isAvailable || isUpdatingBiometric
+    }
+
+    func ensureCleanupRegistered() async {
+        await cleanupRegistrationTask?.value
+    }
+
+    func ensureProfileViewModel() -> ProfileViewModel {
+        if let existing = cachedProfileVM {
+            return existing
+        }
+        let vm = ProfileViewModel(
+            profileStore: profileStore,
+            profileService: profileService,
+            cameraAccess: cameraAccess,
+            clock: clock,
+            openSettings: openSettings,
+            announce: announce
+        )
+        cachedProfileVM = vm
+        return vm
+    }
+
+    func existingProfileViewModel() -> ProfileViewModel? {
+        cachedProfileVM
+    }
+
+    func verifyEmailModel() -> VerifyEmailModel {
+        if let existing = cachedVerifyEmailModel {
+            return existing
+        }
+        let model = VerifyEmailModel(
+            profileStore: profileStore,
+            profileService: profileService,
+            clock: clock,
+            announce: announce
+        )
+        cachedVerifyEmailModel = model
+        return model
+    }
+
+    func clearVerifyEmailModelIfPopped(router: AppRouter, destination: Destination) {
+        guard !router.path(for: destination).contains(.profileVerifyEmail) else { return }
+        cachedVerifyEmailModel = nil
+    }
+
+    func clearVerifyEmailModel() {
+        cachedVerifyEmailModel = nil
+    }
+
+    func ensureDeleteAccountViewModel() -> DeleteAccountViewModel {
+        if let existing = cachedDeleteAccountVM {
+            return existing
+        }
+        let vm = DeleteAccountViewModel(
+            deletionService: accountDeletionService,
+            sessionStore: sessionStore
+        )
+        cachedDeleteAccountVM = vm
+        return vm
+    }
+
+    func clearDeleteAccountViewModelIfPopped(router: AppRouter, destination: Destination, isEmbedded: Bool) {
+        if isEmbedded {
+            return
+        }
+        guard !router.path(for: destination).contains(.deleteAccount) else { return }
+        cachedDeleteAccountVM = nil
+    }
+
+    func clearDeleteAccountViewModel() {
+        cachedDeleteAccountVM = nil
+    }
+
+    func selectDetail(_ selection: AccountDetailSelection) {
+        if selectedDetail == .deleteAccount && selection != .deleteAccount {
+            cachedDeleteAccountVM = nil
+        }
+        selectedDetail = selection
+        hasExplicitDetailSelection = true
     }
 
     func biometricTitle(locale: AppLocale) -> String {
@@ -84,30 +208,12 @@ final class AccountViewModel {
     }
 
     func loadProfileIfNeeded() async {
-        guard !hasLoadedProfile else { return }
-        await loadProfile()
+        guard !profileStore.hasLoadedProfile else { return }
+        _ = await profileStore.refresh()
     }
 
     func loadProfile() async {
-        guard !isLoadingProfile else { return }
-        isLoadingProfile = true
-        profileState = .loading
-        defer { isLoadingProfile = false }
-
-        do {
-            let response = try await profileLoader()
-            guard sessionStore.state.isAuthenticated else { return }
-            profileState = .loaded(AccountProfile(from: response))
-            hasLoadedProfile = true
-        } catch {
-            guard sessionStore.state.isAuthenticated else { return }
-            let apiError = MobileApiError.classify(error)
-            if apiError.isOfflineOrConnectivity {
-                profileState = .offline
-            } else {
-                profileState = .error
-            }
-        }
+        _ = await profileStore.refresh()
     }
 
     func setBiometricEnabled(_ enabled: Bool, locale: AppLocale) async {
@@ -162,17 +268,22 @@ final class AccountViewModel {
         isShowingLogoutConfirmation = false
         defer { isLoggingOut = false }
 
+        await ensureCleanupRegistered()
         await sessionStore.signOut(reason: .none)
         resetForSessionChange()
     }
 
     func resetForSessionChange() {
-        profileState = .loading
-        hasLoadedProfile = false
-        isLoadingProfile = false
+        profileStore.wipe()
+        cachedProfileVM?.clearSensitiveInputs()
+        cachedProfileVM = nil
+        cachedVerifyEmailModel = nil
+        cachedDeleteAccountVM?.clearSensitiveInputs()
+        cachedDeleteAccountVM = nil
         biometricFeedbackKey = nil
         isShowingLogoutConfirmation = false
         isLoggingOut = false
-        selectedDetail = .changePassword
+        selectedDetail = .profile
+        hasExplicitDetailSelection = false
     }
 }
