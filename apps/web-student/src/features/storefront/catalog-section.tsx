@@ -320,7 +320,8 @@ function CatalogCarousel({
             />
           </div>
         ))}
-        {hasMore && (
+        {/* Ô chờ chỉ hiện khi đang tải hoặc lỗi, để màn không bị coi là chưa tải xong. */}
+        {hasMore && (loadingMore || loadError) && (
           <div className={cardSlotClass}>
             {loadError ? (
               <div className="flex min-h-[26rem] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-danger/30 bg-danger-bg p-4 text-center text-danger">
