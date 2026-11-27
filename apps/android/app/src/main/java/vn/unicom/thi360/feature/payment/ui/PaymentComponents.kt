@@ -96,7 +96,7 @@ internal fun PaymentStatusChip(
     Surface(
         shape = RoundedCornerShape(999.dp),
         color = bg,
-        modifier = modifier,
+        modifier = modifier.semantics(mergeDescendants = true) {},
     ) {
         Text(
             text = label,

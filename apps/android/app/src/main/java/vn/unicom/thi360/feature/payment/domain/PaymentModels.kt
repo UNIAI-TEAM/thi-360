@@ -81,7 +81,10 @@ class PaymentReturnLink(
 }
 
 sealed interface PaymentResultEntry {
-    data class ByOrder(val orderCode: String) : PaymentResultEntry
+    data class ByOrder(
+        val orderCode: String,
+        val verifiedFromLink: Boolean = false,
+    ) : PaymentResultEntry
 
     data class ByReturnLink(val link: PaymentReturnLink) : PaymentResultEntry {
         override fun toString(): String = "ByReturnLink(link=[REDACTED])"

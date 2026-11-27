@@ -1,11 +1,25 @@
 package vn.unicom.thi360.feature.payment
 
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -32,6 +46,9 @@ import vn.unicom.thi360.feature.payment.viewmodel.PaymentResultState
 import vn.unicom.thi360.feature.payment.viewmodel.PaymentResultViewModel
 import vn.unicom.thi360.feature.recovery.ResetLink
 import vn.unicom.thi360.shell.AppRoot
+import vn.unicom.thi360.shell.routes.AppNavigator
+import vn.unicom.thi360.shell.routes.KEY_RESOLVED_ORDER_CODE
+import vn.unicom.thi360.shell.routes.KEY_VERIFIED_FROM_LINK
 import vn.unicom.thi360.shell.routes.PaymentRoutesConfig
 import vn.unicom.thi360.shell.routes.PaymentRuntimeOverrides
 import vn.unicom.thi360.shell.routes.registerPaymentHooks
@@ -93,7 +110,8 @@ class NoLinkReturnTest {
             composeRule.waitUntil(5_000) {
                 composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_HEADING).fetchSemanticsNodes().isNotEmpty()
             }
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
         } finally {
             harness.close()
         }
@@ -259,6 +277,154 @@ class NoLinkReturnTest {
             assertTrue(vm.uiState.value.state is PaymentResultState.Fulfilled)
         } finally {
             vm.onLeaveScreen()
+            harness.close()
+        }
+    }
+
+    @Test
+    fun configChangePreservesPendingOrderAndByReturnLinkCheckingState() {
+        // Part A: Config change disposal on standalone PaymentResultScreen does NOT wipe PendingPaymentOrder
+        val harnessA = PaymentTestFixtures.createHarness {
+            respondApiFixture("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}", 200, "orders-detail-200-pending-payment.json")
+        }
+        val pendingStoreA = PendingPaymentOrderStore { harnessA.accountScopedStoreProvider.current() }
+        pendingStoreA.save(PaymentTestFixtures.ORDER_CODE, openedAtMillis = 10_000L)
+        val scopeA = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+        val vmA = PaymentResultViewModel(
+            initialEntry = PaymentResultEntry.ByOrder(PaymentTestFixtures.ORDER_CODE),
+            gateway = PaymentTestFixtures.createGateway(harnessA),
+            pendingOrderStore = pendingStoreA,
+            apiBaseUrl = harnessA.server.url("/"),
+            scope = scopeA,
+            clockMillis = { 10_000L },
+        )
+        var showScreen by mutableStateOf(true)
+        try {
+            vmA.start()
+            composeRule.setContent {
+                val baseCtx = LocalContext.current
+                val rotatingActivity = androidx.compose.runtime.remember(baseCtx) {
+                    object : Activity() {
+                        init {
+                            attachBaseContext(baseCtx)
+                        }
+
+                        override fun isChangingConfigurations(): Boolean = true
+                    }
+                }
+                Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
+                    CompositionLocalProvider(LocalContext provides rotatingActivity) {
+                        if (showScreen) {
+                            PaymentResultScreen(
+                                viewModel = vmA,
+                                paymentBrowser = RecordingPaymentBrowser(),
+                                supportContact = SupportContact(),
+                                onBack = {},
+                                onOpenMyExams = {},
+                                onOpenOrder = {},
+                                onOpenOrders = {},
+                                onOpenCheckout = {},
+                                onOpenCatalog = {},
+                                onSwitchAccount = {},
+                            )
+                        }
+                    }
+                }
+            }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CONTINUE_PAYMENT_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.runOnIdle { showScreen = false }
+            composeRule.waitForIdle()
+            assertEquals(
+                "Configuration change disposal must NOT clear PendingPaymentOrder",
+                PaymentTestFixtures.ORDER_CODE,
+                pendingStoreA.readValid(10_000L)?.orderCode,
+            )
+            composeRule.runOnIdle { showScreen = true }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CONTINUE_PAYMENT_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Chưa nhận được kết quả thanh toán").assertIsDisplayed()
+        } finally {
+            vmA.onLeaveScreen()
+            scopeA.cancel()
+            harnessA.close()
+        }
+    }
+
+    @Test
+    fun byReturnLinkCheckingSurvivesShellUnmountAndRemountWithoutReverifying() {
+        val host = ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
+        val harness = PaymentTestFixtures.createHarness {
+            respondApiFixture("GET", "/api/v1/public/payments/vnpay/return", 200, "vnpay-return-200-pending.json")
+            respondApiFixture("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}", 200, "orders-detail-200-pending-payment.json")
+        }
+        val pendingStore = PendingPaymentOrderStore { harness.accountScopedStoreProvider.current() }
+        PaymentRoutesConfig.setTestOverrides(
+            PaymentRuntimeOverrides(
+                gateway = PaymentTestFixtures.createGateway(harness),
+                pendingOrderStore = pendingStore,
+                apiBaseUrl = harness.server.url("/"),
+            ),
+        )
+        registerPaymentHooks(
+            inboundLinkRouter = harness.inboundLinkRouter,
+            sessionCleanup = harness.sessionCleanup,
+            pendingOrderStoreProvider = { pendingStore },
+            allowedHostProvider = { host },
+        )
+        val returnUrl = "https://$host/checkout/result/app?vnp_TxnRef=DH26112600000101&vnp_ResponseCode=00&vnp_SecureHash=sigrot"
+        var capturedNav: AppNavigator? = null
+        var mounted by mutableStateOf(true)
+        var pendingInitialIntent: Intent? by mutableStateOf(Intent(Intent.ACTION_VIEW, Uri.parse(returnUrl)))
+        try {
+            composeRule.setContent {
+                val navController = rememberNavController()
+                val appNav = AppNavigator(navController)
+                capturedNav = appNav
+                if (mounted) {
+                    AppRoot(
+                        preferences = AppPreferences(locale = AppLocale.VI),
+                        onSelectLocale = {},
+                        onSelectThemeMode = {},
+                        navController = navController,
+                        navigator = appNav,
+                        sessionManager = harness.stack.sessionManager,
+                        validateOnLaunch = false,
+                        recoveryGateway = harness.recoveryGateway,
+                        initialIntent = pendingInitialIntent,
+                        inboundLinkRouter = harness.inboundLinkRouter,
+                        legalRepository = harness.legalRepository,
+                    )
+                }
+            }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CHECK_AGAIN_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            val entryBefore = checkNotNull(capturedNav).navController.currentBackStackEntry!!
+            assertEquals(PaymentTestFixtures.ORDER_CODE, entryBefore.savedStateHandle.get<String>(KEY_RESOLVED_ORDER_CODE))
+            assertEquals(true, entryBefore.savedStateHandle.get<Boolean>(KEY_VERIFIED_FROM_LINK))
+
+            // Unmount and remount composition (simulating Activity rotation preserving NavController backstack;
+            // InboundLinkRouter has already cleared activity.intent on initial consumption).
+            composeRule.runOnIdle {
+                pendingInitialIntent = null
+                mounted = false
+            }
+            composeRule.waitForIdle()
+            composeRule.runOnIdle { mounted = true }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CHECK_AGAIN_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Đang chờ xác nhận thanh toán").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_CONTINUE_PAYMENT_BUTTON).assertDoesNotExist()
+            assertEquals(
+                "Remount after rotation must not re-call /vnpay/return",
+                1,
+                harness.server.requestCount("GET", "/api/v1/public/payments/vnpay/return"),
+            )
+        } finally {
             harness.close()
         }
     }

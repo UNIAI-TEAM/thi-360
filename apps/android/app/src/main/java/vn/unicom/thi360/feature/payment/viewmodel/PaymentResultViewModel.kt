@@ -82,11 +82,13 @@ class PaymentResultViewModel(
     private val clockMillis: () -> Long = System::currentTimeMillis,
     private val poller: OrderPoller = OrderPoller(clockMillis = clockMillis),
     keyGenerator: () -> String = { UUID.randomUUID().toString() },
+    private val onOrderCodeResolved: (orderCode: String, verifiedFromLink: Boolean) -> Unit = { _, _ -> },
 ) {
     private val payIdempotency = IdempotentCall(keyGenerator = keyGenerator)
     private var currentEntry: PaymentResultEntry = initialEntry
     private var resolvedOrderCode: String? = (initialEntry as? PaymentResultEntry.ByOrder)?.orderCode
-    private var verifiedFromLink: Boolean = false
+    private var verifiedFromLink: Boolean =
+        (initialEntry as? PaymentResultEntry.ByOrder)?.verifiedFromLink == true
     private var verifiedPaymentState: String? = null
     private var verifiedTxnRef: String? = null
     private var verifiedResponseCode: String? = null
@@ -114,6 +116,10 @@ class PaymentResultViewModel(
             is PaymentResultEntry.ByReturnLink -> runVerifyAndLoad(entry.link)
             is PaymentResultEntry.ByOrder -> {
                 resolvedOrderCode = entry.orderCode
+                verifiedFromLink = entry.verifiedFromLink
+                if (entry.orderCode.isNotBlank()) {
+                    onOrderCodeResolved(entry.orderCode, entry.verifiedFromLink)
+                }
                 scope.launch {
                     loadOrderOnce(entry.orderCode, isInitialLoad = true)
                 }
@@ -148,13 +154,16 @@ class PaymentResultViewModel(
                 }
                 poller.stop()
                 hasTimedOut = false
-                verifiedFromLink = false
+                verifiedFromLink = newEntry.verifiedFromLink
                 verifiedPaymentState = null
                 verifiedTxnRef = null
                 verifiedResponseCode = null
                 lastProcessedLink = null
                 currentEntry = newEntry
                 resolvedOrderCode = newEntry.orderCode
+                if (newEntry.orderCode.isNotBlank()) {
+                    onOrderCodeResolved(newEntry.orderCode, newEntry.verifiedFromLink)
+                }
                 payIdempotency.reset()
                 _uiState.update {
                     it.copy(
@@ -295,6 +304,9 @@ class PaymentResultViewModel(
                     verifiedPaymentState = resp.paymentState
                     verifiedTxnRef = link.txnRef
                     verifiedResponseCode = link.responseCode
+                    if (resp.orderCode.isNotBlank()) {
+                        onOrderCodeResolved(resp.orderCode, true)
+                    }
                     _uiState.update { it.copy(state = PaymentResultState.Loading) }
                     loadOrderOnce(resp.orderCode, isInitialLoad = true)
                 }
@@ -370,6 +382,9 @@ class PaymentResultViewModel(
 
     private fun applyOrder(order: OrderDetail): PollDirective {
         resolvedOrderCode = order.code
+        if (order.code.isNotBlank()) {
+            onOrderCodeResolved(order.code, verifiedFromLink)
+        }
         when (order.state) {
             OrderDetail.State.FULFILLED -> {
                 poller.stop()

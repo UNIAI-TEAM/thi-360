@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -19,7 +20,14 @@ import kotlinx.serialization.json.put
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.SocketPolicy
 import org.robolectric.Shadows
+import vn.unicom.thi360.core.config.AppEnvironment
+import vn.unicom.thi360.core.config.Environment
+import vn.unicom.thi360.core.legal.LegalRepository
+import vn.unicom.thi360.core.network.AppLogger
 import vn.unicom.thi360.core.network.ContractFixtureLoader
+import vn.unicom.thi360.core.network.InMemoryTokenStore
+import vn.unicom.thi360.core.network.MutableConnectivityMonitor
+import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.network.generated.infrastructure.Serializer
 import vn.unicom.thi360.core.network.generated.model.MeResponse
 import vn.unicom.thi360.core.network.generated.model.OrderDetail
@@ -27,12 +35,19 @@ import vn.unicom.thi360.core.network.generated.model.OrderSummary
 import vn.unicom.thi360.core.network.generated.model.PageResponseOrderSummary
 import vn.unicom.thi360.core.network.generated.model.PriceQuote
 import vn.unicom.thi360.core.network.generated.model.ProductDetail
+import vn.unicom.thi360.core.preferences.AppLocale
+import vn.unicom.thi360.core.session.SessionCleanup
 import vn.unicom.thi360.core.storage.AccountScopedStore
+import vn.unicom.thi360.core.storage.AccountScopedStoreProvider
 import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.feature.payment.data.OpenApiPaymentGateway
 import vn.unicom.thi360.feature.payment.domain.PaymentBrowser
 import vn.unicom.thi360.feature.payment.domain.PendingPaymentOrderStore
+import vn.unicom.thi360.feature.recovery.OpenApiRecoveryGateway
+import vn.unicom.thi360.feature.recovery.ResetLink
+import vn.unicom.thi360.shell.routes.InboundLinkRouter
 import vn.unicom.thi360.testing.ContractFakeServer
+import vn.unicom.thi360.testing.ContractRepoLegalAssetSource
 import vn.unicom.thi360.testing.PortalTestHarness
 
 internal object PaymentTestFixtures {
@@ -136,13 +151,66 @@ internal object PaymentTestFixtures {
     }
 
     fun createHarness(
+        initialTokens: Tokens? = defaultTokens,
+        environment: Environment = Environment.DEV,
+        startLocked: Boolean = false,
         installDefaultMeHandler: Boolean = true,
         serverSetup: ContractFakeServer.() -> Unit = {},
-    ): PortalTestHarness = PortalTestHarness.create(
-        initialTokens = defaultTokens,
-        installDefaultMeHandler = installDefaultMeHandler,
-        serverSetup = serverSetup,
-    )
+    ): PortalTestHarness {
+        val server = ContractFakeServer(installDefaultMeHandler = installDefaultMeHandler)
+        server.serverSetup()
+        server.start()
+
+        val rootDir = Files.createTempDirectory("thi360-payment-harness-").toFile()
+        val tokenStore = InMemoryTokenStore(initialTokens)
+        val sessionCleanup = SessionCleanup(rootDir)
+        val storeProvider = AccountScopedStoreProvider(
+            rootDir = rootDir,
+            accountIdProvider = { tokenStore.read()?.accountId },
+        )
+        // Thread-safe log list avoids unsynchronized ArrayList races when CheckoutViewModel.loadInitial()
+        // executes concurrent OkHttp requests across dispatcher threads.
+        val logs: MutableList<String> = CopyOnWriteArrayList()
+        val logger = object : AppLogger {
+            override fun debug(tag: String, message: String) {
+                logs.add("D/$tag: $message")
+            }
+
+            override fun warn(tag: String, message: String) {
+                logs.add("W/$tag: $message")
+            }
+        }
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/"),
+            environment = environment,
+            tokenStore = tokenStore,
+            localeProvider = { AppLocale.VI },
+            logger = logger,
+            startLocked = startLocked,
+            sessionCleanup = sessionCleanup,
+            resolveAccountIdOnAuth = true,
+        )
+        val recoveryGateway = OpenApiRecoveryGateway(
+            publicAuthApi = stack.publicAuthApi,
+            authenticatedAuthApi = stack.authenticatedAuthApi,
+        )
+
+        return PortalTestHarness(
+            server = server,
+            tokenStore = tokenStore,
+            storeRootDir = rootDir,
+            accountScopedStoreProvider = storeProvider,
+            sessionCleanup = sessionCleanup,
+            connectivityMonitor = MutableConnectivityMonitor(true),
+            inboundLinkRouter = InboundLinkRouter {
+                ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
+            },
+            legalRepository = LegalRepository(ContractRepoLegalAssetSource()),
+            stack = stack,
+            recoveryGateway = recoveryGateway,
+            logs = logs,
+        )
+    }
 
     fun createGateway(harness: PortalTestHarness): OpenApiPaymentGateway =
         OpenApiPaymentGateway.fromSessionStack(harness.stack)

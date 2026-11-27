@@ -12,7 +12,6 @@ import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.feature.payment.data.OpenApiPaymentGateway
 import vn.unicom.thi360.feature.payment.domain.PaymentResultEntry
 import vn.unicom.thi360.feature.payment.domain.PaymentReturnLink
-import vn.unicom.thi360.testing.PortalTestHarness
 
 class PaymentLogRedactionTest {
 
@@ -24,7 +23,7 @@ class PaymentLogRedactionTest {
         val secretAccessToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.supersecretjwtpayload"
         val secretRefreshToken = "refresh-secret-token-xyz-999"
 
-        val harness = PortalTestHarness.create(
+        val harness = PaymentTestFixtures.createHarness(
             initialTokens = Tokens(
                 accessToken = secretAccessToken,
                 refreshToken = secretRefreshToken,

@@ -1,6 +1,8 @@
 package vn.unicom.thi360.shell.routes
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.net.Uri
 import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.Composable
@@ -176,6 +178,7 @@ internal fun registerPaymentHooks(
     sessionCleanup.register {
         pendingOrderStoreProvider().clear()
         PaymentRoutesCoordinator.clear()
+        PaymentReturnLinkStore.Default.clear()
     }
 
     return handles
@@ -373,17 +376,32 @@ fun NavGraphBuilder.paymentGraph(
         val args = backStackEntry.arguments
         val orderCode = args?.getString(AppRoute.ARG_ORDER_CODE)?.let { AppRoute.decodeSegment(it) }
         val linkToken = args?.getString(AppRoute.ARG_LINK_TOKEN)?.let { AppRoute.decodeSegment(it) }
-        val rawReturnLink = remember(linkToken) {
-            linkToken?.let { token -> navigator.linkStore.get(token) }
-        }
-        val parsedReturnLink = remember(rawReturnLink) {
-            rawReturnLink?.let { PaymentReturnLink.fromStoredLink(it) }
-        }
-        val entry = remember(orderCode, parsedReturnLink) {
+        val context = LocalContext.current
+        // Snapshot any previously resolved non-secret orderCode once per composition entry so
+        // writing savedStateHandle mid-flight never recreates the active ViewModel, while
+        // returning from OrderDetail/Orders, unlocking from SessionState.Locked, or rotating
+        // restores ByOrder without re-submitting /vnpay/return or falling back to ByOrder("").
+        val entry = remember(backStackEntry.id, orderCode, linkToken) {
+            val savedOrderCode = backStackEntry.savedStateHandle
+                .get<String>(KEY_RESOLVED_ORDER_CODE)
+                ?.takeIf { it.isNotBlank() }
+            val savedVerifiedFromLink = backStackEntry.savedStateHandle
+                .get<Boolean>(KEY_VERIFIED_FROM_LINK) == true
             when {
-                parsedReturnLink != null -> PaymentResultEntry.ByReturnLink(parsedReturnLink)
-                !orderCode.isNullOrBlank() -> PaymentResultEntry.ByOrder(orderCode)
-                else -> PaymentResultEntry.ByOrder("")
+                savedOrderCode != null -> PaymentResultEntry.ByOrder(
+                    orderCode = savedOrderCode,
+                    verifiedFromLink = savedVerifiedFromLink,
+                )
+                else -> {
+                    val parsedReturnLink = linkToken
+                        ?.let { token -> navigator.linkStore.get(token) }
+                        ?.let { PaymentReturnLink.fromStoredLink(it) }
+                    when {
+                        parsedReturnLink != null -> PaymentResultEntry.ByReturnLink(parsedReturnLink)
+                        !orderCode.isNullOrBlank() -> PaymentResultEntry.ByOrder(orderCode)
+                        else -> PaymentResultEntry.ByOrder("")
+                    }
+                }
             }
         }
         val deps = rememberPaymentDependencies()
@@ -400,14 +418,25 @@ fun NavGraphBuilder.paymentGraph(
                 clockMillis = deps.clockMillis,
                 poller = deps.pollerFactory(),
                 keyGenerator = deps.keyGenerator,
+                onOrderCodeResolved = { resolvedCode, fromLink ->
+                    backStackEntry.savedStateHandle[KEY_RESOLVED_ORDER_CODE] = resolvedCode
+                    backStackEntry.savedStateHandle[KEY_VERIFIED_FROM_LINK] = fromLink
+                    if (!linkToken.isNullOrBlank()) {
+                        navigator.linkStore.remove(linkToken)
+                    }
+                },
             )
         }
 
-        DisposableEffect(viewModel, linkToken) {
+        DisposableEffect(viewModel, backStackEntry, linkToken) {
             PaymentRoutesCoordinator.attachActiveResultViewModel(viewModel)
             onDispose {
                 PaymentRoutesCoordinator.detachActiveResultViewModel(viewModel)
-                if (!linkToken.isNullOrBlank()) {
+                val stillOnBackStack = runCatching {
+                    val route = backStackEntry.destination.route ?: return@runCatching false
+                    navigator.navController.getBackStackEntry(route).id == backStackEntry.id
+                }.getOrDefault(false)
+                if (!linkToken.isNullOrBlank() && !stillOnBackStack && !context.isChangingConfigurations()) {
                     navigator.linkStore.remove(linkToken)
                 }
             }
@@ -429,6 +458,9 @@ fun NavGraphBuilder.paymentGraph(
             onOpenCatalog = { navigator.switchTab(Destination.Home) },
             onSwitchAccount = {
                 scope.launch { deps.switchAccount() }
+            },
+            shouldClearPendingOnDispose = {
+                navigator.navController.currentBackStackEntry?.id != backStackEntry.id
             },
         )
     }
@@ -510,3 +542,14 @@ fun NavGraphBuilder.paymentGraph(
         )
     }
 }
+
+internal const val KEY_RESOLVED_ORDER_CODE = "payment_resolved_order_code"
+internal const val KEY_VERIFIED_FROM_LINK = "payment_verified_from_link"
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+private fun Context.isChangingConfigurations(): Boolean = findActivity()?.isChangingConfigurations == true

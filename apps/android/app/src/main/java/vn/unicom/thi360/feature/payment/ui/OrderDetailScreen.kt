@@ -97,6 +97,60 @@ fun OrderDetailScreen(
         }
     }
 
+    OrderDetailScreenContent(
+        orderState = state.order,
+        isRefreshing = state.isRefreshing,
+        lastLoadedAtMillis = state.lastLoadedAtMillis,
+        supportContact = supportContact,
+        paying = state.paying,
+        actionsDisabled = state.anyActionInFlight,
+        actionError = state.actionError,
+        snackbarHostState = snackbarHostState,
+        onBack = onBack,
+        onRefresh = viewModel::refresh,
+        onPayOrder = viewModel::payOrder,
+        onCancelOrder = viewModel::openCancelDialog,
+        onOpenMyExams = onOpenMyExams,
+        onOpenOrder = onOpenOrder,
+        onOpenOrders = onOpenOrders,
+        onOpenCheckout = onOpenCheckout,
+        onOpenCatalog = onOpenCatalog,
+        onSwitchAccount = onSwitchAccount,
+        modifier = modifier,
+    )
+
+    state.cancelDialog?.let { dialogState ->
+        CancelOrderConfirmDialog(
+            state = dialogState,
+            onConfirm = viewModel::confirmCancelOrder,
+            onDismiss = viewModel::dismissCancelDialog,
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun OrderDetailScreenContent(
+    orderState: LoadState<OrderDetail>,
+    isRefreshing: Boolean,
+    lastLoadedAtMillis: Long?,
+    supportContact: SupportContact,
+    paying: Boolean,
+    actionsDisabled: Boolean,
+    actionError: OrderActionErrorBanner?,
+    snackbarHostState: SnackbarHostState,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit,
+    onPayOrder: () -> Unit,
+    onCancelOrder: () -> Unit,
+    onOpenMyExams: () -> Unit,
+    onOpenOrder: (String) -> Unit,
+    onOpenOrders: () -> Unit,
+    onOpenCheckout: (String) -> Unit,
+    onOpenCatalog: () -> Unit,
+    onSwitchAccount: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         containerColor = Thi360Theme.colors.bgPage,
         snackbarHost = {
@@ -118,22 +172,22 @@ fun OrderDetailScreen(
                 backButtonTestTag = PaymentTestTags.ORDER_DETAIL_BACK_BUTTON,
             )
             RefreshableContainer(
-                isRefreshing = state.isRefreshing,
-                onRefresh = viewModel::refresh,
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
             ) {
                 OrderDetailPaneContent(
-                    orderState = state.order,
-                    lastLoadedAtMillis = state.lastLoadedAtMillis,
+                    orderState = orderState,
+                    lastLoadedAtMillis = lastLoadedAtMillis,
                     supportContact = supportContact,
-                    paying = state.paying,
-                    actionsDisabled = state.anyActionInFlight,
-                    actionError = state.actionError,
-                    onRetry = viewModel::refresh,
-                    onPayOrder = viewModel::payOrder,
-                    onCancelOrder = viewModel::openCancelDialog,
+                    paying = paying,
+                    actionsDisabled = actionsDisabled,
+                    actionError = actionError,
+                    onRetry = onRefresh,
+                    onPayOrder = onPayOrder,
+                    onCancelOrder = onCancelOrder,
                     onOpenMyExams = onOpenMyExams,
                     onOpenOrder = onOpenOrder,
                     onOpenOrders = onOpenOrders,
@@ -143,14 +197,6 @@ fun OrderDetailScreen(
                 )
             }
         }
-    }
-
-    state.cancelDialog?.let { dialogState ->
-        CancelOrderConfirmDialog(
-            state = dialogState,
-            onConfirm = viewModel::confirmCancelOrder,
-            onDismiss = viewModel::dismissCancelDialog,
-        )
     }
 }
 
@@ -181,6 +227,7 @@ internal fun OrderDetailPaneContent(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(colors.bgPage)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),

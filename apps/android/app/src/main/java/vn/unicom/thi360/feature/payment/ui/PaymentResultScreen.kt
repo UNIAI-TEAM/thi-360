@@ -1,5 +1,9 @@
 package vn.unicom.thi360.feature.payment.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -62,11 +66,17 @@ fun PaymentResultScreen(
     onOpenCheckout: (String) -> Unit,
     onOpenCatalog: () -> Unit,
     onSwitchAccount: () -> Unit,
+    shouldClearPendingOnDispose: () -> Boolean = { true },
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    BackHandler {
+        viewModel.onLeaveScreen()
+        onBack()
+    }
 
     DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
@@ -79,7 +89,10 @@ fun PaymentResultScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            viewModel.onLeaveScreen()
+            viewModel.onLifecyclePause()
+            if (!context.isChangingConfigurations() && shouldClearPendingOnDispose()) {
+                viewModel.onLeaveScreen()
+            }
         }
     }
 
@@ -342,15 +355,25 @@ fun PaymentResultScreenContent(
                             borderColor = statusColors.success.copy(alpha = 0.4f),
                             contentPadding = 20.dp,
                         ) {
-                            Text(
-                                text = stringResource(R.string.checkout_result_successHeading),
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = statusColors.success,
-                                modifier = Modifier
-                                    .semantics { heading() }
-                                    .testTag(PaymentTestTags.RESULT_HEADING),
-                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.checkout_result_successHeading),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = statusColors.success,
+                                    modifier = Modifier
+                                        .semantics { heading() }
+                                        .testTag(PaymentTestTags.RESULT_HEADING),
+                                )
+                                PaymentStatusChip(
+                                    label = stringResource(R.string.orders_states_FULFILLED),
+                                    tone = PaymentStatusTone.Success,
+                                    modifier = Modifier.testTag(PaymentTestTags.RESULT_STATUS_CHIP),
+                                )
+                            }
                             Text(
                                 text = stringResource(
                                     if (isFreeVoucher) {
@@ -743,3 +766,11 @@ private fun ResultActionErrorSection(
         },
     )
 }
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+private fun Context.isChangingConfigurations(): Boolean = findActivity()?.isChangingConfigurations == true

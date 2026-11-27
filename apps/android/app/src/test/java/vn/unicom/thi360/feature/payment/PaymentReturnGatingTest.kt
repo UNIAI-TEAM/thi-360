@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -35,7 +36,6 @@ import vn.unicom.thi360.shell.routes.PaymentRoutesConfig
 import vn.unicom.thi360.shell.routes.PaymentRuntimeOverrides
 import vn.unicom.thi360.shell.routes.registerPaymentHooks
 import vn.unicom.thi360.testing.ContractFakeServer
-import vn.unicom.thi360.testing.PortalTestHarness
 
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "w412dp-h915dp")
@@ -52,7 +52,7 @@ class PaymentReturnGatingTest {
     @Test
     fun lockedFirst() {
         val host = ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
-        val harness = PortalTestHarness.create(
+        val harness = PaymentTestFixtures.createHarness(
             initialTokens = PaymentTestFixtures.defaultTokens,
             startLocked = true,
             serverSetup = {
@@ -101,7 +101,8 @@ class PaymentReturnGatingTest {
             composeRule.waitUntil(5_000) {
                 composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_HEADING).fetchSemanticsNodes().isNotEmpty()
             }
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
         } finally {
             harness.close()
         }
@@ -110,7 +111,7 @@ class PaymentReturnGatingTest {
     @Test
     fun signedOutThenLogin() {
         val host = ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
-        val harness = PortalTestHarness.create(
+        val harness = PaymentTestFixtures.createHarness(
             initialTokens = null,
             serverSetup = {
                 respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json")
@@ -158,7 +159,8 @@ class PaymentReturnGatingTest {
             composeRule.waitUntil(5_000) {
                 composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_HEADING).fetchSemanticsNodes().isNotEmpty()
             }
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
         } finally {
             harness.close()
         }
@@ -167,7 +169,7 @@ class PaymentReturnGatingTest {
     @Test
     fun notOwnedAfterLogin() {
         val host = ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
-        val harness = PortalTestHarness.create(
+        val harness = PaymentTestFixtures.createHarness(
             initialTokens = null,
             serverSetup = {
                 respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json")
@@ -283,7 +285,8 @@ class PaymentReturnGatingTest {
             composeRule.waitUntil(5_000) {
                 composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_VIEW_MY_EXAMS_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
             val backStackAfter = nav.navController.currentBackStack.value.count {
                 it.destination.route?.contains("/payment-result?") == true
             }
@@ -348,6 +351,87 @@ class PaymentReturnGatingTest {
             }
             assertEquals(1, count)
             assertEquals(1, harness.server.requestCount("GET", "/api/v1/public/payments/vnpay/return"))
+        } finally {
+            harness.close()
+        }
+    }
+
+    @Test
+    fun lockAndUnlockWithin15MinutesPreservesPendingOrderAndNoResultYet() {
+        val host = ResetLink.allowedHostFromWebBaseUrl(AppEnvironment.webBaseUrl)
+        val harness = PaymentTestFixtures.createHarness {
+            respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 200, "refresh-200.json")
+            respondApiFixture("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}", 200, "orders-detail-200-pending-payment.json")
+        }
+        val pendingStore = PendingPaymentOrderStore { harness.accountScopedStoreProvider.current() }
+        var nowMillis = 100_000L
+        pendingStore.save(PaymentTestFixtures.ORDER_CODE, openedAtMillis = nowMillis)
+        PaymentRoutesConfig.setTestOverrides(
+            PaymentRuntimeOverrides(
+                gateway = PaymentTestFixtures.createGateway(harness),
+                pendingOrderStore = pendingStore,
+                apiBaseUrl = harness.server.url("/"),
+                clockMillis = { nowMillis },
+            ),
+        )
+        registerPaymentHooks(
+            inboundLinkRouter = harness.inboundLinkRouter,
+            sessionCleanup = harness.sessionCleanup,
+            pendingOrderStoreProvider = { pendingStore },
+            allowedHostProvider = { host },
+            clockMillisProvider = { { nowMillis } },
+        )
+        try {
+            composeRule.setContent {
+                AppRoot(
+                    preferences = AppPreferences(locale = AppLocale.VI),
+                    onSelectLocale = {},
+                    onSelectThemeMode = {},
+                    sessionManager = harness.stack.sessionManager,
+                    validateOnLaunch = false,
+                    recoveryGateway = harness.recoveryGateway,
+                    lockedContent = {
+                        Text("LockGate", modifier = Modifier.testTag("payment_lock_gate"))
+                    },
+                    inboundLinkRouter = harness.inboundLinkRouter,
+                    legalRepository = harness.legalRepository,
+                )
+            }
+            composeRule.runOnIdle {
+                harness.inboundLinkRouter.notifyForegroundReturn()
+            }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CONTINUE_PAYMENT_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Chưa nhận được kết quả thanh toán").assertIsDisplayed()
+
+            // Simulate 6-minute background (> 5-min biometric lock threshold, < 15-min PendingPaymentOrder TTL)
+            nowMillis += 6L * 60L * 1000L
+            composeRule.runOnIdle {
+                harness.stack.sessionManager.lockSession()
+            }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag("payment_lock_gate").fetchSemanticsNodes().isNotEmpty()
+            }
+            assertEquals(
+                "PendingPaymentOrder must NOT be wiped when SessionState.Locked unmounts PaymentResultScreen",
+                PaymentTestFixtures.ORDER_CODE,
+                pendingStore.readValid(nowMillis)?.orderCode,
+            )
+
+            composeRule.runOnIdle {
+                harness.inboundLinkRouter.notifyForegroundReturn()
+            }
+            runBlocking { harness.stack.sessionManager.unlockAndRefresh() }
+            composeRule.waitUntil(5_000) {
+                composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_CONTINUE_PAYMENT_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Chưa nhận được kết quả thanh toán").assertIsDisplayed()
+            assertEquals(
+                "PendingPaymentOrder must still be intact after unlocking into NoResultYet",
+                PaymentTestFixtures.ORDER_CODE,
+                pendingStore.readValid(nowMillis)?.orderCode,
+            )
         } finally {
             harness.close()
         }

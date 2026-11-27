@@ -1,6 +1,7 @@
 package vn.unicom.thi360.feature.payment
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -207,7 +208,8 @@ class PaymentOutcomeDisplayTest {
                     vm.uiState.value.activeOrder?.state?.value == "FULFILLED"
             }
             assertEquals("FULFILLED", vm.uiState.value.activeOrder?.state?.value)
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
         } finally {
             vm.onLeaveScreen()
             scope.cancel()

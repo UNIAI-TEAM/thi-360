@@ -1,6 +1,7 @@
 package vn.unicom.thi360.feature.payment
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -160,7 +161,8 @@ class PaymentResultScreenTest {
                 composeRule.onAllNodesWithTag(PaymentTestTags.RESULT_HEADING).fetchSemanticsNodes().isNotEmpty()
             }
             // Fixture fulfilledAt = 2026-11-20T10:00:00Z -> Asia/Ho_Chi_Minh (+07:00) = 20/11/2026 17:00
-            composeRule.onNodeWithText("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_HEADING).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
+            composeRule.onNodeWithTag(PaymentTestTags.RESULT_STATUS_CHIP).assertTextEquals("Đã cấp bài thi").assertIsDisplayed()
             composeRule.onNodeWithText("20/11/2026 17:00", substring = true).assertIsDisplayed()
             composeRule.onNodeWithTag(PaymentTestTags.RESULT_VIEW_MY_EXAMS_BUTTON).assertIsDisplayed()
             composeRule.onNodeWithTag(PaymentTestTags.RESULT_VIEW_ORDER_BUTTON).assertIsDisplayed()

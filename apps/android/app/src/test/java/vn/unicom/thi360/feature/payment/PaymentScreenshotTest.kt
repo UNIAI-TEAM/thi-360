@@ -29,7 +29,7 @@ import vn.unicom.thi360.core.ui.ShellWidth
 import vn.unicom.thi360.core.ui.shellWidthForDp
 import vn.unicom.thi360.feature.payment.domain.SeenPrice
 import vn.unicom.thi360.feature.payment.ui.CheckoutScreenContent
-import vn.unicom.thi360.feature.payment.ui.OrderDetailPaneContent
+import vn.unicom.thi360.feature.payment.ui.OrderDetailScreenContent
 import vn.unicom.thi360.feature.payment.ui.OrdersScreenContent
 import vn.unicom.thi360.feature.payment.ui.PaymentResultScreenContent
 import vn.unicom.thi360.feature.payment.viewmodel.CheckoutUiState
@@ -190,15 +190,19 @@ class PaymentScreenshotTest {
 
     private fun captureOrderDetail(name: String, widthDp: Int, themeMode: ThemeMode, fontScale: Float = 1.0f) {
         val detail = PaymentTestFixtures.decodeOrderDetail("orders-detail-200-duplicate-payment.json")
+        val snackbar = SnackbarHostState()
         capture(name, widthDp, themeMode, fontScale) {
-            OrderDetailPaneContent(
+            OrderDetailScreenContent(
                 orderState = LoadState.Loaded(detail),
+                isRefreshing = false,
                 lastLoadedAtMillis = null,
                 supportContact = supportContact,
                 paying = false,
                 actionsDisabled = false,
                 actionError = null,
-                onRetry = {},
+                snackbarHostState = snackbar,
+                onBack = {},
+                onRefresh = {},
                 onPayOrder = {},
                 onCancelOrder = {},
                 onOpenMyExams = {},
@@ -217,29 +221,41 @@ class PaymentScreenshotTest {
     @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_checkout_412x915_light() = captureCheckout("payment_checkout_412x915_light", 412, ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_checkout_412x915_dark() = captureCheckout("payment_checkout_412x915_dark", 412, ThemeMode.DARK)
     @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_checkout_840x720_light() = captureCheckout("payment_checkout_840x720_light", 840, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_checkout_840x720_dark() = captureCheckout("payment_checkout_840x720_dark", 840, ThemeMode.DARK)
     @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_checkout_1280x800_light() = captureCheckout("payment_checkout_1280x800_light", 1280, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_checkout_1280x800_dark() = captureCheckout("payment_checkout_1280x800_dark", 1280, ThemeMode.DARK)
 
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_result_360x640_light() = captureResult("payment_result_360x640_light", 360, ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_result_360x640_dark() = captureResult("payment_result_360x640_dark", 360, ThemeMode.DARK)
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_result_360x640_fs130_light() = captureResult("payment_result_360x640_fs130_light", 360, ThemeMode.LIGHT, 1.3f)
     @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_result_412x915_light() = captureResult("payment_result_412x915_light", 412, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_result_412x915_dark() = captureResult("payment_result_412x915_dark", 412, ThemeMode.DARK)
     @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_result_840x720_light() = captureResult("payment_result_840x720_light", 840, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_result_840x720_dark() = captureResult("payment_result_840x720_dark", 840, ThemeMode.DARK)
+    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_result_1280x800_light() = captureResult("payment_result_1280x800_light", 1280, ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_result_1280x800_dark() = captureResult("payment_result_1280x800_dark", 1280, ThemeMode.DARK)
 
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_orders_360x640_light() = captureOrders("payment_orders_360x640_light", 360, ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_orders_360x640_dark() = captureOrders("payment_orders_360x640_dark", 360, ThemeMode.DARK)
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_orders_360x640_fs130_light() = captureOrders("payment_orders_360x640_fs130_light", 360, ThemeMode.LIGHT, 1.3f)
     @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_orders_412x915_light() = captureOrders("payment_orders_412x915_light", 412, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_orders_412x915_dark() = captureOrders("payment_orders_412x915_dark", 412, ThemeMode.DARK)
     @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_orders_840x720_light() = captureOrders("payment_orders_840x720_light", 840, ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_orders_840x720_dark() = captureOrders("payment_orders_840x720_dark", 840, ThemeMode.DARK)
     @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_orders_1280x800_light() = captureOrders("payment_orders_1280x800_light", 1280, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_orders_1280x800_dark() = captureOrders("payment_orders_1280x800_dark", 1280, ThemeMode.DARK)
     @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_orders_account_pane_840x720_light() = captureOrders("payment_orders_account_pane_840x720_light", 840, ThemeMode.LIGHT, containerWidthDp = 367)
+    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_orders_account_pane_840x720_dark() = captureOrders("payment_orders_account_pane_840x720_dark", 840, ThemeMode.DARK, containerWidthDp = 367)
     @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_orders_account_pane_1280x800_light() = captureOrders("payment_orders_account_pane_1280x800_light", 1280, ThemeMode.LIGHT, containerWidthDp = 807)
+    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_orders_account_pane_1280x800_dark() = captureOrders("payment_orders_account_pane_1280x800_dark", 1280, ThemeMode.DARK, containerWidthDp = 807)
 
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_order_detail_360x640_light() = captureOrderDetail("payment_order_detail_360x640_light", 360, ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_order_detail_360x640_dark() = captureOrderDetail("payment_order_detail_360x640_dark", 360, ThemeMode.DARK)
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun payment_order_detail_360x640_fs130_light() = captureOrderDetail("payment_order_detail_360x640_fs130_light", 360, ThemeMode.LIGHT, 1.3f)
     @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_order_detail_412x915_light() = captureOrderDetail("payment_order_detail_412x915_light", 412, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun payment_order_detail_412x915_dark() = captureOrderDetail("payment_order_detail_412x915_dark", 412, ThemeMode.DARK)
     @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_order_detail_840x720_light() = captureOrderDetail("payment_order_detail_840x720_light", 840, ThemeMode.LIGHT)
+    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun payment_order_detail_840x720_dark() = captureOrderDetail("payment_order_detail_840x720_dark", 840, ThemeMode.DARK)
+    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_order_detail_1280x800_light() = captureOrderDetail("payment_order_detail_1280x800_light", 1280, ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun payment_order_detail_1280x800_dark() = captureOrderDetail("payment_order_detail_1280x800_dark", 1280, ThemeMode.DARK)
 }
