@@ -139,6 +139,7 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
             middlewares: [acceptLanguage] + leadingMiddlewares + [retryAfter, bearer, logging]
         )
     }
+
     static func makeJSONDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
