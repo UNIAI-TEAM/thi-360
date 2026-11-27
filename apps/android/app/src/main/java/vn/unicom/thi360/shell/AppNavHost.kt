@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -43,6 +44,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import java.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import vn.unicom.thi360.Thi360Application
@@ -59,16 +63,29 @@ import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.session.AppSessionContainer
+import vn.unicom.thi360.core.session.SessionCleanup
 import vn.unicom.thi360.core.session.SessionManager
 import vn.unicom.thi360.core.session.SessionState
 import vn.unicom.thi360.core.session.SignOutReason
 import vn.unicom.thi360.core.theme.BrandPalette
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.core.ui.LoadState
+import vn.unicom.thi360.feature.account.AccountDeletionGateway
 import vn.unicom.thi360.feature.account.AccountDetailPane
 import vn.unicom.thi360.feature.account.AccountProfileGateway
+import vn.unicom.thi360.feature.account.AccountProfileStore
 import vn.unicom.thi360.feature.account.AccountScreen
-import vn.unicom.thi360.feature.account.OpenApiAccountProfileGateway
-import vn.unicom.thi360.feature.account.ProfileLoadState
+import vn.unicom.thi360.feature.account.AvatarImagePreparer
+import vn.unicom.thi360.feature.account.CameraAccess
+import vn.unicom.thi360.feature.account.LocalProfileDependencies
+import vn.unicom.thi360.feature.account.OpenApiAccountDeletionGateway
+import vn.unicom.thi360.feature.account.OpenApiProfileGateway
+import vn.unicom.thi360.feature.account.ProfileDependencies
+import vn.unicom.thi360.feature.account.ProfileDraftViewModel
+import vn.unicom.thi360.feature.account.ProfileGateway
+import vn.unicom.thi360.feature.account.ReadOnlyProfileGatewayAdapter
+import vn.unicom.thi360.feature.account.UserProfile
+import vn.unicom.thi360.feature.account.rememberSessionProfileDraftStore
 import vn.unicom.thi360.feature.lock.BiometricEnablePromptScreen
 import vn.unicom.thi360.feature.lock.LockHost
 import vn.unicom.thi360.feature.lock.LockTestTags
@@ -139,6 +156,15 @@ fun AppRoot(
     legalRepository: LegalRepository? = null,
     navigator: AppNavigator? = null,
     homeExtraRoutes: NavGraphBuilder.() -> Unit = {},
+    accountDeletionGateway: AccountDeletionGateway? = null,
+    profileStore: AccountProfileStore? = null,
+    imageLoader: ImageLoader? = null,
+    apiBaseUrl: String? = null,
+    clock: Clock = Clock.systemUTC(),
+    cameraAccess: CameraAccess? = null,
+    avatarPreparer: AvatarImagePreparer? = null,
+    onAnnounceCooldown: ((String) -> Unit)? = null,
+    sessionCleanup: SessionCleanup? = null,
 ) {
     if (startDestination != null && sessionManager == null && initialIntent == null) {
         Thi360App(
@@ -160,6 +186,8 @@ fun AppRoot(
     val context = LocalContext.current
     val activity = remember(context) { context.findComponentActivityOrNull() }
     val app = remember(context) { context.applicationContext as? Thi360Application }
+    val activeApiBaseUrl = apiBaseUrl ?: AppEnvironment.apiBaseUrl
+    val activeSessionCleanup = sessionCleanup ?: app?.sessionCleanup
     val activeSessionManager = remember(sessionManager, context) {
         sessionManager ?: AppSessionContainer.get(context).sessionManager
     }
@@ -171,10 +199,30 @@ fun AppRoot(
             )
         }
     }
-    val activeProfileGateway = remember(profileGateway, context) {
-        profileGateway ?: OpenApiAccountProfileGateway(
-            profileApi = AppSessionContainer.get(context).profileApi,
+    val activeProfileGateway = remember(profileGateway, context, activeApiBaseUrl) {
+        when (profileGateway) {
+            is ProfileGateway -> profileGateway
+            null -> OpenApiProfileGateway.fromSessionStack(
+                stack = AppSessionContainer.get(context),
+                baseUrl = activeApiBaseUrl,
+            )
+            else -> ReadOnlyProfileGatewayAdapter(
+                reader = profileGateway,
+                fallback = OpenApiProfileGateway.fromSessionStack(
+                    stack = AppSessionContainer.get(context),
+                    baseUrl = activeApiBaseUrl,
+                ),
+            )
+        }
+    }
+    val activeAccountDeletionGateway = remember(accountDeletionGateway, context, activeApiBaseUrl) {
+        accountDeletionGateway ?: OpenApiAccountDeletionGateway.fromSessionStack(
+            stack = AppSessionContainer.get(context),
+            baseUrl = activeApiBaseUrl,
         )
+    }
+    val activeImageLoader = remember(imageLoader, app, context) {
+        imageLoader ?: app?.imageLoader?.imageLoader ?: SingletonImageLoader.get(context)
     }
     val activeLinkRouter = remember(inboundLinkRouter, app) {
         inboundLinkRouter ?: app?.inboundLinkRouter ?: InboundLinkRouter(
@@ -248,6 +296,16 @@ fun AppRoot(
         sessionManager = activeSessionManager,
         recoveryGateway = activeRecoveryGateway,
         profileGateway = activeProfileGateway,
+        accountDeletionGateway = activeAccountDeletionGateway,
+        profileStoreOverride = profileStore,
+        imageLoader = activeImageLoader,
+        apiBaseUrl = activeApiBaseUrl,
+        clock = clock,
+        cameraAccess = cameraAccess,
+        avatarPreparer = avatarPreparer,
+        onAnnounceCooldown = onAnnounceCooldown,
+        sessionCleanup = activeSessionCleanup,
+        isOnlineProvider = { app?.connectivityMonitor?.online?.value ?: true },
         preferences = preferences,
         brandPalette = brandPalette,
         onSelectLocale = onSelectLocale,
@@ -300,7 +358,17 @@ internal fun AppSessionContent(
     openForgotPasswordOverlay: Boolean,
     onOpenForgotPasswordOverlay: (Boolean) -> Unit,
     clockMillis: () -> Long,
-    profileGateway: AccountProfileGateway? = null,
+    profileGateway: ProfileGateway? = null,
+    accountDeletionGateway: AccountDeletionGateway? = null,
+    profileStoreOverride: AccountProfileStore? = null,
+    imageLoader: ImageLoader? = null,
+    apiBaseUrl: String = AppEnvironment.apiBaseUrl,
+    clock: Clock = Clock.systemUTC(),
+    cameraAccess: CameraAccess? = null,
+    avatarPreparer: AvatarImagePreparer? = null,
+    onAnnounceCooldown: ((String) -> Unit)? = null,
+    sessionCleanup: SessionCleanup? = null,
+    isOnlineProvider: () -> Boolean = { true },
     biometricController: BiometricController? = null,
     biometricAuthenticator: BiometricAuthenticator? = null,
     isAppBackgrounded: Boolean = false,
@@ -308,6 +376,7 @@ internal fun AppSessionContent(
     navigator: AppNavigator? = null,
     homeExtraRoutes: NavGraphBuilder.() -> Unit = {},
 ) {
+    val context = LocalContext.current
     val latestSelectLocale by rememberUpdatedState(onSelectLocale)
     val latestForgotPasswordClick by rememberUpdatedState(onForgotPasswordClick)
     val latestRegisterClick by rememberUpdatedState(onRegisterClick)
@@ -325,11 +394,32 @@ internal fun AppSessionContent(
 
     val shellSaveableStateHolder = rememberSaveableStateHolder()
     var savedShellNavState by rememberSaveable(sessionGeneration) { mutableStateOf<Bundle?>(null) }
-    var profileState by remember(sessionManager, sessionGeneration) {
-        mutableStateOf<ProfileLoadState>(ProfileLoadState.Loading)
+    val ownedProfileStore = remember(profileStoreOverride, profileGateway, sessionManager, sessionGeneration, sessionCleanup) {
+        if (profileStoreOverride == null && profileGateway != null) {
+            AccountProfileStore(
+                gateway = profileGateway,
+                isOnlineProvider = isOnlineProvider,
+                sessionCleanup = sessionCleanup,
+            )
+        } else {
+            null
+        }
     }
+    DisposableEffect(ownedProfileStore) {
+        onDispose {
+            ownedProfileStore?.close()
+        }
+    }
+    val activeProfileStore = profileStoreOverride ?: ownedProfileStore
+    val profileLoadState by (activeProfileStore?.state
+        ?: remember { MutableStateFlow<LoadState<UserProfile>>(LoadState.Loading) })
+        .collectAsStateWithLifecycle()
+    val activeImageLoader = remember(imageLoader, context) {
+        imageLoader ?: SingletonImageLoader.get(context)
+    }
+    val profileDraftStore = rememberSessionProfileDraftStore(sessionGeneration)
     var selectedAccountPane by rememberSaveable(sessionGeneration) {
-        mutableStateOf(AccountDetailPane.CHANGE_PASSWORD)
+        mutableStateOf(AccountDetailPane.PROFILE)
     }
     var showSinglePaneChangePassword by rememberSaveable(sessionGeneration) {
         mutableStateOf(false)
@@ -344,8 +434,11 @@ internal fun AppSessionContent(
         if (isSignedOut || generationChanged) {
             shellSaveableStateHolder.removeState("shell_$prevGeneration")
             ChangePasswordDraftViewModel.clearAllActiveDrafts()
+            ProfileDraftViewModel.clearAllActiveDrafts()
+            profileDraftStore.clear()
             savedShellNavState = null
-            profileState = ProfileLoadState.Loading
+            activeProfileStore?.wipe()
+            activeImageLoader.memoryCache?.clear()
         }
     }
 
@@ -599,7 +692,7 @@ internal fun AppSessionContent(
     }
 
     if (sessionState is SessionState.Locked) {
-        val loadedProfile = (profileState as? ProfileLoadState.Loaded)?.profile
+        val loadedProfile = (profileLoadState as? LoadState.Loaded)?.value
         Thi360Theme(
             preferences = preferences,
             brandPalette = brandPalette,
@@ -692,7 +785,40 @@ internal fun AppSessionContent(
             }
         }
 
-        val resolvedAccountContent: (@Composable (Boolean) -> Unit)? = accountContent ?: profileGateway?.let { gateway ->
+        val resolvedProfileDependencies = remember(
+            activeProfileStore,
+            profileGateway,
+            accountDeletionGateway,
+            sessionManager,
+            activeImageLoader,
+            apiBaseUrl,
+            clock,
+            cameraAccess,
+            avatarPreparer,
+            profileDraftStore,
+            onAnnounceCooldown,
+        ) {
+            if (activeProfileStore != null && profileGateway != null && accountDeletionGateway != null) {
+                ProfileDependencies(
+                    profileStore = activeProfileStore,
+                    profileGateway = profileGateway,
+                    accountDeletionGateway = accountDeletionGateway,
+                    sessionManager = sessionManager,
+                    imageLoader = activeImageLoader,
+                    apiBaseUrl = apiBaseUrl,
+                    clock = clock,
+                    cameraAccess = cameraAccess,
+                    avatarPreparer = avatarPreparer,
+                    draftStore = profileDraftStore,
+                    onAnnounceCooldown = onAnnounceCooldown,
+                    onSelectAccountPane = { selectedAccountPane = it },
+                )
+            } else {
+                null
+            }
+        }
+
+        val resolvedAccountContent: (@Composable (Boolean) -> Unit)? = accountContent ?: activeProfileStore?.let { store ->
             { isTwoPaneWidth ->
                 AccountScreen(
                     isTwoPaneWidth = isTwoPaneWidth,
@@ -701,69 +827,70 @@ internal fun AppSessionContent(
                     onSelectLocale = onSelectLocale,
                     onSelectThemeMode = onSelectThemeMode,
                     sessionManager = sessionManager,
-                    profileGateway = gateway,
+                    profileStore = store,
                     recoveryGateway = recoveryGateway,
                     biometricController = biometricController,
                     biometricAuthenticator = biometricAuthenticator,
-                    profileState = profileState,
-                    onProfileStateChanged = { profileState = it },
                     selectedPane = selectedAccountPane,
                     onSelectPane = { selectedAccountPane = it },
                     showSinglePaneChangePassword = showSinglePaneChangePassword,
                     onShowSinglePaneChangePassword = { showSinglePaneChangePassword = it },
+                    legalRepository = legalRepository,
                 )
             }
         }
 
         val isOffline = activeState.isOffline
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (isOffline) {
-                    OfflineBannerSlot(
-                        preferences = preferences,
-                        brandPalette = brandPalette,
-                        isRetrying = isRetryingOffline,
-                        onRetry = {
-                            if (!isRetryingOffline) {
-                                isRetryingOffline = true
-                                coroutineScope.launch {
-                                    try {
-                                        sessionManager.retryConnection()
-                                    } finally {
-                                        isRetryingOffline = false
+        CompositionLocalProvider(LocalProfileDependencies provides resolvedProfileDependencies) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (isOffline) {
+                        OfflineBannerSlot(
+                            preferences = preferences,
+                            brandPalette = brandPalette,
+                            isRetrying = isRetryingOffline,
+                            onRetry = {
+                                if (!isRetryingOffline) {
+                                    isRetryingOffline = true
+                                    coroutineScope.launch {
+                                        try {
+                                            sessionManager.retryConnection()
+                                        } finally {
+                                            isRetryingOffline = false
+                                        }
                                     }
                                 }
-                            }
-                        },
-                    )
+                            },
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .consumeWindowInsets(
+                                if (isOffline) WindowInsets.statusBars else WindowInsets(0, 0, 0, 0),
+                            ),
+                    ) {
+                        Thi360App(
+                            preferences = preferences,
+                            brandPalette = brandPalette,
+                            onSelectLocale = onSelectLocale,
+                            onSelectThemeMode = onSelectThemeMode,
+                            navController = shellNavController,
+                            startDestination = startDestination ?: Destination.Home.route,
+                            accountContent = resolvedAccountContent,
+                            extraDestinations = extraDestinations,
+                            homeExtraRoutes = homeExtraRoutes,
+                            navigator = navigator,
+                            legalRepository = legalRepository,
+                        )
+                    }
                 }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .consumeWindowInsets(
-                            if (isOffline) WindowInsets.statusBars else WindowInsets(0, 0, 0, 0),
-                        ),
-                ) {
-                    Thi360App(
-                        preferences = preferences,
-                        brandPalette = brandPalette,
-                        onSelectLocale = onSelectLocale,
-                        onSelectThemeMode = onSelectThemeMode,
-                        navController = shellNavController,
-                        startDestination = startDestination ?: Destination.Home.route,
-                        accountContent = resolvedAccountContent,
-                        extraDestinations = extraDestinations,
-                        homeExtraRoutes = homeExtraRoutes,
-                        navigator = navigator,
-                        legalRepository = legalRepository,
-                    )
-                }
-            }
 
-            if (isAppBackgrounded && biometricState is BiometricState.On) {
-                RecentsPrivacyShieldOverlay(preferences = preferences, brandPalette = brandPalette)
+                if (isAppBackgrounded && biometricState is BiometricState.On) {
+                    RecentsPrivacyShieldOverlay(preferences = preferences, brandPalette = brandPalette)
+                }
             }
         }
         }

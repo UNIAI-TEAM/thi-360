@@ -1,5 +1,7 @@
 package vn.unicom.thi360.feature.account
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,19 +13,26 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.test.core.app.ApplicationProvider
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
+import okhttp3.mockwebserver.MockResponse
+import okio.Buffer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import vn.unicom.thi360.Thi360Application
 import vn.unicom.thi360.core.biometric.BiometricAvailability
 import vn.unicom.thi360.core.biometric.BiometricController
 import vn.unicom.thi360.core.biometric.BiometricState
@@ -34,6 +43,7 @@ import vn.unicom.thi360.core.biometric.InMemoryBiometricPromptMemoryStore
 import vn.unicom.thi360.core.biometric.PromptAnswer
 import vn.unicom.thi360.core.biometric.PromptMemory
 import vn.unicom.thi360.core.config.Environment
+import vn.unicom.thi360.core.image.Thi360ImageLoader
 import vn.unicom.thi360.core.network.ApiResult
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
@@ -41,9 +51,11 @@ import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.session.MobileAuthGateway
+import vn.unicom.thi360.core.session.SessionCleanup
 import vn.unicom.thi360.core.session.SessionManager
 import vn.unicom.thi360.core.session.SessionState
 import vn.unicom.thi360.core.storage.Tokens
+import vn.unicom.thi360.core.ui.LoadState
 import vn.unicom.thi360.feature.login.LoginTestTags
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
@@ -88,97 +100,164 @@ class LogoutTest {
             vault = biometricVault,
             promptMemoryStore = promptMemory,
         )
+        val context = ApplicationProvider.getApplicationContext<Thi360Application>()
+        val cleanupRoot = File(context.filesDir, "logout_test_cleanup_${System.nanoTime()}").apply { mkdirs() }
+        val sessionCleanup = SessionCleanup(cleanupRoot)
         val stack = Thi360ApiFactory.createSessionStack(
             baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.EN },
             onSessionCleared = { biometricController.clearForSessionEnd() },
+            sessionCleanup = sessionCleanup,
         )
+        val imageLoader = Thi360ImageLoader.create(
+            context = context,
+            apiBaseUrl = server.url("/"),
+            sessionStack = stack,
+            sessionCleanup = sessionCleanup,
+        )
+        val pngBytes = ByteArrayOutputStream().use { baos ->
+            Bitmap.createBitmap(16, 16, Bitmap.Config.ARGB_8888).apply {
+                eraseColor(Color.BLUE)
+                compress(Bitmap.CompressFormat.PNG, 100, baos)
+            }
+            baos.toByteArray()
+        }
+        server.respond("GET", "/api/v1/me/avatar/av-alpha") {
+            MockResponse()
+                .setResponseCode(200)
+                .addHeader("Content-Type", "image/png")
+                .setBody(Buffer().write(pngBytes))
+        }
         var profileCalls = 0
-        val profileGateway = object : AccountProfileGateway {
-            override suspend fun fetchProfile(): ApiResult<UserProfile> {
+        val profileGateway = object : ProfileGateway {
+            override suspend fun fetch(): ApiResult<UserProfile> {
                 profileCalls++
                 return if (profileCalls == 1) {
-                    ApiResult.Success(UserProfile("student.alpha", "Alpha Student", "alpha@thi360.vn", true))
+                    ApiResult.Success(
+                        UserProfile(
+                            username = "student.alpha",
+                            fullName = "Alpha Student",
+                            email = "alpha@thi360.vn",
+                            emailVerified = true,
+                            avatarAssetId = "av-alpha",
+                            avatarUrl = "/api/v1/me/avatar/av-alpha",
+                        ),
+                    )
                 } else {
                     ApiResult.Success(UserProfile("student.beta", "Beta Student", "beta@thi360.vn", false))
                 }
             }
+            override suspend fun update(fullName: String, phone: String?) = error("unused")
+            override suspend fun uploadAvatar(avatar: PreparedAvatar) = error("unused")
+            override suspend fun removeAvatar() = error("unused")
+            override suspend fun sendVerification() = error("unused")
+            override suspend fun verify(code: String) = error("unused")
+            override suspend fun requestEmailChange(newEmail: String, currentPassword: String) = error("unused")
+            override suspend fun confirmEmailChange(code: String) = error("unused")
         }
+        val profileStore = AccountProfileStore(
+            gateway = profileGateway,
+            sessionCleanup = sessionCleanup,
+        )
         var preferences by mutableStateOf(AppPreferences(locale = AppLocale.EN, themeMode = ThemeMode.DARK))
 
-        composeRule.setContent {
-            AppRoot(
-                preferences = preferences,
-                onSelectLocale = { preferences = preferences.copy(locale = it) },
-                onSelectThemeMode = { preferences = preferences.copy(themeMode = it) },
-                sessionManager = stack.sessionManager,
-                validateOnLaunch = false,
-                startDestination = Destination.Account.route,
-                profileGateway = profileGateway,
-                biometricController = biometricController,
-                biometricAuthenticator = FakeBiometricAuthenticator(),
+        try {
+            composeRule.setContent {
+                AppRoot(
+                    preferences = preferences,
+                    onSelectLocale = { preferences = preferences.copy(locale = it) },
+                    onSelectThemeMode = { preferences = preferences.copy(themeMode = it) },
+                    sessionManager = stack.sessionManager,
+                    validateOnLaunch = false,
+                    startDestination = Destination.Account.route,
+                    profileGateway = profileGateway,
+                    profileStore = profileStore,
+                    imageLoader = imageLoader.imageLoader,
+                    apiBaseUrl = server.url("/"),
+                    sessionCleanup = sessionCleanup,
+                    biometricController = biometricController,
+                    biometricAuthenticator = FakeBiometricAuthenticator(),
+                )
+            }
+
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(AccountTestTags.PROFILE_FULL_NAME).assertTextContains("Alpha Student")
+                    composeRule.onNodeWithTag(AccountTestTags.PROFILE_AVATAR_IMAGE).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+            assertEquals(BiometricState.On, biometricController.state.value)
+            assertEquals("student.alpha", profileStore.currentProfileOrNull()?.username)
+            assertTrue(
+                "Avatar must be cached in memory before logout",
+                (imageLoader.imageLoader.memoryCache?.size ?: 0L) > 0L,
             )
+
+            composeRule.onNodeWithTag(AccountTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
+            composeRule.onNodeWithTag(AccountTestTags.LOGOUT_DIALOG).assertIsDisplayed()
+            composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CANCEL_BUTTON).performClick()
+            assertEquals(0, server.requestCount("POST", "/api/v1/auth/mobile/logout"))
+            assertEquals(BiometricState.On, biometricController.state.value)
+
+            server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
+            composeRule.onNodeWithTag(AccountTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
+            composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CONFIRM_BUTTON).performClick()
+
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                stack.sessionManager.state.value is SessionState.SignedOut &&
+                    server.requestCount("POST", "/api/v1/auth/mobile/logout") == 1
+            }
+            composeRule.waitForIdle()
+
+            assertNull("Tokens must be cleared on logout", tokenStore.read())
+            assertEquals("Biometric state must reset to Off on logout", BiometricState.Off, biometricController.state.value)
+            assertFalse("Biometric vault must be wiped on logout", biometricVault.hasWrappedToken())
+            assertNull("AccountProfileStore must be cleared on logout", profileStore.currentProfileOrNull())
+            assertEquals(LoadState.Loading, profileStore.state.value)
+            assertEquals(
+                "ImageLoader memory cache must be cleared on logout",
+                0L,
+                imageLoader.imageLoader.memoryCache?.size ?: 0L,
+            )
+            assertNull("ImageLoader must have no disk cache", imageLoader.imageLoader.diskCache)
+            assertEquals("Locale must survive logout", AppLocale.EN, preferences.locale)
+            assertEquals("Theme must survive logout", ThemeMode.DARK, preferences.themeMode)
+
+            val logoutReq = server.requests("POST", "/api/v1/auth/mobile/logout").single()
+            assertEquals("/api/v1/auth/mobile/logout", logoutReq.path)
+            assertEquals(1, server.requestCount("POST", "/api/v1/auth/mobile/logout"))
+            composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
+
+            server.respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json") {
+                it.replace("student.demo", "student.beta")
+            }
+
+            composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.beta")
+            composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("BetaPass1!")
+            composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
+
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                stack.sessionManager.state.value is SessionState.Active
+            }
+            composeRule.waitForIdle()
+
+            composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
+            composeRule.waitUntil(timeoutMillis = 5_000) {
+                runCatching {
+                    composeRule.onNodeWithTag(AccountTestTags.PROFILE_FULL_NAME).assertTextContains("Beta Student")
+                    true
+                }.getOrDefault(false)
+            }
+            composeRule.onNodeWithText("Alpha Student", substring = true).assertDoesNotExist()
+            composeRule.onNodeWithText("alpha@thi360.vn", substring = true).assertDoesNotExist()
+        } finally {
+            profileStore.close()
+            imageLoader.close()
+            cleanupRoot.deleteRecursively()
         }
-
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            runCatching {
-                composeRule.onNodeWithTag(AccountTestTags.PROFILE_FULL_NAME).assertTextContains("Alpha Student")
-                true
-            }.getOrDefault(false)
-        }
-        assertEquals(BiometricState.On, biometricController.state.value)
-
-        composeRule.onNodeWithTag(AccountTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
-        composeRule.onNodeWithTag(AccountTestTags.LOGOUT_DIALOG).assertIsDisplayed()
-        composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CANCEL_BUTTON).performClick()
-        assertEquals(0, server.requestCount("POST", "/api/v1/auth/mobile/logout"))
-        assertEquals(BiometricState.On, biometricController.state.value)
-
-        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
-        composeRule.onNodeWithTag(AccountTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
-        composeRule.onNodeWithTag(AccountTestTags.LOGOUT_CONFIRM_BUTTON).performClick()
-
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            stack.sessionManager.state.value is SessionState.SignedOut &&
-                server.requestCount("POST", "/api/v1/auth/mobile/logout") == 1
-        }
-        composeRule.waitForIdle()
-
-        assertNull("Tokens must be cleared on logout", tokenStore.read())
-        assertEquals("Biometric state must reset to Off on logout", BiometricState.Off, biometricController.state.value)
-        assertFalse("Biometric vault must be wiped on logout", biometricVault.hasWrappedToken())
-        assertEquals("Locale must survive logout", AppLocale.EN, preferences.locale)
-        assertEquals("Theme must survive logout", ThemeMode.DARK, preferences.themeMode)
-
-        val logoutReq = server.requests("POST", "/api/v1/auth/mobile/logout").single()
-        assertEquals("/api/v1/auth/mobile/logout", logoutReq.path)
-        assertEquals(1, server.requestCount("POST", "/api/v1/auth/mobile/logout"))
-        composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).assertIsDisplayed()
-
-        server.respondAuthFixture("POST", "/api/v1/auth/mobile/login", 200, "login-200.json") {
-            it.replace("student.demo", "student.beta")
-        }
-
-        composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.beta")
-        composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("BetaPass1!")
-        composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
-
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            stack.sessionManager.state.value is SessionState.Active
-        }
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Account)).performClick()
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            runCatching {
-                composeRule.onNodeWithTag(AccountTestTags.PROFILE_FULL_NAME).assertTextContains("Beta Student")
-                true
-            }.getOrDefault(false)
-        }
-        composeRule.onNodeWithText("Alpha Student", substring = true).assertDoesNotExist()
-        composeRule.onNodeWithText("alpha@thi360.vn", substring = true).assertDoesNotExist()
     }
 
     @Test
