@@ -1,0 +1,1035 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "bundle.buyLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Buy bundle" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mua bộ đề" } }
+      }
+    },
+    "bundle.buyNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The bundle detail page always keeps Buy bundle available, even when you already own some exams in it." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Trang chi tiết bộ luôn có nút Mua bộ đề, kể cả khi bạn đã có vài bài trong bộ." } }
+      }
+    },
+    "bundle.detail.attemptsPerExamLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Attempts per exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Lượt mỗi bài" } }
+      }
+    },
+    "bundle.detail.examCountLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exams" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Số bài" } }
+      }
+    },
+    "bundle.detail.examCountValue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, one {# exam} other {# exams}}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, other {# bài}}" } }
+      }
+    },
+    "bundle.detail.examRightsPrefix" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Benefits for this exam:" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Quyền lợi bài này:" } }
+      }
+    },
+    "bundle.detail.existingEntitlement" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, one {You already have # attempt for <examContent>{name}</examContent>; buying this bundle adds more attempts} other {You already have # attempts for <examContent>{name}</examContent>; buying this bundle adds more attempts}}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, other {Bạn đã có # lượt bài <examContent>{name}</examContent>; mua bộ sẽ cộng thêm lượt}}" } }
+      }
+    },
+    "bundle.detail.how1" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After purchase, all exams appear in My exams grouped under the bundle name." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Sau khi mua, các bài xuất hiện ở Bài thi của tôi, nhóm dưới tên bộ." } }
+      }
+    },
+    "bundle.detail.how2" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Each exam keeps its own Start, Continue, result, and history actions. Submitting one exam only ends that exam's attempt." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mỗi bài có nút Bắt đầu, Tiếp tục, kết quả và lịch sử riêng. Nộp bài một môn chỉ kết thúc lượt của bài đó." } }
+      }
+    },
+    "bundle.detail.how3" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Each exam opens section by section under its own exam structure." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mỗi bài làm tuần tự từng phần trong một đồng hồ chung của bài." } }
+      }
+    },
+    "bundle.detail.howTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How this bundle works" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Cách dùng bộ đề" } }
+      }
+    },
+    "bundle.detail.itemsNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Question counts, durations, and max points reflect the currently on-sale version of each exam. Bundle price and attempts per exam remain fixed." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Số câu, thời lượng, điểm tối đa theo phiên bản đang bán của từng bài. Bài được cập nhật thì số ở đây cập nhật theo; giá và số lượt của bộ không đổi." } }
+      }
+    },
+    "bundle.detail.itemsTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exams in this bundle" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Các bài trong bộ" } }
+      }
+    },
+    "bundle.detail.partScope" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Section exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bài thi theo phần" } }
+      }
+    },
+    "bundle.detail.pendingOrder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Order {orderCode} for <examContent>{name}</examContent> is being checked. You do not need to pay again." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đơn {orderCode} cho bài <examContent>{name}</examContent> đang được kiểm tra. Bạn không cần thanh toán lại." } }
+      }
+    },
+    "bundle.detail.pendingOrderNoCode" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "An order for <examContent>{name}</examContent> is being checked. You do not need to pay again." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Có đơn đang được kiểm tra cho bài <examContent>{name}</examContent>. Bạn không cần thanh toán lại." } }
+      }
+    },
+    "bundle.detail.priceLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bundle price" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giá bộ" } }
+      }
+    },
+    "bundle.detail.subjectScope" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Subject exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bài thi theo môn" } }
+      }
+    },
+    "bundle.detail.totalDurationLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total duration" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tổng thời lượng" } }
+      }
+    },
+    "bundle.detail.totalQuestionsLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total questions" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tổng số câu" } }
+      }
+    },
+    "bundle.detail.unavailableBody" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "An exam in this bundle is currently being updated. You can still purchase individual exams." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Một bài trong bộ đang được cập nhật. Bạn vẫn mua được từng bài lẻ." } }
+      }
+    },
+    "bundle.detail.unavailableTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This bundle is temporarily unavailable." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bộ đề tạm thời chưa bán được." } }
+      }
+    },
+    "bundle.unavailablePage.description" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "An exam in this bundle is currently being updated. You can still purchase individual exams." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Một bài trong bộ đang được cập nhật. Bạn vẫn mua được từng bài lẻ." } }
+      }
+    },
+    "bundle.unavailablePage.eyebrow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "UNAVAILABLE" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "TẠM NGỪNG BÁN" } }
+      }
+    },
+    "bundle.unavailablePage.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This bundle is temporarily unavailable." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bộ đề tạm thời chưa bán được." } }
+      }
+    },
+    "bundle.unavailablePage.toCatalog" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back to the exam catalog" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Về danh mục bài thi" } }
+      }
+    },
+    "storefront.access.attemptsLeft" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, one {# attempt left} other {# attempts left}}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, other {Còn # lượt}}" } }
+      }
+    },
+    "storefront.access.buy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Buy exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mua bài thi" } }
+      }
+    },
+    "storefront.access.buyAgain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Buy again" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mua lại" } }
+      }
+    },
+    "storefront.access.buyBundle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Buy bundle" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mua bộ đề" } }
+      }
+    },
+    "storefront.access.buyMore" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Buy more attempts" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mua thêm lượt" } }
+      }
+    },
+    "storefront.access.checking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Checking" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đang kiểm tra" } }
+      }
+    },
+    "storefront.access.checkingNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Order {orderCode}. You do not need to pay again. If the exam still does not show up, contact support and include this order code." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mã đơn {orderCode}. Bạn không cần thanh toán lại. Nếu vẫn chưa thấy bài, hãy liên hệ hỗ trợ và gửi kèm mã đơn này." } }
+      }
+    },
+    "storefront.access.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tiếp tục" } }
+      }
+    },
+    "storefront.access.continueNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You have an attempt in progress." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bạn có một lượt đang làm dở." } }
+      }
+    },
+    "storefront.access.enter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Vào bài thi" } }
+      }
+    },
+    "storefront.access.exhaustedNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "You have used all attempts of this exam." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bạn đã dùng hết lượt của bài thi này." } }
+      }
+    },
+    "storefront.access.loadError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not determine your access to this exam." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chưa xác định được quyền của tài khoản." } }
+      }
+    },
+    "storefront.access.loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading access" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đang tải quyền" } }
+      }
+    },
+    "storefront.access.pendingTopUp" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your top-up order {orderCode} is being checked. You do not need to pay again." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đơn mua thêm lượt {orderCode} đang được kiểm tra. Bạn không cần thanh toán lại." } }
+      }
+    },
+    "storefront.access.reload" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reload access" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tải lại quyền" } }
+      }
+    },
+    "storefront.access.viewDetail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View details" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Xem chi tiết" } }
+      }
+    },
+    "storefront.catalog.backToCatalog" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back to Choose an exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Quay lại Chọn bài thi" } }
+      }
+    },
+    "storefront.catalog.clearFilters" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear filters" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Xóa bộ lọc" } }
+      }
+    },
+    "storefront.catalog.closeFilters" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đóng" } }
+      }
+    },
+    "storefront.catalog.emptyTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No exams are on sale right now" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Hiện chưa có bài thi nào đang mở bán" } }
+      }
+    },
+    "storefront.catalog.errorMessage" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not load the exam catalog. Your filters are kept." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chưa tải được danh mục bài thi. Bộ lọc của bạn vẫn được giữ." } }
+      }
+    },
+    "storefront.catalog.filtersLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search and filter exams" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tìm và lọc bài thi" } }
+      }
+    },
+    "storefront.catalog.formatAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All formats" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tất cả hình thức" } }
+      }
+    },
+    "storefront.catalog.formatHint" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A FULL exam has all sections in one attempt. A section or subject exam lets you practice only the section or subject shown on the card." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bài thi FULL gồm các phần thi liên tiếp trong một lượt. Bài thi theo phần hoặc theo môn giúp bạn luyện riêng phần hoặc môn ghi trên thẻ." } }
+      }
+    },
+    "storefront.catalog.formatHintLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Format:" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Hình thức:" } }
+      }
+    },
+    "storefront.catalog.formatLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Format" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Hình thức" } }
+      }
+    },
+    "storefront.catalog.kindAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All exams" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tất cả kỳ thi" } }
+      }
+    },
+    "storefront.catalog.kindLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Kỳ thi" } }
+      }
+    },
+    "storefront.catalog.loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading catalog" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đang tải danh mục" } }
+      }
+    },
+    "storefront.catalog.noResultsDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Try another keyword or remove some filters." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thử từ khóa khác hoặc bỏ bớt bộ lọc." } }
+      }
+    },
+    "storefront.catalog.noResultsTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No matching exams found" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Không tìm thấy bài thi phù hợp" } }
+      }
+    },
+    "storefront.catalog.partAll" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All sections, subjects" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tất cả phần, môn" } }
+      }
+    },
+    "storefront.catalog.partLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Section/subject" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Phần/môn" } }
+      }
+    },
+    "storefront.catalog.searchLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search by name or code" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tìm theo tên hoặc mã" } }
+      }
+    },
+    "storefront.catalog.searchPlaceholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "For example: HSA FULL or HSA-FULL-01" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Ví dụ: HSA FULL hoặc HSA-FULL-01" } }
+      }
+    },
+    "storefront.catalog.selectExamPlaceholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select an exam to see its details." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chọn một bài thi để xem chi tiết." } }
+      }
+    },
+    "storefront.catalog.showing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Showing {from}–{to} of {total} exams on sale" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Hiển thị {from}–{to} trong {total} bài thi đang mở bán" } }
+      }
+    },
+    "storefront.catalog.sort.NEWEST" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Newest" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mới công bố" } }
+      }
+    },
+    "storefront.catalog.sort.PRICE_ASC" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Price: low to high" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giá tăng dần" } }
+      }
+    },
+    "storefront.catalog.sort.PRICE_DESC" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Price: high to low" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giá giảm dần" } }
+      }
+    },
+    "storefront.catalog.sortLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sort by" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Sắp xếp" } }
+      }
+    },
+    "storefront.catalog.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose an exam" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chọn bài thi" } }
+      }
+    },
+    "storefront.detail.answerType.CLOZE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fill in the blank" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Điền khuyết" } }
+      }
+    },
+    "storefront.detail.answerType.ESSAY" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Essay" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tự luận" } }
+      }
+    },
+    "storefront.detail.answerType.MATCHING" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Matching" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Ghép đôi" } }
+      }
+    },
+    "storefront.detail.answerType.MULTIPLE_CHOICE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Multiple choice" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Trắc nghiệm nhiều đáp án" } }
+      }
+    },
+    "storefront.detail.answerType.QUESTION_SET" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Question set" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chùm câu hỏi" } }
+      }
+    },
+    "storefront.detail.answerType.SHORT_ANSWER" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Short answer" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Trả lời ngắn" } }
+      }
+    },
+    "storefront.detail.answerType.SINGLE_CHOICE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Single choice" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Trắc nghiệm một đáp án" } }
+      }
+    },
+    "storefront.detail.answerType.TRUE_FALSE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "True/False" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đúng/Sai" } }
+      }
+    },
+    "storefront.detail.answerTypeCount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{type}: {count}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{type}: {count}" } }
+      }
+    },
+    "storefront.detail.attemptsPerPurchase" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, one {# attempt per purchase} other {# attempts per purchase}}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{count, plural, other {# lượt thi mỗi lần mua}}" } }
+      }
+    },
+    "storefront.detail.audience" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Who it is for" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đối tượng phù hợp" } }
+      }
+    },
+    "storefront.detail.choicesTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Options within the purchase" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Phần được chọn trong phạm vi mua" } }
+      }
+    },
+    "storefront.detail.chooseSubjects" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose {count} of {total} subjects" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chọn {count} trong {total} môn" } }
+      }
+    },
+    "storefront.detail.codeLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Product code" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mã sản phẩm" } }
+      }
+    },
+    "storefront.detail.columns.duration" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Duration" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thời lượng" } }
+      }
+    },
+    "storefront.detail.columns.maxPoints" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Max points" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Điểm tối đa" } }
+      }
+    },
+    "storefront.detail.columns.nature" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Type" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tính chất" } }
+      }
+    },
+    "storefront.detail.columns.order" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Order" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thứ tự" } }
+      }
+    },
+    "storefront.detail.columns.part" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Section" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Phần" } }
+      }
+    },
+    "storefront.detail.columns.questions" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Questions" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Số câu" } }
+      }
+    },
+    "storefront.detail.countsByPick" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Questions per subject by number of subjects chosen: {counts}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Số câu mỗi môn theo số môn đã chọn: {counts}" } }
+      }
+    },
+    "storefront.detail.how.answerTypes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Question types" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Dạng câu hỏi" } }
+      }
+    },
+    "storefront.detail.how.essayNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Essay sections are graded by hand. The total score is available once grading is finished." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Phần tự luận chấm tay. Điểm tổng có sau khi chấm xong." } }
+      }
+    },
+    "storefront.detail.how.maxScore" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{score} points" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{score} điểm" } }
+      }
+    },
+    "storefront.detail.how.noEssay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No essay section:" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Không có phần tự luận:" } }
+      }
+    },
+    "storefront.detail.how.points" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{value} points" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{value} điểm" } }
+      }
+    },
+    "storefront.detail.how.scoring" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scoring" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thang điểm" } }
+      }
+    },
+    "storefront.detail.how.switching" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Moving between sections" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chuyển phần" } }
+      }
+    },
+    "storefront.detail.how.switchingValue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Taken in order. When time runs out or you submit early, the next section opens right away; you cannot go back to a closed section." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Làm tuần tự. Hết giờ hoặc nộp sớm thì phần sau mở ngay; không quay lại phần đã đóng." } }
+      }
+    },
+    "storefront.detail.how.timing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timing" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thời gian" } }
+      }
+    },
+    "storefront.detail.how.timingPER_PART" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Timed per section. The clock runs on the server." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tính giờ từng phần. Đồng hồ tính theo máy chủ." } }
+      }
+    },
+    "storefront.detail.how.timingSHARED" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "One shared clock for the whole exam. The clock runs on the server." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Một đồng hồ chung cho cả bài. Đồng hồ tính theo máy chủ." } }
+      }
+    },
+    "storefront.detail.howTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "How it works and how it is graded" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Cách làm và cách chấm" } }
+      }
+    },
+    "storefront.detail.includesTax" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tax and fees included" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đã gồm thuế, phí" } }
+      }
+    },
+    "storefront.detail.objectives" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Objectives" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mục tiêu" } }
+      }
+    },
+    "storefront.detail.optional" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Optional" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Tự chọn" } }
+      }
+    },
+    "storefront.detail.perAttempt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{questions} questions · {minutes} minutes per attempt" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{questions} câu · {minutes} phút mỗi lượt" } }
+      }
+    },
+    "storefront.detail.policy.contactLine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Send a request via: {contact}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Gửi yêu cầu qua: {contact}" } }
+      }
+    },
+    "storefront.detail.policy.hoursLine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Support hours: {hours}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giờ hỗ trợ: {hours}" } }
+      }
+    },
+    "storefront.detail.policy.priceNote" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Prices are in VND, tax and fees included." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giá bán bằng VND, đã gồm thuế, phí." } }
+      }
+    },
+    "storefront.detail.policy.refund" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Refund for system errors: {policy}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Hoàn tiền khi lỗi hệ thống: {policy}" } }
+      }
+    },
+    "storefront.detail.policy.refundPending" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "per the policy published by the operating unit; if you need help, contact support through the channels listed below." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "theo chính sách do đơn vị vận hành công bố; cần hỗ trợ, hãy liên hệ qua các kênh ghi ngay bên dưới." } }
+      }
+    },
+    "storefront.detail.policy.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Price and policy" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giá và chính sách" } }
+      }
+    },
+    "storefront.detail.priceHeading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Price" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giá bán" } }
+      }
+    },
+    "storefront.detail.promoEnds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ends {date}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Kết thúc {date}" } }
+      }
+    },
+    "storefront.detail.required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Required" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bắt buộc" } }
+      }
+    },
+    "storefront.detail.rights.afterEssay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "After the grader finishes grading" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Sau khi người chấm chấm xong" } }
+      }
+    },
+    "storefront.detail.rights.afterGrading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Right after grading is done" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Ngay sau khi chấm xong" } }
+      }
+    },
+    "storefront.detail.rights.ai" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI explanations" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giải thích bằng AI" } }
+      }
+    },
+    "storefront.detail.rights.attempts" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Attempts" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Số lượt" } }
+      }
+    },
+    "storefront.detail.rights.no" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Không" } }
+      }
+    },
+    "storefront.detail.rights.noteLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Note:" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Ghi chú:" } }
+      }
+    },
+    "storefront.detail.rights.practice" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Extra practice" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Ôn luyện bổ sung" } }
+      }
+    },
+    "storefront.detail.rights.resultTiming" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "When you can see the result" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Thời điểm xem kết quả" } }
+      }
+    },
+    "storefront.detail.rights.resultView" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Result detail" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Mức xem kết quả" } }
+      }
+    },
+    "storefront.detail.rights.resultViews.FULL_SOLUTION" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Score, answers and solutions" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Điểm, đáp án và lời giải" } }
+      }
+    },
+    "storefront.detail.rights.resultViews.SCORE" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Score only" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Chỉ điểm" } }
+      }
+    },
+    "storefront.detail.rights.resultViews.SCORE_AND_ANSWERS" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Score and answers" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Điểm và đáp án" } }
+      }
+    },
+    "storefront.detail.rights.strengths" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Strengths and weaknesses report" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đánh giá điểm mạnh, điểm yếu" } }
+      }
+    },
+    "storefront.detail.rights.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Usage benefits" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Quyền lợi sử dụng" } }
+      }
+    },
+    "storefront.detail.rights.yes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Yes" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Có" } }
+      }
+    },
+    "storefront.detail.structureCaption" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sections in the order you take them" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Các phần theo thứ tự làm bài" } }
+      }
+    },
+    "storefront.detail.structureTitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exam structure" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Cấu trúc bài thi" } }
+      }
+    },
+    "storefront.detail.structureTotal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{questions} questions · {minutes} minutes" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{questions} câu · {minutes} phút" } }
+      }
+    },
+    "storefront.detail.subjectAnswerTypes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "<examContent>{subject}</examContent>: {types}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "<examContent>{subject}</examContent>: {types}" } }
+      }
+    },
+    "storefront.discount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{percent}% off" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giảm {percent}%" } }
+      }
+    },
+    "storefront.gone.descriptionTail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "is no longer on sale. You can pick another exam from the catalog." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "không còn mở bán. Bạn có thể chọn bài thi khác trong danh mục." } }
+      }
+    },
+    "storefront.gone.eyebrow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ERROR 410" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "MÃ LỖI 410" } }
+      }
+    },
+    "storefront.gone.myExams" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "My exams" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bài thi của tôi" } }
+      }
+    },
+    "storefront.gone.owned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "If you already bought this exam, your access and remaining attempts are still in My exams." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Nếu đã mua bài này, quyền và số lượt còn lại của bạn vẫn ở Bài thi của tôi." } }
+      }
+    },
+    "storefront.gone.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This exam is no longer on sale" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Bài thi đã ngừng bán" } }
+      }
+    },
+    "storefront.gone.toCatalog" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back to the exam catalog" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Về danh mục bài thi" } }
+      }
+    },
+    "storefront.listPriceLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "List price" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Giá gốc" } }
+      }
+    },
+    "storefront.notFound.description" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The link is wrong or the exam has not been published." } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Đường dẫn không đúng hoặc bài thi chưa được công bố." } }
+      }
+    },
+    "storefront.notFound.eyebrow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ERROR 404" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "MÃ LỖI 404" } }
+      }
+    },
+    "storefront.notFound.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exam not found" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Không tìm thấy bài thi" } }
+      }
+    },
+    "storefront.notFound.toCatalog" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back to the exam catalog" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Về danh mục bài thi" } }
+      }
+    },
+    "storefront.price" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "{amount, number} VND" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "{amount, number} đ" } }
+      }
+    },
+    "storefront.promoEnds" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ends {date}" } },
+        "vi" : { "stringUnit" : { "state" : "translated", "value" : "Kết thúc {date}" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

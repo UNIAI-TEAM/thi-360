@@ -36,18 +36,12 @@ private final class HomePlaceholderNetworkSpyURLProtocol: URLProtocol {
 @MainActor
 final class HomePlaceholderScreenTests: XCTestCase {
     func testHomePlaceholderExposesLocalizedTitleAndEmptyMessage() {
-        XCTAssertTrue(Destination.home.isPlaceholder)
         XCTAssertEqual(ShellStrings.text(Destination.home.titleKey, locale: .vi), "Trang chủ")
         XCTAssertEqual(ShellStrings.text(Destination.home.titleKey, locale: .en), "Home")
-        XCTAssertEqual(ShellStrings.text("shell.placeholder.title", locale: .vi), "Chưa có nội dung")
-        XCTAssertEqual(ShellStrings.text("shell.placeholder.title", locale: .en), "No content yet")
-
-        let key = Destination.home.placeholderDescriptionKey
-        XCTAssertNotNil(key)
-        if let key {
-            XCTAssertFalse(ShellStrings.text(key, locale: .vi).isEmpty)
-            XCTAssertFalse(ShellStrings.text(key, locale: .en).isEmpty)
-        }
+        XCTAssertEqual(CatalogStrings.text("storefront.catalog.title", locale: .vi), "Chọn bài thi")
+        XCTAssertEqual(CatalogStrings.text("storefront.catalog.title", locale: .en), "Choose an exam")
+        XCTAssertEqual(CatalogStrings.text("storefront.catalog.emptyTitle", locale: .vi), "Hiện chưa có bài thi nào đang mở bán")
+        XCTAssertEqual(CatalogStrings.text("storefront.catalog.emptyTitle", locale: .en), "No exams are on sale right now")
     }
 
     func testRenderingHomePlaceholderPerformsZeroNetworkRequests() {
