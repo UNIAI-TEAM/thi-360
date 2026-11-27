@@ -330,7 +330,7 @@ export function OrdersView({
     <div className="min-h-screen bg-page text-text">
       <StudentHeader account={account} />
 
-      <main className="mx-auto flex max-w-[1170px] flex-col gap-6 px-4 py-10 sm:px-6">
+      <main className="mx-auto flex max-w-[1440px] flex-col gap-6 px-4 py-10 sm:px-6">
         {sessionQuery.isLoading && (
           <div role="status" aria-busy="true" aria-label={common("loading")} className="flex flex-col gap-4">
             <Skeleton className="h-9.5 w-48 max-w-full" />

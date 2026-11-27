@@ -149,7 +149,7 @@ export function BundleDetailView({
     unavailable || (product as ProductDetail & { saleState?: string }).saleState === "UNAVAILABLE";
 
   return (
-    <div className="mx-auto flex w-full max-w-[1170px] flex-col gap-6 px-4 py-6 sm:px-6">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-6 sm:px-6">
       <nav aria-label={detail("breadcrumbLabel")}>
         <ol className="flex flex-wrap items-center gap-2 text-field-label text-text-muted">
           <li>

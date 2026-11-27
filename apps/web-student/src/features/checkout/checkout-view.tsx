@@ -633,7 +633,7 @@ export function CheckoutView({
     <div className="min-h-screen bg-page text-text">
       <StudentHeader account={account} />
 
-      <main className="mx-auto flex w-full max-w-[1170px] flex-col gap-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-center gap-3 text-body">
           <Link
             href={`/exams/${encodeURIComponent(code)}`}

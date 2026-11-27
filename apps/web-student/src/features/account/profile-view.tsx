@@ -104,7 +104,7 @@ export function ProfileView({ loadCurrentSession = loadSession }: { loadCurrentS
   return (
     <div className="min-h-screen bg-page text-text">
       <StudentHeader account={account} />
-      <main className="mx-auto flex max-w-[1170px] flex-col gap-6 px-4 py-10 sm:px-6">
+      <main className="mx-auto flex max-w-[1440px] flex-col gap-6 px-4 py-10 sm:px-6">
         {profileQuery.isLoading && (
           <div role="status" aria-label={common("loading")} className="flex flex-col gap-6">
             <div className="flex flex-col gap-1.5">

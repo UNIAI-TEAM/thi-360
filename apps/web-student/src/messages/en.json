@@ -2025,8 +2025,6 @@
     "logout": "Sign out",
     "logoutFailed": "Unable to sign out. Please try again.",
     "menuLabel": "Account",
-    "profile": "Profile",
-    "studentPortal": "Student portal",
     "trigger": "Account menu"
   }
 }

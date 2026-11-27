@@ -878,7 +878,7 @@ describe("CheckoutView", () => {
     expect(screen.getByText("Extra practice: No")).toBeInTheDocument();
 
     const mainEl = screen.getByRole("main");
-    expect(mainEl).toHaveClass("max-w-[1170px]");
+    expect(mainEl).toHaveClass("max-w-[1440px]");
     expect(within(mainEl).getByRole("link", { name: "Back to exam" })).toHaveClass("focus-visible:ring-primary-text");
     expect(within(mainEl).getByRole("link", { name: "Sign in with another account" })).toHaveClass(
       "focus-visible:ring-primary-text",
