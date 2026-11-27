@@ -14,7 +14,7 @@ final class CatalogStatesTests: XCTestCase {
         let emptyData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200-empty.json"
+            variant: "empty"
         )
 
         let stack = try CatalogTestStackFactory.makeStack { transport in
@@ -69,12 +69,12 @@ final class CatalogStatesTests: XCTestCase {
         let populatedData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let emptyData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200-empty.json"
+            variant: "empty"
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,
@@ -141,7 +141,7 @@ final class CatalogStatesTests: XCTestCase {
         let productsData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,
@@ -161,7 +161,7 @@ final class CatalogStatesTests: XCTestCase {
             }
             transport.register(method: .get, path: "/api/v1/public/storefront/products") { _ in
                 if mode.get() == 429 {
-                    return ContractFakeTransport.jsonResponse(statusCode: 429, data: rateLimit429, headers: ["Retry-After": "1"])
+                    return ContractFakeTransport.jsonResponse(statusCode: 429, data: rateLimit429, headers: ["Retry-After": "2"])
                 }
                 return ContractFakeTransport.jsonResponse(statusCode: 200, data: productsData)
             }
@@ -171,24 +171,28 @@ final class CatalogStatesTests: XCTestCase {
             UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName)
         }
 
-        let feed = CatalogFeed(accountId: "acc-1", api: stack.api)
+        let clock = ManualClock()
+        let feed = CatalogFeed(accountId: "acc-1", api: stack.api, clock: clock)
         await feed.selectKind("HSA")
         guard case let .failed(kind500, true, _) = feed.loadState else {
             return XCTFail("Expected server failure on filters 500, got \(feed.loadState)")
         }
         XCTAssertEqual(kind500, .server)
         XCTAssertEqual(feed.query.kind, "HSA")
+        XCTAssertTrue(feed.canRetryNow)
 
         mode.set(429)
         stack.transport.resetRecordedRequests()
         await feed.retry()
         XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/filters"), 1)
         XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products"), 1)
-        guard case let .failed(kind429, true, _) = feed.loadState else {
+        guard case let .failed(kind429, true, retryAfter429) = feed.loadState else {
             return XCTFail("Expected server failure on 429, got \(feed.loadState)")
         }
         XCTAssertEqual(kind429, .server)
+        XCTAssertEqual(retryAfter429, 2)
         XCTAssertEqual(feed.query.kind, "HSA")
+        XCTAssertFalse(feed.canRetryNow)
 
         let listView = CatalogListColumnView(
             feed: feed,
@@ -200,6 +204,7 @@ final class CatalogStatesTests: XCTestCase {
         )
         XCTAssertEqual(listView.serverErrorMessages.message, "Chưa tải được danh mục bài thi. Bộ lọc của bạn vẫn được giữ.")
         XCTAssertEqual(listView.serverErrorMessages.retryLabel, "Thử lại")
+        XCTAssertTrue(listView.isRetryBlocked)
 
         let (window, controller) = CatalogViewInspector.host(
             listView
@@ -211,6 +216,12 @@ final class CatalogStatesTests: XCTestCase {
 
         mode.set(200)
         stack.transport.resetRecordedRequests()
+        await feed.retry()
+        XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products"), 0, "Retry must stay blocked during Retry-After cooldown")
+
+        clock.advance(by: 2.0)
+        XCTAssertTrue(feed.canRetryNow)
+        XCTAssertFalse(listView.isRetryBlocked)
         await feed.retry()
         XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/filters"), 1)
         XCTAssertEqual(stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products"), 1)
@@ -225,7 +236,7 @@ final class CatalogStatesTests: XCTestCase {
         let productsData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,
@@ -249,7 +260,12 @@ final class CatalogStatesTests: XCTestCase {
             UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName)
         }
 
-        let feed = CatalogFeed(accountId: "acc-1", api: stack.api)
+        let pathObserver = FakeNetworkPathObserver()
+        let monitor = ConnectivityMonitor(initialIsOnline: false, observer: pathObserver, autoStart: false)
+        monitor.start()
+
+        let feed = CatalogFeed(accountId: "acc-1", api: stack.api, connectivityMonitor: monitor)
+        defer { feed.cancelAllTasks() }
         await feed.loadInitialIfNeeded()
 
         guard case let .failed(kind, true, _) = feed.loadState else {
@@ -278,10 +294,15 @@ final class CatalogStatesTests: XCTestCase {
         offlineWindow.isHidden = true
 
         offline.set(false)
-        await feed.retry()
-        XCTAssertEqual(feed.loadedCards.count, 2)
+        pathObserver.emit(isOnline: true)
+        let onlineDeadline = Date().addingTimeInterval(2.0)
+        while feed.loadedCards.isEmpty && Date() < onlineDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        XCTAssertEqual(feed.loadedCards.count, 2, "ConnectivityMonitor regaining network must auto-load offline Home")
 
         offline.set(true)
+        pathObserver.emit(isOnline: false)
         await feed.selectKind("HSA")
         guard case let .loaded(preservedPage, stale) = feed.loadState else {
             return XCTFail("Expected preserved cards with stale banner, got \(feed.loadState)")
@@ -300,6 +321,19 @@ final class CatalogStatesTests: XCTestCase {
         defer { staleWindow.isHidden = true }
         let (_, stalePNG) = try CatalogViewInspector.renderPNG(window: staleWindow, size: CGSize(width: 390, height: 844))
         XCTAssertNotEqual(offlinePNG, stalePNG)
+
+        offline.set(false)
+        pathObserver.emit(isOnline: true)
+        let recoverDeadline = Date().addingTimeInterval(2.0)
+        while feed.staleFailureKind != nil && Date() < recoverDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        if case let .loaded(refreshedPage, isStillStale) = feed.loadState {
+            XCTAssertFalse(isStillStale)
+            XCTAssertEqual(refreshedPage.cards.count, 2)
+        } else {
+            XCTFail("Expected stale offline catalog to auto-recover on online transition, got \(feed.loadState)")
+        }
     }
 }
 

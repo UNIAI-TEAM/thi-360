@@ -81,12 +81,26 @@ final class CatalogFeedRegistry {
     private final class Entry {
         weak var router: AppRouter?
         weak var sessionStore: SessionStore?
+        var accountId: String?
+        var normalizedUsername: String?
+        var refreshToken: String?
         var reloadCount: Int
         var feed: CatalogFeed
 
-        init(router: AppRouter, sessionStore: SessionStore?, reloadCount: Int, feed: CatalogFeed) {
+        init(
+            router: AppRouter,
+            sessionStore: SessionStore?,
+            accountId: String?,
+            normalizedUsername: String?,
+            refreshToken: String?,
+            reloadCount: Int,
+            feed: CatalogFeed
+        ) {
             self.router = router
             self.sessionStore = sessionStore
+            self.accountId = accountId
+            self.normalizedUsername = normalizedUsername
+            self.refreshToken = refreshToken
             self.reloadCount = reloadCount
             self.feed = feed
         }
@@ -100,20 +114,62 @@ final class CatalogFeedRegistry {
         connectivityMonitor: ConnectivityMonitor?,
         apiOverride: (any CatalogAPIClientProtocol)? = nil
     ) -> CatalogFeed {
-        pruneDeallocated()
+        pruneInvalidEntries()
         let key = ObjectIdentifier(router)
-        let currentAccountId = sessionStore?.currentAccountId
+
+        if let sessionStore, !sessionStore.state.isAuthenticated {
+            evict(for: key)
+            return CatalogFeed(
+                accountId: nil,
+                api: apiOverride ?? PreviewEmptyCatalogAPI(),
+                connectivityMonitor: connectivityMonitor
+            )
+        }
+
+        let currentAccountId = Self.trimmedNonEmpty(sessionStore?.currentAccountId)
+        let currentUsername = Self.normalizedUsername(sessionStore?.currentUsername)
+        let currentRefreshToken = Self.trimmedNonEmpty(sessionStore?.currentRefreshToken)
         let currentReload = router.reloadCount(for: .home)
 
         if let existing = entries[key],
-           existing.feed.accountId == currentAccountId,
            existing.sessionStore === sessionStore,
            existing.reloadCount == currentReload
         {
-            return existing.feed
+            if let existingAccountId = existing.accountId, existingAccountId == currentAccountId {
+                if let currentUsername { existing.normalizedUsername = currentUsername }
+                if let currentRefreshToken { existing.refreshToken = currentRefreshToken }
+                return existing.feed
+            }
+            if existing.accountId == nil, let currentAccountId {
+                let sameUsername = existing.normalizedUsername != nil && existing.normalizedUsername == currentUsername
+                let sameRefreshToken = existing.normalizedUsername == nil
+                    && currentUsername == nil
+                    && existing.refreshToken != nil
+                    && existing.refreshToken == currentRefreshToken
+                if sameUsername || sameRefreshToken {
+                    existing.accountId = currentAccountId
+                    if let currentUsername { existing.normalizedUsername = currentUsername }
+                    if let currentRefreshToken { existing.refreshToken = currentRefreshToken }
+                    existing.feed.adoptAccountIdIfMissing(currentAccountId)
+                    return existing.feed
+                }
+            }
+            if existing.accountId == nil && currentAccountId == nil {
+                if sessionStore == nil {
+                    return existing.feed
+                }
+                if existing.normalizedUsername != nil || currentUsername != nil {
+                    if existing.normalizedUsername == currentUsername {
+                        if let currentRefreshToken { existing.refreshToken = currentRefreshToken }
+                        return existing.feed
+                    }
+                } else if existing.refreshToken == currentRefreshToken {
+                    return existing.feed
+                }
+            }
         }
 
-        entries[key]?.feed.cancelAllTasks()
+        evict(for: key)
         let api: any CatalogAPIClientProtocol = apiOverride
             ?? sessionStore.map { CatalogAPI(apiClient: $0.apiClient) }
             ?? PreviewEmptyCatalogAPI()
@@ -122,28 +178,72 @@ final class CatalogFeedRegistry {
             api: api,
             connectivityMonitor: connectivityMonitor
         )
-        entries[key] = Entry(
+        let entry = Entry(
             router: router,
             sessionStore: sessionStore,
+            accountId: currentAccountId,
+            normalizedUsername: currentUsername,
+            refreshToken: currentRefreshToken,
             reloadCount: currentReload,
             feed: freshFeed
         )
+        entries[key] = entry
+        if let sessionStore {
+            observeSessionState(for: key, entry: entry, sessionStore: sessionStore)
+        }
         return freshFeed
     }
 
     func existingFeed(for router: AppRouter) -> CatalogFeed? {
-        pruneDeallocated()
+        pruneInvalidEntries()
         return entries[ObjectIdentifier(router)]?.feed
     }
 
     func clear(for router: AppRouter) {
-        let key = ObjectIdentifier(router)
+        evict(for: ObjectIdentifier(router))
+    }
+
+    private func evict(for key: ObjectIdentifier) {
         entries[key]?.feed.cancelAllTasks()
         entries.removeValue(forKey: key)
     }
 
-    private func pruneDeallocated() {
-        entries = entries.filter { _, entry in entry.router != nil }
+    private func pruneInvalidEntries() {
+        let staleKeys = entries.compactMap { key, entry -> ObjectIdentifier? in
+            if entry.router == nil { return key }
+            if let sessionStore = entry.sessionStore, !sessionStore.state.isAuthenticated { return key }
+            return nil
+        }
+        for key in staleKeys {
+            evict(for: key)
+        }
+    }
+
+    private func observeSessionState(for key: ObjectIdentifier, entry: Entry, sessionStore: SessionStore) {
+        withObservationTracking {
+            _ = sessionStore.state
+        } onChange: { [weak self, weak entry, weak sessionStore] in
+            Task { @MainActor in
+                guard let self, let entry, let sessionStore else { return }
+                guard self.entries[key] === entry else { return }
+                if !sessionStore.state.isAuthenticated {
+                    self.evict(for: key)
+                    return
+                }
+                self.observeSessionState(for: key, entry: entry, sessionStore: sessionStore)
+            }
+        }
+    }
+
+    private static func trimmedNonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private static func normalizedUsername(_ value: String?) -> String? {
+        trimmedNonEmpty(value)?.lowercased()
     }
 }
 

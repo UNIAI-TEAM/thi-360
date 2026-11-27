@@ -10,22 +10,22 @@ final class CatalogTwoColumnTests: XCTestCase {
         let examDetail = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "exam"
+            variant: "exam"
         )
         let bundleDetail = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "bundle"
+            variant: "bundle"
         )
         let emptyList = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200-empty.json"
+            variant: "empty"
         )
         let normalList = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let filtersData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontFilters.id,
@@ -67,8 +67,7 @@ final class CatalogTwoColumnTests: XCTestCase {
             feed: feed,
             router: router,
             locale: .vi,
-            showsBrandHeader: false,
-            api: stack.api
+            showsBrandHeader: false
         )
         .environment(\.brandPalette, .defaultLight)
         .environment(\.statusPalette, .light)
@@ -104,8 +103,7 @@ final class CatalogTwoColumnTests: XCTestCase {
             feed: feed,
             router: router,
             locale: .vi,
-            showsBrandHeader: true,
-            api: stack.api
+            showsBrandHeader: true
         )
         .environment(\.brandPalette, .defaultLight)
         .environment(\.statusPalette, .light)
@@ -136,7 +134,7 @@ final class CatalogTwoColumnTests: XCTestCase {
             let examDetail = try CatalogTestFixtures.loadIndexedData(
                 operationId: Operations.getStorefrontProduct.id,
                 status: 200,
-                fileContains: "exam"
+                variant: "exam"
             )
             transport.registerJSON(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01", data: examDetail)
         }
@@ -177,6 +175,90 @@ final class CatalogTwoColumnTests: XCTestCase {
 
         let (_, afterSelectPNG) = try CatalogViewInspector.renderPNG(window: window, size: duoSize)
         XCTAssertNotEqual(beforeSelectPNG, afterSelectPNG, "Right Duo pane must visibly transition from placeholder to EXAM-DEMO-01 detail")
+
+        stack.transport.resetRecordedRequests()
+        router.switchTab(.history)
+        CatalogViewInspector.settle(window: window, seconds: 0.12)
+        router.switchTab(.home)
+        try await waitUntil(window: window) {
+            let batches = stack.transport
+                .requests(method: .post, path: "/api/v1/me/exam-access/query")
+                .map(CatalogTestStackFactory.accessRequestCodes(from:))
+            return batches.contains(["EXAM-DEMO-01", "BUNDLE-DEMO-01"]) && batches.contains(["EXAM-DEMO-01"])
+        }
+        XCTAssertEqual(
+            stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products"),
+            0,
+            "Returning to Home on iPhone Duo must NOT re-fetch /products"
+        )
+        XCTAssertEqual(
+            stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01"),
+            0,
+            "Returning to Home on iPhone Duo must retain loaded detail without re-fetching /products/{code}"
+        )
+    }
+
+    func testIPadSidebarTabSwitchRetainsDetailAndRefreshesAccessWithoutReloadingProducts() async throws {
+        let stack = try CatalogTestStackFactory.makeStack { transport in
+            try CatalogTestStackFactory.registerDefaultStorefrontFixtures(on: transport)
+            let examDetail = try CatalogTestFixtures.loadIndexedData(
+                operationId: Operations.getStorefrontProduct.id,
+                status: 200,
+                variant: "exam"
+            )
+            transport.registerJSON(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01", data: examDetail)
+        }
+        defer {
+            UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName)
+        }
+
+        let router = AppRouter(initialDestination: .home)
+        defer { CatalogFeedRegistry.shared.clear(for: router) }
+
+        let shell = AdaptiveShellView(
+            router: router,
+            preferences: stack.preferences,
+            idiom: .pad,
+            sessionStore: stack.sessionStore
+        )
+        .environment(\.sessionStore, stack.sessionStore)
+        .environment(\.brandPalette, .defaultLight)
+        .environment(\.statusPalette, .light)
+
+        let padSize = CGSize(width: 1180, height: 820)
+        let (window, _) = CatalogViewInspector.host(shell, size: padSize, sizeClass: .regular, settleSeconds: 0.25)
+        defer { window.isHidden = true }
+
+        let feed = try XCTUnwrap(CatalogFeedRegistry.shared.existingFeed(for: router))
+        try await waitUntil(window: window) { !feed.loadedCards.isEmpty }
+
+        feed.selectedProductCode = "EXAM-DEMO-01"
+        try await waitUntil(window: window) {
+            stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1
+        }
+        CatalogViewInspector.settle(window: window, seconds: 0.1)
+
+        stack.transport.resetRecordedRequests()
+        router.switchTab(.history)
+        CatalogViewInspector.settle(window: window, seconds: 0.12)
+        router.switchTab(.home)
+
+        try await waitUntil(window: window) {
+            let batches = stack.transport
+                .requests(method: .post, path: "/api/v1/me/exam-access/query")
+                .map(CatalogTestStackFactory.accessRequestCodes(from:))
+            return batches.contains(["EXAM-DEMO-01", "BUNDLE-DEMO-01"]) && batches.contains(["EXAM-DEMO-01"])
+        }
+        XCTAssertEqual(
+            stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products"),
+            0,
+            "Returning to Home on iPad sidebar must NOT re-fetch /products"
+        )
+        XCTAssertEqual(
+            stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01"),
+            0,
+            "Returning to Home on iPad sidebar must retain loaded detail without re-fetching /products/{code}"
+        )
     }
 
     private func waitUntil(

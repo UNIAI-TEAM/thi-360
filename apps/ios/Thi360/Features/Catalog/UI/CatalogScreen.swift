@@ -82,6 +82,7 @@ struct CatalogListColumnView: View {
     let showsBrandHeader: Bool
     let showsSelectionHighlight: Bool
     var imageLoader: ImageLoader? = nil
+    var isActiveForScrollTracking: Bool = true
     let onSelectProduct: (String) -> Void
     let onAccessButtonTap: (AccessButtonKind) -> Void
 
@@ -89,6 +90,40 @@ struct CatalogListColumnView: View {
     @State private var isFilterSheetPresented: Bool = false
     @State private var visibleCardCodes: Set<String> = []
     @State private var pendingScrollRestoreCode: String?
+    @State private var scrollRestoreNonce: Int = 0
+    @State private var cooldownTick: Int = 0
+
+    init(
+        feed: CatalogFeed,
+        locale: AppLocale,
+        showsBrandHeader: Bool,
+        showsSelectionHighlight: Bool,
+        imageLoader: ImageLoader? = nil,
+        isActiveForScrollTracking: Bool = true,
+        onSelectProduct: @escaping (String) -> Void,
+        onAccessButtonTap: @escaping (AccessButtonKind) -> Void
+    ) {
+        self.feed = feed
+        self.locale = locale
+        self.showsBrandHeader = showsBrandHeader
+        self.showsSelectionHighlight = showsSelectionHighlight
+        self.imageLoader = imageLoader
+        self.isActiveForScrollTracking = isActiveForScrollTracking
+        self.onSelectProduct = onSelectProduct
+        self.onAccessButtonTap = onAccessButtonTap
+        if let saved = feed.lastScrolledCardCode,
+           feed.loadedCards.contains(where: { $0.code == saved })
+        {
+            _pendingScrollRestoreCode = State(initialValue: saved)
+        } else {
+            _pendingScrollRestoreCode = State(initialValue: nil)
+        }
+    }
+
+    var isRetryBlocked: Bool {
+        guard let deadline = feed.retryAvailableAt else { return false }
+        return feed.clock.now < deadline
+    }
 
     var headingText: String {
         CatalogStrings.text("storefront.catalog.title", locale: locale)
@@ -137,6 +172,7 @@ struct CatalogListColumnView: View {
     }
 
     var body: some View {
+        let _ = cooldownTick
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
@@ -174,20 +210,48 @@ struct CatalogListColumnView: View {
                 await feed.pullToRefresh()
             }
             .accessibilityIdentifier("catalog.listScrollView")
-            .onAppear {
-                if let saved = feed.lastScrolledCardCode,
-                   feed.loadedCards.contains(where: { $0.code == saved })
-                {
-                    pendingScrollRestoreCode = saved
-                    proxy.scrollTo(saved, anchor: .center)
+            .onGeometryChange(for: CGSize.self, of: { $0.size }) { oldSize, newSize in
+                guard oldSize != .zero, oldSize != newSize, isActiveForScrollTracking else { return }
+                if let saved = feed.lastScrolledCardCode, !visibleCardCodes.contains(saved) {
+                    scheduleScrollRestoreIfNeeded(using: proxy)
                 }
             }
-            .task(id: pendingScrollRestoreCode) {
+            .onAppear {
+                scheduleScrollRestoreIfNeeded(using: proxy)
+            }
+            .onChange(of: isActiveForScrollTracking) { wasActive, isActive in
+                if wasActive && !isActive {
+                    if let saved = feed.lastScrolledCardCode,
+                       feed.loadedCards.contains(where: { $0.code == saved })
+                    {
+                        pendingScrollRestoreCode = saved
+                    }
+                } else if !wasActive && isActive {
+                    scheduleScrollRestoreIfNeeded(using: proxy)
+                }
+            }
+            .onChange(of: feed.lastScrolledCardCode) { _, newValue in
+                if newValue == nil {
+                    pendingScrollRestoreCode = nil
+                }
+            }
+            .task(id: scrollRestoreNonce) {
                 guard let saved = pendingScrollRestoreCode else { return }
-                try? await Task.sleep(nanoseconds: 80_000_000)
-                guard !Task.isCancelled else { return }
-                proxy.scrollTo(saved, anchor: .center)
-                try? await Task.sleep(nanoseconds: 120_000_000)
+                for attempt in 0..<10 {
+                    guard !Task.isCancelled else { return }
+                    guard isActiveForScrollTracking, feed.lastScrolledCardCode == saved else {
+                        pendingScrollRestoreCode = nil
+                        return
+                    }
+                    proxy.scrollTo(saved, anchor: .center)
+                    try? await Task.sleep(nanoseconds: attempt == 0 ? 50_000_000 : 80_000_000)
+                    guard !Task.isCancelled else { return }
+                    if visibleCardCodes.contains(saved) {
+                        proxy.scrollTo(saved, anchor: .center)
+                        try? await Task.sleep(nanoseconds: 60_000_000)
+                        break
+                    }
+                }
                 if !Task.isCancelled {
                     pendingScrollRestoreCode = nil
                 }
@@ -195,6 +259,17 @@ struct CatalogListColumnView: View {
             .onChange(of: feed.scrollToTopToken) { _, _ in
                 pendingScrollRestoreCode = nil
                 proxy.scrollTo("catalog.scrollTop", anchor: .top)
+            }
+        }
+        .task(id: feed.retryAvailableAt) {
+            guard let deadline = feed.retryAvailableAt else { return }
+            while !Task.isCancelled && feed.clock.now < deadline {
+                let remaining = deadline.timeIntervalSince(feed.clock.now)
+                let stepSeconds = min(max(remaining, 0.01), 0.1)
+                try? await Task.sleep(nanoseconds: UInt64(stepSeconds * 1_000_000_000))
+            }
+            if !Task.isCancelled {
+                cooldownTick &+= 1
             }
         }
         .background(palette.bgPageColor.ignoresSafeArea())
@@ -207,6 +282,19 @@ struct CatalogListColumnView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("catalog.listColumn")
+    }
+
+    private func scheduleScrollRestoreIfNeeded(using proxy: ScrollViewProxy) {
+        guard isActiveForScrollTracking,
+              let saved = feed.lastScrolledCardCode,
+              feed.loadedCards.contains(where: { $0.code == saved })
+        else {
+            pendingScrollRestoreCode = nil
+            return
+        }
+        pendingScrollRestoreCode = saved
+        scrollRestoreNonce &+= 1
+        proxy.scrollTo(saved, anchor: .center)
     }
 
     @ViewBuilder
@@ -223,6 +311,8 @@ struct CatalogListColumnView: View {
                 LoadStateView(
                     state: LoadState<Void>.failed(kind: .offline, canRetry: canRetry, retryAfter: retryAfter),
                     locale: locale,
+                    retryBlockedUntil: feed.retryAvailableAt,
+                    clock: feed.clock,
                     onRetry: {
                         Task { await feed.retry() }
                     }
@@ -239,7 +329,7 @@ struct CatalogListColumnView: View {
                     StaleBanner(
                         message: staleBannerMessage,
                         locale: locale,
-                        onRetry: {
+                        onRetry: isRetryBlocked ? nil : {
                             Task { await feed.retry() }
                         }
                     )
@@ -277,7 +367,7 @@ struct CatalogListColumnView: View {
                             .id(card.code)
                             .onAppear {
                                 visibleCardCodes.insert(card.code)
-                                if pendingScrollRestoreCode == nil {
+                                if isActiveForScrollTracking && pendingScrollRestoreCode == nil {
                                     feed.lastScrolledCardCode = card.code
                                 }
                                 if index >= max(0, page.cards.count - 2),
@@ -289,11 +379,6 @@ struct CatalogListColumnView: View {
                             }
                             .onDisappear {
                                 visibleCardCodes.remove(card.code)
-                                if pendingScrollRestoreCode == nil,
-                                   let anchor = page.cards.first(where: { visibleCardCodes.contains($0.code) })
-                                {
-                                    feed.lastScrolledCardCode = anchor.code
-                                }
                             }
                         }
 
@@ -417,6 +502,7 @@ struct CatalogListColumnView: View {
 
             if canRetry {
                 Button {
+                    guard !isRetryBlocked else { return }
                     Task { await feed.retry() }
                 } label: {
                     Text(AppStrings.common("common.retry", locale: locale))
@@ -427,10 +513,12 @@ struct CatalogListColumnView: View {
                         .background(
                             Capsule(style: .continuous)
                                 .fill(palette.primaryFillColor)
+                                .opacity(isRetryBlocked ? 0.5 : 1.0)
                         )
                         .contentShape(Capsule(style: .continuous))
                 }
                 .buttonStyle(.plain)
+                .disabled(isRetryBlocked)
                 .accessibilityIdentifier("catalog.error.retryButton")
             }
         }
@@ -515,9 +603,7 @@ struct CatalogListColumnView: View {
 }
 
 struct CatalogEmbeddedDetailView: View {
-    let code: String
-    let api: any CatalogAPIClientProtocol
-    let connectivityMonitor: ConnectivityMonitor?
+    @Bindable var viewModel: ProductDetailViewModel
     let locale: AppLocale
     let supportContact: SupportContact
     let imageLoader: ImageLoader?
@@ -529,47 +615,6 @@ struct CatalogEmbeddedDetailView: View {
     let onOpenMyExams: () -> Void
     let onAccessButtonTap: (AccessButtonKind) -> Void
     let onBuyBundle: (ProductDetailModel) -> Void
-
-    @State private var viewModel: ProductDetailViewModel
-
-    init(
-        code: String,
-        api: any CatalogAPIClientProtocol,
-        connectivityMonitor: ConnectivityMonitor?,
-        locale: AppLocale,
-        supportContact: SupportContact,
-        imageLoader: ImageLoader?,
-        showsInlineBackBar: Bool,
-        router: AppRouter,
-        onBack: (() -> Void)?,
-        onReturnToCatalog: @escaping () -> Void,
-        onOpenExam: @escaping (String) -> Void,
-        onOpenMyExams: @escaping () -> Void,
-        onAccessButtonTap: @escaping (AccessButtonKind) -> Void,
-        onBuyBundle: @escaping (ProductDetailModel) -> Void
-    ) {
-        self.code = code
-        self.api = api
-        self.connectivityMonitor = connectivityMonitor
-        self.locale = locale
-        self.supportContact = supportContact
-        self.imageLoader = imageLoader
-        self.showsInlineBackBar = showsInlineBackBar
-        self.router = router
-        self.onBack = onBack
-        self.onReturnToCatalog = onReturnToCatalog
-        self.onOpenExam = onOpenExam
-        self.onOpenMyExams = onOpenMyExams
-        self.onAccessButtonTap = onAccessButtonTap
-        self.onBuyBundle = onBuyBundle
-        _viewModel = State(
-            initialValue: ProductDetailViewModel(
-                code: code,
-                api: api,
-                connectivityMonitor: connectivityMonitor
-            )
-        )
-    }
 
     var body: some View {
         ProductDetailScreen(
@@ -603,10 +648,8 @@ struct CatalogHomeView: View {
     @Bindable var router: AppRouter
     let locale: AppLocale
     let showsBrandHeader: Bool
-    let api: any CatalogAPIClientProtocol
     var supportContact: SupportContact = AppEnvironment.current.supportContact
     var imageLoader: ImageLoader? = nil
-    var connectivityMonitor: ConnectivityMonitor? = nil
 
     @Environment(\.shellWidth) private var shellWidth
     @State private var selectionDebouncer = CatalogNavigationDebouncer()
@@ -628,6 +671,7 @@ struct CatalogHomeView: View {
                     showsBrandHeader: showsBrandHeader,
                     showsSelectionHighlight: true,
                     imageLoader: imageLoader,
+                    isActiveForScrollTracking: router.selectedDestination == .home,
                     onSelectProduct: handleSelectProduct,
                     onAccessButtonTap: { navigationHandler.handleAccessButton($0) }
                 )
@@ -642,14 +686,14 @@ struct CatalogHomeView: View {
                         showsBrandHeader: showsBrandHeader,
                         showsSelectionHighlight: shellWidth == .twoColumn,
                         imageLoader: imageLoader,
+                        isActiveForScrollTracking: router.selectedDestination == .home
+                            && (shellWidth == .twoColumn || feed.selectedProductCode == nil),
                         onSelectProduct: handleSelectProduct,
                         onAccessButtonTap: { navigationHandler.handleAccessButton($0) }
                     )
                 } detail: { selectedCode in
                     CatalogEmbeddedDetailView(
-                        code: selectedCode,
-                        api: api,
-                        connectivityMonitor: connectivityMonitor,
+                        viewModel: feed.detailViewModel(for: selectedCode),
                         locale: locale,
                         supportContact: supportContact,
                         imageLoader: imageLoader,
@@ -682,17 +726,30 @@ struct CatalogHomeView: View {
                 }
             }
         }
-        .task(id: feed.accountId) {
+        .task(id: ObjectIdentifier(feed)) {
             await feed.loadInitialIfNeeded()
+        }
+        .onAppear {
+            if router.selectedDestination == .home {
+                Task { await feed.refreshAccessOnHomeReturnIfNeeded() }
+            }
+        }
+        .onDisappear {
+            if router.selectedDestination != .home {
+                feed.markLeftHomeTab()
+            }
         }
         .onChange(of: feed.selectedProductCode) { oldCode, newCode in
             if oldCode != nil && newCode == nil {
+                feed.clearCachedDetailViewModel()
                 Task { await feed.refreshAccessOnReturn() }
             }
         }
         .onChange(of: router.selectedDestination) { oldDestination, newDestination in
-            if oldDestination != .home && newDestination == .home {
-                Task { await feed.refreshAccessOnReturn() }
+            if oldDestination == .home && newDestination != .home {
+                feed.markLeftHomeTab()
+            } else if oldDestination != .home && newDestination == .home {
+                Task { await feed.refreshAccessOnHomeReturnIfNeeded() }
             }
         }
         .onChange(of: router.path(for: .home).count) { oldCount, newCount in

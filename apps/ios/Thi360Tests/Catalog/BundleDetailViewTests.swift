@@ -164,7 +164,7 @@ final class BundleDetailViewTests: XCTestCase {
         let bundleData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "bundle"
+            variant: "bundle"
         )
         let notFoundData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,

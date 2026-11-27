@@ -53,6 +53,49 @@ final class CoverImageTests: XCTestCase {
 
         let nodes = CatalogViewInspector.collectNodes(in: controller.view, window: window)
         XCTAssertTrue(nodes.isEmpty, "ProductCardCoverView must expose zero accessibility elements, got: \(nodes)")
+
+        let detailModel = ProductDetailModel(
+            code: "EX-IMG-1",
+            name: "Sản phẩm EX-IMG-1",
+            summary: nil,
+            coverUrl: "/api/v1/public/covers/exam-01.png",
+            examKind: ExamKindInfo(code: "HSA", name: LocalizedLabel(nameVi: "HSA", nameEn: "HSA")),
+            format: "FULL",
+            scopeLabel: nil,
+            buildMode: "STANDARD",
+            questionCount: IntRangeValue(min: 50, max: 50),
+            durationMinutes: IntRangeValue(min: 75, max: 75),
+            maxPoints: DecimalRangeValue(min: 100, max: 100),
+            attemptsGranted: 2,
+            listPrice: 200_000,
+            price: 150_000,
+            promotion: nil,
+            versionNo: 1,
+            description: nil,
+            objectives: nil,
+            audience: nil,
+            parts: [],
+            choices: [],
+            scoring: DetailScoringModel(timing: nil, maxScore: 100, referenceMax: nil, practiceScoring: nil),
+            omittedEssayGroups: [],
+            benefits: DetailBenefitsModel(aiExplanation: false, strengthWeakness: false, practice: false, note: nil),
+            resultView: nil,
+            productType: "EXAM",
+            items: [],
+            saleState: nil
+        )
+        let detailCoverView = ExamDetailCoverView(product: detailModel, locale: .vi, imageLoader: loader)
+            .frame(width: 390)
+            .environment(\.brandPalette, .defaultLight)
+        let (detailWindow, detailController) = CatalogViewInspector.host(
+            detailCoverView,
+            size: CGSize(width: 390, height: 220),
+            settleSeconds: 0.2
+        )
+        defer { detailWindow.isHidden = true }
+
+        let detailNodes = CatalogViewInspector.collectNodes(in: detailController.view, window: detailWindow)
+        XCTAssertTrue(detailNodes.isEmpty, "ExamDetailCoverView must expose zero accessibility elements, got: \(detailNodes)")
     }
 
     func testBundleWithCoverURLUsesDefaultCoverAndMakesZeroImageRequests() throws {

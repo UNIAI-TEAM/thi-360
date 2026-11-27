@@ -7,24 +7,36 @@ import XCTest
 @testable import Thi360
 
 enum CatalogTestFixtures {
+    private struct IndexedFixtureEntry: Decodable {
+        let file: String
+        let operationId: String
+        let status: Int
+        let variant: String?
+    }
+
+    private static func loadIndexEntries() throws -> [IndexedFixtureEntry] {
+        let data = try ContractFixtureLoader.loadData(relativePath: "api/index.json")
+        return try JSONDecoder().decode([IndexedFixtureEntry].self, from: data)
+    }
+
     static func loadIndexedData(
         operationId: String,
         status: Int,
-        fileContains: String? = nil
+        variant: String? = nil
     ) throws -> Data {
-        let entries = try ContractFakeTransport.loadIndex()
-        let matches = entries.filter { entry in
-            guard entry.operationId == operationId, entry.status == status else { return false }
-            if let fileContains {
-                return entry.file.contains(fileContains)
-            }
-            return true
+        let entries = try loadIndexEntries()
+        let byOpStatus = entries.filter { $0.operationId == operationId && $0.status == status }
+        let matched: IndexedFixtureEntry?
+        if let variant {
+            matched = byOpStatus.first { ($0.variant ?? "") == variant }
+        } else {
+            matched = byOpStatus.first { ($0.variant ?? "").isEmpty } ?? byOpStatus.first
         }
-        guard let matched = matches.first else {
+        guard let matched else {
             throw NSError(
                 domain: "CatalogTestFixtures",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Missing indexed fixture for \(operationId) status=\(status) filter=\(fileContains ?? "*")"]
+                userInfo: [NSLocalizedDescriptionKey: "Missing indexed fixture for \(operationId) status=\(status) variant=\(variant ?? "*")"]
             )
         }
         let relative = matched.file.contains("/") ? matched.file : "api/\(matched.file)"
@@ -34,9 +46,9 @@ enum CatalogTestFixtures {
     static func loadJSONObject(
         operationId: String,
         status: Int,
-        fileContains: String? = nil
+        variant: String? = nil
     ) throws -> [String: Any] {
-        let data = try loadIndexedData(operationId: operationId, status: status, fileContains: fileContains)
+        let data = try loadIndexedData(operationId: operationId, status: status, variant: variant)
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw NSError(domain: "CatalogTestFixtures", code: 2)
         }
@@ -55,7 +67,7 @@ enum CatalogTestFixtures {
         let listRoot = try loadJSONObject(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         guard let baseItems = listRoot["items"] as? [[String: Any]], let template = baseItems.first else {
             throw NSError(domain: "CatalogTestFixtures", code: 3)
@@ -147,12 +159,12 @@ enum CatalogTestFixtures {
         return row
     }
 
-    // Plan A6 derivation: backend contract fixtures do not emit 500; derived by setting `code` to `INTERNAL_ERROR` on certified `storefront-products-list-429-rate-limited.json`.
+    // Plan A6 derivation: backend contract fixtures do not emit 500; derived by setting `code` to `INTERNAL_ERROR` on certified listStorefrontProducts 429 rate-limited fixture.
     static func makeInternalServerError500Data() throws -> Data {
         var root = try loadJSONObject(
             operationId: Operations.listStorefrontProducts.id,
             status: 429,
-            fileContains: "rate-limited"
+            variant: "rate-limited"
         )
         root["code"] = "INTERNAL_ERROR"
         return try encodeJSON(root)
@@ -162,45 +174,45 @@ enum CatalogTestFixtures {
         try loadIndexedData(
             operationId: Operations.listMyExams.id,
             status: 403,
-            fileContains: "forbidden"
+            variant: "forbidden"
         )
     }
 
-    // Plan A6 derivation: backend does not emit 200 with saleState="UNAVAILABLE" today; derived by setting only `saleState` on certified `storefront-products-detail-200-bundle.json`.
+    // Plan A6 derivation: backend does not emit 200 with saleState="UNAVAILABLE" today; derived by setting only `saleState` on certified getStorefrontProduct 200 bundle fixture.
     static func makeUnavailableBundle200Data() throws -> Data {
         var root = try loadJSONObject(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "bundle"
+            variant: "bundle"
         )
         root["saleState"] = "UNAVAILABLE"
         return try encodeJSON(root)
     }
 
-    // Plan A6 derivation: derived from certified `orders-create-409-product-unavailable.json` (and optional `storefront-products-detail-200-bundle.json` attached as `product`).
+    // Plan A6 derivation: derived from certified createMyOrder 409 product-unavailable fixture (and optional getStorefrontProduct 200 bundle fixture attached as `product`).
     static func makeUnavailableBundle409Data(includeProduct: Bool) throws -> Data {
         var errorRoot = try loadJSONObject(
             operationId: Operations.createMyOrder.id,
             status: 409,
-            fileContains: "product-unavailable"
+            variant: "product-unavailable"
         )
         if includeProduct {
             let bundle = try loadJSONObject(
                 operationId: Operations.getStorefrontProduct.id,
                 status: 200,
-                fileContains: "bundle"
+                variant: "bundle"
             )
             errorRoot["product"] = bundle
         }
         return try encodeJSON(errorRoot)
     }
 
-    // Plan A6 derivation: derived from certified `storefront-products-list-429-rate-limited.json`.
+    // Plan A6 derivation: derived from certified listStorefrontProducts 429 rate-limited fixture.
     static func makeRateLimited429Data() throws -> Data {
         try loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 429,
-            fileContains: "rate-limited"
+            variant: "rate-limited"
         )
     }
 
@@ -364,7 +376,7 @@ enum CatalogTestStackFactory {
         let products = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let access = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,

@@ -33,8 +33,7 @@ final class CatalogViewTests: XCTestCase {
             feed: feed,
             router: router,
             locale: .vi,
-            showsBrandHeader: true,
-            api: stack.api
+            showsBrandHeader: true
         )
         .environment(\.brandPalette, .defaultLight)
         .environment(\.statusPalette, .light)

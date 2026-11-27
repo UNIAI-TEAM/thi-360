@@ -14,18 +14,57 @@ final class CatalogFlowUITests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        let apiDir = repoRoot.appendingPathComponent("contracts/mobile/api", isDirectory: true)
-        let authDir = repoRoot.appendingPathComponent("contracts/mobile/auth", isDirectory: true)
-
-        let filtersData = try Data(contentsOf: apiDir.appendingPathComponent("storefront-filters-200.json"))
-        let listBaseData = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-list-200.json"))
-        let examDetailBaseData = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-detail-200-exam.json"))
-        let notFoundData = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-detail-404-not-found.json"))
-        let accessBaseData = try Data(contentsOf: apiDir.appendingPathComponent("exam-access-query-200.json"))
-        let loginData = try Data(contentsOf: authDir.appendingPathComponent("login-200.json"))
-        let refreshData = try Data(contentsOf: authDir.appendingPathComponent("refresh-200.json"))
-        let profileData = try Data(contentsOf: apiDir.appendingPathComponent("me-profile-200.json"))
-        let meData = try Data(contentsOf: apiDir.appendingPathComponent("me-200.json"))
+        let contractsMobileDir = repoRoot.appendingPathComponent("contracts/mobile", isDirectory: true)
+        let filtersData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "getStorefrontFilters",
+            status: 200
+        )
+        let listBaseData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "listStorefrontProducts",
+            status: 200,
+            variant: ""
+        )
+        let examDetailBaseData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "getStorefrontProduct",
+            status: 200,
+            variant: "exam"
+        )
+        let notFoundData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "getStorefrontProduct",
+            status: 404,
+            variant: "not-found"
+        )
+        let accessBaseData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "queryMyExamAccess",
+            status: 200
+        )
+        let loginData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "mobileLogin",
+            status: 200,
+            variant: ""
+        )
+        let refreshData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "mobileRefresh",
+            status: 200
+        )
+        let profileData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "getMyProfile",
+            status: 200,
+            variant: ""
+        )
+        let meData = try Self.loadIndexedFixture(
+            contractsMobileDir: contractsMobileDir,
+            operationId: "me",
+            status: 200
+        )
 
         let listRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: listBaseData) as? [String: Any])
         let templateItem = try XCTUnwrap((listRoot["items"] as? [[String: Any]])?.first)
@@ -189,6 +228,39 @@ final class CatalogFlowUITests: XCTestCase {
         if hsaChipAfter.exists {
             XCTAssertTrue(hsaChipAfter.isSelected, "HSA kind chip must remain selected")
         }
+    }
+
+    private struct IndexedFixtureEntry: Decodable {
+        let file: String
+        let operationId: String
+        let status: Int
+        let variant: String?
+    }
+
+    private static func loadIndexedFixture(
+        contractsMobileDir: URL,
+        operationId: String,
+        status: Int,
+        variant: String? = nil
+    ) throws -> Data {
+        let indexData = try Data(contentsOf: contractsMobileDir.appendingPathComponent("api/index.json"))
+        let entries = try JSONDecoder().decode([IndexedFixtureEntry].self, from: indexData)
+        let byOpStatus = entries.filter { $0.operationId == operationId && $0.status == status }
+        let matched: IndexedFixtureEntry?
+        if let variant {
+            matched = byOpStatus.first { ($0.variant ?? "") == variant }
+        } else {
+            matched = byOpStatus.first { ($0.variant ?? "").isEmpty } ?? byOpStatus.first
+        }
+        guard let matched else {
+            throw NSError(
+                domain: "CatalogFlowUITests",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Missing indexed fixture for \(operationId) status=\(status) variant=\(variant ?? "*")"]
+            )
+        }
+        let relative = matched.file.contains("/") ? matched.file : "api/\(matched.file)"
+        return try Data(contentsOf: contractsMobileDir.appendingPathComponent(relative))
     }
 
     private func openDestination(titled title: String, identifier: String, in app: XCUIApplication) {

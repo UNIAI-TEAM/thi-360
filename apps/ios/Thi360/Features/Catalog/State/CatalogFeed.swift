@@ -16,24 +16,29 @@ struct SystemCatalogDebounceSleeper: CatalogDebounceSleeper {
 final class CatalogFeed {
     static let searchDebounceMilliseconds: UInt64 = 400
 
-    let accountId: String?
+    private(set) var accountId: String?
 
     private(set) var query: CatalogQuery = .empty
     var searchText: String = ""
     private(set) var filters: CatalogFilters = .empty
     private(set) var loadState: LoadState<CatalogPage> = .loading
     private(set) var staleFailureKind: LoadFailureKind?
+    private(set) var retryAvailableAt: Date?
     private(set) var accessByCode: [String: AccessCell] = [:]
     private(set) var scrollToTopToken: Int = 0
     private(set) var isRefreshing: Bool = false
     var selectedProductCode: String?
     var lastScrolledCardCode: String?
 
+    @ObservationIgnored let clock: any AppClock
     @ObservationIgnored private let api: any CatalogAPIClientProtocol
     @ObservationIgnored private let sleeper: any CatalogDebounceSleeper
     @ObservationIgnored private let connectivityMonitor: ConnectivityMonitor?
+    @ObservationIgnored private let connectivityObserverId = UUID()
     @ObservationIgnored private var generation: UInt64 = 0
     @ObservationIgnored private var hasLoadedOnce: Bool = false
+    @ObservationIgnored private var needsAccessRefreshOnHomeReturn: Bool = false
+    @ObservationIgnored private var cachedDetailViewModel: ProductDetailViewModel?
     @ObservationIgnored private var activeFetchTask: Task<Void, Never>?
     @ObservationIgnored private var loadMoreTask: Task<Void, Never>?
     @ObservationIgnored private var searchDebounceTask: Task<Void, Never>?
@@ -44,12 +49,109 @@ final class CatalogFeed {
         accountId: String?,
         api: any CatalogAPIClientProtocol,
         sleeper: any CatalogDebounceSleeper = SystemCatalogDebounceSleeper(),
-        connectivityMonitor: ConnectivityMonitor? = nil
+        connectivityMonitor: ConnectivityMonitor? = nil,
+        clock: any AppClock = SystemClock()
     ) {
         self.accountId = accountId
         self.api = api
         self.sleeper = sleeper
         self.connectivityMonitor = connectivityMonitor
+        self.clock = clock
+
+        if let connectivityMonitor {
+            connectivityMonitor.addObserver(id: connectivityObserverId) { [weak self] isOnline in
+                guard let self, isOnline else { return }
+                let isOfflineFailed: Bool = {
+                    if case .failed(kind: .offline, _, _) = self.loadState { return true }
+                    return false
+                }()
+                let isOfflineStale: Bool = {
+                    if case .loaded(_, true) = self.loadState, self.staleFailureKind == .offline { return true }
+                    return false
+                }()
+                let isOfflineTail: Bool = {
+                    if case let .loaded(page, false) = self.loadState, page.tail == .failed(.offline) { return true }
+                    return false
+                }()
+                if isOfflineFailed || isOfflineStale {
+                    Task { @MainActor [weak self] in
+                        await self?.retry()
+                    }
+                } else if isOfflineTail {
+                    Task { @MainActor [weak self] in
+                        await self?.retryNextPage()
+                    }
+                }
+            }
+        }
+    }
+
+    deinit {
+        if let connectivityMonitor {
+            let observerId = connectivityObserverId
+            Task { @MainActor in
+                connectivityMonitor.removeObserver(observerId)
+            }
+        }
+    }
+
+    var retryRemainingSeconds: Int {
+        guard let retryAvailableAt else { return 0 }
+        let remaining = retryAvailableAt.timeIntervalSince(clock.now)
+        return remaining > 0 ? Int(ceil(remaining)) : 0
+    }
+
+    var canRetryNow: Bool {
+        retryRemainingSeconds == 0
+    }
+
+    var hasLoadedInitialCatalog: Bool {
+        hasLoadedOnce
+    }
+
+    var activeEmbeddedDetailViewModel: ProductDetailViewModel? {
+        guard let selected = selectedProductCode, cachedDetailViewModel?.code == selected else {
+            return nil
+        }
+        return cachedDetailViewModel
+    }
+
+    func adoptAccountIdIfMissing(_ newAccountId: String) {
+        let trimmed = newAccountId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, accountId == nil else { return }
+        accountId = trimmed
+    }
+
+    func detailViewModel(for code: String) -> ProductDetailViewModel {
+        if let existing = cachedDetailViewModel, existing.code == code {
+            return existing
+        }
+        cachedDetailViewModel?.cancelAllTasks()
+        let created = ProductDetailViewModel(
+            code: code,
+            api: api,
+            connectivityMonitor: connectivityMonitor,
+            clock: clock
+        )
+        cachedDetailViewModel = created
+        return created
+    }
+
+    func clearCachedDetailViewModel() {
+        cachedDetailViewModel?.cancelAllTasks()
+        cachedDetailViewModel = nil
+    }
+
+    func markLeftHomeTab() {
+        guard hasLoadedOnce else { return }
+        needsAccessRefreshOnHomeReturn = true
+    }
+
+    func refreshAccessOnHomeReturnIfNeeded() async {
+        guard hasLoadedOnce, needsAccessRefreshOnHomeReturn else { return }
+        needsAccessRefreshOnHomeReturn = false
+        await refreshAccessOnReturn()
+        await activeEmbeddedDetailViewModel?.refreshAccessOnReturn()
     }
 
     var isEmptyUnfilteredCatalog: Bool {
@@ -88,6 +190,7 @@ final class CatalogFeed {
     }
 
     func retry() async {
+        guard canRetryNow else { return }
         hasLoadedOnce = true
         let hasExistingCards = !loadedCards.isEmpty
         await performFullLoad(includeFilters: true, preserveExistingOnError: hasExistingCards)
@@ -163,6 +266,7 @@ final class CatalogFeed {
     }
 
     func pullToRefresh() async {
+        guard canRetryNow else { return }
         searchDebounceTask?.cancel()
         searchDebounceTask = nil
         lastScrolledCardCode = nil
@@ -280,6 +384,8 @@ final class CatalogFeed {
     }
 
     func cancelAllTasks() {
+        connectivityMonitor?.removeObserver(connectivityObserverId)
+        clearCachedDetailViewModel()
         searchDebounceTask?.cancel()
         searchDebounceTask = nil
         activeFetchTask?.cancel()
@@ -356,6 +462,7 @@ final class CatalogFeed {
                     self.filters = fetchedFilters
                 }
                 self.staleFailureKind = nil
+                self.retryAvailableAt = nil
 
                 if productsResponse.totalItems == 0 && !currentQuery.isFiltered {
                     self.accessByCode.removeAll()
@@ -390,6 +497,11 @@ final class CatalogFeed {
                 let apiError = MobileApiError.classify(error)
                 let classified = LoadFailureKind.classify(apiError)
                 let failureKind: LoadFailureKind = classified.kind == .offline ? .offline : .server
+                if let retryAfter = classified.retryAfter, retryAfter > 0 {
+                    self.retryAvailableAt = self.clock.now.addingTimeInterval(TimeInterval(retryAfter))
+                } else {
+                    self.retryAvailableAt = nil
+                }
 
                 if let previousPage,
                    preserveExistingOnError || (preserveExistingOnOffline && failureKind == .offline)

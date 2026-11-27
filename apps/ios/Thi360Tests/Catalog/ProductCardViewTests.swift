@@ -80,7 +80,7 @@ final class ProductCardViewTests: XCTestCase {
         let examDetailData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "exam"
+            variant: "exam"
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,

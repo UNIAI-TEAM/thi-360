@@ -16,12 +16,12 @@ final class CatalogAccessibilityTests: XCTestCase {
         let examData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "exam"
+            variant: "exam"
         )
         let bundleData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "bundle"
+            variant: "bundle"
         )
 
         let stack = try CatalogTestStackFactory.makeStack { transport in
@@ -53,8 +53,7 @@ final class CatalogAccessibilityTests: XCTestCase {
                     feed: feed,
                     router: router,
                     locale: .vi,
-                    showsBrandHeader: true,
-                    api: stack.api
+                    showsBrandHeader: true
                 )
             )
 

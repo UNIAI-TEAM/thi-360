@@ -57,10 +57,6 @@ private struct CatalogHomeRouteView: View {
         router ?? fallbackRouter
     }
 
-    private var activeAPI: any CatalogAPIClientProtocol {
-        sessionStore.map { CatalogAPI(apiClient: $0.apiClient) } ?? PreviewEmptyCatalogAPI()
-    }
-
     var body: some View {
         let feed = CatalogFeedRegistry.shared.feed(
             for: activeRouter,
@@ -73,10 +69,8 @@ private struct CatalogHomeRouteView: View {
             router: activeRouter,
             locale: preferences.locale,
             showsBrandHeader: showsBrandHeader,
-            api: activeAPI,
             supportContact: AppEnvironment.current.supportContact,
-            imageLoader: imageLoader,
-            connectivityMonitor: connectivityMonitor
+            imageLoader: imageLoader
         )
     }
 }
@@ -94,10 +88,6 @@ private struct CatalogDuoDetailRouteView: View {
         router ?? fallbackRouter
     }
 
-    private var activeAPI: any CatalogAPIClientProtocol {
-        sessionStore.map { CatalogAPI(apiClient: $0.apiClient) } ?? PreviewEmptyCatalogAPI()
-    }
-
     var body: some View {
         let feed = CatalogFeedRegistry.shared.feed(
             for: activeRouter,
@@ -109,9 +99,7 @@ private struct CatalogDuoDetailRouteView: View {
         Group {
             if let selectedCode = feed.selectedProductCode {
                 CatalogEmbeddedDetailView(
-                    code: selectedCode,
-                    api: activeAPI,
-                    connectivityMonitor: connectivityMonitor,
+                    viewModel: feed.detailViewModel(for: selectedCode),
                     locale: preferences.locale,
                     supportContact: AppEnvironment.current.supportContact,
                     imageLoader: imageLoader,
@@ -220,6 +208,7 @@ private struct CatalogProductRouteView: View {
         if viewModel != nil && boundSessionIdentifier == sessionIdentifier {
             return
         }
+        viewModel?.cancelAllTasks()
         boundSessionIdentifier = sessionIdentifier
         let api: any CatalogAPIClientProtocol = sessionStore.map { CatalogAPI(apiClient: $0.apiClient) }
             ?? PreviewEmptyCatalogAPI()

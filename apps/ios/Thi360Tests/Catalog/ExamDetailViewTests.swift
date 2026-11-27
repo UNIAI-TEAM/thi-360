@@ -173,7 +173,7 @@ final class ExamDetailViewTests: XCTestCase {
         let examDetailData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "exam"
+            variant: "exam"
         )
         let generated = try MobileAPIClient.makeJSONDecoder().decode(Components.Schemas.ProductDetail.self, from: examDetailData)
         let detail = CatalogAPI.mapProductDetail(generated, supplementalJSONData: examDetailData)
@@ -304,7 +304,7 @@ final class ExamDetailViewTests: XCTestCase {
         let examDetailData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "exam"
+            variant: "exam"
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,
@@ -323,5 +323,128 @@ final class ExamDetailViewTests: XCTestCase {
         let accessReqs = stack.transport.requests(method: .post, path: "/api/v1/me/exam-access/query")
         XCTAssertEqual(accessReqs.count, 1)
         XCTAssertEqual(CatalogTestStackFactory.accessRequestCodes(from: accessReqs[0]), ["EXAM-DEMO-01"])
+    }
+
+    func testPullToRefreshPreservesStaleDetailEnforcesCooldownAndAutoRecoversOnline() async throws {
+        let examDetailData = try CatalogTestFixtures.loadIndexedData(
+            operationId: Operations.getStorefrontProduct.id,
+            status: 200,
+            variant: "exam"
+        )
+        let accessData = try CatalogTestFixtures.loadIndexedData(
+            operationId: Operations.queryMyExamAccess.id,
+            status: 200
+        )
+        let serverError500 = try CatalogTestFixtures.makeInternalServerError500Data()
+        let rateLimit429 = try CatalogTestFixtures.makeRateLimited429Data()
+
+        let mode = AtomicInt(0)
+        let stack = try CatalogTestStackFactory.makeStack { transport in
+            transport.register(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01") { _ in
+                switch mode.get() {
+                case 500:
+                    return ContractFakeTransport.jsonResponse(statusCode: 500, data: serverError500)
+                case 429:
+                    return ContractFakeTransport.jsonResponse(statusCode: 429, data: rateLimit429, headers: ["Retry-After": "4"])
+                case -1:
+                    throw URLError(.notConnectedToInternet)
+                default:
+                    return ContractFakeTransport.jsonResponse(statusCode: 200, data: examDetailData)
+                }
+            }
+            transport.registerJSON(method: .post, path: "/api/v1/me/exam-access/query", data: accessData)
+        }
+        defer {
+            UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName)
+        }
+
+        let pathObserver = FakeNetworkPathObserver()
+        let monitor = ConnectivityMonitor(initialIsOnline: false, observer: pathObserver, autoStart: false)
+        monitor.start()
+        let clock = ManualClock()
+
+        let vm = ProductDetailViewModel(
+            code: "EXAM-DEMO-01",
+            api: stack.api,
+            connectivityMonitor: monitor,
+            clock: clock
+        )
+        defer { vm.cancelAllTasks() }
+
+        mode.set(-1)
+        await vm.loadIfNeeded()
+        guard case .failed(.offline, true, nil) = vm.loadState else {
+            return XCTFail("Expected initial offline failure, got \(vm.loadState)")
+        }
+
+        mode.set(200)
+        pathObserver.emit(isOnline: true)
+        let loadDeadline = Date().addingTimeInterval(2.0)
+        while vm.loadedOutcome == nil && Date() < loadDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        guard case .loaded(.exam, false) = vm.loadState else {
+            return XCTFail("Expected online transition to auto-load exam detail, got \(vm.loadState)")
+        }
+
+        let screen = ProductDetailScreen(
+            viewModel: vm,
+            locale: .vi,
+            onReturnToCatalog: {},
+            onOpenExam: { _ in },
+            onOpenMyExams: {},
+            onAccessButtonTap: { _ in },
+            onBuyBundle: { _ in }
+        )
+        XCTAssertNil(screen.staleMessage)
+        let hosted = screen
+            .environment(\.brandPalette, .defaultLight)
+            .environment(\.statusPalette, .light)
+        let (window, _) = CatalogViewInspector.host(hosted, size: CGSize(width: 390, height: 844))
+        defer { window.isHidden = true }
+        let (_, freshPNG) = try CatalogViewInspector.renderPNG(window: window, size: CGSize(width: 390, height: 844))
+
+        mode.set(500)
+        await vm.pullToRefresh()
+        guard case .loaded(.exam, true) = vm.loadState else {
+            return XCTFail("Pull-to-refresh 500 must preserve loaded exam detail as stale, got \(vm.loadState)")
+        }
+        XCTAssertEqual(vm.staleFailureKind, .server)
+        XCTAssertEqual(screen.staleMessage, AppStrings.common("errorPage.title", locale: .vi))
+        CatalogViewInspector.settle(window: window, seconds: 0.1)
+        let (_, stalePNG) = try CatalogViewInspector.renderPNG(window: window, size: CGSize(width: 390, height: 844))
+        XCTAssertNotEqual(freshPNG, stalePNG, "Stale detail screen must visibly render stale warning banner")
+
+        mode.set(429)
+        await vm.pullToRefresh()
+        XCTAssertFalse(vm.canRetryNow)
+        stack.transport.resetRecordedRequests()
+        await vm.retry()
+        XCTAssertEqual(
+            stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01"),
+            0,
+            "Detail retry must respect 429 Retry-After cooldown"
+        )
+        clock.advance(by: 4.0)
+        XCTAssertTrue(vm.canRetryNow)
+
+        mode.set(-1)
+        pathObserver.emit(isOnline: false)
+        await vm.pullToRefresh()
+        guard case .loaded(.exam, true) = vm.loadState else {
+            return XCTFail("Pull-to-refresh offline must preserve loaded exam detail as stale, got \(vm.loadState)")
+        }
+        XCTAssertEqual(vm.staleFailureKind, .offline)
+        XCTAssertEqual(screen.staleMessage, AppStrings.common("common.offline.title", locale: .vi))
+
+        mode.set(200)
+        pathObserver.emit(isOnline: true)
+        let recoverDeadline = Date().addingTimeInterval(2.0)
+        while vm.staleFailureKind != nil && Date() < recoverDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        guard case .loaded(.exam, false) = vm.loadState else {
+            return XCTFail("Expected online transition to clear stale offline detail, got \(vm.loadState)")
+        }
     }
 }

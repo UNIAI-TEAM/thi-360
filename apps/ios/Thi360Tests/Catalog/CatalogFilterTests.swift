@@ -21,12 +21,12 @@ final class CatalogFilterTests: XCTestCase {
         let nonEmptyData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let emptyData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200-empty.json"
+            variant: "empty"
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,
@@ -93,7 +93,7 @@ final class CatalogFilterTests: XCTestCase {
         let productsData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,
@@ -174,7 +174,7 @@ final class CatalogFilterTests: XCTestCase {
         let productsData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let accessData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,

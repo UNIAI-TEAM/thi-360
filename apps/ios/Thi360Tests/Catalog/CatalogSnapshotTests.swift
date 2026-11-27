@@ -28,12 +28,12 @@ final class CatalogSnapshotTests: XCTestCase {
         let examData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "exam"
+            variant: "exam"
         )
         let bundleData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.getStorefrontProduct.id,
             status: 200,
-            fileContains: "bundle"
+            variant: "bundle"
         )
 
         let stack = try CatalogTestStackFactory.makeStack { transport in
@@ -106,7 +106,6 @@ final class CatalogSnapshotTests: XCTestCase {
                     router: router,
                     locale: .vi,
                     showsBrandHeader: viewport.shellWidth == .narrow,
-                    api: stack.api,
                     imageLoader: imageLoader
                 )
             }

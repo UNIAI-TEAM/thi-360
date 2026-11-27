@@ -137,12 +137,7 @@ struct ExamDetailCoverView: View {
                 }
             }
             .clipped()
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(
-                product.effectiveCoverURL == nil
-                    ? "productDetail.coverPlaceholder"
-                    : "productDetail.coverImage"
-            )
+            .accessibilityHidden(true)
     }
 
     private var brandPlaceholder: some View {

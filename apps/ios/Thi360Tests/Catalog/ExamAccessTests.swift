@@ -94,7 +94,7 @@ final class ExamAccessTests: XCTestCase {
         let productsData = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.listStorefrontProducts.id,
             status: 200,
-            fileContains: "storefront-products-list-200.json"
+            variant: ""
         )
         let validation400 = try CatalogTestFixtures.loadIndexedData(
             operationId: Operations.queryMyExamAccess.id,
@@ -182,8 +182,16 @@ final class ExamAccessTests: XCTestCase {
     }
 
     func testUnauthorized401RefreshesAndSignsOutOnRejectedRefresh() async throws {
-        let unauth401 = try ContractFixtureLoader.loadApiFixture("me-401-unauthenticated.json")
-        let revoked401 = try ContractFixtureLoader.loadAuthFixture("refresh-401-session-revoked.json")
+        let unauth401 = try CatalogTestFixtures.loadIndexedData(
+            operationId: "me",
+            status: 401,
+            variant: "unauthenticated"
+        )
+        let revoked401 = try CatalogTestFixtures.loadIndexedData(
+            operationId: "mobileRefresh",
+            status: 401,
+            variant: "session-revoked"
+        )
 
         let stack = try CatalogTestStackFactory.makeStack { transport in
             transport.registerJSON(method: .post, path: "/api/v1/me/exam-access/query", statusCode: 401, data: unauth401)
@@ -214,7 +222,11 @@ final class ExamAccessTests: XCTestCase {
             operationId: Operations.queryMyExamAccess.id,
             status: 200
         )
-        let studentOnly403 = try ContractFixtureLoader.loadAuthFixture("refresh-403-app-student-only.json")
+        let studentOnly403 = try CatalogTestFixtures.loadIndexedData(
+            operationId: "mobileRefresh",
+            status: 403,
+            variant: "app-student-only"
+        )
 
         let retryStack = try CatalogTestStackFactory.makeStack { transport in
             transport.enqueue(method: .post, path: "/api/v1/me/exam-access/query", handlers: [

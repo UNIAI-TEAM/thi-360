@@ -15,6 +15,14 @@ struct ProductDetailScreen: View {
 
     @Environment(\.brandPalette) private var palette
 
+    var staleMessage: String? {
+        guard case .loaded(_, true) = viewModel.loadState else { return nil }
+        if viewModel.staleFailureKind == .offline {
+            return AppStrings.common("common.offline.title", locale: locale)
+        }
+        return AppStrings.common("errorPage.title", locale: locale)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if showsInlineBackBar, let onBack {
@@ -53,6 +61,9 @@ struct ProductDetailScreen: View {
                 LoadStateView(
                     state: viewModel.loadState,
                     locale: locale,
+                    staleMessage: staleMessage,
+                    retryBlockedUntil: viewModel.retryAvailableAt,
+                    clock: viewModel.clock,
                     onRetry: {
                         Task { await viewModel.retry() }
                     }
