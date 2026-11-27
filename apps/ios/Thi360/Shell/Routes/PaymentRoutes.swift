@@ -4,10 +4,22 @@ import SwiftUI
 final class PaymentRoutesCoordinator {
     static let shared = PaymentRoutesCoordinator()
 
+    private final class WeakSessionStoreBox {
+        weak var value: SessionStore?
+
+        init(_ value: SessionStore) {
+            self.value = value
+        }
+    }
+
     private var activeResultVM: PaymentResultViewModel?
-    private var activeResultSessionID: ObjectIdentifier?
+    private weak var activeResultSessionStore: SessionStore?
+    private var activeResultAccountId: String?
+    private var activeResultUsername: String?
+    private var activeResultRefreshToken: String?
     private var activeResultTarget: PaymentResultTarget?
     private var activeCheckingOrderCodes: Set<String> = []
+    private var hookedSessionStores: [WeakSessionStoreBox] = []
 
     func register(
         router: AppRouter,
@@ -17,18 +29,24 @@ final class PaymentRoutesCoordinator {
         clock: any AppClock = SystemClock(),
         arguments: [String] = ProcessInfo.processInfo.arguments
     ) {
+        installSessionHooksIfNeeded(on: sessionStore)
         let pendingStore = makePendingOrderStore(sessionStore: sessionStore)
 
         router.inboundLinkRouter.register(
             id: "payment.return",
             requiresUnlockedSession: true
-        ) { [weak router] url, env in
+        ) { [weak router, weak sessionStore] url, env in
             guard let parsed = PaymentReturnLink.parse(url, environment: env) else {
                 return nil
             }
-            return { [weak router] in
+            return { [weak router, weak sessionStore] in
                 guard let router else { return }
-                PaymentRoutesCoordinator.shared.openReturnLink(url, parsed: parsed, on: router)
+                PaymentRoutesCoordinator.shared.openReturnLink(
+                    url,
+                    parsed: parsed,
+                    on: router,
+                    sessionStore: sessionStore
+                )
             }
         }
 
@@ -69,10 +87,15 @@ final class PaymentRoutesCoordinator {
     }
 
     func resetMemory() {
+        let previousVM = activeResultVM
         activeResultVM = nil
-        activeResultSessionID = nil
+        activeResultSessionStore = nil
+        activeResultAccountId = nil
+        activeResultUsername = nil
+        activeResultRefreshToken = nil
         activeResultTarget = nil
         activeCheckingOrderCodes.removeAll()
+        previousVM?.stopPolling()
     }
 
     func markOpenedFromChecking(orderCode: String) {
@@ -131,9 +154,7 @@ final class PaymentRoutesCoordinator {
         sessionStore: SessionStore,
         environment: AppEnvironment = .current
     ) -> PaymentResultViewModel {
-        let sessionID = ObjectIdentifier(sessionStore)
-
-        if let existing = activeResultVM, activeResultSessionID == sessionID {
+        if let existing = activeResultVM, matchesActiveSessionIdentity(sessionStore: sessionStore) {
             if activeResultTarget != target {
                 activeResultTarget = target
                 let entry = makeEntry(for: target, environment: environment)
@@ -143,6 +164,8 @@ final class PaymentRoutesCoordinator {
             }
             return existing
         }
+
+        activeResultVM?.stopPolling()
 
         let entry = makeEntry(for: target, environment: environment)
         let gateway = OpenApiPaymentGateway(apiClient: sessionStore.apiClient)
@@ -164,7 +187,10 @@ final class PaymentRoutesCoordinator {
             }
         )
         activeResultVM = viewModel
-        activeResultSessionID = sessionID
+        activeResultSessionStore = sessionStore
+        activeResultAccountId = Self.trimmedNonEmpty(sessionStore.currentAccountId)
+        activeResultUsername = Self.normalizedUsername(sessionStore.currentUsername)
+        activeResultRefreshToken = Self.trimmedNonEmpty(sessionStore.currentRefreshToken)
         activeResultTarget = target
         return viewModel
     }
@@ -176,7 +202,10 @@ final class PaymentRoutesCoordinator {
         }
         if !isAlreadyViewingPaymentResult(on: router) {
             activeResultVM = nil
-            activeResultSessionID = nil
+            activeResultSessionStore = nil
+            activeResultAccountId = nil
+            activeResultUsername = nil
+            activeResultRefreshToken = nil
             activeResultTarget = nil
             Task {
                 await viewModel.onLeaveScreen(clearPendingOrder: true)
@@ -201,14 +230,98 @@ final class PaymentRoutesCoordinator {
         }
     }
 
-    private func openReturnLink(_ url: URL, parsed: PaymentReturnLink, on router: AppRouter) {
+    private func installSessionHooksIfNeeded(on sessionStore: SessionStore) {
+        hookedSessionStores.removeAll { $0.value == nil }
+        guard !hookedSessionStores.contains(where: { $0.value === sessionStore }) else {
+            return
+        }
+        hookedSessionStores.append(WeakSessionStoreBox(sessionStore))
+
+        let existingCleared = sessionStore.onSessionCleared
+        sessionStore.onSessionCleared = {
+            existingCleared?()
+            PaymentRoutesCoordinator.shared.resetMemory()
+        }
+
+        let existingReplaced = sessionStore.onSessionReplaced
+        sessionStore.onSessionReplaced = {
+            existingReplaced?()
+            PaymentRoutesCoordinator.shared.resetMemory()
+        }
+    }
+
+    private func matchesActiveSessionIdentity(sessionStore: SessionStore) -> Bool {
+        guard activeResultSessionStore === sessionStore else {
+            return false
+        }
+
+        let currentAccountId = Self.trimmedNonEmpty(sessionStore.currentAccountId)
+        let currentUsername = Self.normalizedUsername(sessionStore.currentUsername)
+        let currentRefreshToken = Self.trimmedNonEmpty(sessionStore.currentRefreshToken)
+
+        if let existingAccountId = activeResultAccountId {
+            guard existingAccountId == currentAccountId else {
+                return false
+            }
+            if let currentUsername {
+                activeResultUsername = currentUsername
+            }
+            if let currentRefreshToken {
+                activeResultRefreshToken = currentRefreshToken
+            }
+            return true
+        }
+
+        if let currentAccountId {
+            let sameUsername = activeResultUsername != nil && activeResultUsername == currentUsername
+            let sameRefreshToken = activeResultUsername == nil
+                && currentUsername == nil
+                && activeResultRefreshToken != nil
+                && activeResultRefreshToken == currentRefreshToken
+            if sameUsername || sameRefreshToken {
+                activeResultAccountId = currentAccountId
+                if let currentUsername {
+                    activeResultUsername = currentUsername
+                }
+                if let currentRefreshToken {
+                    activeResultRefreshToken = currentRefreshToken
+                }
+                return true
+            }
+            return false
+        }
+
+        if activeResultUsername != nil || currentUsername != nil {
+            guard activeResultUsername == currentUsername else {
+                return false
+            }
+            if let currentRefreshToken {
+                activeResultRefreshToken = currentRefreshToken
+            }
+            return true
+        }
+
+        return activeResultRefreshToken == currentRefreshToken
+    }
+
+    private func openReturnLink(
+        _ url: URL,
+        parsed: PaymentReturnLink,
+        on router: AppRouter,
+        sessionStore: SessionStore?
+    ) {
         if isAlreadyViewingPaymentResult(on: router) {
-            if let existing = activeResultVM {
+            if let existing = activeResultVM,
+               sessionStore.map({ matchesActiveSessionIdentity(sessionStore: $0) }) ?? false
+            {
                 activeResultTarget = .byReturnLink(url)
                 Task { @MainActor in
                     await existing.acceptEntry(.byReturnLink(parsed))
                 }
             } else {
+                if activeResultVM != nil {
+                    resetMemory()
+                }
                 var stack = router.paths[router.selectedDestination] ?? []
                 if !stack.isEmpty {
                     stack[stack.count - 1] = .paymentResult(.byReturnLink(url))
@@ -226,6 +339,17 @@ final class PaymentRoutesCoordinator {
             return true
         }
         return false
+    }
+
+    private static func trimmedNonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private static func normalizedUsername(_ value: String?) -> String? {
+        trimmedNonEmpty(value)?.lowercased()
     }
 
     private static func argumentValue(after flag: String, in arguments: [String]) -> String? {

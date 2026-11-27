@@ -51,7 +51,12 @@ final class PaymentResultPollingTests: XCTestCase {
         XCTAssertEqual(harness.transport.callCount(method: .get, path: "/api/v1/me/orders/DH261126000001"), 1)
 
         vm.onScenePhaseChanged(.active)
-        try? await Task.sleep(nanoseconds: 80_000_000)
+        await waitUntil {
+            if case .fulfilled = vm.state {
+                return true
+            }
+            return false
+        }
 
         XCTAssertEqual(harness.transport.callCount(method: .get, path: "/api/v1/me/orders/DH261126000001"), 2)
         if case .fulfilled = vm.state {
@@ -96,7 +101,12 @@ final class PaymentResultPollingTests: XCTestCase {
         )
 
         await vm.startIfNeeded()
-        try? await Task.sleep(nanoseconds: 180_000_000)
+        await waitUntil {
+            if case .fulfilled = vm.state {
+                return true
+            }
+            return false
+        }
 
         if case .fulfilled = vm.state {
         } else {
@@ -134,7 +144,12 @@ final class PaymentResultPollingTests: XCTestCase {
         )
 
         await vm.startIfNeeded()
-        try? await Task.sleep(nanoseconds: 150_000_000)
+        await waitUntil {
+            if case let .checking(_, timedOut, _) = vm.state {
+                return timedOut
+            }
+            return false
+        }
 
         if case let .checking(_, timedOut, _) = vm.state {
             XCTAssertTrue(timedOut)
@@ -152,6 +167,16 @@ final class PaymentResultPollingTests: XCTestCase {
         if case .fulfilled = vm.state {
         } else {
             XCTFail("Expected .fulfilled after checkAgainNow, got \(vm.state)")
+        }
+    }
+
+    private func waitUntil(
+        timeoutSeconds: TimeInterval = 5.0,
+        condition: @MainActor () -> Bool
+    ) async {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while !condition() && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 10_000_000)
         }
     }
 }

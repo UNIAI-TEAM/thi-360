@@ -196,6 +196,14 @@ final class PaymentResultViewModel {
         }
     }
 
+    var isPollingActive: Bool {
+        poller.isRunning
+    }
+
+    func stopPolling() {
+        poller.stop()
+    }
+
     func onScenePhaseChanged(_ phase: ScenePhase) {
         poller.setScenePhase(phase)
     }
