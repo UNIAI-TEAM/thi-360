@@ -268,7 +268,7 @@ final class AttachmentsViewTests: XCTestCase {
         ]
 
         for mode in ThemeMode.allCases {
-            let size = CGSize(width: 390, height: 844)
+            let size = CGSize(width: 390, height: 1040)
             let (window, _) = QuestionViewTestHelper.host(
                 ScrollView {
                     VStack(spacing: 12) {

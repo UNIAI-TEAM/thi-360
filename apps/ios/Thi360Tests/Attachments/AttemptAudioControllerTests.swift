@@ -140,6 +140,92 @@ final class AttemptAudioControllerTests: XCTestCase {
         XCTAssertEqual(controller2.uiState.banner?.stringKey, "question.audioPlayer.exhaustedReason")
     }
 
+    func testFinalPlayOpeningAndResumingNeverFlashExhaustedBanner() async throws {
+        let stack = try AttachmentsTestStack.make()
+        defer { stack.cleanup() }
+        try stack.router.configureAsset(
+            assetId: assetId,
+            maxPlays: 2,
+            durationMs: 30_000,
+            playsUsed: 1,
+            activePlayId: nil,
+            positionMs: 0,
+            state: "ENDED",
+            endReason: "FINISHED"
+        )
+
+        let ready = await stack.clock.waitUntil { stack.engine.state.activeSessionId != nil }
+        XCTAssertTrue(ready)
+
+        let fetchGate = AttemptTestGate()
+        let wav = try AttachmentsTestResources.silence35sWav()
+        stack.router.enqueue(.fetchAudio, .binary(data: wav, gate: fetchGate))
+
+        let fakePlayback = FakeAudioPlaybackEngine(durationMs: 30_000, clock: stack.clock)
+        let controller = stack.makeController(assetId: assetId, playbackEngine: fakePlayback)
+        defer { controller.close() }
+
+        // Open Play #2 (playsLeft drops to 0 on openPlay 200 while fetchAudio is still in flight).
+        controller.onPrimaryAction()
+        await fetchGate.waitUntilEntered()
+        XCTAssertEqual(controller.uiState.playsLeft, 0)
+        XCTAssertTrue(controller.uiState.isBusyOpening)
+        XCTAssertFalse(
+            controller.uiState.isExhausted,
+            "Opening Play #2 must not mark isExhausted true while audio is downloading"
+        )
+        XCTAssertEqual(
+            AttachmentsStrings.playsRemaining(
+                left: controller.uiState.playsLeft,
+                max: controller.uiState.effectiveMaxPlays,
+                locale: .vi
+            ),
+            "Còn 0/2 lần nghe"
+        )
+        XCTAssertNil(controller.uiState.banner, "exhaustedReason banner must not flash during .opening on Play #2")
+
+        await fetchGate.releaseAll()
+        let playing = await stack.clock.waitUntil {
+            if case .playing = controller.uiState.playbackState { return true }
+            return false
+        }
+        XCTAssertTrue(playing)
+
+        // Pause Play #2 and resume via "Phát lại" while resume request is held in flight.
+        controller.onAppBackgrounded()
+        XCTAssertEqual(controller.uiState.primaryButtonRole, .resume)
+
+        let resumeGate = AttemptTestGate()
+        stack.router.enqueue(
+            .resume,
+            try .fixture(operationId: Operations.resumeAudioPlay.id, status: 200, gate: resumeGate) { obj in
+                obj["playId"] = "play-0008-1"
+                obj["playsUsed"] = 2
+                obj["playsLeft"] = 0
+                obj["durationMs"] = 30_000
+                obj["positionMs"] = 5_000
+                obj["state"] = "PLAYING"
+            }
+        )
+
+        controller.onPrimaryAction()
+        await resumeGate.waitUntilEntered()
+        XCTAssertEqual(controller.uiState.playsLeft, 0)
+        XCTAssertTrue(controller.uiState.isBusyOpening)
+        XCTAssertFalse(
+            controller.uiState.isExhausted,
+            "Resuming paused Play #2 must not mark isExhausted true while resume is in flight"
+        )
+        XCTAssertNil(controller.uiState.banner, "exhaustedReason banner must not flash during resume .opening on Play #2")
+
+        await resumeGate.releaseAll()
+        let resumed = await stack.clock.waitUntil {
+            if case .playing = controller.uiState.playbackState { return true }
+            return false
+        }
+        XCTAssertTrue(resumed)
+    }
+
     func testRetrySameRequestId() async throws {
         let stack = try AttachmentsTestStack.make()
         defer { stack.cleanup() }

@@ -132,6 +132,19 @@ final class RemoteCommandTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(posAfterAuthorized, 9_000)
         XCTAssertLessThanOrEqual(posAfterAuthorized, 12_000)
 
+        // Simulate unauthorized forward seek (+18s) and playback rate tamper (2.0x) (AC-8, R-134).
+        engine.simulateExternalTamperForTesting(positionMs: 28_000, rate: 2.0)
+        XCTAssertGreaterThanOrEqual(try XCTUnwrap(engine.rawPlayerPositionMsForTesting), 27_000)
+        XCTAssertEqual(try XCTUnwrap(engine.rawPlayerRateForTesting), 2.0)
+
+        let enforcedPositionMs = engine.currentPositionMs()
+        XCTAssertGreaterThanOrEqual(enforcedPositionMs, 9_000)
+        XCTAssertLessThanOrEqual(enforcedPositionMs, 12_000, "Unauthorized seek must snap back to authorized cursor")
+        let snappedRawMs = try XCTUnwrap(engine.rawPlayerPositionMsForTesting)
+        XCTAssertGreaterThanOrEqual(snappedRawMs, 9_000)
+        XCTAssertLessThanOrEqual(snappedRawMs, 12_000, "Underlying AVAudioPlayer.currentTime must be reverted on unauthorized seek")
+        XCTAssertEqual(try XCTUnwrap(engine.rawPlayerRateForTesting), 1.0, "Playback rate must be locked back to 1.0x")
+
         let invalidResult = engine.start(
             data: Data("not-valid-audio-bytes".utf8),
             fileName: "corrupt.mp3",

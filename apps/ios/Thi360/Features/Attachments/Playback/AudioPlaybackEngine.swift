@@ -197,8 +197,18 @@ final class AVAudioPlayerPlaybackEngine: AudioPlaybackEngine {
         if player.rate != 1.0 {
             player.rate = 1.0
         }
+        if player.enableRate {
+            player.enableRate = false
+        }
         #if targetEnvironment(simulator)
         if simulatorSilentActive {
+            let now = ProcessInfo.processInfo.systemUptime
+            let elapsedMs = max(0, Int64(((now - expectedAnchorWallTime) * 1_000.0).rounded()))
+            let expectedMs = min(simulatorDurationMs, expectedAnchorPositionMs + elapsedMs)
+            let actualMs = max(0, Int64((player.currentTime * 1_000.0).rounded()))
+            if abs(actualMs - expectedMs) > Self.antiSeekDriftToleranceMs {
+                player.currentTime = TimeInterval(expectedMs) / 1_000.0
+            }
             return
         }
         #endif
@@ -216,6 +226,25 @@ final class AVAudioPlayerPlaybackEngine: AudioPlaybackEngine {
         } else {
             expectedAnchorPositionMs = actualMs
             expectedAnchorWallTime = now
+        }
+    }
+
+    var rawPlayerPositionMsForTesting: Int64? {
+        player.map { max(0, Int64(($0.currentTime * 1_000.0).rounded())) }
+    }
+
+    var rawPlayerRateForTesting: Float? {
+        player?.rate
+    }
+
+    func simulateExternalTamperForTesting(positionMs: Int64? = nil, rate: Float? = nil) {
+        guard let player else { return }
+        if let positionMs {
+            player.currentTime = TimeInterval(max(0, positionMs)) / 1_000.0
+        }
+        if let rate {
+            player.enableRate = true
+            player.rate = rate
         }
     }
 

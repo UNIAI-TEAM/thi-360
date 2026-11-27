@@ -286,9 +286,9 @@ struct AudioPlayerUIState: Equatable, Sendable {
         switch playbackState {
         case .exhausted:
             return true
-        case .playing, .paused, .waitingNetwork:
+        case .playing, .paused, .waitingNetwork, .opening:
             return false
-        case .idle, .opening, .locked:
+        case .idle, .locked:
             return playsLeft <= 0
         }
     }
