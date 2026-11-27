@@ -1,5 +1,6 @@
 package vn.unicom.thi360.feature.catalog
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -7,6 +8,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -25,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.brand.BrandMarkTestTags
 import vn.unicom.thi360.core.config.SupportContact
@@ -161,6 +164,20 @@ class ExamDetailScreenTest {
                 put("referenceMax", JsonNull)
                 put("practiceScoring", "RAW")
             }
+            root["omittedEssayGroups"] = buildJsonArray {
+                add(
+                    buildJsonObject {
+                        put("name", "Văn tự luận")
+                        put("points", 20)
+                    },
+                )
+                add(
+                    buildJsonObject {
+                        put("name", "Viết luận")
+                        put("points", 15)
+                    },
+                )
+            }
         }
 
         val failFirst = AtomicBoolean(true)
@@ -210,6 +227,14 @@ class ExamDetailScreenTest {
                 .assertTextContains("EXAM-DEMO-01", substring = true)
             composeRule.onNodeWithTag(ProductDetailTestTags.PRODUCT_NAME)
                 .assertTextContains("Đề thi HSA tổng hợp DEMO")
+            assertTrue(
+                "Top bar and hero should display product name",
+                composeRule.onAllNodesWithText("Đề thi HSA tổng hợp DEMO").fetchSemanticsNodes().size >= 2,
+            )
+            assertTrue(
+                "Exam detail hero kind chip must use examKind.code (HSA)",
+                composeRule.onAllNodesWithText("HSA").fetchSemanticsNodes().size >= 2,
+            )
             assertTrue(composeRule.onAllNodesWithText("Mục tiêu").fetchSemanticsNodes().isEmpty())
             assertTrue(composeRule.onAllNodesWithText("Đối tượng phù hợp").fetchSemanticsNodes().isEmpty())
 
@@ -221,14 +246,73 @@ class ExamDetailScreenTest {
             composeRule.onNodeWithTag(ProductDetailTestTags.HOW_SECTION).performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Trắc nghiệm một đáp án: 30", substring = true).assertIsDisplayed()
             composeRule.onNodeWithText("100 điểm", substring = true).assertIsDisplayed()
+            composeRule.onNodeWithText("75 phút · Tính giờ từng phần", substring = true).assertIsDisplayed()
+            composeRule.onNodeWithText("Chuyển phần").assertIsDisplayed()
             composeRule.onNodeWithText("Phần tự luận chấm tay", substring = true).assertIsDisplayed()
+            composeRule.onNodeWithText("Không có phần tự luận: Văn tự luận · 20 điểm").assertIsDisplayed()
+            composeRule.onNodeWithText("Không có phần tự luận: Viết luận · 15 điểm").assertIsDisplayed()
 
             composeRule.onNodeWithTag(ProductDetailTestTags.RIGHTS_SECTION).performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("Sau khi người chấm chấm xong").assertIsDisplayed()
+            val rightsTexts = collectAllText(
+                composeRule.onNodeWithTag(ProductDetailTestTags.RIGHTS_SECTION).fetchSemanticsNode(),
+            )
+            assertTrue(
+                "Rights section must display '3 lượt thi mỗi lần mua', got $rightsTexts",
+                rightsTexts.any { it.contains("3 lượt thi mỗi lần mua") },
+            )
+            val aiIndex = rightsTexts.indexOf("Giải thích bằng AI")
+            val strengthsIndex = rightsTexts.indexOf("Đánh giá điểm mạnh, điểm yếu")
+            val practiceIndex = rightsTexts.indexOf("Ôn luyện bổ sung")
+            assertTrue(
+                "Rights benefits order must be AI -> Strengths -> Practice, got $rightsTexts",
+                aiIndex in 0 until strengthsIndex && strengthsIndex < practiceIndex,
+            )
 
             composeRule.onNodeWithTag(ProductDetailTestTags.POLICY_SECTION).performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("theo chính sách do đơn vị vận hành công bố", substring = true).assertIsDisplayed()
             composeRule.onNodeWithText("Thông tin liên hệ đang được cập nhật.").assertIsDisplayed()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun offlineRecoveryAutoRetriesProductDetail() {
+        PortalTestHarness.create(
+            initialTokens = CatalogTestFixtures.activeStudentTokens(),
+            initialOnline = false,
+        ) {
+            CatalogTestFixtures.installDefaultStorefrontRoutes(this)
+            injectNetworkError("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01", count = 1)
+        }.use { harness ->
+            val deps = CatalogTestFixtures.createDependencies(harness)
+            var navRef: AppNavigator? = null
+            composeRule.setContent {
+                val navController = rememberNavController()
+                val appNav = AppNavigator(navController)
+                navRef = appNav
+                CompositionLocalProvider(LocalCatalogDependencies provides deps) {
+                    Thi360App(
+                        preferences = AppPreferences(locale = AppLocale.VI),
+                        navController = navController,
+                        navigator = appNav,
+                    )
+                }
+            }
+            composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                composeRule.onAllNodesWithTag(LoadStateTestTags.ERROR_CONTAINER).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithText("Không có kết nối").assertIsDisplayed()
+
+            harness.connectivityMonitor.setOnline(true)
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag(ProductDetailTestTags.PRODUCT_CODE)
+                .assertTextContains("EXAM-DEMO-01", substring = true)
         }
     }
 

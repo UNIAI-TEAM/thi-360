@@ -1,23 +1,31 @@
 package vn.unicom.thi360.feature.catalog
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToKey
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -166,7 +174,7 @@ class CatalogPagingTest {
                     )
 
                     1 -> if (page1Calls.incrementAndGet() == 1) {
-                        ContractFakeServer.jsonResponse(500, """{"code":"INTERNAL_ERROR","message":"boom"}""")
+                        MockResponse().setResponseCode(500)
                     } else {
                         ContractFakeServer.jsonResponse(
                             200,
@@ -218,6 +226,105 @@ class CatalogPagingTest {
             assertEquals("1", retryReq.requestUrl?.queryParameter("page"))
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("RT-13")
             composeRule.onNodeWithTag(CatalogTestTags.productCard("RT-13")).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun nextPageOfflineShowsOfflineCopyAnd429CooldownGuardsRetry() {
+        val page1Mode = AtomicInteger(0)
+        val nowMillis = AtomicLong(10_000L)
+        PortalTestHarness.create(
+            initialTokens = CatalogTestFixtures.activeStudentTokens(),
+        ) {
+            CatalogTestFixtures.installDefaultStorefrontRoutes(this)
+            respondDynamic("GET", "/api/v1/public/storefront/products") { req ->
+                val page = req.requestUrl?.queryParameter("page")?.toIntOrNull() ?: 0
+                when (page) {
+                    0 -> ContractFakeServer.jsonResponse(
+                        200,
+                        CatalogTestFixtures.productsPageFromCertifiedCard(
+                            codes = (1..12).map { "OF-${it.toString().padStart(2, '0')}" },
+                            page = 0,
+                            totalItems = 24,
+                            totalPages = 2,
+                        ),
+                    )
+
+                    1 -> when (page1Mode.getAndIncrement()) {
+                        0 -> MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START)
+                        1 -> ContractFakeServer.jsonResponse(
+                            429,
+                            CatalogTestFixtures.rateLimited429Json(),
+                            headers = mapOf("Retry-After" to "3"),
+                        )
+                        else -> ContractFakeServer.jsonResponse(
+                            200,
+                            CatalogTestFixtures.productsPageFromCertifiedCard(
+                                codes = (13..24).map { "OF-${it.toString().padStart(2, '0')}" },
+                                page = 1,
+                                totalItems = 24,
+                                totalPages = 2,
+                            ),
+                        )
+                    }
+
+                    else -> ContractFakeServer.jsonResponse(200, CatalogTestFixtures.productsEmptyJson())
+                }
+            }
+        }.use { harness ->
+            val feedStore = CatalogFeedStore()
+            val deps = CatalogTestFixtures.createDependencies(
+                harness = harness,
+                feedStore = feedStore,
+                clockMillis = { nowMillis.get() },
+            )
+            composeRule.setContent {
+                CompositionLocalProvider(LocalCatalogDependencies provides deps) {
+                    Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
+                }
+            }
+
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.waitForIdle()
+
+            harness.connectivityMonitor.setOnline(false)
+            composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("OF-12")
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                val loaded = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? LoadState.Loaded
+                (loaded?.value?.tail as? TailState.Error)?.isOffline == true
+            }
+            composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("__tail__")
+            composeRule.onNodeWithText("Kiểm tra kết nối mạng rồi thử lại.").assertIsDisplayed()
+
+            harness.connectivityMonitor.setOnline(true)
+            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).assertIsEnabled().performClick()
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                val loaded = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? LoadState.Loaded
+                (loaded?.value?.tail as? TailState.Error)?.retryAfterSeconds == 3L
+            }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).assertIsNotEnabled()
+
+            nowMillis.addAndGet(4_000L)
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                runCatching {
+                    composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
+            composeRule.onNodeWithTag(CatalogTestTags.TAIL_RETRY).performClick()
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                val loaded = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.loadState as? LoadState.Loaded
+                loaded?.value?.items?.size == 24
+            }
         }
     }
 }

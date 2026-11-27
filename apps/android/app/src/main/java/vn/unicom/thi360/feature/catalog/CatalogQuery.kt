@@ -61,7 +61,7 @@ data class CatalogQuery(
             return count
         }
 
-    fun withSearch(raw: String): CatalogQuery = copy(q = raw.trim().take(MAX_SEARCH_LENGTH))
+    fun withSearch(raw: String): CatalogQuery = copy(q = raw.trim())
 
     fun withKind(nextKind: String?): CatalogQuery {
         val normalized = nextKind?.trim()?.takeIf { it.isNotEmpty() }
@@ -105,7 +105,6 @@ data class CatalogQuery(
 
     companion object {
         const val CATALOG_PAGE_SIZE = 12
-        const val MAX_SEARCH_LENGTH = 100
     }
 }
 

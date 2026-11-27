@@ -171,7 +171,7 @@ class ExamAccessTest {
     fun handles403RoleDowngradePerA77() {
         PortalTestHarness.create(initialTokens = CatalogTestFixtures.activeStudentTokens()) {
             CatalogTestFixtures.installDefaultStorefrontRoutes(this)
-            respondJson("POST", "/api/v1/me/exam-access/query", 403, """{"code":"FORBIDDEN","message":"Forbidden"}""")
+            respondEmpty("POST", "/api/v1/me/exam-access/query", 403)
             respondAuthFixture("POST", "/api/v1/auth/mobile/refresh", 403, "refresh-403-app-student-only.json")
         }.use { harness ->
             val deps = CatalogTestFixtures.createDependencies(harness)

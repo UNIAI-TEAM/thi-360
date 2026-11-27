@@ -1,5 +1,6 @@
 package vn.unicom.thi360.feature.catalog
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -15,11 +16,13 @@ import androidx.compose.ui.test.performClick
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CompletableDeferred
+import okhttp3.mockwebserver.MockResponse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.network.ApiResult
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -144,7 +147,7 @@ class CatalogStatesTest {
             }
             respondDynamic("GET", "/api/v1/public/storefront/products") {
                 if (shouldFail.get()) {
-                    ContractFakeServer.jsonResponse(500, """{"code":"INTERNAL_ERROR","message":"fail"}""")
+                    MockResponse().setResponseCode(500)
                 } else {
                     ContractFakeServer.jsonResponse(200, CatalogTestFixtures.productsListJson())
                 }
@@ -212,6 +215,50 @@ class CatalogStatesTest {
         } finally {
             h1.close()
             h2.close()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w412dp-h915dp")
+    fun filtersOnlyFailureWhenProductsReturns200ShowsErrorAndRetriesBoth() {
+        val failFilters = AtomicBoolean(true)
+        PortalTestHarness.create(initialTokens = CatalogTestFixtures.activeStudentTokens()) {
+            CatalogTestFixtures.installDefaultStorefrontRoutes(this)
+            respondDynamic("GET", "/api/v1/public/storefront/filters") {
+                if (failFilters.get()) {
+                    MockResponse().setResponseCode(500)
+                } else {
+                    ContractFakeServer.jsonResponse(200, CatalogTestFixtures.filtersJson())
+                }
+            }
+        }.use { harness ->
+            val deps = CatalogTestFixtures.createDependencies(harness)
+            composeRule.setContent {
+                CompositionLocalProvider(LocalCatalogDependencies provides deps) {
+                    Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
+                }
+            }
+
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                composeRule.onAllNodesWithTag(CatalogTestTags.ERROR_STATE).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag(CatalogTestTags.ERROR_STATE).assertIsDisplayed()
+            assertTrue(
+                composeRule.onAllNodesWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).fetchSemanticsNodes().isEmpty(),
+            )
+
+            failFilters.set(false)
+            composeRule.onNodeWithTag(CatalogTestTags.ERROR_RETRY).performClick()
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("GET", "/api/v1/public/storefront/filters") == 2 &&
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.kindChip("HSA")).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).assertIsDisplayed()
+            composeRule.onNodeWithTag(CatalogTestTags.productCard("EXAM-DEMO-01")).assertIsDisplayed()
         }
     }
 }

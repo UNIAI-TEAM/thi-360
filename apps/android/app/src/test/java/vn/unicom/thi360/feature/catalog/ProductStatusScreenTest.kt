@@ -164,6 +164,12 @@ class ProductStatusScreenTest {
                 409,
                 CatalogTestFixtures.conflict409WithBundleProductJson(),
             )
+            respondJson(
+                "GET",
+                "/api/v1/public/storefront/products/EXAM-409-NONBUNDLE",
+                409,
+                CatalogTestFixtures.conflict409WithExamProductJson(),
+            )
         }.use { harness ->
             val deps = CatalogTestFixtures.createDependencies(harness)
             var navRef: AppNavigator? = null
@@ -206,6 +212,15 @@ class ProductStatusScreenTest {
             composeRule.onNodeWithTag(ProductDetailTestTags.BUNDLE_UNAVAILABLE_BANNER).performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).performScrollTo().assertIsNotEnabled()
             composeRule.onNodeWithTag(ProductDetailTestTags.BUNDLE_ITEMS_SECTION).performScrollTo().assertIsDisplayed()
+            assertEquals(accessBefore, harness.server.requestCount("POST", "/api/v1/me/exam-access/query"))
+
+            composeRule.runOnIdle { navRef!!.openProduct("EXAM-409-NONBUNDLE") }
+            composeRule.waitUntil(5_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_UNAVAILABLE).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeRule.waitForIdle()
+            composeRule.onNodeWithTag(ProductDetailTestTags.STATUS_UNAVAILABLE).assertIsDisplayed()
             assertEquals(accessBefore, harness.server.requestCount("POST", "/api/v1/me/exam-access/query"))
         }
     }

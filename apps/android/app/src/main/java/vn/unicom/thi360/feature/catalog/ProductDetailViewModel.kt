@@ -43,6 +43,24 @@ class ProductDetailController(
     private var loadJob: Job? = null
     @Volatile
     private var accessJob: Job? = null
+    private var connectivityJob: Job? = null
+
+    init {
+        if (connectivityMonitor != null) {
+            connectivityJob = scope.launch {
+                var wasOffline = !connectivityMonitor.online.value
+                connectivityMonitor.online.collect { online ->
+                    if (wasOffline && online) {
+                        val currentLoad = _state.value.loadState
+                        if (currentLoad is LoadState.Failed && currentLoad.kind == LoadFailureKind.Offline) {
+                            retry()
+                        }
+                    }
+                    wasOffline = !online
+                }
+            }
+        }
+    }
 
     fun loadInitial() {
         loadDetail(isPullToRefresh = false)
@@ -78,6 +96,7 @@ class ProductDetailController(
         generation.incrementAndGet()
         loadJob?.cancel()
         accessJob?.cancel()
+        connectivityJob?.cancel()
         scope.cancel()
     }
 

@@ -221,7 +221,7 @@ private fun BundleHeroCard(
                 }
 
                 Text(
-                    text = stringResource(R.string.storefront_detail_codeWithValue, detail.code),
+                    text = "${stringResource(R.string.storefront_detail_codeLabel)} ${detail.code}",
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.textMuted,
                     modifier = Modifier.testTag(ProductDetailTestTags.PRODUCT_CODE),

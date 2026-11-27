@@ -102,12 +102,11 @@ class CatalogFeedController(
     }
 
     fun onSearchInputChanged(raw: String) {
-        val capped = raw.take(CatalogQuery.MAX_SEARCH_LENGTH)
-        _state.update { it.copy(searchInput = capped) }
+        _state.update { it.copy(searchInput = raw) }
         searchDebounceJob?.cancel()
         searchDebounceJob = scope.launch {
             debounceWaiter(SEARCH_DEBOUNCE_MS)
-            applySearchQuery(capped)
+            applySearchQuery(raw)
         }
     }
 
@@ -206,9 +205,18 @@ class CatalogFeedController(
 
             if (myGeneration != generation.get()) return@launch
 
-            if (filtersResult is ApiResult.Success) {
-                _state.update { it.copy(filters = filtersResult.data, filtersLoaded = true) }
+            if (filtersResult !is ApiResult.Success) {
+                _state.update { state ->
+                    val existing = state.loadState as? LoadState.Loaded
+                    state.copy(
+                        loadState = existing?.copy(stale = true) ?: state.loadState,
+                        isRefreshing = false,
+                        refreshFailed = true,
+                    )
+                }
+                return@launch
             }
+            _state.update { it.copy(filters = filtersResult.data, filtersLoaded = true) }
 
             when (productsResult) {
                 is ApiResult.Success -> {
@@ -349,11 +357,14 @@ class CatalogFeedController(
                 }
 
                 is ApiResult.NetworkFailure -> {
+                    val onlineNow = connectivityMonitor?.online?.value ?: true
                     _state.update { state ->
                         val currentLoaded = state.loadState as? LoadState.Loaded ?: return@update state
                         state.copy(
                             loadState = currentLoaded.copy(
-                                value = currentLoaded.value.copy(tail = TailState.Error()),
+                                value = currentLoaded.value.copy(
+                                    tail = TailState.Error(isOffline = !onlineNow),
+                                ),
                             ),
                         )
                     }
@@ -430,6 +441,25 @@ class CatalogFeedController(
 
             if (myGeneration != generation.get()) return@launch
 
+            val filtersFailure = when (filtersResult) {
+                is ApiResult.HttpFailure -> filtersResult.toLoadFailed()
+                is ApiResult.NetworkFailure -> {
+                    val onlineNow = connectivityMonitor?.online?.value ?: isOnline
+                    filtersResult.toLoadFailed(isOnline = onlineNow)
+                }
+                else -> null
+            }
+            if (filtersFailure != null) {
+                val productsRetryAfter = (productsResult as? ApiResult.HttpFailure)?.retryAfterSeconds
+                val combinedRetryAfter = listOfNotNull(filtersFailure.retryAfter, productsRetryAfter).maxOrNull()
+                _state.update {
+                    it.copy(
+                        loadState = filtersFailure.copy(retryAfter = combinedRetryAfter),
+                        hasInitialLoaded = true,
+                    )
+                }
+                return@launch
+            }
             if (filtersResult is ApiResult.Success) {
                 _state.update { it.copy(filters = filtersResult.data, filtersLoaded = true) }
             }

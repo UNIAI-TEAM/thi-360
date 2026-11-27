@@ -29,7 +29,7 @@ class CatalogSearchTest {
 
     @Test
     @Config(qualifiers = "w412dp-h915dp")
-    fun debouncesRapidTypingTrimsBlankCapsLongQueryAndSupportsImmediateImeSearch() {
+    fun debouncesRapidTypingTrimsBlankSendsOverlongQueryAndSupportsImmediateImeSearch() {
         val pendingDebounces = CopyOnWriteArrayList<Pair<Long, CompletableDeferred<Unit>>>()
 
         PortalTestHarness.create(
@@ -103,9 +103,10 @@ class CatalogSearchTest {
             composeRule.waitUntil(5_000) {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 5
             }
-            val cappedReq = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!
-            val qValue = cappedReq.requestUrl?.queryParameter("q").orEmpty()
-            assertEquals(100, qValue.length)
+            val overlongReq = harness.server.lastRequest("GET", "/api/v1/public/storefront/products")!!
+            val qValue = overlongReq.requestUrl?.queryParameter("q").orEmpty()
+            assertEquals(145, qValue.length)
+            assertEquals(overlong, qValue)
         }
     }
 }

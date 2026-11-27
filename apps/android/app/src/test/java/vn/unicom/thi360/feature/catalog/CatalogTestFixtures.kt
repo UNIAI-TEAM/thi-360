@@ -124,6 +124,13 @@ internal object CatalogTestFixtures {
         return JsonObject(conflict).toString()
     }
 
+    fun conflict409WithExamProductJson(): String {
+        val conflict = json.parseToJsonElement(conflict409WithoutProductJson()).jsonObject.toMutableMap()
+        val exam = json.parseToJsonElement(examDetailJson()).jsonObject
+        conflict["product"] = exam
+        return JsonObject(conflict).toString()
+    }
+
     fun examAccess200Json(): String = ContractFixtureLoader.readApiFixture("exam-access-query-200.json")
 
     fun examAccess400Json(): String =

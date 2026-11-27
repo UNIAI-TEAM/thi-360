@@ -233,7 +233,9 @@ class OpenApiCatalogGateway(
             }.getOrNull()
             if (decoded != null) {
                 val domain = decoded.toDomain()
-                return ProductOutcome.Bundle(detail = domain, sellable = false)
+                if (domain.isBundle) {
+                    return ProductOutcome.Bundle(detail = domain, sellable = false)
+                }
             }
         }
         return ProductOutcome.BundleUnavailable

@@ -79,16 +79,16 @@ class CatalogQueryTest {
     }
 
     @Test
-    fun searchTrimsWhitespaceAndCapsAt100Characters() {
+    fun searchTrimsWhitespaceAndPreservesOverlongQueryForServer() {
         val blank = CatalogQuery().withSearch("   \t  ")
         assertFalse(blank.isFiltered)
         assertNull(blank.toParams(0).q)
 
         val longText = "A".repeat(140)
-        val capped = CatalogQuery().withSearch("  $longText  ")
-        assertTrue(capped.isFiltered)
-        assertEquals(100, capped.q.length)
-        assertEquals(100, capped.toParams(0).q?.length)
+        val trimmed = CatalogQuery().withSearch("  $longText  ")
+        assertTrue(trimmed.isFiltered)
+        assertEquals(140, trimmed.q.length)
+        assertEquals(longText, trimmed.toParams(0).q)
     }
 
     @Test

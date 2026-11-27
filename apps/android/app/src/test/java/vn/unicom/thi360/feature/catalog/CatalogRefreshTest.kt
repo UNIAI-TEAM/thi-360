@@ -9,6 +9,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import okhttp3.mockwebserver.MockResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -129,10 +130,7 @@ class CatalogRefreshTest {
             CatalogTestFixtures.installDefaultStorefrontRoutes(this)
             respondDynamic("GET", "/api/v1/public/storefront/products") { req ->
                 if (failNextRefresh.get()) {
-                    return@respondDynamic ContractFakeServer.jsonResponse(
-                        500,
-                        """{"code":"INTERNAL_ERROR","message":"refresh failed"}""",
-                    )
+                    return@respondDynamic MockResponse().setResponseCode(500)
                 }
                 val page = req.requestUrl?.queryParameter("page")?.toIntOrNull() ?: 0
                 val chunk = all40.drop(page * 12).take(12)
@@ -265,6 +263,47 @@ class CatalogRefreshTest {
                 assertEquals(12, finalPage.items.size)
                 assertEquals(1, finalPage.nextPage)
                 assertEquals(all40.take(12), finalPage.items.map { it.code })
+            } finally {
+                scope.cancel()
+            }
+        }
+    }
+
+    @Test
+    fun filtersOnlyFailureDuringPullToRefreshPreservesItemsAndSetsRefreshFailed() = runBlocking {
+        val failFilters = AtomicBoolean(false)
+        PortalTestHarness.create(
+            initialTokens = CatalogTestFixtures.activeStudentTokens(),
+        ) {
+            CatalogTestFixtures.installDefaultStorefrontRoutes(this)
+            respondDynamic("GET", "/api/v1/public/storefront/filters") {
+                if (failFilters.get()) {
+                    MockResponse().setResponseCode(500)
+                } else {
+                    ContractFakeServer.jsonResponse(200, CatalogTestFixtures.filtersJson())
+                }
+            }
+        }.use { harness ->
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            try {
+                val gateway = OpenApiCatalogGateway.create(harness.server.url("/"), harness.stack)
+                val controller = CatalogFeedController(
+                    gateway = gateway,
+                    sessionManager = harness.stack.sessionManager,
+                    connectivityMonitor = harness.connectivityMonitor,
+                    scope = scope,
+                )
+
+                controller.ensureInitialized()
+                awaitCondition { (controller.state.value.loadState as? LoadState.Loaded)?.value?.items?.size == 2 }
+
+                failFilters.set(true)
+                controller.pullToRefresh()
+                awaitCondition { controller.state.value.refreshFailed && !controller.state.value.isRefreshing }
+
+                val loaded = controller.state.value.loadState as LoadState.Loaded
+                assertTrue(loaded.stale)
+                assertEquals(2, loaded.value.items.size)
             } finally {
                 scope.cancel()
             }

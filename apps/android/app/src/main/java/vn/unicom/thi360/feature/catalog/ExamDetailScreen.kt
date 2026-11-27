@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -138,11 +139,6 @@ private fun ExamHeroCard(
     imageLoader: ImageLoader?,
 ) {
     val colors = Thi360Theme.colors
-    val kindLabel = CatalogFormatting.pickLocalizedName(
-        detail.examKind.nameVi,
-        detail.examKind.nameEn,
-        locale,
-    ).ifBlank { detail.examKind.code }
 
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -167,7 +163,7 @@ private fun ExamHeroCard(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     itemVerticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CatalogChip(text = kindLabel, tone = ChipTone.Primary)
+                    CatalogChip(text = detail.examKind.code, tone = ChipTone.Primary)
                     FormatAndScopeChips(
                         format = detail.format,
                         scopeLabel = detail.scopeLabel,
@@ -182,7 +178,7 @@ private fun ExamHeroCard(
                 }
 
                 Text(
-                    text = stringResource(R.string.storefront_detail_codeWithValue, detail.code),
+                    text = "${stringResource(R.string.storefront_detail_codeLabel)} ${detail.code}",
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.textMuted,
                     modifier = Modifier.testTag(ProductDetailTestTags.PRODUCT_CODE),
@@ -426,22 +422,33 @@ private fun ExamStructureCard(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            val orderLabel = stringResource(R.string.storefront_detail_columns_order)
+                            val partLabel = stringResource(R.string.storefront_detail_columns_part)
+                            val natureLabel = stringResource(R.string.storefront_detail_columns_nature)
+                            val natureValue = stringResource(
+                                if (part.required) {
+                                    R.string.storefront_detail_required
+                                } else {
+                                    R.string.storefront_detail_optional
+                                },
+                            )
                             Text(
                                 text = "${part.order}. ${part.name}",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = colors.text,
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics {
+                                        contentDescription = "$orderLabel ${part.order}, $partLabel ${part.name}"
+                                    },
                             )
                             CatalogChip(
-                                text = stringResource(
-                                    if (part.required) {
-                                        R.string.storefront_detail_required
-                                    } else {
-                                        R.string.storefront_detail_optional
-                                    },
-                                ),
+                                text = natureValue,
                                 tone = if (part.required) ChipTone.Primary else ChipTone.Subtle,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "$natureLabel: $natureValue"
+                                },
                             )
                         }
                         DetailKeyValueRow(
@@ -614,24 +621,27 @@ private fun ExamHowCard(
             )
         }
 
-        detail.scoring.timing?.let { timing ->
-            val timingText = when (timing) {
+        val durationLabel = CatalogFormatting.formatIntRange(detail.durationMinutes, locale)
+            ?.let { stringResource(R.string.storefront_units_minutes, it) }
+        val timingBehavior = detail.scoring.timing?.let { timing ->
+            when (timing) {
                 "PER_PART" -> stringResource(R.string.storefront_detail_how_timingPER_PART)
                 "SHARED" -> stringResource(R.string.storefront_detail_how_timingSHARED)
                 else -> timing
             }
+        }
+        val timingRowValue = listOfNotNull(durationLabel, timingBehavior).joinToString(" · ")
+        if (timingRowValue.isNotEmpty()) {
             DetailKeyValueRow(
                 label = stringResource(R.string.storefront_detail_how_timing),
-                value = timingText,
+                value = timingRowValue,
             )
         }
 
-        if (detail.parts.size > 1) {
-            DetailKeyValueRow(
-                label = stringResource(R.string.storefront_detail_how_switching),
-                value = stringResource(R.string.storefront_detail_how_switchingValue),
-            )
-        }
+        DetailKeyValueRow(
+            label = stringResource(R.string.storefront_detail_how_switching),
+            value = stringResource(R.string.storefront_detail_how_switchingValue),
+        )
 
         if (hasEssay) {
             Surface(
@@ -649,17 +659,19 @@ private fun ExamHowCard(
         }
 
         if (detail.omittedEssayGroups.isNotEmpty()) {
-            val omittedSummary = detail.omittedEssayGroups.map { group ->
-                val pts = group.points?.let {
-                    " (${stringResource(R.string.storefront_detail_how_points, CatalogFormatting.formatBigDecimal(it, locale))})"
-                }.orEmpty()
-                "${group.name}$pts"
-            }.joinToString(", ")
-            Text(
-                text = "${stringResource(R.string.storefront_detail_how_noEssay)} $omittedSummary",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary,
-            )
+            val noEssayPrefix = stringResource(R.string.storefront_detail_how_noEssay)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                detail.omittedEssayGroups.forEach { group ->
+                    val pointsSuffix = group.points?.let {
+                        " · ${stringResource(R.string.storefront_detail_how_points, CatalogFormatting.formatBigDecimal(it, locale))}"
+                    }.orEmpty()
+                    Text(
+                        text = "$noEssayPrefix ${group.name}$pointsSuffix",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                    )
+                }
+            }
         }
     }
 }
@@ -680,7 +692,7 @@ private fun ExamRightsCard(
         DetailKeyValueRow(
             label = stringResource(R.string.storefront_detail_rights_attempts),
             value = pluralStringResource(
-                R.plurals.storefront_units_attempts,
+                R.plurals.storefront_detail_attemptsPerPurchase,
                 detail.attemptsGranted,
                 detail.attemptsGranted,
             ),
@@ -702,16 +714,16 @@ private fun ExamRightsCard(
             ),
         )
         DetailKeyValueRow(
-            label = stringResource(R.string.storefront_detail_rights_practice),
-            value = if (detail.benefits.practice) yesLabel else noLabel,
+            label = stringResource(R.string.storefront_detail_rights_ai),
+            value = if (detail.benefits.aiExplanation) yesLabel else noLabel,
         )
         DetailKeyValueRow(
             label = stringResource(R.string.storefront_detail_rights_strengths),
             value = if (detail.benefits.strengthWeakness) yesLabel else noLabel,
         )
         DetailKeyValueRow(
-            label = stringResource(R.string.storefront_detail_rights_ai),
-            value = if (detail.benefits.aiExplanation) yesLabel else noLabel,
+            label = stringResource(R.string.storefront_detail_rights_practice),
+            value = if (detail.benefits.practice) yesLabel else noLabel,
         )
         detail.benefits.note?.let { note ->
             Text(

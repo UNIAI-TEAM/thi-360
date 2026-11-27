@@ -429,10 +429,12 @@ private fun CatalogListPane(
                 )
 
                 if (kindChips.isNotEmpty()) {
+                    val kindGroupLabel = stringResource(R.string.storefront_catalog_kindLabel)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .semantics { contentDescription = kindGroupLabel }
                             .testTag(CatalogTestTags.KIND_ROW),
                     ) {
                         item(key = "__all_kinds__") {
@@ -664,7 +666,7 @@ private fun CatalogListPane(
                         }
 
                         item(key = "__tail__") {
-                            when (page.tail) {
+                            when (val tail = page.tail) {
                                 TailState.Loading -> {
                                     Box(
                                         modifier = Modifier
@@ -681,38 +683,11 @@ private fun CatalogListPane(
                                 }
 
                                 is TailState.Error -> {
-                                    Surface(
-                                        color = colors.bgSurface,
-                                        border = BorderStroke(1.dp, colors.border),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 4.dp)
-                                            .testTag(CatalogTestTags.TAIL_ERROR),
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(16.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        ) {
-                                            Text(
-                                                text = stringResource(R.string.storefront_catalog_errorMessage),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = colors.textSecondary,
-                                                textAlign = TextAlign.Center,
-                                            )
-                                            OutlinedButton(
-                                                onClick = onLoadNextPage,
-                                                modifier = Modifier
-                                                    .heightIn(min = 48.dp)
-                                                    .testTag(CatalogTestTags.TAIL_RETRY),
-                                            ) {
-                                                Text(text = stringResource(R.string.common_retry))
-                                            }
-                                        }
-                                    }
+                                    CatalogTailErrorCard(
+                                        tailError = tail,
+                                        clockMillis = dependencies.clockMillis,
+                                        onRetry = onLoadNextPage,
+                                    )
                                 }
 
                                 TailState.Idle, TailState.End -> Spacer(modifier = Modifier.height(8.dp))
@@ -720,6 +695,83 @@ private fun CatalogListPane(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CatalogTailErrorCard(
+    tailError: TailState.Error,
+    clockMillis: () -> Long,
+    onRetry: () -> Unit,
+) {
+    val colors = Thi360Theme.colors
+    val blockedUntilMillis = remember(tailError) {
+        val wait = tailError.retryAfterSeconds
+        if (wait != null && wait > 0L) clockMillis() + wait * 1_000L else 0L
+    }
+    var tick by remember(tailError) { mutableIntStateOf(0) }
+    LaunchedEffect(tailError, blockedUntilMillis) {
+        while (blockedUntilMillis > 0L && clockMillis() < blockedUntilMillis) {
+            withContext(Dispatchers.Default) {
+                delay(RETRY_POLL_INTERVAL_MS)
+            }
+            tick++
+        }
+    }
+    val retryAllowedNow = tick >= 0 && (blockedUntilMillis <= 0L || clockMillis() >= blockedUntilMillis)
+
+    Surface(
+        color = colors.bgSurface,
+        border = BorderStroke(1.dp, colors.border),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .testTag(CatalogTestTags.TAIL_ERROR),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (tailError.isOffline) {
+                Text(
+                    text = stringResource(R.string.common_offline_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.text,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = stringResource(R.string.common_offline_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.storefront_catalog_errorMessage),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            OutlinedButton(
+                onClick = {
+                    if (blockedUntilMillis <= 0L || clockMillis() >= blockedUntilMillis) {
+                        onRetry()
+                    }
+                },
+                enabled = retryAllowedNow,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .testTag(CatalogTestTags.TAIL_RETRY),
+            ) {
+                Text(text = stringResource(R.string.common_retry))
             }
         }
     }
@@ -859,7 +911,7 @@ private fun CatalogErrorView(
     var tick by remember(failed) { mutableIntStateOf(0) }
     LaunchedEffect(failed, blockedUntilMillis) {
         while (blockedUntilMillis > 0L && clockMillis() < blockedUntilMillis) {
-            withContext(Dispatchers.Default) { delay(250L) }
+            withContext(Dispatchers.Default) { delay(RETRY_POLL_INTERVAL_MS) }
             tick++
         }
     }
@@ -947,3 +999,4 @@ private fun CatalogEmptyDetailPlaceholder() {
 }
 
 private const val PAGINATION_PREFETCH_THRESHOLD = 3
+private const val RETRY_POLL_INTERVAL_MS = 250L

@@ -481,17 +481,23 @@ internal fun ProductPriceView(
     price: Long,
     promotion: PromotionBadgeData?,
     locale: AppLocale,
+    modifier: Modifier = Modifier,
     large: Boolean = false,
     showPromoEnd: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     val colors = Thi360Theme.colors
     val status = Thi360Theme.statusColors
-    val priceFormatted = CatalogFormatting.formatPrice(price, locale)
-    val listPriceFormatted = CatalogFormatting.formatPrice(listPrice, locale)
+    val priceFormatted = stringResource(
+        R.string.storefront_price,
+        CatalogFormatting.formatPriceAmount(price, locale),
+    )
+    val listPriceFormatted = stringResource(
+        R.string.storefront_price,
+        CatalogFormatting.formatPriceAmount(listPrice, locale),
+    )
     val percent = if (promotion != null) CatalogFormatting.discountPercent(listPrice, price) else null
     val promoEndDayMonth = promotion?.endsAt?.let { CatalogFormatting.formatPromoDayMonth(it) }
-    val listPriceA11y = stringResource(R.string.storefront_listPriceDescription, listPriceFormatted)
+    val listPriceA11y = "${stringResource(R.string.storefront_listPriceLabel)} $listPriceFormatted"
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -1061,6 +1067,7 @@ internal fun CatalogFilterSheet(
     onDismiss: () -> Unit,
 ) {
     val colors = Thi360Theme.colors
+    @Suppress("DEPRECATION")
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val availableFormats = remember(filters) { CatalogFilterOptions.formats(filters) }
     val partSubjectOptions = remember(filters, query.kind, locale) {

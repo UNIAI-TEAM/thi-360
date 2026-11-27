@@ -252,7 +252,10 @@ sealed interface TailState {
     data object Idle : TailState
     data object Loading : TailState
     data object End : TailState
-    data class Error(val retryAfterSeconds: Long? = null) : TailState
+    data class Error(
+        val retryAfterSeconds: Long? = null,
+        val isOffline: Boolean = false,
+    ) : TailState
 }
 
 data class CatalogPage(

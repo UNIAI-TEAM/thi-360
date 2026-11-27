@@ -34,7 +34,6 @@
     <string name="storefront_coverDiscount">-%1$d%%</string>
     <string name="storefront_promoEnds">Kết thúc %1$s</string>
     <string name="storefront_listPriceLabel">Giá gốc</string>
-    <string name="storefront_listPriceDescription">Giá gốc %1$s</string>
 
     <string name="storefront_access_loading">Đang tải quyền</string>
     <string name="storefront_access_loadError">Chưa xác định được quyền của tài khoản.</string>
@@ -56,7 +55,6 @@
     </plurals>
 
     <string name="storefront_detail_codeLabel">Mã sản phẩm</string>
-    <string name="storefront_detail_codeWithValue">Mã sản phẩm %1$s</string>
     <string name="storefront_detail_objectives">Mục tiêu</string>
     <string name="storefront_detail_audience">Đối tượng phù hợp</string>
     <string name="storefront_detail_structureTitle">Cấu trúc bài thi</string>
@@ -124,7 +122,6 @@
     <string name="storefront_detail_perAttempt">%1$s câu · %2$s phút mỗi lượt</string>
     <string name="storefront_detail_promoLine">%1$s · Kết thúc %2$s</string>
     <string name="storefront_detail_emptyValue">—</string>
-    <string name="storefront_detail_orderBadge">Thứ tự %1$d</string>
 
     <string name="storefront_gone_eyebrow">MÃ LỖI 410</string>
     <string name="storefront_gone_title">Bài thi đã ngừng bán</string>

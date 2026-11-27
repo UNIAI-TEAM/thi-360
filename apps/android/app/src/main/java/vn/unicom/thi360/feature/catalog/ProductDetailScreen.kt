@@ -176,8 +176,16 @@ internal fun ProductDetailPane(
                         tint = colors.text,
                     )
                 }
+                val topBarTitle = when (val loaded = (state.loadState as? LoadState.Loaded)?.value) {
+                    is ProductOutcome.Exam -> loaded.detail.name
+                    is ProductOutcome.Bundle -> loaded.detail.name
+                    is ProductOutcome.Gone -> stringResource(R.string.storefront_gone_title)
+                    ProductOutcome.NotFound -> stringResource(R.string.storefront_notFound_title)
+                    ProductOutcome.BundleUnavailable -> stringResource(R.string.bundle_unavailablePage_title)
+                    null -> stringResource(R.string.storefront_catalog_title)
+                }
                 Text(
-                    text = stringResource(R.string.storefront_catalog_title),
+                    text = topBarTitle,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.text,
