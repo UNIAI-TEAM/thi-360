@@ -39,14 +39,20 @@ final class PrepareSnapshotTests: XCTestCase {
         )
         let openInProgressResp = try PrepareTestFixtures.loadPrepareResponse(variant: "open-in-progress")
 
-        let prepareStates: [(name: String, state: PrepareScreenState)] = [
+        let prepareStates: [(name: String, state: PrepareScreenState, verify: (PrepareViewModel, PrepareView) -> Void)] = [
             (
                 "prepare-free",
                 PrepareScreenState(
                     load: .loaded(value: freeResp, stale: false),
                     selection: .empty,
                     gate: StartGate.resolve(response: freeResp, selection: .empty)
-                )
+                ),
+                { vm, view in
+                    XCTAssertNotNil(vm.loadedResponse)
+                    XCTAssertNil(view.renderedError)
+                    XCTAssertEqual(vm.state.gate, .open)
+                    XCTAssertTrue(view.showsStartButton)
+                }
             ),
             (
                 "prepare-per-part",
@@ -54,7 +60,13 @@ final class PrepareSnapshotTests: XCTestCase {
                     load: .loaded(value: perPartResp, stale: false),
                     selection: .empty,
                     gate: StartGate.resolve(response: perPartResp, selection: .empty)
-                )
+                ),
+                { vm, view in
+                    XCTAssertNotNil(vm.loadedResponse)
+                    XCTAssertNil(view.renderedError)
+                    XCTAssertEqual(vm.state.gate, .open)
+                    XCTAssertTrue(view.showsStartButton)
+                }
             ),
             (
                 "prepare-shared",
@@ -62,7 +74,13 @@ final class PrepareSnapshotTests: XCTestCase {
                     load: .loaded(value: sharedResp, stale: false),
                     selection: .empty,
                     gate: StartGate.resolve(response: sharedResp, selection: .empty)
-                )
+                ),
+                { vm, view in
+                    XCTAssertNotNil(vm.loadedResponse)
+                    XCTAssertNil(view.renderedError)
+                    XCTAssertEqual(vm.state.gate, .open)
+                    XCTAssertTrue(view.showsStartButton)
+                }
             ),
             (
                 "prepare-pre-choice",
@@ -73,7 +91,15 @@ final class PrepareSnapshotTests: XCTestCase {
                         response: preChoiceResp,
                         selection: PreChoiceSelection(optionCode: "SCIENCE", subjectCodes: ["LY"])
                     )
-                )
+                ),
+                { vm, view in
+                    XCTAssertNotNil(vm.loadedResponse)
+                    XCTAssertNil(view.renderedError)
+                    XCTAssertTrue(view.showsPreChoice)
+                    XCTAssertEqual(vm.state.selection.optionCode, "SCIENCE")
+                    XCTAssertEqual(view.renderedPreChoice?.subjectProgress, "Đã chọn 1/2")
+                    XCTAssertEqual(vm.state.gate, .needSubjects(count: 2))
+                }
             ),
             (
                 "prepare-exhausted",
@@ -81,7 +107,13 @@ final class PrepareSnapshotTests: XCTestCase {
                     load: .loaded(value: exhaustedResp, stale: false),
                     selection: .empty,
                     gate: StartGate.resolve(response: exhaustedResp, selection: .empty)
-                )
+                ),
+                { vm, view in
+                    XCTAssertNotNil(vm.loadedResponse)
+                    XCTAssertNil(view.renderedError)
+                    XCTAssertEqual(view.renderedAction?.exhaustedTitle, "Bạn đã dùng hết lượt của bài này.")
+                    XCTAssertEqual(view.renderedAction?.showsBuyMore, true)
+                }
             ),
             (
                 "prepare-open-in-progress",
@@ -89,15 +121,30 @@ final class PrepareSnapshotTests: XCTestCase {
                     load: .loaded(value: openInProgressResp, stale: false),
                     selection: .empty,
                     gate: StartGate.resolve(response: openInProgressResp, selection: .empty)
-                )
+                ),
+                { vm, view in
+                    XCTAssertNotNil(vm.loadedResponse)
+                    XCTAssertNil(view.renderedError)
+                    XCTAssertFalse(view.showsPreChoice)
+                    XCTAssertNotNil(view.renderedAction?.inProgressBanner)
+                    XCTAssertEqual(view.renderedAction?.continueTitle, "Tiếp tục")
+                }
             ),
             (
                 "prepare-error",
                 PrepareScreenState(
                     load: .failed(kind: .server, canRetry: true, retryAfter: nil)
-                )
+                ),
+                { vm, view in
+                    XCTAssertNil(vm.loadedResponse)
+                    XCTAssertEqual(view.renderedError?.title, "Không tải được thông tin chuẩn bị bài thi")
+                    XCTAssertEqual(view.renderedError?.retryTitle, "Thử lại")
+                }
             )
         ]
+
+        var lightPNGsByViewport: [String: [String: Data]] = [:]
+        var darkPNGsByViewport: [String: [String: Data]] = [:]
 
         for entry in prepareStates {
             let vm = PrepareViewModel(
@@ -105,20 +152,50 @@ final class PrepareSnapshotTests: XCTestCase {
                 api: stack.api,
                 initialState: entry.state
             )
+            let makePrepareView = {
+                PrepareView(
+                    viewModel: vm,
+                    locale: .vi,
+                    supportContact: SupportContact(phone: "1900 1234", email: "support@thi360.vn", hours: "8h–21h"),
+                    usesNavigationBarChrome: false,
+                    onOpenAttempt: { _ in },
+                    onOpenCheckout: { _ in },
+                    onOpenMyExams: {}
+                )
+            }
             for viewport in viewports {
-                try assertLightAndDarkSnapshots(prefix: "\(entry.name)-\(viewport.name)", viewport: viewport) {
-                    PrepareView(
-                        viewModel: vm,
-                        locale: .vi,
-                        supportContact: SupportContact(phone: "1900 1234", email: "support@thi360.vn", hours: "8h–21h"),
-                        usesNavigationBarChrome: false,
-                        onOpenAttempt: { _ in },
-                        onOpenCheckout: { _ in },
-                        onOpenMyExams: {}
-                    )
-                }
+                let (lightPNG, darkPNG) = try assertLightAndDarkSnapshots(
+                    prefix: "\(entry.name)-\(viewport.name)",
+                    viewport: viewport,
+                    verifyAfterHost: {
+                        entry.verify(vm, makePrepareView())
+                    },
+                    content: makePrepareView
+                )
+                lightPNGsByViewport[viewport.name, default: [:]][entry.name] = lightPNG
+                darkPNGsByViewport[viewport.name, default: [:]][entry.name] = darkPNG
             }
         }
+
+        for viewport in viewports {
+            let lightSet = Set(lightPNGsByViewport[viewport.name]?.values.map { $0 } ?? [])
+            XCTAssertEqual(
+                lightSet.count,
+                prepareStates.count,
+                "All \(prepareStates.count) light Prepare snapshots at \(viewport.name) must be visually distinct"
+            )
+            let darkSet = Set(darkPNGsByViewport[viewport.name]?.values.map { $0 } ?? [])
+            XCTAssertEqual(
+                darkSet.count,
+                prepareStates.count,
+                "All \(prepareStates.count) dark Prepare snapshots at \(viewport.name) must be visually distinct"
+            )
+        }
+        XCTAssertEqual(
+            stack.transport.requests(method: .get, path: "/api/v1/me/entitlements/ent-snap/prepare").count,
+            0,
+            "Seeded PrepareViewModel snapshots must not issue network loads on appear"
+        )
 
         let waitingContext = StartContext(
             entitlementId: "ent-snap",
@@ -136,9 +213,12 @@ final class PrepareSnapshotTests: XCTestCase {
             ("waiting-failed", .failed(abortReason: "STALE_STARTING"), "STALE_STARTING")
         ]
 
+        var waitingLightByViewport: [String: [String: Data]] = [:]
+        var waitingDarkByViewport: [String: [String: Data]] = [:]
+
         for variant in waitingVariants {
             for viewport in viewports {
-                try assertLightAndDarkSnapshots(prefix: "\(variant.name)-\(viewport.name)", viewport: viewport) {
+                let makeWaitingView = {
                     AttemptWaitingView(
                         attemptId: "att-snap",
                         examTitle: waitingContext.examTitle,
@@ -154,7 +234,30 @@ final class PrepareSnapshotTests: XCTestCase {
                         locale: .vi
                     )
                 }
+                let (lightPNG, darkPNG) = try assertLightAndDarkSnapshots(
+                    prefix: "\(variant.name)-\(viewport.name)",
+                    viewport: viewport,
+                    verifyAfterHost: {
+                        XCTAssertEqual(makeWaitingView().rendered.phase, variant.phase)
+                    },
+                    content: makeWaitingView
+                )
+                waitingLightByViewport[viewport.name, default: [:]][variant.name] = lightPNG
+                waitingDarkByViewport[viewport.name, default: [:]][variant.name] = darkPNG
             }
+        }
+
+        for viewport in viewports {
+            XCTAssertEqual(
+                Set(waitingLightByViewport[viewport.name]?.values.map { $0 } ?? []).count,
+                waitingVariants.count,
+                "All waiting light snapshots at \(viewport.name) must be visually distinct"
+            )
+            XCTAssertEqual(
+                Set(waitingDarkByViewport[viewport.name]?.values.map { $0 } ?? []).count,
+                waitingVariants.count,
+                "All waiting dark snapshots at \(viewport.name) must be visually distinct"
+            )
         }
     }
 
@@ -193,13 +296,9 @@ final class PrepareSnapshotTests: XCTestCase {
         ]
 
         let phoneSize = CGSize(width: 390, height: 844)
+        var prepareDTPNGs: [Data] = []
         for scale in scales {
-            try auditDynamicType(
-                name: "prepare-\(scale.suffix)",
-                size: phoneSize,
-                uiCategory: scale.uiCategory,
-                dynamicType: scale.dynamicType
-            ) {
+            let makePrepareDT = {
                 PrepareView(
                     viewModel: vm,
                     locale: .vi,
@@ -209,8 +308,21 @@ final class PrepareSnapshotTests: XCTestCase {
                     onOpenMyExams: {}
                 )
             }
+            let png = try auditDynamicType(
+                name: "prepare-\(scale.suffix)",
+                size: phoneSize,
+                uiCategory: scale.uiCategory,
+                dynamicType: scale.dynamicType,
+                verifyAfterHost: {
+                    XCTAssertNotNil(vm.loadedResponse)
+                    XCTAssertNil(makePrepareDT().renderedError)
+                    XCTAssertTrue(makePrepareDT().showsPreChoice)
+                },
+                content: makePrepareDT
+            )
+            prepareDTPNGs.append(png)
 
-            try auditDynamicType(
+            _ = try auditDynamicType(
                 name: "waiting-polling-\(scale.suffix)",
                 size: phoneSize,
                 uiCategory: scale.uiCategory,
@@ -231,7 +343,7 @@ final class PrepareSnapshotTests: XCTestCase {
                 )
             }
 
-            try auditDynamicType(
+            _ = try auditDynamicType(
                 name: "waiting-failed-\(scale.suffix)",
                 size: phoneSize,
                 uiCategory: scale.uiCategory,
@@ -253,15 +365,23 @@ final class PrepareSnapshotTests: XCTestCase {
                 )
             }
         }
+        XCTAssertEqual(Set(prepareDTPNGs).count, scales.count, "prepare-dt130 and prepare-dt200 must differ visually")
+        XCTAssertEqual(
+            stack.transport.requests(method: .get, path: "/api/v1/me/entitlements/ent-dt/prepare").count,
+            0,
+            "Dynamic Type Prepare audit must not overwrite seeded state with network loads"
+        )
     }
 
+    @discardableResult
     private func auditDynamicType<Content: View>(
         name: String,
         size: CGSize,
         uiCategory: UIContentSizeCategory,
         dynamicType: DynamicTypeSize,
+        verifyAfterHost: () -> Void = {},
         @ViewBuilder content: () -> Content
-    ) throws {
+    ) throws -> Data {
         let (window, controller) = PrepareViewInspector.host(
             content(),
             size: size,
@@ -273,6 +393,8 @@ final class PrepareSnapshotTests: XCTestCase {
             settleSeconds: 0.1
         )
         defer { window.isHidden = true }
+
+        verifyAfterHost()
 
         let nodes = CatalogViewInspector.collectNodes(in: controller.view, window: window)
         for button in nodes.filter({ $0.traits.contains(.button) }) {
@@ -299,22 +421,39 @@ final class PrepareSnapshotTests: XCTestCase {
         let (image, png) = try CatalogViewInspector.renderPNG(window: window, size: size)
         XCTAssertGreaterThan(png.count, 2048, "Dynamic Type snapshot \(name) unexpectedly empty")
         try persistSnapshot(image: image, png: png, name: name)
+        return png
     }
 
+    @discardableResult
     private func assertLightAndDarkSnapshots<Content: View>(
         prefix: String,
         viewport: Viewport,
+        verifyAfterHost: () -> Void = {},
         @ViewBuilder content: () -> Content
-    ) throws {
-        let lightPNG = try captureSnapshot(name: "\(prefix)-light", viewport: viewport, style: .light, content: content())
-        let darkPNG = try captureSnapshot(name: "\(prefix)-dark", viewport: viewport, style: .dark, content: content())
+    ) throws -> (light: Data, dark: Data) {
+        let lightPNG = try captureSnapshot(
+            name: "\(prefix)-light",
+            viewport: viewport,
+            style: .light,
+            verifyAfterHost: verifyAfterHost,
+            content: content()
+        )
+        let darkPNG = try captureSnapshot(
+            name: "\(prefix)-dark",
+            viewport: viewport,
+            style: .dark,
+            verifyAfterHost: verifyAfterHost,
+            content: content()
+        )
         XCTAssertNotEqual(lightPNG, darkPNG, "Light and dark snapshots for \(prefix) must differ visually")
+        return (lightPNG, darkPNG)
     }
 
     private func captureSnapshot<Content: View>(
         name: String,
         viewport: Viewport,
         style: UIUserInterfaceStyle,
+        verifyAfterHost: () -> Void,
         content: Content
     ) throws -> Data {
         let (window, controller) = PrepareViewInspector.host(
@@ -326,6 +465,8 @@ final class PrepareSnapshotTests: XCTestCase {
             settleSeconds: 0.08
         )
         defer { window.isHidden = true }
+
+        verifyAfterHost()
 
         let scrollViews = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view)
         for scrollView in scrollViews where scrollView.contentSize.width > 0 {

@@ -4,24 +4,34 @@ import SwiftUI
 @MainActor
 @Observable
 final class AttemptWaitingController {
+    struct RestartedOutcome {
+        let attemptId: String
+        let state: AttemptOpenState
+        let context: StartContext?
+    }
+
     let attemptId: String
     let origin: WaitingOrigin
     private(set) var phase: WaitingPhase
     private(set) var lastAbortReason: String?
+    private(set) var resolvedContext: StartContext?
 
     @ObservationIgnored private let api: any PrepareAPIClientProtocol
     @ObservationIgnored private let startContextStore: StartContextStore
     @ObservationIgnored private let waitingRetry: WaitingRetry
     @ObservationIgnored private let clock: any PrepareClock
-    @ObservationIgnored private let context: StartContext?
-    @ObservationIgnored private let onReady: (String) -> Void
-    @ObservationIgnored private let onRestarted: (String) -> Void
-    @ObservationIgnored private let onOpenPrepare: (String) -> Void
-    @ObservationIgnored private let onMyExams: () -> Void
+    @ObservationIgnored private var context: StartContext?
+    @ObservationIgnored private var onReady: (String) -> Void
+    @ObservationIgnored private var onRestarted: (String) -> Void
+    @ObservationIgnored private var onOpenPrepare: (String) -> Void
+    @ObservationIgnored private var onMyExams: () -> Void
     @ObservationIgnored private var poller: WaitingPoller?
     @ObservationIgnored private var retryTask: Task<Void, Never>?
+    @ObservationIgnored private var contextLoadTask: Task<Void, Never>?
     @ObservationIgnored private var started = false
+    @ObservationIgnored private var hasAttemptedContextLoad = false
     @ObservationIgnored private var isForeground = true
+    @ObservationIgnored private(set) var lastRestartedOutcome: RestartedOutcome?
 
     init(
         attemptId: String,
@@ -38,6 +48,7 @@ final class AttemptWaitingController {
     ) {
         self.attemptId = attemptId
         self.context = context
+        self.resolvedContext = context
         self.origin = origin
         self.phase = initialPhase
         if case let .failed(reason) = initialPhase {
@@ -56,8 +67,27 @@ final class AttemptWaitingController {
         self.onMyExams = onMyExams
     }
 
+    func updateBindings(
+        context: StartContext?,
+        onReady: @escaping (String) -> Void,
+        onRestarted: @escaping (String) -> Void,
+        onOpenPrepare: @escaping (String) -> Void,
+        onMyExams: @escaping () -> Void
+    ) {
+        self.context = context
+        if let context {
+            resolvedContext = context
+        }
+        self.onReady = onReady
+        self.onRestarted = onRestarted
+        self.onOpenPrepare = onOpenPrepare
+        self.onMyExams = onMyExams
+        loadPersistedContextIfNeeded()
+    }
+
     func startIfNeeded(isForeground: Bool) {
         self.isForeground = isForeground
+        loadPersistedContextIfNeeded()
         guard !started else {
             poller?.setForeground(isForeground)
             return
@@ -83,6 +113,13 @@ final class AttemptWaitingController {
         poller = nil
         retryTask?.cancel()
         retryTask = nil
+        contextLoadTask?.cancel()
+        contextLoadTask = nil
+    }
+
+    func handleBack(_ action: () -> Void) {
+        stop()
+        action()
     }
 
     func retry() {
@@ -94,18 +131,38 @@ final class AttemptWaitingController {
         }
     }
 
+    private func loadPersistedContextIfNeeded() {
+        guard context == nil, resolvedContext == nil, !hasAttemptedContextLoad else { return }
+        hasAttemptedContextLoad = true
+        contextLoadTask?.cancel()
+        contextLoadTask = Task { [weak self] in
+            guard let self else { return }
+            let stored = await self.startContextStore.read(attemptId: self.attemptId)
+            guard !Task.isCancelled else { return }
+            if self.context == nil, let stored {
+                self.resolvedContext = stored
+            }
+        }
+    }
+
     private func executeRetry() async {
+        let activeContext = context ?? resolvedContext
         let outcome = await waitingRetry.retry(
             attemptId: attemptId,
             origin: origin,
-            entitlementId: context?.entitlementId,
-            inMemoryContext: context
+            entitlementId: activeContext?.entitlementId,
+            inMemoryContext: activeContext
         )
         switch outcome {
         case .alreadyInFlight:
             break
 
-        case let .restarted(newAttemptId, _, _, _):
+        case let .restarted(newAttemptId, openedState, _, movedContext):
+            lastRestartedOutcome = RestartedOutcome(
+                attemptId: newAttemptId,
+                state: openedState,
+                context: movedContext ?? activeContext
+            )
             poller?.stop()
             poller = nil
             onRestarted(newAttemptId)
@@ -119,7 +176,7 @@ final class AttemptWaitingController {
 
         case .reloadPrepare:
             stop()
-            if let entitlementId = context?.entitlementId {
+            if let entitlementId = activeContext?.entitlementId {
                 onOpenPrepare(entitlementId)
             } else {
                 onMyExams()
@@ -183,6 +240,7 @@ struct AttemptWaitingView: View {
     let clock: any PrepareClock
     let onRetryOverride: (() -> Void)?
     let onBack: (() -> Void)?
+    let onControllerChanged: ((AttemptWaitingController) -> Void)?
 
     @Environment(\.brandPalette) private var palette
     @Environment(\.statusPalette) private var statusPalette
@@ -213,7 +271,8 @@ struct AttemptWaitingView: View {
         startContextStore: StartContextStore? = nil,
         clock: any PrepareClock = SystemPrepareClock(),
         onRetryOverride: (() -> Void)? = nil,
-        onBack: (() -> Void)? = nil
+        onBack: (() -> Void)? = nil,
+        onControllerChanged: ((AttemptWaitingController) -> Void)? = nil
     ) {
         self.attemptId = attemptId
         self.examTitle = examTitle
@@ -235,6 +294,7 @@ struct AttemptWaitingView: View {
         self.clock = clock
         self.onRetryOverride = onRetryOverride
         self.onBack = onBack
+        self.onControllerChanged = onControllerChanged
     }
 
     private var activeLocale: AppLocale {
@@ -254,17 +314,21 @@ struct AttemptWaitingView: View {
         return controlledAbortReason ?? controller?.lastAbortReason
     }
 
+    private var effectiveContext: StartContext? {
+        context ?? controller?.resolvedContext
+    }
+
     private var resolvedTitle: String {
         let trimmed = examTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { return trimmed }
-        if let ctxTitle = context?.examTitle.trimmingCharacters(in: .whitespacesAndNewlines), !ctxTitle.isEmpty {
+        if let ctxTitle = effectiveContext?.examTitle.trimmingCharacters(in: .whitespacesAndNewlines), !ctxTitle.isEmpty {
             return ctxTitle
         }
         return AppStrings.common("attempt.waiting.title", locale: activeLocale)
     }
 
     private var resolvedTiming: String? {
-        timing ?? context?.timing
+        timing ?? effectiveContext?.timing
     }
 
     var body: some View {
@@ -304,6 +368,20 @@ struct AttemptWaitingView: View {
                 ensureController()
                 controller?.startIfNeeded(isForeground: scenePhase == .active)
             }
+        }
+        .onChange(of: attemptId) { _, _ in
+            guard controlledPhase == nil else { return }
+            rebindControllerForAttemptChange()
+        }
+        .onChange(of: context) { _, newContext in
+            guard controlledPhase == nil else { return }
+            controller?.updateBindings(
+                context: newContext,
+                onReady: onReady,
+                onRestarted: onRestarted,
+                onOpenPrepare: onOpenPrepare,
+                onMyExams: onMyExams
+            )
         }
         .onChange(of: scenePhase) { _, newPhase in
             controller?.setForeground(newPhase == .active)
@@ -359,7 +437,13 @@ struct AttemptWaitingView: View {
     }
 
     private func backButton(action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            if let controller {
+                controller.handleBack(action)
+            } else {
+                action()
+            }
+        } label: {
             Image(systemName: "chevron.backward")
                 .font(.body.weight(.semibold))
                 .foregroundStyle(palette.textColor)
@@ -782,9 +866,10 @@ struct AttemptWaitingView: View {
     }
 
     var rendered: RenderedPresentation {
-        let partName = context?.firstPartName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let activeContext = effectiveContext
+        let partName = activeContext?.firstPartName?.trimmingCharacters(in: .whitespacesAndNewlines)
         let hasPart = partName?.isEmpty == false
-        let minutes = context?.firstPartMinutes
+        let minutes = activeContext?.firstPartMinutes
         let durationKey = resolvedTiming == "SHARED"
             ? "attempt.waiting.durationSharedLabel"
             : "attempt.waiting.durationLabel"
@@ -854,8 +939,29 @@ struct AttemptWaitingView: View {
         )
     }
 
-    private func ensureController() {
+    private func rebindControllerForAttemptChange() {
+        let restarted = controller?.lastRestartedOutcome
+        let matchedRestart = restarted?.attemptId == attemptId ? restarted : nil
+        ensureController(restartedOutcome: matchedRestart)
+        if let matchedRestart,
+           matchedRestart.state == .inProgress || matchedRestart.state == .closed
+        {
+            controller?.stop()
+            onReady(attemptId)
+            return
+        }
+        controller?.startIfNeeded(isForeground: scenePhase == .active)
+    }
+
+    private func ensureController(restartedOutcome: AttemptWaitingController.RestartedOutcome? = nil) {
         if let existing = controller, existing.attemptId == attemptId {
+            existing.updateBindings(
+                context: context,
+                onReady: onReady,
+                onRestarted: onRestarted,
+                onOpenPrepare: onOpenPrepare,
+                onMyExams: onMyExams
+            )
             return
         }
         controller?.stop()
@@ -877,11 +983,27 @@ struct AttemptWaitingView: View {
                 return storeProvider.store(for: accountId)
             })
         }
-        controller = AttemptWaitingController(
+
+        let resolvedInitialPhase: WaitingPhase
+        let resolvedInitialContext: StartContext?
+        if let restartedOutcome {
+            switch restartedOutcome.state {
+            case .starting, .inProgress, .closed:
+                resolvedInitialPhase = .polling(elapsed: 0)
+            case let .aborted(reason):
+                resolvedInitialPhase = .failed(abortReason: reason)
+            }
+            resolvedInitialContext = context ?? restartedOutcome.context
+        } else {
+            resolvedInitialPhase = initialPhase
+            resolvedInitialContext = context
+        }
+
+        let created = AttemptWaitingController(
             attemptId: attemptId,
-            context: context,
+            context: resolvedInitialContext,
             origin: origin,
-            initialPhase: initialPhase,
+            initialPhase: resolvedInitialPhase,
             api: api,
             startContextStore: store,
             clock: clock,
@@ -890,5 +1012,7 @@ struct AttemptWaitingView: View {
             onOpenPrepare: onOpenPrepare,
             onMyExams: onMyExams
         )
+        controller = created
+        onControllerChanged?(created)
     }
 }

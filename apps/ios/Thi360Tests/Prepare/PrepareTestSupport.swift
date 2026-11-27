@@ -324,6 +324,7 @@ final class VirtualPrepareClock: PrepareClock, @unchecked Sendable {
 enum PrepareTestStackFactory {
     struct Stack {
         let transport: ContractFakeTransport
+        let tokenStore: InMemoryTokenStore
         let mobileClient: MobileAPIClient
         let api: PrepareAPI
         let storeProvider: AccountScopedStoreProvider
@@ -334,7 +335,9 @@ enum PrepareTestStackFactory {
     }
 
     static func makeStack(
-        accountId: String = "019320a0-0000-7000-8000-000000000001",
+        accountId: String? = "019320a0-0000-7000-8000-000000000001",
+        username: String = "student.demo",
+        refreshToken: String = "prepare-test-refresh",
         locale: AppLocale = .vi,
         configure: (ContractFakeTransport) throws -> Void = { _ in }
     ) throws -> Stack {
@@ -345,11 +348,11 @@ enum PrepareTestStackFactory {
 
         let tokens = SessionTokens(
             accessToken: "prepare-test-access",
-            refreshToken: "prepare-test-refresh",
+            refreshToken: refreshToken,
             accessExpiresIn: 900,
             refreshExpiresIn: 86_400,
             mustChangePassword: false,
-            username: "student.demo",
+            username: username,
             accountId: accountId
         )
         let tokenStore = InMemoryTokenStore(initialTokens: tokens)
@@ -376,6 +379,7 @@ enum PrepareTestStackFactory {
         let api = PrepareAPI(apiClient: mobileClient)
         return Stack(
             transport: transport,
+            tokenStore: tokenStore,
             mobileClient: mobileClient,
             api: api,
             storeProvider: storeProvider,
@@ -422,6 +426,49 @@ enum PrepareViewInspector {
             uiCategory: uiCategory,
             settleSeconds: settleSeconds
         )
+    }
+
+    static func hostAsync<Content: View>(
+        _ view: Content,
+        size: CGSize = CGSize(width: 390, height: 844),
+        style: UIUserInterfaceStyle = .light,
+        sizeClass: UIUserInterfaceSizeClass = .compact,
+        shellWidth: ShellWidth = .narrow,
+        uiCategory: UIContentSizeCategory = .large,
+        dynamicType: DynamicTypeSize = .large,
+        settleNanoseconds: UInt64 = 120_000_000
+    ) async -> (UIWindow, UIHostingController<AnyView>) {
+        let palette: BrandPalette = (style == .dark) ? .defaultDark : .defaultLight
+        let statusPalette: StatusPalette = (style == .dark) ? .dark : .light
+        let wrapped = AnyView(
+            view
+                .background(palette.bgPageColor.ignoresSafeArea())
+                .environment(\.brandPalette, palette)
+                .environment(\.statusPalette, statusPalette)
+                .environment(\.shellWidth, shellWidth)
+                .environment(\.dynamicTypeSize, dynamicType)
+        )
+        let controller = UIHostingController(rootView: wrapped)
+        controller.traitOverrides.horizontalSizeClass = sizeClass
+        controller.traitOverrides.userInterfaceStyle = style
+        controller.traitOverrides.preferredContentSizeCategory = uiCategory
+
+        let window: UIWindow
+        if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+            window = UIWindow(windowScene: scene)
+            window.frame = CGRect(origin: .zero, size: size)
+        } else {
+            window = UIWindow(frame: CGRect(origin: .zero, size: size))
+        }
+        window.rootViewController = controller
+        window.overrideUserInterfaceStyle = style
+        window.makeKeyAndVisible()
+        window.setNeedsLayout()
+        window.layoutIfNeeded()
+        try? await Task.sleep(nanoseconds: settleNanoseconds)
+        window.setNeedsLayout()
+        window.layoutIfNeeded()
+        return (window, controller)
     }
 
     static func joinedText(in root: UIView, window: UIWindow) -> String {

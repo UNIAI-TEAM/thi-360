@@ -9,8 +9,16 @@ import XCTest
 @MainActor
 final class PrepareViewTests: XCTestCase {
     func testLoadingAndNotFound() async throws {
+        var loadingPNG = Data()
         do {
-            let stack = try PrepareTestStackFactory.makeStack()
+            let stack = try PrepareTestStackFactory.makeStack { transport in
+                transport.register(method: .get, path: "/api/v1/me/entitlements/ent-loading/prepare") { _ in
+                    try await Task.sleep(nanoseconds: 10_000_000_000)
+                    var headers = HTTPFields()
+                    headers[.contentType] = "application/json"
+                    return (HTTPResponse(status: .ok, headerFields: headers), HTTPBody(Data()))
+                }
+            }
             defer { PrepareTestStackFactory.cleanup(stack) }
 
             let vm = PrepareViewModel(
@@ -18,6 +26,7 @@ final class PrepareViewTests: XCTestCase {
                 api: stack.api,
                 initialState: PrepareScreenState(load: .loading)
             )
+            defer { vm.clear() }
             let view = PrepareView(
                 viewModel: vm,
                 locale: .vi,
@@ -29,10 +38,15 @@ final class PrepareViewTests: XCTestCase {
             XCTAssertTrue(view.isShowingLoading)
             XCTAssertFalse(view.showsStartButton, "Start button must NOT exist while loading")
 
-            let (window, _) = PrepareViewInspector.host(view)
+            let (window, _) = await PrepareViewInspector.hostAsync(view, settleNanoseconds: 80_000_000)
+            defer { window.isHidden = true }
+            XCTAssertEqual(vm.state.load, .loading, "Hosted view must remain in .loading while GET /prepare is in-flight")
+            XCTAssertTrue(view.isShowingLoading)
+            XCTAssertNil(view.renderedError, "Loading view must not turn into 404")
+            XCTAssertFalse(view.showsStartButton, "Start button must NOT render while loading")
             let (_, png) = try CatalogViewInspector.renderPNG(window: window, size: CGSize(width: 390, height: 844))
-            window.isHidden = true
-            XCTAssertGreaterThan(png.count, 2048)
+            loadingPNG = png
+            XCTAssertGreaterThan(loadingPNG.count, 2048)
         }
 
         do {
@@ -72,10 +86,11 @@ final class PrepareViewTests: XCTestCase {
             XCTAssertEqual(err.backTitle, "Về Bài thi của tôi")
             XCTAssertNil(err.retryTitle, "404 error must not offer Retry")
 
-            let (window, _) = PrepareViewInspector.host(view)
-            let (_, png) = try CatalogViewInspector.renderPNG(window: window, size: CGSize(width: 390, height: 844))
+            let (window, _) = await PrepareViewInspector.hostAsync(view, settleNanoseconds: 80_000_000)
+            let (_, notFoundPNG) = try CatalogViewInspector.renderPNG(window: window, size: CGSize(width: 390, height: 844))
             window.isHidden = true
-            XCTAssertGreaterThan(png.count, 2048)
+            XCTAssertGreaterThan(notFoundPNG.count, 2048)
+            XCTAssertNotEqual(loadingPNG, notFoundPNG, "Loading skeleton snapshot must differ from 404 Not Found snapshot")
 
             view.onOpenMyExams()
             XCTAssertEqual(router.selectedDestination, .myExams)

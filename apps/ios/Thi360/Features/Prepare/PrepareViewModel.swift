@@ -57,6 +57,11 @@ final class PrepareViewModel {
         self.localeProvider = localeProvider
         self.onOpenAttemptHandler = onOpenAttempt
         self.state = initialState
+        if case .loading = initialState.load, initialState.waiting == nil {
+            self.hasTriggeredInitialLoad = false
+        } else {
+            self.hasTriggeredInitialLoad = true
+        }
     }
 
     var loadedResponse: AttemptPrepareResponse? {
@@ -501,18 +506,30 @@ final class PrepareViewModelRegistry {
     private final class Entry {
         weak var router: AppRouter?
         weak var sessionStore: SessionStore?
-        let accountId: String?
+        var accountId: String?
+        var normalizedUsername: String?
+        var refreshToken: String?
+        var reloadCount: Int
+        var wasOnStack: Bool
         let viewModel: PrepareViewModel
 
         init(
             router: AppRouter,
             sessionStore: SessionStore?,
             accountId: String?,
+            normalizedUsername: String?,
+            refreshToken: String?,
+            reloadCount: Int,
+            wasOnStack: Bool,
             viewModel: PrepareViewModel
         ) {
             self.router = router
             self.sessionStore = sessionStore
             self.accountId = accountId
+            self.normalizedUsername = normalizedUsername
+            self.refreshToken = refreshToken
+            self.reloadCount = reloadCount
+            self.wasOnStack = wasOnStack
             self.viewModel = viewModel
         }
     }
@@ -529,11 +546,33 @@ final class PrepareViewModelRegistry {
     ) -> PrepareViewModel {
         pruneStaleEntries()
         let key = Key(routerId: ObjectIdentifier(router), destination: destination, entitlementId: entitlementId)
-        let currentAccountId = sessionStore?.currentAccountId
+
+        if let sessionStore, !sessionStore.state.isAuthenticated {
+            evict(for: key)
+            return PrepareViewModel(
+                entitlementId: entitlementId,
+                api: PreviewEmptyPrepareAPI(),
+                localeProvider: localeProvider,
+                onOpenAttempt: onOpenAttempt
+            )
+        }
+
+        let currentAccountId = Self.trimmedNonEmpty(sessionStore?.currentAccountId)
+        let currentUsername = Self.normalizedUsername(sessionStore?.currentUsername)
+        let currentRefreshToken = Self.trimmedNonEmpty(sessionStore?.currentRefreshToken)
+        let currentReload = router.reloadCount(for: destination)
+        let isOnStack = router.path(for: destination).contains(.prepare(entitlementId: entitlementId))
 
         if let existing = entries[key],
            existing.sessionStore === sessionStore,
-           existing.accountId == currentAccountId
+           !shouldEvictForRouterChange(key: key, entry: existing, router: router),
+           matchesAndUpdatesSession(
+               entry: existing,
+               sessionStore: sessionStore,
+               accountId: currentAccountId,
+               username: currentUsername,
+               refreshToken: currentRefreshToken
+           )
         {
             existing.viewModel.updateBindings(
                 localeProvider: localeProvider,
@@ -568,9 +607,14 @@ final class PrepareViewModelRegistry {
             router: router,
             sessionStore: sessionStore,
             accountId: currentAccountId,
+            normalizedUsername: currentUsername,
+            refreshToken: currentRefreshToken,
+            reloadCount: currentReload,
+            wasOnStack: isOnStack,
             viewModel: viewModel
         )
         entries[key] = entry
+        observeRouterState(for: key, entry: entry, router: router)
         if let sessionStore {
             observeSessionState(for: key, entry: entry, sessionStore: sessionStore)
         }
@@ -596,12 +640,100 @@ final class PrepareViewModelRegistry {
 
     private func pruneStaleEntries() {
         let staleKeys = entries.compactMap { key, entry -> Key? in
-            if entry.router == nil { return key }
-            if let sessionStore = entry.sessionStore, !sessionStore.state.isAuthenticated { return key }
+            guard let router = entry.router else { return key }
+            if shouldEvictForRouterChange(key: key, entry: entry, router: router) { return key }
+            if let sessionStore = entry.sessionStore {
+                if !sessionStore.state.isAuthenticated { return key }
+                let currentAccountId = Self.trimmedNonEmpty(sessionStore.currentAccountId)
+                let currentUsername = Self.normalizedUsername(sessionStore.currentUsername)
+                let currentRefreshToken = Self.trimmedNonEmpty(sessionStore.currentRefreshToken)
+                if !matchesAndUpdatesSession(
+                    entry: entry,
+                    sessionStore: sessionStore,
+                    accountId: currentAccountId,
+                    username: currentUsername,
+                    refreshToken: currentRefreshToken
+                ) {
+                    return key
+                }
+            }
             return nil
         }
         for key in staleKeys {
             evict(for: key)
+        }
+    }
+
+    private func shouldEvictForRouterChange(key: Key, entry: Entry, router: AppRouter) -> Bool {
+        let isOnStack = router.path(for: key.destination).contains(.prepare(entitlementId: key.entitlementId))
+        if isOnStack {
+            entry.wasOnStack = true
+        }
+        if router.reloadCount(for: key.destination) != entry.reloadCount {
+            return true
+        }
+        if entry.wasOnStack && !isOnStack {
+            return true
+        }
+        return false
+    }
+
+    private func matchesAndUpdatesSession(
+        entry: Entry,
+        sessionStore: SessionStore?,
+        accountId currentAccountId: String?,
+        username currentUsername: String?,
+        refreshToken currentRefreshToken: String?
+    ) -> Bool {
+        if let existingAccountId = entry.accountId, existingAccountId == currentAccountId {
+            if let currentUsername { entry.normalizedUsername = currentUsername }
+            if let currentRefreshToken { entry.refreshToken = currentRefreshToken }
+            return true
+        }
+        if entry.accountId == nil, let currentAccountId {
+            let sameUsername = entry.normalizedUsername != nil && entry.normalizedUsername == currentUsername
+            let sameRefreshToken = entry.normalizedUsername == nil
+                && currentUsername == nil
+                && entry.refreshToken != nil
+                && entry.refreshToken == currentRefreshToken
+            if sameUsername || sameRefreshToken {
+                entry.accountId = currentAccountId
+                if let currentUsername { entry.normalizedUsername = currentUsername }
+                if let currentRefreshToken { entry.refreshToken = currentRefreshToken }
+                return true
+            }
+            return false
+        }
+        if entry.accountId == nil && currentAccountId == nil {
+            if sessionStore == nil {
+                return true
+            }
+            if entry.normalizedUsername != nil || currentUsername != nil {
+                if entry.normalizedUsername == currentUsername {
+                    if let currentRefreshToken { entry.refreshToken = currentRefreshToken }
+                    return true
+                }
+                return false
+            }
+            return entry.refreshToken == currentRefreshToken
+        }
+        return false
+    }
+
+    private func observeRouterState(for key: Key, entry: Entry, router: AppRouter) {
+        withObservationTracking {
+            _ = router.paths
+            _ = router.reloadTokens
+        } onChange: { [weak self, weak entry, weak router] in
+            Task { @MainActor in
+                guard let self, let entry, let router else { return }
+                guard self.entries[key] === entry else { return }
+                if self.shouldEvictForRouterChange(key: key, entry: entry, router: router) {
+                    self.evict(for: key)
+                    return
+                }
+                self.observeRouterState(for: key, entry: entry, router: router)
+            }
         }
     }
 
@@ -612,12 +744,32 @@ final class PrepareViewModelRegistry {
             Task { @MainActor in
                 guard let self, let entry, let sessionStore else { return }
                 guard self.entries[key] === entry else { return }
-                if !sessionStore.state.isAuthenticated {
+                let currentAccountId = Self.trimmedNonEmpty(sessionStore.currentAccountId)
+                let currentUsername = Self.normalizedUsername(sessionStore.currentUsername)
+                let currentRefreshToken = Self.trimmedNonEmpty(sessionStore.currentRefreshToken)
+                if !sessionStore.state.isAuthenticated || !self.matchesAndUpdatesSession(
+                    entry: entry,
+                    sessionStore: sessionStore,
+                    accountId: currentAccountId,
+                    username: currentUsername,
+                    refreshToken: currentRefreshToken
+                ) {
                     self.evict(for: key)
                     return
                 }
                 self.observeSessionState(for: key, entry: entry, sessionStore: sessionStore)
             }
         }
+    }
+
+    private static func trimmedNonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private static func normalizedUsername(_ value: String?) -> String? {
+        trimmedNonEmpty(value)?.lowercased()
     }
 }
