@@ -8,7 +8,13 @@ import type { EditorView } from "@tiptap/pm/view";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import katex from "katex";
-import { deferUntilMhchem, hasUnbalancedMath, sanitizeQuestionHtml, stripTrailingEmptyParagraph } from "@thi360/ui/rich-text";
+import {
+  deferUntilMhchem,
+  hasUnbalancedMath,
+  markChargeSigns,
+  sanitizeQuestionHtml,
+  stripTrailingEmptyParagraph,
+} from "@thi360/ui/rich-text";
 import "katex/dist/katex.min.css";
 import { useTranslations } from "next-intl";
 import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type AriaAttributes, type Ref } from "react";
@@ -60,6 +66,7 @@ function renderLatex(latex: string, displayMode: boolean, target: HTMLElement) {
   if (deferUntilMhchem(latex, target, () => renderLatex(latex, displayMode, target))) return;
   try {
     katex.render(latex, target, { displayMode, throwOnError: true });
+    markChargeSigns(latex, target);
   } catch {
     // LaTeX chưa hoàn chỉnh trong lúc gõ: hiện mã nguồn thay vì lỗi đỏ của KaTeX.
     target.textContent = displayMode ? `\\[${latex}\\]` : `\\(${latex}\\)`;

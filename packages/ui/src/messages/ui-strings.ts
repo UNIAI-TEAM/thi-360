@@ -24,6 +24,13 @@ export interface UiStrings {
   emptyState: {
     defaultTitle: string;
   };
+  /** Danh sách chọn có ô lọc (`Combobox`, `ComboboxMenu`, `Select` danh sách dài). */
+  combobox: {
+    filterPlaceholder: string;
+    /** Tên truy cập mặc định của ô lọc khi nơi gọi không truyền. */
+    filterLabel: string;
+    noMatch: string;
+  };
   toaster: {
     containerAriaLabel: string;
     closeButtonAriaLabel: string;
@@ -171,6 +178,11 @@ export const UI_STRINGS_VI: UiStrings = {
   },
   emptyState: {
     defaultTitle: "Không có dữ liệu",
+  },
+  combobox: {
+    filterPlaceholder: "Lọc…",
+    filterLabel: "Lọc danh sách",
+    noMatch: "Không có mục khớp",
   },
   toaster: {
     containerAriaLabel: "Thông báo",
@@ -364,6 +376,11 @@ export const UI_STRINGS_EN: UiStrings = {
   },
   emptyState: {
     defaultTitle: "No data",
+  },
+  combobox: {
+    filterPlaceholder: "Filter…",
+    filterLabel: "Filter list",
+    noMatch: "No matching items",
   },
   toaster: {
     containerAriaLabel: "Notifications",

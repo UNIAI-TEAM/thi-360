@@ -77,7 +77,21 @@ export {
   type PasswordRuleStatus,
 } from "./components/password-field";
 export { SectionTitle, type SectionTitleProps } from "./components/section-title";
-export { Select, type SelectOption, type SelectProps } from "./components/select";
+export {
+  SELECT_FILTER_THRESHOLD,
+  Select,
+  type SelectOption,
+  type SelectProps,
+} from "./components/select";
+export {
+  Combobox,
+  ComboboxMenu,
+  type ComboboxLabels,
+  type ComboboxMenuProps,
+  type ComboboxOption,
+  type ComboboxProps,
+} from "./components/combobox";
+export { matchesFilter, normalizeFilterText } from "./lib/filter-text";
 export { Skeleton } from "./components/skeleton";
 export {
   StatusChip,

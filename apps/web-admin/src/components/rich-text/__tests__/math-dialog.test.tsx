@@ -75,6 +75,8 @@ describe("math dialog (mathlive mocked)", () => {
     expect(MockMathfield.fontsDirectory).toBe("/mathlive/fonts/");
     expect(MockMathfield.soundsDirectory).toBeNull();
     expect(MockMathfield.current.mathVirtualKeyboardPolicy).toBe("manual");
+    // 2^12: mũ nhiều chữ số không bị đẩy ra ngoài sau chữ số đầu (UNI-2878).
+    expect(MockMathfield.current.smartSuperscript).toBe(false);
     expect(MockMathfield.current.menuItems).toEqual([]);
     expect(MockMathfield.current.getAttribute("aria-label")).toBe("Formula editing area");
   });

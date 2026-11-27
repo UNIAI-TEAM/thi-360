@@ -35,6 +35,10 @@ export const PALETTE_LATEX: Readonly<Record<string, string>> = {
   infinity: "\\infty",
   pi: "\\pi",
   degree: "^{\\circ}",
+  // LaTeX bỏ qua dấu cách gõ thường nên chèn lệnh khoảng cách (UNI-2878): `\ ` rộng một dấu cách chữ, `\quad` rộng
+  // một chữ M để tách hai công thức đặt cạnh nhau.
+  space: "\\ ",
+  wideSpace: "\\quad",
   fracOneOver: "\\frac{1}{\\placeholder{}}",
   fracHalf: "\\frac{1}{2}",
   fracOfPi: "\\frac{\\pi}{\\placeholder{}}",
@@ -169,12 +173,15 @@ export const PALETTE_GLYPH_LATEX: Readonly<Record<string, string>> = {
   doubleIntegral: "\\iint\\placeholder{}",
   sum: "\\displaystyle\\sum_{k=1}^{n}",
   product: "\\displaystyle\\prod_{k=1}^{n}",
+  // Khoảng trắng vẽ ra không thấy gì: mặt nút là hai ô cách nhau đúng khoảng đó.
+  space: "\\placeholder{}\\ \\placeholder{}",
+  wideSpace: "\\placeholder{}\\quad\\placeholder{}",
 };
 
 export const PALETTE_TABS: readonly PaletteTab[] = [
   {
     id: "common",
-    items: ["frac", "sqrt", "nthRoot", "power", "subscript", "absolute", "plusMinus", "times", "divide", "notEqual", "lessEqual", "greaterEqual", "approx", "infinity", "pi", "degree"],
+    items: ["frac", "sqrt", "nthRoot", "power", "subscript", "absolute", "plusMinus", "times", "divide", "notEqual", "lessEqual", "greaterEqual", "approx", "infinity", "pi", "degree", "space", "wideSpace"],
   },
   {
     id: "fractionRoot",

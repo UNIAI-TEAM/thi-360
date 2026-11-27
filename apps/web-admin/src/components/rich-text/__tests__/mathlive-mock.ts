@@ -30,6 +30,8 @@ export class MockMathfield extends HTMLElement {
   }
 
   mathVirtualKeyboardPolicy = "auto";
+  /** Mặc định của mathlive là `true` (nhảy khỏi ô mũ sau một chữ số); ô soạn tắt đi (UNI-2878). */
+  smartSuperscript = true;
   private menu: unknown[] = [{ id: "default" }];
   private content = "";
 

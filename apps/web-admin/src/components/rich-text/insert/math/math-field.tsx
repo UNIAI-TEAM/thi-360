@@ -93,6 +93,9 @@ export function MathField({ initialLatex, ariaLabel, onLatexChange, onStatusChan
         // Bảng nút của hộp thay bàn phím ảo; trình đơn tiếng Anh của mathlive không dùng (`menuItems` chỉ đặt được
         // sau khi ô đã gắn vào trang: trước đó mathlive báo "Mathfield not mounted").
         field.mathVirtualKeyboardPolicy = "manual";
+        // Mặc định mathlive nhảy ra khỏi ô mũ ngay sau một chữ số (`smartSuperscript`), nên gõ 2^12 thành 2¹2. Tắt để
+        // mũ nhiều chữ số gõ liền được; ra khỏi ô mũ bằng Tab hoặc phím mũi tên phải (UNI-2878).
+        field.smartSuperscript = false;
         field.setAttribute("aria-label", labelRef.current);
         field.addEventListener("input", onInput);
         host.append(field);
