@@ -1,6 +1,7 @@
 package vn.unicom.thi360.smoke
 
 import android.graphics.Bitmap
+import android.os.Looper
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -31,6 +33,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import vn.unicom.thi360.core.biometric.BiometricState
@@ -206,6 +209,7 @@ class AccessibilityAndFontScaleTest {
         renderAtScale(1.0f) {
             HomeSurface()
         }
+        waitForHomeCatalogLoaded()
 
         assertHasHeading("Home")
         assertInteractiveNodesHaveAccessibleLabel("Home")
@@ -401,6 +405,7 @@ class AccessibilityAndFontScaleTest {
         renderAtScale(scale) {
             HomeSurface()
         }
+        waitForHomeCatalogLoaded()
         exportSnapshotIfRequested(snapshotName)
 
         assertNoHorizontalClipping(
@@ -663,6 +668,14 @@ class AccessibilityAndFontScaleTest {
                 onOtherAccountClick = {},
             )
         }
+    }
+
+    private fun waitForHomeCatalogLoaded() {
+        composeRule.waitUntil(10_000) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.waitForIdle()
     }
 
     @Composable

@@ -1,5 +1,6 @@
 package vn.unicom.thi360
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -29,6 +31,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -67,6 +70,10 @@ class LocalePreferenceTest {
                     onSelectThemeMode = { mode -> preferences = preferences.copy(themeMode = mode) },
                 )
             }
+        }
+        composeRule.waitUntil(10_000) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithTag(CatalogTestTags.SHOWING_SUMMARY).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.waitForIdle()
 

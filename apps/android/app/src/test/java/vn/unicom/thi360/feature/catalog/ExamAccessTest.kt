@@ -1,5 +1,6 @@
 package vn.unicom.thi360.feature.catalog
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -19,6 +20,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.network.ApiResult
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -94,8 +96,11 @@ class ExamAccessTest {
             assertTrue(composeRule.onAllNodesWithText("Mua bài thi").fetchSemanticsNodes().isEmpty())
 
             accessGate.complete(Unit)
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") == 1
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") == 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.productAccessError("AC-01"))
+                        .fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -107,8 +112,11 @@ class ExamAccessTest {
             composeRule.onNodeWithTag(CatalogTestTags.productAccessError("AC-01")).assertIsDisplayed()
             composeRule.onNodeWithTag(CatalogTestTags.productAccessRetry("AC-01")).assertIsDisplayed().performClick()
 
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") == 2
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") == 2 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.productPrimaryAction("AC-01"))
+                        .fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 

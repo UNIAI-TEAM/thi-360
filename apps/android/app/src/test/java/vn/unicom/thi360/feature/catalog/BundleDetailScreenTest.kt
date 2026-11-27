@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -151,7 +152,8 @@ class BundleDetailScreenTest {
             composeRule.runOnIdle { navRef!!.openProduct("BUNDLE-DEMO-01") }
             composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
-                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
+                composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.BUNDLE_OWNED_NOTES).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -190,7 +192,8 @@ class BundleDetailScreenTest {
                 .performClick()
             composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-MISSING-404") == 1
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-MISSING-404") == 1 &&
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_NOT_FOUND).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(ProductDetailTestTags.STATUS_NOT_FOUND).assertIsDisplayed()

@@ -141,8 +141,11 @@ class CatalogFilterTest {
                     Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
                 }
             }
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/filters") >= 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -178,8 +181,11 @@ class CatalogFilterTest {
                     Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
                 }
             }
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/filters") >= 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -237,8 +243,11 @@ class CatalogFilterTest {
                     Thi360App(preferences = AppPreferences(locale = AppLocale.VI))
                 }
             }
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
+                    harness.server.requestCount("GET", "/api/v1/public/storefront/filters") >= 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 

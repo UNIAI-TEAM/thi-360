@@ -1,5 +1,6 @@
 package vn.unicom.thi360.shell
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -7,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -18,6 +20,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiResult
@@ -98,6 +101,10 @@ class LocaleSwitchOnPortalRoutesTest {
 
         val nav = checkNotNull(navigator)
         composeRule.runOnIdle { nav.openProduct("EXAM-SERVER-ID-99") }
+        composeRule.waitUntil(10_000) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE).fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(ProductDetailTestTags.PRODUCT_CODE)
             .assertTextContains("Mã sản phẩm EXAM-SERVER-ID-99")

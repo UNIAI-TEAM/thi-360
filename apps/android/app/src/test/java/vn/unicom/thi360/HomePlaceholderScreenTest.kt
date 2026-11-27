@@ -1,9 +1,11 @@
 package vn.unicom.thi360
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertTrue
@@ -11,6 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -51,8 +54,10 @@ class HomePlaceholderScreenTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products") >= 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.SHOWING_SUMMARY).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -77,6 +82,10 @@ class HomePlaceholderScreenTest {
             CompositionLocalProvider(LocalCatalogDependencies provides deps) {
                 Thi360App(preferences = AppPreferences(locale = AppLocale.EN))
             }
+        }
+        composeRule.waitUntil(10_000) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithTag(CatalogTestTags.SHOWING_SUMMARY).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.waitForIdle()
 

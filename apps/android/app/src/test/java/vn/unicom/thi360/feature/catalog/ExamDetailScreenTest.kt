@@ -213,7 +213,8 @@ class ExamDetailScreenTest {
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
             composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1 &&
+                    composeRule.onAllNodesWithTag(LoadStateTestTags.RETRY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -221,7 +222,8 @@ class ExamDetailScreenTest {
             composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 2 &&
-                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.RIGHTS_SECTION).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -343,7 +345,8 @@ class ExamDetailScreenTest {
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
             composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
-                harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1
+                harness.server.requestCount("GET", "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1 &&
+                    composeRule.onAllNodesWithTag(ProductDetailTestTags.HERO_BRAND_PLACEHOLDER).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
@@ -403,7 +406,8 @@ class ExamDetailScreenTest {
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-DEMO-01") }
             composeRule.waitUntil(10_000) {
                 Shadows.shadowOf(Looper.getMainLooper()).idle()
-                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
+                composeRule.onAllNodesWithTag(ProductDetailTestTags.PRICE_PANEL).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithText("Bạn đã dùng hết lượt của bài thi này.").fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 

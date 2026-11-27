@@ -1,10 +1,12 @@
 package vn.unicom.thi360.feature.catalog
 
+import android.os.Looper
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,6 +20,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
@@ -96,8 +99,11 @@ class ProductCardTest {
                 }
             }
 
-            composeRule.waitUntil(5_000) {
-                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
+            composeRule.waitUntil(10_000) {
+                Shadows.shadowOf(Looper.getMainLooper()).idle()
+                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1 &&
+                    composeRule.onAllNodesWithTag(CatalogTestTags.productStats("EXAM-RANGE-01"))
+                        .fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
 
