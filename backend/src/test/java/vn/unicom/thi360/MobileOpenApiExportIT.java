@@ -7,12 +7,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -23,11 +26,30 @@ import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ActiveProfiles;
+import vn.unicom.thi360.mobilecontract.MobileFixtureCertifier;
 
 @ActiveProfiles({"api", "openapi", "test"})
 class MobileOpenApiExportIT extends AbstractIntegrationTest {
 
     private static final String SCHEMA_REF_PREFIX = "#/components/schemas/";
+    private static final String ANSWER_VALUE_REF = SCHEMA_REF_PREFIX + "AnswerValue";
+    private static final Set<String> ANSWER_VALUE_SUBTYPE_REFS = Set.of(
+            SCHEMA_REF_PREFIX + "SingleChoiceAnswer",
+            SCHEMA_REF_PREFIX + "MultipleChoiceAnswer",
+            SCHEMA_REF_PREFIX + "ShortAnswerValue",
+            SCHEMA_REF_PREFIX + "ClozeAnswer",
+            SCHEMA_REF_PREFIX + "TrueFalseAnswer",
+            SCHEMA_REF_PREFIX + "MatchingAnswer",
+            SCHEMA_REF_PREFIX + "EssayAnswer");
+    private static final Map<String, String> ATTEMPT_QUESTION_BODY_MAPPING = Map.of(
+            "SINGLE_CHOICE", SCHEMA_REF_PREFIX + "SingleChoice",
+            "MULTIPLE_CHOICE", SCHEMA_REF_PREFIX + "MultipleChoice",
+            "SHORT_ANSWER", SCHEMA_REF_PREFIX + "ShortAnswer",
+            "CLOZE", SCHEMA_REF_PREFIX + "Cloze",
+            "QUESTION_SET", SCHEMA_REF_PREFIX + "QuestionSet",
+            "TRUE_FALSE", SCHEMA_REF_PREFIX + "TrueFalse",
+            "MATCHING", SCHEMA_REF_PREFIX + "Matching",
+            "ESSAY", SCHEMA_REF_PREFIX + "Essay");
 
     private static final Map<String, List<String>> MOBILE_OPERATIONS = orderedMobileOperations();
 
@@ -136,10 +158,46 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
         assertThat(fullNameSchema.path("maxLength").asInt()).isEqualTo(200);
         assertThat(fullNameSchema.path("description").asText()).contains("200");
 
+        assertNoObjectTypedAdditionalProperties(exportedRoot);
+        assertAnswerValueUsesDiscriminatorRef(exportedRoot);
+        assertAttemptQuestionBodyUsesDiscriminatorWithoutCycle(schemas);
+        assertOrderPriceChangedQuoteIsOptional(schemas);
+
         Path targetOut = Path.of("target", "openapi-mobile.json");
         Files.createDirectories(targetOut.getParent());
         Files.writeString(targetOut, mobileOpenApiJson, StandardCharsets.UTF_8);
         assertThat(Files.readString(targetOut, StandardCharsets.UTF_8)).doesNotContain("\r");
+    }
+
+    @Test
+    void committedContractHasNoObjectTypedAdditionalProperties() throws IOException {
+        assertNoObjectTypedAdditionalProperties(readCommittedMobileContract());
+    }
+
+    @Test
+    void committedContractReferencesAnswerValueSchema() throws IOException {
+        assertAnswerValueUsesDiscriminatorRef(readCommittedMobileContract());
+    }
+
+    @Test
+    void committedContractNormalizesAttemptQuestionBodyDiscriminator() throws IOException {
+        assertAttemptQuestionBodyUsesDiscriminatorWithoutCycle(
+                readCommittedMobileContract().path("components").path("schemas"));
+    }
+
+    @Test
+    void committedContractMakesOrderPriceChangedQuoteOptionalWithLfEndings() throws IOException {
+        Path committedPath = MobileFixtureCertifier.contractsMobileDir().resolve("openapi-mobile.json");
+        String content = Files.readString(committedPath, StandardCharsets.UTF_8);
+        assertThat(content).doesNotContain("\r");
+        assertOrderPriceChangedQuoteIsOptional(
+                objectMapper.readTree(content).path("components").path("schemas"));
+    }
+
+    private JsonNode readCommittedMobileContract() throws IOException {
+        Path committedPath = MobileFixtureCertifier.contractsMobileDir().resolve("openapi-mobile.json");
+        assertThat(committedPath).as("contracts/mobile/openapi-mobile.json must exist").isRegularFile();
+        return objectMapper.readTree(Files.readString(committedPath, StandardCharsets.UTF_8));
     }
 
     private static ObjectNode filterForMobile(JsonNode fullSpec) {
@@ -209,7 +267,291 @@ class MobileOpenApiExportIT extends AbstractIntegrationTest {
             }
             filtered.set("components", targetComponents);
         }
+        normalizeForMobileGenerators(filtered);
         return filtered;
+    }
+
+    private static void normalizeForMobileGenerators(ObjectNode filteredSpec) {
+        normalizeArbitraryObjectMaps(filteredSpec);
+        normalizeInlineAnswerValueOneOf(filteredSpec);
+        JsonNode schemasNode = filteredSpec.path("components").get("schemas");
+        if (schemasNode instanceof ObjectNode schemas) {
+            normalizeAttemptQuestionBody(schemas);
+            normalizeOrderPriceChangedResponse(schemas);
+        }
+    }
+
+    private static void normalizeArbitraryObjectMaps(JsonNode node) {
+        if (node instanceof ObjectNode obj) {
+            if ("object".equals(obj.path("type").asText())
+                    && isBareObjectSchema(obj.get("additionalProperties"))) {
+                obj.set("additionalProperties", BooleanNode.TRUE);
+            }
+            obj.properties().forEach(entry -> normalizeArbitraryObjectMaps(entry.getValue()));
+        } else if (node instanceof ArrayNode array) {
+            for (JsonNode item : array) {
+                normalizeArbitraryObjectMaps(item);
+            }
+        }
+    }
+
+    private static boolean isBareObjectSchema(JsonNode node) {
+        return node != null
+                && node.isObject()
+                && node.size() == 1
+                && "object".equals(node.path("type").asText());
+    }
+
+    private static void normalizeInlineAnswerValueOneOf(JsonNode node) {
+        if (node instanceof ObjectNode obj) {
+            if (isAnswerValueOneOf(obj.get("oneOf"))) {
+                obj.removeAll();
+                obj.put("$ref", ANSWER_VALUE_REF);
+                return;
+            }
+            obj.properties().forEach(entry -> normalizeInlineAnswerValueOneOf(entry.getValue()));
+        } else if (node instanceof ArrayNode array) {
+            for (JsonNode item : array) {
+                normalizeInlineAnswerValueOneOf(item);
+            }
+        }
+    }
+
+    private static boolean isAnswerValueOneOf(JsonNode oneOf) {
+        if (oneOf == null || !oneOf.isArray() || oneOf.size() != ANSWER_VALUE_SUBTYPE_REFS.size()) {
+            return false;
+        }
+        Set<String> refs = new LinkedHashSet<>();
+        for (JsonNode branch : oneOf) {
+            if (!branch.isObject() || branch.size() != 1) {
+                return false;
+            }
+            JsonNode ref = branch.get("$ref");
+            if (ref == null || !ref.isTextual()) {
+                return false;
+            }
+            refs.add(ref.asText());
+        }
+        return refs.equals(ANSWER_VALUE_SUBTYPE_REFS);
+    }
+
+    private static void normalizeAttemptQuestionBody(ObjectNode schemas) {
+        JsonNode bodyNode = schemas.get("AttemptQuestionBody");
+        if (bodyNode instanceof ObjectNode body) {
+            JsonNode description = body.get("description");
+            body.removeAll();
+            if (description != null) {
+                body.set("description", description);
+            }
+            body.put("type", "object");
+            ArrayNode required = JsonNodeFactory.instance.arrayNode();
+            required.add("type");
+            body.set("required", required);
+
+            ObjectNode typeProperty = JsonNodeFactory.instance.objectNode();
+            typeProperty.put("type", "string");
+            ObjectNode properties = JsonNodeFactory.instance.objectNode();
+            properties.set("type", typeProperty);
+            body.set("properties", properties);
+
+            ObjectNode mapping = JsonNodeFactory.instance.objectNode();
+            ATTEMPT_QUESTION_BODY_MAPPING.forEach(mapping::put);
+            ObjectNode discriminator = JsonNodeFactory.instance.objectNode();
+            discriminator.put("propertyName", "type");
+            discriminator.set("mapping", mapping);
+            body.set("discriminator", discriminator);
+        }
+
+        for (String subtypeRef : ATTEMPT_QUESTION_BODY_MAPPING.values()) {
+            String subtypeName = subtypeRef.substring(SCHEMA_REF_PREFIX.length());
+            JsonNode subtypeNode = schemas.get(subtypeName);
+            if (subtypeNode != null && subtypeNode.path("allOf").isArray()) {
+                for (JsonNode part : subtypeNode.path("allOf")) {
+                    if (part instanceof ObjectNode partObj) {
+                        if (partObj.get("properties") instanceof ObjectNode subtypeProps) {
+                            subtypeProps.remove("type");
+                        }
+                        if (partObj.get("required") instanceof ArrayNode subtypeReq) {
+                            ArrayNode kept = removeStringElement(subtypeReq, "type");
+                            if (kept.isEmpty()) {
+                                partObj.remove("required");
+                            } else {
+                                partObj.set("required", kept);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static void normalizeOrderPriceChangedResponse(ObjectNode schemas) {
+        JsonNode node = schemas.get("OrderPriceChangedResponse");
+        if (node instanceof ObjectNode schema && schema.get("required") instanceof ArrayNode required) {
+            schema.set("required", removeStringElement(required, "quote"));
+        }
+    }
+
+    private static ArrayNode removeStringElement(ArrayNode source, String target) {
+        ArrayNode filtered = JsonNodeFactory.instance.arrayNode();
+        for (JsonNode item : source) {
+            if (!item.isTextual() || !target.equals(item.asText())) {
+                filtered.add(item.deepCopy());
+            }
+        }
+        return filtered;
+    }
+
+    private static void assertNoObjectTypedAdditionalProperties(JsonNode root) {
+        List<String> offendingPaths = new ArrayList<>();
+        collectObjectTypedAdditionalProperties(root, "$", offendingPaths);
+        assertThat(offendingPaths)
+                .as("openapi-mobile.json must not contain additionalProperties: {\"type\":\"object\"}")
+                .isEmpty();
+
+        JsonNode schemas = root.path("components").path("schemas");
+        for (String[] propertyPath : List.of(
+                new String[] {"AttemptPartStateView", "choice"},
+                new String[] {"AttemptStateResponse", "choices"},
+                new String[] {"AttemptStateResponse", "lastPosition"},
+                new String[] {"OrderDetail", "benefits"},
+                new String[] {"OrderItemView", "benefits"})) {
+            JsonNode prop = schemas.path(propertyPath[0]).path("properties").path(propertyPath[1]);
+            assertThat(prop.path("type").asText())
+                    .as("%s.%s type", propertyPath[0], propertyPath[1])
+                    .isEqualTo("object");
+            JsonNode additionalProps = prop.get("additionalProperties");
+            assertThat(additionalProps != null && additionalProps.isBoolean() && additionalProps.asBoolean())
+                    .as("%s.%s must declare additionalProperties: true", propertyPath[0], propertyPath[1])
+                    .isTrue();
+        }
+        assertThat(schemas.path("ClozeAnswer").path("allOf").path(1).path("properties")
+                        .path("blanks").path("additionalProperties").path("type").asText())
+                .isEqualTo("string");
+        assertThat(schemas.path("AttemptHistoryItem").path("properties").path("choices")
+                        .path("additionalProperties").path("$ref").asText())
+                .isEqualTo(SCHEMA_REF_PREFIX + "AttemptChoiceSummary");
+    }
+
+    private static void collectObjectTypedAdditionalProperties(
+            JsonNode node, String path, List<String> offendingPaths) {
+        if (node.isObject()) {
+            if (isBareObjectSchema(node.get("additionalProperties"))) {
+                offendingPaths.add(path);
+            }
+            node.properties().forEach(entry ->
+                    collectObjectTypedAdditionalProperties(
+                            entry.getValue(), path + "." + entry.getKey(), offendingPaths));
+        } else if (node.isArray()) {
+            for (int i = 0; i < node.size(); i++) {
+                collectObjectTypedAdditionalProperties(node.get(i), path + "[" + i + "]", offendingPaths);
+            }
+        }
+    }
+
+    private static void assertAnswerValueUsesDiscriminatorRef(JsonNode root) {
+        JsonNode schemas = root.path("components").path("schemas");
+        for (String[] propertyPath : List.of(
+                new String[] {"AnswerChange", "answer"},
+                new String[] {"AttemptItemView", "answer"},
+                new String[] {"AttemptReviewItem", "studentAnswer"},
+                new String[] {"FinalAnswerChange", "answer"})) {
+            JsonNode prop = schemas.path(propertyPath[0]).path("properties").path(propertyPath[1]);
+            assertThat(prop.has("oneOf"))
+                    .as("%s.%s must not emit undispatched inline oneOf", propertyPath[0], propertyPath[1])
+                    .isFalse();
+            assertThat(prop.path("$ref").asText())
+                    .as("%s.%s must reference AnswerValue", propertyPath[0], propertyPath[1])
+                    .isEqualTo(ANSWER_VALUE_REF);
+        }
+
+        List<String> inlineAnswerOneOfPaths = new ArrayList<>();
+        collectInlineAnswerValueOneOf(root, "$", inlineAnswerOneOfPaths);
+        assertThat(inlineAnswerOneOfPaths)
+                .as("No schema may retain undispatched inline AnswerValue oneOf")
+                .isEmpty();
+
+        JsonNode answerValue = schemas.path("AnswerValue");
+        assertThat(answerValue.path("discriminator").path("propertyName").asText()).isEqualTo("type");
+        Set<String> mappedRefs = new LinkedHashSet<>();
+        answerValue.path("discriminator").path("mapping")
+                .properties()
+                .forEach(entry -> mappedRefs.add(entry.getValue().asText()));
+        assertThat(mappedRefs).containsExactlyInAnyOrderElementsOf(ANSWER_VALUE_SUBTYPE_REFS);
+        for (String subtypeRef : ANSWER_VALUE_SUBTYPE_REFS) {
+            String subtypeName = subtypeRef.substring(SCHEMA_REF_PREFIX.length());
+            assertThat(schemas.has(subtypeName))
+                    .as("AnswerValue subtype schema %s must remain reachable", subtypeName)
+                    .isTrue();
+        }
+    }
+
+    private static void collectInlineAnswerValueOneOf(
+            JsonNode node, String path, List<String> offendingPaths) {
+        if (node.isObject()) {
+            if (isAnswerValueOneOf(node.get("oneOf"))) {
+                offendingPaths.add(path);
+            }
+            node.properties().forEach(entry ->
+                    collectInlineAnswerValueOneOf(
+                            entry.getValue(), path + "." + entry.getKey(), offendingPaths));
+        } else if (node.isArray()) {
+            for (int i = 0; i < node.size(); i++) {
+                collectInlineAnswerValueOneOf(node.get(i), path + "[" + i + "]", offendingPaths);
+            }
+        }
+    }
+
+    private static void assertAttemptQuestionBodyUsesDiscriminatorWithoutCycle(JsonNode schemas) {
+        JsonNode body = schemas.path("AttemptQuestionBody");
+        assertThat(body.isObject()).as("AttemptQuestionBody must exist").isTrue();
+        assertThat(body.has("oneOf")).as("AttemptQuestionBody must not declare cyclic oneOf").isFalse();
+        assertThat(body.has("allOf")).as("AttemptQuestionBody must not declare cyclic allOf").isFalse();
+        assertThat(body.path("description").asText()).isNotBlank();
+        assertThat(body.path("type").asText()).isEqualTo("object");
+        assertThat(body.path("required")).extracting(JsonNode::asText).containsExactly("type");
+        assertThat(body.path("properties").size()).isEqualTo(1);
+        assertThat(body.path("properties").path("type").path("type").asText()).isEqualTo("string");
+
+        JsonNode discriminator = body.path("discriminator");
+        assertThat(discriminator.path("propertyName").asText()).isEqualTo("type");
+        Map<String, String> actualMapping = new LinkedHashMap<>();
+        discriminator.path("mapping")
+                .properties()
+                .forEach(entry -> actualMapping.put(entry.getKey(), entry.getValue().asText()));
+        assertThat(actualMapping).containsExactlyInAnyOrderEntriesOf(ATTEMPT_QUESTION_BODY_MAPPING);
+
+        for (String subtypeRef : ATTEMPT_QUESTION_BODY_MAPPING.values()) {
+            String subtypeName = subtypeRef.substring(SCHEMA_REF_PREFIX.length());
+            JsonNode subtype = schemas.path(subtypeName);
+            assertThat(subtype.isObject()).as("subtype %s must exist", subtypeName).isTrue();
+            assertThat(subtype.has("oneOf")).as("subtype %s must not declare oneOf", subtypeName).isFalse();
+            JsonNode allOf = subtype.path("allOf");
+            assertThat(allOf.isArray() && allOf.size() >= 2)
+                    .as("subtype %s must use allOf inheritance", subtypeName)
+                    .isTrue();
+            assertThat(allOf.get(0).path("$ref").asText())
+                    .as("subtype %s allOf[0] must reference AttemptQuestionBody", subtypeName)
+                    .isEqualTo(SCHEMA_REF_PREFIX + "AttemptQuestionBody");
+            JsonNode subtypeProps = allOf.get(1).path("properties");
+            assertThat(subtypeProps.has("type"))
+                    .as("subtype %s allOf[1].properties must not redeclare type", subtypeName)
+                    .isFalse();
+            assertThat(subtypeProps.size())
+                    .as("subtype %s must retain its own properties", subtypeName)
+                    .isPositive();
+        }
+    }
+
+    private static void assertOrderPriceChangedQuoteIsOptional(JsonNode schemas) {
+        JsonNode schema = schemas.path("OrderPriceChangedResponse");
+        assertThat(schema.isObject()).as("OrderPriceChangedResponse must exist").isTrue();
+        assertThat(schema.path("properties").path("quote").path("$ref").asText())
+                .isEqualTo(SCHEMA_REF_PREFIX + "PriceQuote");
+        assertThat(schema.path("required"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("code", "fieldErrors", "message")
+                .doesNotContain("quote");
     }
 
     private static Set<String> collectReachableSchemas(JsonNode root, JsonNode allSchemas) {

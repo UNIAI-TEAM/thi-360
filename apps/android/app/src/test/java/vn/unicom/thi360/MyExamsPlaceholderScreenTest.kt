@@ -5,7 +5,6 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -24,19 +23,19 @@ import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
-class PlaceholderScreensTest {
+class MyExamsPlaceholderScreenTest {
 
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -46,9 +45,9 @@ class PlaceholderScreensTest {
 
     @Test
     @Config(qualifiers = "w412dp-h915dp")
-    fun placeholderDestinationsShowVietnameseTitlesAndEmptyStateOffline() {
+    fun myExamsPlaceholderShowsVietnameseTitleAndEmptyStateOffline() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(
                 Tokens(
@@ -58,6 +57,7 @@ class PlaceholderScreensTest {
                     refreshExpiresIn = 604800,
                     mustChangePassword = false,
                     username = "student.demo",
+                    accountId = "acc-demo",
                 ),
             ),
             localeProvider = { AppLocale.VI },
@@ -73,50 +73,34 @@ class PlaceholderScreensTest {
             )
         }
 
-        val expected = listOf(
-            Destination.Home to "Trang chủ",
-            Destination.MyExams to "Bài thi của tôi",
-            Destination.History to "Lịch sử",
-        )
-
-        expected.forEach { (destination, expectedTitle) ->
-            composeRule.onNodeWithTag(ShellTestTags.navItem(destination)).performClick()
-            composeRule.onNodeWithTag(ShellTestTags.screenTitle(destination))
-                .assertIsDisplayed()
-                .assertTextEquals(expectedTitle)
-            composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
-                .assertIsDisplayed()
-                .assertTextEquals("Chưa có nội dung")
-        }
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
+        composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.MyExams))
+            .assertIsDisplayed()
+            .assertTextEquals("Bài thi của tôi")
+        composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
+            .assertIsDisplayed()
+            .assertTextEquals("Chưa có nội dung")
 
         assertEquals(
-            "Opening placeholder tabs must trigger zero business API requests",
+            "Opening MyExams placeholder tab must trigger zero business API requests",
             0,
-            server.requestCount,
+            server.totalRequestCount,
         )
     }
 
     @Test
     @Config(qualifiers = "w412dp-h915dp")
-    fun placeholderDestinationsShowEnglishTitlesAndEmptyState() {
+    fun myExamsPlaceholderShowsEnglishTitleAndEmptyState() {
         composeRule.setContent {
             Thi360App(preferences = AppPreferences(locale = AppLocale.EN))
         }
 
-        val expected = listOf(
-            Destination.Home to "Home",
-            Destination.MyExams to "My exams",
-            Destination.History to "History",
-        )
-
-        expected.forEach { (destination, expectedTitle) ->
-            composeRule.onNodeWithTag(ShellTestTags.navItem(destination)).performClick()
-            composeRule.onNodeWithTag(ShellTestTags.screenTitle(destination))
-                .assertIsDisplayed()
-                .assertTextEquals(expectedTitle)
-            composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
-                .assertIsDisplayed()
-                .assertTextEquals("No content yet")
-        }
+        composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
+        composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.MyExams))
+            .assertIsDisplayed()
+            .assertTextEquals("My exams")
+        composeRule.onNodeWithTag(ShellTestTags.PLACEHOLDER_EMPTY_TITLE)
+            .assertIsDisplayed()
+            .assertTextEquals("No content yet")
     }
 }

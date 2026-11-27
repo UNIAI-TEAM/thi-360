@@ -2,13 +2,13 @@ name: Android
 
 on:
   push:
-    branches: [develop, "integration/**"]
+    branches: [develop, "integration/**", "integration/app-hoc-vien-cong-thi"]
     paths:
       - "apps/android/**"
       - "contracts/mobile/**"
       - ".github/workflows/android.yml"
   pull_request:
-    branches: [develop, "integration/**"]
+    branches: [develop, "integration/**", "integration/app-hoc-vien-cong-thi"]
     paths:
       - "apps/android/**"
       - "contracts/mobile/**"

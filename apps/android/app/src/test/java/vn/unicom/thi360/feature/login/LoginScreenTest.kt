@@ -19,7 +19,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
 import kotlinx.coroutines.CompletableDeferred
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -40,6 +39,7 @@ import vn.unicom.thi360.core.session.MobileAuthGateway
 import vn.unicom.thi360.core.session.SessionManager
 import vn.unicom.thi360.core.storage.Tokens
 import vn.unicom.thi360.shell.AppRoot
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class LoginScreenTest {
@@ -47,12 +47,11 @@ class LoginScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -64,7 +63,7 @@ class LoginScreenTest {
     @Config(qualifiers = "w390dp-h844dp")
     fun showsAllControls() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -90,11 +89,9 @@ class LoginScreenTest {
         composeRule.onNodeWithTag(LoginTestTags.REGISTER_LINK).assertIsDisplayed()
         composeRule.onNodeWithTag(LoginTestTags.LANGUAGE_TOGGLE).assertIsDisplayed()
 
-        // Toggle password visibility updates accessible description immediately.
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_VISIBILITY_TOGGLE).performClick()
         composeRule.onNodeWithContentDescription("Ẩn mật khẩu").assertIsDisplayed()
 
-        // Toggle language switches labels to English immediately without losing typed identifier.
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("minhanh.tran")
         composeRule.onNodeWithTag(LoginTestTags.LANGUAGE_TOGGLE).performClick()
         composeRule.waitForIdle()
@@ -107,7 +104,7 @@ class LoginScreenTest {
     @Config(qualifiers = "w1280dp-h800dp")
     fun tabletWidthShowsTwoColumnLoginLayout() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -133,7 +130,7 @@ class LoginScreenTest {
     @Config(qualifiers = "w390dp-h844dp")
     fun validation() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -156,7 +153,7 @@ class LoginScreenTest {
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_ERROR, useUnmergedTree = true)
             .assertIsDisplayed()
             .assertTextContains("Vui lòng nhập mật khẩu.")
-        assertEquals("Blank fields must not call backend API", 0, server.requestCount)
+        assertEquals("Blank fields must not call backend API", 0, server.totalRequestCount)
     }
 
     @Test
@@ -198,7 +195,6 @@ class LoginScreenTest {
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).assertIsNotEnabled()
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_PROGRESS).assertIsDisplayed()
 
-        // Second click while request is in flight must not trigger a second call.
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
         assertEquals(1, loginCalls)
 
@@ -221,7 +217,7 @@ class LoginScreenTest {
     @Config(qualifiers = "w390dp-h844dp")
     fun errorMessages() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -267,7 +263,7 @@ class LoginScreenTest {
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.demo")
 
         for ((statusCode, body, expectedMessage) in scenarios) {
-            server.enqueue(ContractFixtureLoader.jsonResponse(statusCode, body))
+            server.respondJson("POST", "/api/v1/auth/mobile/login", statusCode, body)
             composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("WrongPass1!")
             composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
 
@@ -292,7 +288,7 @@ class LoginScreenTest {
     @Config(qualifiers = "w360dp-h640dp", fontScale = 2.0f)
     fun registerPromptWrapsWithoutCrushingAt360dpAnd200PercentFontScale() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -321,7 +317,7 @@ class LoginScreenTest {
     @Config(qualifiers = "w1280dp-h800dp")
     fun identifierSurvivesActivityRecreationWithoutPersistingPassword() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },

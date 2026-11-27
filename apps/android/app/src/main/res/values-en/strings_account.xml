@@ -18,7 +18,7 @@
 
     <string name="account_logout">Sign out</string>
     <string name="account_logout_confirm_title">Sign out?</string>
-    <string name="account_logout_confirm_message">You will need to sign in again to continue using Thi 360.</string>
+    <string name="account_logout_confirm_message">You will need to sign in again to continue using Thi360.</string>
     <string name="account_logout_confirm_action">Sign out</string>
     <string name="account_logout_cancel">Cancel</string>
 
@@ -27,7 +27,7 @@
     <string name="account_theme_detail_description">Your Light or Dark appearance choice is saved on this device.</string>
 
     <string name="biometric_enable_title">Unlock with fingerprint or face?</string>
-    <string name="biometric_enable_body">Next time you open Thi 360, scan your fingerprint or face instead of entering your password.</string>
+    <string name="biometric_enable_body">Next time you open Thi360, scan your fingerprint or face instead of entering your password.</string>
     <string name="biometric_enable_note_1">The app locks automatically after 5 minutes away.</string>
     <string name="biometric_enable_note_2">If biometric scan fails, enter your password as usual.</string>
     <string name="biometric_enable_note_3">Turn it on or off anytime in Account.</string>
@@ -37,7 +37,7 @@
 
     <string name="biometric_os_prompt_enable_title">Confirm fingerprint or face</string>
     <string name="biometric_os_prompt_enable_subtitle">Use your fingerprint or face for quick unlock</string>
-    <string name="biometric_os_prompt_unlock_title">Unlock Thi 360</string>
+    <string name="biometric_os_prompt_unlock_title">Unlock Thi360</string>
     <string name="biometric_os_prompt_unlock_subtitle">Scan your fingerprint or face to continue</string>
     <string name="biometric_os_prompt_cancel">Cancel</string>
 

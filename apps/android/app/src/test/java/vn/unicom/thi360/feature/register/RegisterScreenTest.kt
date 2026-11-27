@@ -1,5 +1,8 @@
 package vn.unicom.thi360.feature.register
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -11,14 +14,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assert
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,8 +28,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.config.Environment
+import vn.unicom.thi360.core.legal.LegalId
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -42,6 +41,7 @@ import vn.unicom.thi360.feature.recovery.PasswordTestTags
 import vn.unicom.thi360.feature.recovery.RecoveryGateway
 import vn.unicom.thi360.feature.recovery.RegisterTestTags
 import vn.unicom.thi360.feature.recovery.RegistrationStartData
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class RegisterScreenTest {
@@ -49,12 +49,11 @@ class RegisterScreenTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -66,12 +65,13 @@ class RegisterScreenTest {
     @Config(qualifiers = "w390dp-h844dp")
     fun validationShowsFieldErrorsAndUpdatesPasswordRulesLiveWithoutNetworkCall() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
+        val openedLegal = mutableListOf<LegalId>()
 
         composeRule.setContent {
             Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
@@ -79,11 +79,11 @@ class RegisterScreenTest {
                     recoveryGateway = gateway,
                     sessionManager = stack.sessionManager,
                     onBackToLogin = {},
+                    onOpenLegal = { openedLegal += it },
                 )
             }
         }
 
-        // Submit empty form -> all required field errors appear, zero API requests.
         composeRule.onNodeWithTag(RegisterTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
         composeRule.onNodeWithTag(RegisterTestTags.FULL_NAME_ERROR, useUnmergedTree = true)
             .performScrollTo()
@@ -99,10 +99,11 @@ class RegisterScreenTest {
             .assertTextContains("Vui lòng nhập mật khẩu.")
         composeRule.onNodeWithTag(RegisterTestTags.TERMS_ERROR)
             .performScrollTo()
-            .assertTextContains("Bạn cần đồng ý với Điều khoản sử dụng để đăng ký.")
-        assertEquals(0, server.requestCount)
+            .assertTextContains(
+                "Bạn cần đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin để đăng ký.",
+            )
+        assertEquals(0, server.requestCount("POST", "/api/v1/auth/register"))
 
-        // Invalid username pattern, invalid email, weak password -> live rule indicators update.
         composeRule.onNodeWithTag(RegisterTestTags.FULL_NAME_FIELD).performScrollTo().performTextInput("Trần Minh Anh")
         composeRule.onNodeWithTag(RegisterTestTags.USERNAME_FIELD).performScrollTo().performTextInput("ab")
         composeRule.onNodeWithTag(RegisterTestTags.EMAIL_FIELD).performScrollTo().performTextInput("khong-phai-email")
@@ -129,40 +130,73 @@ class RegisterScreenTest {
         composeRule.onNodeWithTag(RegisterTestTags.PASSWORD_ERROR, useUnmergedTree = true)
             .performScrollTo()
             .assertTextContains("Mật khẩu chưa đáp ứng đủ các điều kiện.")
-        assertEquals(0, server.requestCount)
+        assertEquals(0, server.requestCount("POST", "/api/v1/auth/register"))
 
-        // Typing special character updates special rule immediately.
         composeRule.onNodeWithTag(RegisterTestTags.PASSWORD_FIELD).performScrollTo().performTextInput("!")
         composeRule.onNodeWithTag(PasswordTestTags.RULE_SPECIAL)
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Đã đạt"))
 
-        // Terms of Use dialog opens cleanly.
-        composeRule.onNodeWithTag(RegisterTestTags.TERMS_VIEW_BUTTON).performScrollTo().performClick()
-        composeRule.onNodeWithTag(RegisterTestTags.TERMS_DIALOG).assertIsDisplayed()
+        composeRule.onNodeWithTag(RegisterTestTags.TERMS_CONSENT_TEXT)
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextContains(
+                "Tôi đã đọc và đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin của Thi360.",
+            )
+    }
+
+    @Test
+    @Config(qualifiers = "w390dp-h844dp")
+    fun termsRequiredBlocksSubmit() {
+        val stack = Thi360ApiFactory.createSessionStack(
+            baseUrl = server.url("/"),
+            environment = Environment.DEV,
+            tokenStore = InMemoryTokenStore(),
+            localeProvider = { AppLocale.VI },
+        )
+        val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
+        server.respondApiFixture("POST", "/api/v1/auth/register", 200, "register-200.json")
+
+        composeRule.setContent {
+            Thi360Theme(preferences = AppPreferences(locale = AppLocale.VI)) {
+                RegistrationFlowScreen(
+                    recoveryGateway = gateway,
+                    sessionManager = stack.sessionManager,
+                    onBackToLogin = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(RegisterTestTags.FULL_NAME_FIELD).performScrollTo().performTextInput("Trần Minh Anh")
+        composeRule.onNodeWithTag(RegisterTestTags.USERNAME_FIELD).performScrollTo().performTextInput("minhanh.tran")
+        composeRule.onNodeWithTag(RegisterTestTags.EMAIL_FIELD).performScrollTo().performTextInput("minhanh@example.com")
+        composeRule.onNodeWithTag(RegisterTestTags.PASSWORD_FIELD).performScrollTo().performTextInput("Matkhau1!")
+        composeRule.onNodeWithTag(RegisterTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
+
+        composeRule.onNodeWithTag(RegisterTestTags.TERMS_ERROR)
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextContains(
+                "Bạn cần đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin để đăng ký.",
+            )
+        assertEquals(0, server.requestCount("POST", "/api/v1/auth/register"))
     }
 
     @Test
     @Config(qualifiers = "w390dp-h844dp")
     fun usernameTakenAndEmailTakenShowFieldErrorsAndPreserveInput() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
 
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                409,
-                ContractFixtureLoader.readApiFixture("register-409-username-taken.json"),
-            ),
-        )
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                409,
-                ContractFixtureLoader.readApiFixture("register-409-email-taken.json"),
-            ),
+        server.respondSequence(
+            "POST",
+            "/api/v1/auth/register",
+            { ContractFakeServer.apiFixtureResponse(409, "register-409-username-taken.json") },
+            { ContractFakeServer.apiFixtureResponse(409, "register-409-email-taken.json") },
         )
 
         composeRule.setContent {
@@ -194,7 +228,6 @@ class RegisterScreenTest {
         composeRule.onNodeWithTag(RegisterTestTags.USERNAME_FIELD).performScrollTo().assertTextContains("minhanh.tran")
         composeRule.onNodeWithTag(RegisterTestTags.EMAIL_FIELD).performScrollTo().assertTextContains("minhanh@example.com")
 
-        // Change username and submit again -> EMAIL_TAKEN shows under email while preserving all data.
         composeRule.onNodeWithTag(RegisterTestTags.USERNAME_FIELD).performScrollTo().performTextClearance()
         composeRule.onNodeWithTag(RegisterTestTags.USERNAME_FIELD).performScrollTo().performTextInput("minhanh.new")
         composeRule.onNodeWithTag(RegisterTestTags.SUBMIT_BUTTON).performScrollTo().performClick()
@@ -237,7 +270,7 @@ class RegisterScreenTest {
             override suspend fun changePassword(oldPassword: String, newPassword: String): ApiResult<Unit> = error("unused")
         }
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },
@@ -285,7 +318,7 @@ class RegisterScreenTest {
     @Config(qualifiers = "w360dp-h640dp", fontScale = 2.0f)
     fun registerLayoutWrapsCleanlyAt360dpAnd200PercentFontScale() {
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = InMemoryTokenStore(),
             localeProvider = { AppLocale.VI },

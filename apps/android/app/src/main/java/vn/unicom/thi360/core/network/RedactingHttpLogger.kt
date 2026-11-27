@@ -26,10 +26,13 @@ object LogRedactor {
     private val bearerRegex = Regex("""(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+""")
     private val jwtRegex = Regex("""\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b""")
     private val jsonSecretRegex = Regex(
-        """(?i)"(password|oldPassword|newPassword|accessToken|refreshToken|token|code)"\s*:\s*"[^"]*"""",
+        """(?i)"(password|oldPassword|newPassword|currentPassword|accessToken|refreshToken|token|code|voucherCode|vnp_[a-z0-9_]+)"\s*:\s*"[^"]*"""",
     )
     private val querySecretRegex = Regex(
-        """(?i)([?&](?:token|password|accessToken|refreshToken|code)=)[^&\s]+""",
+        """(?i)([?&](?:token|password|accessToken|refreshToken|code|voucherCode|vnp_[a-z0-9_]+)=)[^&\s"]+""",
+    )
+    private val standaloneVnpParamRegex = Regex(
+        """(?i)(^|[\s&;])(vnp_[a-z0-9_]+=)[^&\s";]+""",
     )
 
     fun redact(input: String): String {
@@ -40,6 +43,9 @@ object LogRedactor {
         }
         result = querySecretRegex.replace(result) { match ->
             "${match.groupValues[1]}$REDACTED"
+        }
+        result = standaloneVnpParamRegex.replace(result) { match ->
+            "${match.groupValues[1]}${match.groupValues[2]}$REDACTED"
         }
         return result
     }

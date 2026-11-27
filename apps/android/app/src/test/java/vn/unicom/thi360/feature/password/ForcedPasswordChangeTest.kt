@@ -11,8 +11,6 @@ import androidx.compose.ui.test.performTextInput
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -25,7 +23,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.config.Environment
 import vn.unicom.thi360.core.network.ApiResult
-import vn.unicom.thi360.core.network.ContractFixtureLoader
 import vn.unicom.thi360.core.network.InMemoryTokenStore
 import vn.unicom.thi360.core.network.Thi360ApiFactory
 import vn.unicom.thi360.core.preferences.AppLocale
@@ -40,6 +37,7 @@ import vn.unicom.thi360.feature.recovery.RegistrationStartData
 import vn.unicom.thi360.shell.AppRoot
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
+import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
 class ForcedPasswordChangeTest {
@@ -47,12 +45,11 @@ class ForcedPasswordChangeTest {
     @get:Rule
     val composeRule = createComposeRule()
 
-    private lateinit var server: MockWebServer
+    private lateinit var server: ContractFakeServer
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = ContractFakeServer().start()
     }
 
     @After
@@ -65,20 +62,20 @@ class ForcedPasswordChangeTest {
     fun loginMustChangePasswordBlocksTabsAndCompletingChangeEntersShellWithoutRelogin() {
         val tokenStore = InMemoryTokenStore()
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
 
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("login-200-must-change-password.json"),
-            ),
+        server.respondAuthFixture(
+            "POST",
+            "/api/v1/auth/mobile/login",
+            200,
+            "login-200-must-change-password.json",
         )
-        server.enqueue(MockResponse().setResponseCode(200))
+        server.respondEmpty("POST", "/api/v1/auth/change-password", 200)
 
         composeRule.setContent {
             AppRoot(
@@ -90,7 +87,6 @@ class ForcedPasswordChangeTest {
             )
         }
 
-        // Sign in with account that has mustChangePassword = true.
         composeRule.onNodeWithTag(LoginTestTags.IDENTIFIER_FIELD).performTextInput("student.forced")
         composeRule.onNodeWithTag(LoginTestTags.PASSWORD_FIELD).performTextInput("TempPass1!")
         composeRule.onNodeWithTag(LoginTestTags.SUBMIT_BUTTON).performClick()
@@ -100,7 +96,6 @@ class ForcedPasswordChangeTest {
         }
         composeRule.waitForIdle()
 
-        // Shell tabs must be completely blocked; only forced change password form and logout exist.
         composeRule.onNodeWithTag(PasswordTestTags.SCREEN).assertIsDisplayed()
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).assertIsDisplayed()
         composeRule.onNodeWithTag(PasswordTestTags.LOGOUT_BUTTON).performScrollTo().assertIsDisplayed()
@@ -108,7 +103,6 @@ class ForcedPasswordChangeTest {
         composeRule.onNodeWithTag(ShellTestTags.NAV_RAIL).assertDoesNotExist()
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).assertDoesNotExist()
 
-        // Complete forced password change -> enters Home shell directly without re-login.
         composeRule.onNodeWithTag(PasswordTestTags.OLD_PASSWORD_FIELD).performScrollTo().performTextInput("TempPass1!")
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().performTextInput("BrandNew1!")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().performTextInput("BrandNew1!")
@@ -138,20 +132,20 @@ class ForcedPasswordChangeTest {
             ),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
         )
         val gateway = OpenApiRecoveryGateway(stack.publicAuthApi, stack.authenticatedAuthApi)
 
-        server.enqueue(
-            ContractFixtureLoader.jsonResponse(
-                200,
-                ContractFixtureLoader.readAuthFixture("login-200-must-change-password.json"),
-            ),
+        server.respondAuthFixture(
+            "POST",
+            "/api/v1/auth/mobile/refresh",
+            200,
+            "login-200-must-change-password.json",
         )
-        server.enqueue(MockResponse().setResponseCode(204))
+        server.respondEmpty("POST", "/api/v1/auth/mobile/logout", 204)
 
         composeRule.setContent {
             AppRoot(
@@ -164,10 +158,8 @@ class ForcedPasswordChangeTest {
             )
         }
 
-        // Starts in Active 4-tab shell.
         composeRule.onNodeWithTag(ShellTestTags.BOTTOM_BAR).assertIsDisplayed()
 
-        // Session refresh returns mustChangePassword = true -> immediately blocks tabs.
         runBlocking { stack.sessionManager.refreshSession() }
         composeRule.waitUntil(timeoutMillis = 5_000) {
             runCatching {
@@ -179,7 +171,6 @@ class ForcedPasswordChangeTest {
         composeRule.onNodeWithTag(PasswordTestTags.FORCED_DESCRIPTION)
             .assertTextContains("student.refreshed", substring = true)
 
-        // Only other exit is Logout -> clears session and returns to Login.
         composeRule.onNodeWithTag(PasswordTestTags.LOGOUT_BUTTON).performScrollTo().performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             stack.sessionManager.state.value is SessionState.SignedOut
@@ -218,7 +209,7 @@ class ForcedPasswordChangeTest {
             Tokens("a", "r", 300, 604800, mustChangePassword = true, username = "student.forced"),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -259,7 +250,7 @@ class ForcedPasswordChangeTest {
             Tokens("a1", "r1", 300, 604800, mustChangePassword = true, username = null),
         )
         val stack = Thi360ApiFactory.createSessionStack(
-            baseUrl = server.url("/").toString(),
+            baseUrl = server.url("/"),
             environment = Environment.DEV,
             tokenStore = tokenStore,
             localeProvider = { AppLocale.VI },
@@ -289,7 +280,6 @@ class ForcedPasswordChangeTest {
         composeRule.onNodeWithTag(PasswordTestTags.NEW_PASSWORD_FIELD).performScrollTo().performTextInput("UserANew2@")
         composeRule.onNodeWithTag(PasswordTestTags.CONFIRM_PASSWORD_FIELD).performScrollTo().performTextInput("UserANew2@")
 
-        // External session revocation (not NewPasswordController.logout()) transitions to SignedOut.
         runBlocking {
             stack.sessionManager.clearSession(vn.unicom.thi360.core.session.SignOutReason.Expired)
         }
@@ -300,7 +290,6 @@ class ForcedPasswordChangeTest {
             }.getOrDefault(false)
         }
 
-        // Another user enters Forced mode with username = null under the same retained ViewModelStore.
         runBlocking {
             stack.sessionManager.adoptSession(
                 Tokens("a2", "r2", 300, 604800, mustChangePassword = true, username = null),

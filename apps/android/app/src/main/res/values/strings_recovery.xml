@@ -34,13 +34,8 @@
     <string name="register_password_same_as_username">Mật khẩu không được trùng tên đăng nhập.</string>
     <string name="register_password_show">Hiện mật khẩu</string>
     <string name="register_password_hide">Ẩn mật khẩu</string>
-    <string name="register_terms_label">Tôi đã đọc và đồng ý với Điều khoản sử dụng của Thi 360.</string>
-    <string name="register_terms_required">Bạn cần đồng ý với Điều khoản sử dụng để đăng ký.</string>
-    <string name="register_terms_view">Xem Điều khoản sử dụng</string>
-    <string name="register_terms_title">Điều khoản sử dụng</string>
-    <string name="register_terms_draft">Bản tạm, chờ đơn vị vận hành xác nhận.</string>
-    <string name="register_terms_body">[NỘI DUNG ĐIỀU KHOẢN SỬ DỤNG, BẢN TẠM CHỜ ĐƠN VỊ VẬN HÀNH XÁC NHẬN]</string>
-    <string name="register_terms_close">Đóng</string>
+    <string name="register_terms_label">Tôi đã đọc và đồng ý với &lt;terms&gt;Điều kiện giao dịch chung&lt;/terms&gt; và &lt;privacy&gt;Chính sách bảo mật thông tin&lt;/privacy&gt; của Thi360.</string>
+    <string name="register_terms_required">Bạn cần đồng ý với Điều kiện giao dịch chung và Chính sách bảo mật thông tin để đăng ký.</string>
     <string name="register_submit">Đăng ký</string>
     <string name="register_have_account">Đã có tài khoản?</string>
     <string name="register_login_link">Đăng nhập</string>

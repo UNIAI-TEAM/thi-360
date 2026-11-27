@@ -60,7 +60,7 @@ class BackupRulesTest {
     }
 
     @Test
-    fun manifestAndBackupRulesExcludeEncryptedTokenStoreFromCloudBackupAndDeviceTransfer() {
+    fun manifestAndBackupRulesExcludeEncryptedTokenStoreAndAccountScopedStoreFromBackup() {
         val context = ApplicationProvider.getApplicationContext<Thi360Application>()
         val appInfo = context.packageManager.getApplicationInfo(context.packageName, 0)
         assertEquals(
@@ -77,6 +77,14 @@ class BackupRulesTest {
         )
         assertEquals(KeystoreTokenStore.TOKEN_FILE_NAME, storageFile.name)
 
+        val accountScopedDir = AccountScopedStore.defaultRootDir(context)
+        assertEquals(
+            "AccountScopedStore directory must reside inside noBackupFilesDir",
+            context.noBackupFilesDir.canonicalPath,
+            accountScopedDir.parentFile?.canonicalPath,
+        )
+        assertEquals(AccountScopedStore.ROOT_DIR_NAME, accountScopedDir.name)
+
         val legacyRules = parseBackupExclusions(R.xml.backup_rules)["full-backup-content"].orEmpty()
         assertTrue(
             "backup_rules.xml must explicitly exclude ${KeystoreTokenStore.BACKUP_RELATIVE_PATH}",
@@ -85,6 +93,10 @@ class BackupRulesTest {
         assertTrue(
             "backup_rules.xml must explicitly exclude ${vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH}",
             ("root" to vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH) in legacyRules,
+        )
+        assertTrue(
+            "backup_rules.xml must explicitly exclude ${AccountScopedStore.BACKUP_RELATIVE_PATH}",
+            ("root" to AccountScopedStore.BACKUP_RELATIVE_PATH) in legacyRules,
         )
         assertTrue(("root" to ".") in legacyRules)
         assertTrue(("sharedpref" to ".") in legacyRules)
@@ -101,12 +113,20 @@ class BackupRulesTest {
             ("root" to vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH) in cloudBackup,
         )
         assertTrue(
+            "data_extraction_rules.xml cloud-backup must explicitly exclude ${AccountScopedStore.BACKUP_RELATIVE_PATH}",
+            ("root" to AccountScopedStore.BACKUP_RELATIVE_PATH) in cloudBackup,
+        )
+        assertTrue(
             "data_extraction_rules.xml device-transfer must explicitly exclude ${KeystoreTokenStore.BACKUP_RELATIVE_PATH}",
             ("root" to KeystoreTokenStore.BACKUP_RELATIVE_PATH) in deviceTransfer,
         )
         assertTrue(
             "data_extraction_rules.xml device-transfer must explicitly exclude ${vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH}",
             ("root" to vn.unicom.thi360.core.biometric.KeystoreBiometricVault.BACKUP_RELATIVE_PATH) in deviceTransfer,
+        )
+        assertTrue(
+            "data_extraction_rules.xml device-transfer must explicitly exclude ${AccountScopedStore.BACKUP_RELATIVE_PATH}",
+            ("root" to AccountScopedStore.BACKUP_RELATIVE_PATH) in deviceTransfer,
         )
     }
 
@@ -154,7 +174,6 @@ class BackupRulesTest {
         assertFalse("Ciphertext file must not contain refreshToken plaintext", rawDiskText.contains(tokens.refreshToken))
         assertEquals(tokens, store.read())
 
-        // Simulate reinstall / wiped Keystore key: decryption fails, unreadable file deleted, read returns null.
         currentKey = rotatedKey
         assertNull(store.read())
         assertFalse("Corrupt/unreadable token file must be purged after key loss", storageFile.exists())

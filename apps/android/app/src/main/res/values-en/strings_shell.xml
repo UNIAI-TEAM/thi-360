@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Thi 360</string>
+    <string name="app_name">Thi360</string>
     <string name="nav_home">Home</string>
     <string name="nav_my_exams">My exams</string>
     <string name="nav_history">History</string>

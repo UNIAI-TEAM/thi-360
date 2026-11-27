@@ -34,13 +34,8 @@
     <string name="register_password_same_as_username">Password must not match the username.</string>
     <string name="register_password_show">Show password</string>
     <string name="register_password_hide">Hide password</string>
-    <string name="register_terms_label">I have read and agree to the Terms of Use of Thi 360.</string>
-    <string name="register_terms_required">You must agree to the Terms of Use to register.</string>
-    <string name="register_terms_view">View the Terms of Use</string>
-    <string name="register_terms_title">Terms of Use</string>
-    <string name="register_terms_draft">Draft text, pending confirmation by the operator.</string>
-    <string name="register_terms_body">[TERMS OF USE TEXT, DRAFT PENDING CONFIRMATION BY THE OPERATOR]</string>
-    <string name="register_terms_close">Close</string>
+    <string name="register_terms_label">I have read and agree to the &lt;terms&gt;General Transaction Terms&lt;/terms&gt; and &lt;privacy&gt;Information Privacy Policy&lt;/privacy&gt; of Thi360.</string>
+    <string name="register_terms_required">You must agree to the General Transaction Terms and Information Privacy Policy to register.</string>
     <string name="register_submit">Register</string>
     <string name="register_have_account">Already have an account?</string>
     <string name="register_login_link">Sign in</string>

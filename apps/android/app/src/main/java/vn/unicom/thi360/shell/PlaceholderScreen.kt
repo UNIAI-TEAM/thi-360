@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import vn.unicom.thi360.R
+import vn.unicom.thi360.core.brand.BrandMark
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
@@ -62,28 +63,6 @@ object ShellTestTags {
 }
 
 @Composable
-internal fun BrandMark(
-    modifier: Modifier = Modifier,
-    sizeDp: Int = 32,
-) {
-    val colors = Thi360Theme.colors
-    Box(
-        modifier = modifier
-            .size(sizeDp.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(colors.primaryFill),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_thi360_logo),
-            contentDescription = null,
-            tint = colors.onPrimary,
-            modifier = Modifier.size((sizeDp * 0.625f).dp),
-        )
-    }
-}
-
-@Composable
 fun PlaceholderTabScreen(
     destination: Destination,
     showCompactBrandHeader: Boolean,
@@ -101,17 +80,7 @@ fun PlaceholderTabScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         if (showCompactBrandHeader) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                BrandMark(sizeDp = 32)
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = colors.text,
-                )
-            }
+            BrandMark(markSize = 32.dp)
         }
 
         Text(

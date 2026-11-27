@@ -18,7 +18,7 @@
 
     <string name="account_logout">Đăng xuất</string>
     <string name="account_logout_confirm_title">Đăng xuất?</string>
-    <string name="account_logout_confirm_message">Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng Thi 360.</string>
+    <string name="account_logout_confirm_message">Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng Thi360.</string>
     <string name="account_logout_confirm_action">Đăng xuất</string>
     <string name="account_logout_cancel">Hủy</string>
 
@@ -27,7 +27,7 @@
     <string name="account_theme_detail_description">Lựa chọn giao diện Sáng hoặc Tối được lưu riêng trên thiết bị này.</string>
 
     <string name="biometric_enable_title">Mở khóa bằng vân tay hoặc khuôn mặt?</string>
-    <string name="biometric_enable_body">Lần sau mở Thi 360, bạn chỉ cần quét vân tay hoặc khuôn mặt thay vì nhập mật khẩu.</string>
+    <string name="biometric_enable_body">Lần sau mở Thi360, bạn chỉ cần quét vân tay hoặc khuôn mặt thay vì nhập mật khẩu.</string>
     <string name="biometric_enable_note_1">Ứng dụng tự khóa khi bạn rời đi quá 5 phút.</string>
     <string name="biometric_enable_note_2">Quét không được thì nhập mật khẩu như bình thường.</string>
     <string name="biometric_enable_note_3">Bật, tắt bất cứ lúc nào trong mục Tài khoản.</string>
@@ -37,7 +37,7 @@
 
     <string name="biometric_os_prompt_enable_title">Xác nhận vân tay hoặc khuôn mặt</string>
     <string name="biometric_os_prompt_enable_subtitle">Dùng vân tay hoặc khuôn mặt để mở khóa nhanh</string>
-    <string name="biometric_os_prompt_unlock_title">Mở khóa Thi 360</string>
+    <string name="biometric_os_prompt_unlock_title">Mở khóa Thi360</string>
     <string name="biometric_os_prompt_unlock_subtitle">Quét vân tay hoặc khuôn mặt để tiếp tục</string>
     <string name="biometric_os_prompt_cancel">Hủy</string>
 
