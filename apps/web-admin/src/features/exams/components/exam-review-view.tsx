@@ -135,7 +135,8 @@ export function ExamReviewView({ examId }: { examId: string }) {
       <Tabs value={state.tab} onValueChange={(value) => update({ ...state, tab: value as ReviewTab })}>
         <EditorStepToolbar
           testId="review-toolbar"
-          className="py-2"
+          // Đệm ngang hẹp ở màn nhỏ: hai tab tiếng Anh (~325px) phải vừa một hàng ở 390px mà không cuộn ngang.
+          className="px-2 py-2 sm:px-5"
           start={
             <TabsList aria-label={t("tabs.label")}>
               <TabsTrigger value="check">{t("tabs.check")}</TabsTrigger>
