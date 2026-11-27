@@ -423,6 +423,19 @@ struct AppRootView: View {
 
     @ViewBuilder
     private var rootContent: some View {
+        #if THI360_DEV
+        if let richScenario = RichContentUITestScenario.fromLaunchArguments() {
+            RichContentUITestHarnessView(scenario: richScenario, preferences: preferences)
+        } else {
+            standardRootContent
+        }
+        #else
+        standardRootContent
+        #endif
+    }
+
+    @ViewBuilder
+    private var standardRootContent: some View {
         if let sessionStore, let overlay = router.recoveryOverlay {
             recoveryOverlayView(overlay, sessionStore: sessionStore)
         } else if let sessionStore {

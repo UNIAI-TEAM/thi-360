@@ -1,6 +1,7 @@
 package vn.unicom.thi360.smoke
 
 import android.graphics.Bitmap
+import android.os.Looper
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -31,6 +33,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import vn.unicom.thi360.core.biometric.BiometricState
@@ -39,11 +42,14 @@ import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.session.SignOutReason
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.core.ui.LoadState
 import vn.unicom.thi360.feature.account.AccountDetailPane
 import vn.unicom.thi360.feature.account.AccountScreenContent
 import vn.unicom.thi360.feature.account.AccountTestTags
-import vn.unicom.thi360.feature.account.ProfileLoadState
 import vn.unicom.thi360.feature.account.UserProfile
+import vn.unicom.thi360.feature.catalog.CatalogTestFixtures
+import vn.unicom.thi360.feature.catalog.CatalogTestTags
+import vn.unicom.thi360.feature.catalog.LocalCatalogDependencies
 import vn.unicom.thi360.feature.lock.LockScreenContent
 import vn.unicom.thi360.feature.lock.LockTestTags
 import vn.unicom.thi360.feature.login.LoginScreenContent
@@ -203,18 +209,20 @@ class AccessibilityAndFontScaleTest {
         renderAtScale(1.0f) {
             HomeSurface()
         }
+        waitForHomeCatalogLoaded()
 
         assertHasHeading("Home")
         assertInteractiveNodesHaveAccessibleLabel("Home")
         assertTouchTargetsAtLeast48Dp(
             screenName = "Home",
-            tags = Destination.entries.map(ShellTestTags::navItem),
+            tags = listOf(CatalogTestTags.FILTER_BUTTON) + Destination.entries.map(ShellTestTags::navItem),
         )
         assertTopToBottomOrder(
             screenName = "Home",
             orderedTags = listOf(
                 ShellTestTags.screenTitle(Destination.Home),
-                ShellTestTags.PLACEHOLDER_EMPTY_TITLE,
+                CatalogTestTags.SEARCH_FIELD,
+                CatalogTestTags.LIST,
                 ShellTestTags.BOTTOM_BAR,
             ),
         )
@@ -397,19 +405,17 @@ class AccessibilityAndFontScaleTest {
         renderAtScale(scale) {
             HomeSurface()
         }
+        waitForHomeCatalogLoaded()
         exportSnapshotIfRequested(snapshotName)
 
         assertNoHorizontalClipping(
             screenName = "Home@$scale",
             tags = listOf(
                 ShellTestTags.screenTitle(Destination.Home),
-                ShellTestTags.PLACEHOLDER_EMPTY_TITLE,
+                CatalogTestTags.FILTER_BUTTON,
+                CatalogTestTags.SEARCH_FIELD,
                 ShellTestTags.BOTTOM_BAR,
             ) + Destination.entries.map(ShellTestTags::navItem),
-            scrollableTags = setOf(
-                ShellTestTags.screenTitle(Destination.Home),
-                ShellTestTags.PLACEHOLDER_EMPTY_TITLE,
-            ),
         )
 
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams))
@@ -664,12 +670,25 @@ class AccessibilityAndFontScaleTest {
         }
     }
 
+    private fun waitForHomeCatalogLoaded() {
+        composeRule.waitUntil(10_000) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.onAllNodesWithTag(CatalogTestTags.LIST).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.waitForIdle()
+    }
+
     @Composable
     private fun HomeSurface() {
-        Thi360App(
-            preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT),
-            startDestination = Destination.Home.route,
-        )
+        val deps = androidx.compose.runtime.remember {
+            CatalogTestFixtures.createDeterministicFixtureDependencies()
+        }
+        CompositionLocalProvider(LocalCatalogDependencies provides deps) {
+            Thi360App(
+                preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT),
+                startDestination = Destination.Home.route,
+            )
+        }
     }
 
     @Composable
@@ -680,7 +699,7 @@ class AccessibilityAndFontScaleTest {
             accountContent = { isTwoPane ->
                 AccountScreenContent(
                     isTwoPaneWidth = isTwoPane,
-                    profileState = ProfileLoadState.Loaded(sampleProfile),
+                    profileState = LoadState.Loaded(sampleProfile),
                     preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT),
                     biometricState = BiometricState.On,
                     selectedPane = AccountDetailPane.CHANGE_PASSWORD,

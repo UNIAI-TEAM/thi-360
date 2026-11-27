@@ -1,4 +1,4 @@
-import type { components } from "@thi360/api-client";
+import type { ApiError, components } from "@thi360/api-client";
 import { ApiStatusError, createBrowserApiClient, toApiStatusError } from "@/lib/api/client";
 
 export type RegisterRequest = components["schemas"]["RegisterRequest"];
@@ -8,6 +8,36 @@ export type RegisterVerifyRequest = components["schemas"]["RegisterVerifyRequest
 export type RegisterResponse = components["schemas"]["RegisterResponse"];
 export type ProfileResponse = components["schemas"]["ProfileResponse"];
 export type ProfileUpdateRequest = components["schemas"]["ProfileUpdateRequest"];
+export type AccountDeletionCheckResponse = components["schemas"]["AccountDeletionCheckResponse"];
+export type AccountDeletionRequest = components["schemas"]["AccountDeletionRequest"];
+export type AccountDeletionBlocker = AccountDeletionCheckResponse["blockers"][number];
+
+export type DeleteAccountResult =
+  | { kind: "deleted" }
+  | { kind: "notAllowed" }
+  | { kind: "wrongPassword" }
+  | { kind: "throttled" }
+  | { kind: "blocked"; blockers: AccountDeletionBlocker[] };
+
+const ACCOUNT_DELETION_BLOCKERS = new Set<AccountDeletionBlocker>([
+  "ATTEMPT_IN_PROGRESS",
+  "ORDER_BEING_CHECKED",
+  "ORDER_PENDING_PAYMENT",
+]);
+
+function readDeletionBlockers(error: unknown): AccountDeletionBlocker[] {
+  if (typeof error !== "object" || error === null || !("blockers" in error)) return [];
+  const raw = (error as { blockers?: unknown }).blockers;
+  if (!Array.isArray(raw)) return [];
+  const blockers: AccountDeletionBlocker[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && ACCOUNT_DELETION_BLOCKERS.has(item as AccountDeletionBlocker)) {
+      const blocker = item as AccountDeletionBlocker;
+      if (!blockers.includes(blocker)) blockers.push(blocker);
+    }
+  }
+  return blockers;
+}
 
 /**
  * Lỗi của các API mã OTP (`EmailCodeErrorResponse`): giống `ApiStatusError` thêm `retryAfter` (giây chờ gửi lại,
@@ -187,4 +217,44 @@ export async function removeAvatar(): Promise<void> {
   if (!response.ok) {
     throw toApiStatusError(response.status, error);
   }
+}
+
+export const ACCOUNT_DELETION_CHECK_QUERY_KEY = ["account", "deletion-check"] as const;
+
+export async function loadAccountDeletionCheck(): Promise<AccountDeletionCheckResponse> {
+  const client = createBrowserApiClient();
+  const { data, error, response } = await client.GET("/api/v1/me/account/deletion-check");
+  if (!response.ok || !data) {
+    throw toApiStatusError(response.status, error);
+  }
+  return data;
+}
+
+export async function deleteAccount(body: AccountDeletionRequest): Promise<DeleteAccountResult> {
+  const client = createBrowserApiClient();
+  const { error, response } = await client.POST("/api/v1/me/account/deletion", { body });
+  if (response.status === 204 || response.ok) {
+    return { kind: "deleted" };
+  }
+  // Absorb 401 and 403 as values so QueryProvider does not redirect to /login (losing ?deleted=1) or /forbidden.
+  if (response.status === 401) {
+    return { kind: "deleted" };
+  }
+  if (response.status === 403) {
+    return { kind: "notAllowed" };
+  }
+  const apiError = typeof error === "object" && error !== null ? (error as ApiError) : undefined;
+  if (response.status === 400 && apiError?.code === "WRONG_OLD_PASSWORD") {
+    return { kind: "wrongPassword" };
+  }
+  if (response.status === 429 && apiError?.code === "LOGIN_THROTTLED") {
+    return { kind: "throttled" };
+  }
+  if (response.status === 409 && apiError?.code === "ACCOUNT_DELETION_BLOCKED") {
+    const blockers = readDeletionBlockers(error);
+    if (blockers.length > 0) {
+      return { kind: "blocked", blockers };
+    }
+  }
+  throw toApiStatusError(response.status, apiError);
 }

@@ -825,3 +825,70 @@ describe("Trang chi tiết tài khoản dùng được từ 360px (UNI-2586)", (
     expect(grid.className).not.toMatch(/(^|\s)lg:grid-cols-2/);
   });
 });
+
+describe("Nhãn lý do tài khoản tự xóa ở băng đã xóa (AC-19, AC-20)", () => {
+  it("#selfDeletedReasonLabel: deleteReason = SELF_DELETED hiện nhãn tiếng Việt và tiếng Anh, không còn chữ SELF_DELETED", async () => {
+    const selfDeletedUser: UserDetail = {
+      ...BASE_USER,
+      status: "INACTIVE",
+      deletedAt: "2026-11-26T10:15:00Z",
+      deleteReason: "SELF_DELETED",
+    };
+
+    const { unmount } = renderDetail(
+      makeDeps({
+        getUser: vi.fn<UsersApiDeps["getUser"]>(async () => selfDeletedUser),
+      }),
+    );
+
+    const viBanner = await screen.findByText(/Tài khoản đã bị xóa lúc .*Lý do: Học viên tự xóa tài khoản/);
+    expect(viBanner).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("SELF_DELETED");
+    unmount();
+
+    renderWithProviders(
+      <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
+        <UserDetailView
+          userId={BASE_USER.id}
+          deps={makeDeps({
+            getUser: vi.fn<UsersApiDeps["getUser"]>(async () => selfDeletedUser),
+          })}
+        />
+      </SessionProvider>,
+      { locale: "en", messages: en },
+    );
+
+    const enBanner = await screen.findByText(/Account was deleted at .*Reason: Deleted by the student/);
+    expect(enBanner).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("SELF_DELETED");
+  });
+
+  it.each<{ label: string; deleteReason: string | null | undefined; expected: string }>([
+    { label: "admin nhập nguyên văn", deleteReason: "Đã nghỉ học", expected: "Lý do: Đã nghỉ học" },
+    { label: "khác hoa thường self_deleted", deleteReason: "self_deleted", expected: "Lý do: self_deleted" },
+    { label: "null hoặc không có trường", deleteReason: null, expected: "Lý do: —" },
+    { label: "undefined không có trường", deleteReason: undefined, expected: "Lý do: —" },
+  ])("#otherDeleteReasons ($label): hiển thị đúng lý do xóa và cả vi/en đều có khóa deleteReasonSelfDeleted", async ({
+    deleteReason,
+    expected,
+  }) => {
+    const user: UserDetail = {
+      ...BASE_USER,
+      status: "INACTIVE",
+      deletedAt: "2026-11-26T10:15:00Z",
+      ...(deleteReason !== undefined
+        ? { deleteReason: deleteReason as UserDetail["deleteReason"] }
+        : {}),
+    };
+
+    renderDetail(
+      makeDeps({
+        getUser: vi.fn<UsersApiDeps["getUser"]>(async () => user),
+      }),
+    );
+
+    expect(await screen.findByText(new RegExp(expected))).toBeInTheDocument();
+    expect(viMessages.users.detail.deleteReasonSelfDeleted).toBe("Học viên tự xóa tài khoản");
+    expect(en.users.detail.deleteReasonSelfDeleted).toBe("Deleted by the student");
+  });
+});

@@ -32,6 +32,13 @@ packages:
   SwiftOpenAPIURLSession:
     url: https://github.com/apple/swift-openapi-urlsession
     from: 1.4.0
+  # IOS-RICH (UNI-2863): pinned formula engine (D-6, AC-724) and HTML parser (R-106)
+  SwaTex:
+    url: https://github.com/PhraseHQ/SwaTex.git
+    exactVersion: 0.6.0
+  SwiftSoup:
+    url: https://github.com/scinfu/SwiftSoup.git
+    exactVersion: 2.9.6
 
 targets:
   Thi360:
@@ -57,6 +64,13 @@ targets:
         product: OpenAPIRuntime
       - package: SwiftOpenAPIURLSession
         product: OpenAPIURLSession
+      # IOS-RICH (UNI-2863)
+      - package: SwaTex
+        product: SwaTex
+      - package: SwaTex
+        product: SwaTexRender
+      - package: SwiftSoup
+        product: SwiftSoup
     buildToolPlugins:
       - plugin: OpenAPIGenerator
         package: SwiftOpenAPIGenerator
@@ -85,6 +99,12 @@ targets:
     deploymentTarget: "18.0"
     sources:
       - path: Thi360Tests
+      # IOS-RICH (UNI-2863): read-only formula corpus, web renders, and HTML sample fixtures
+      - path: ../../contracts/mobile/rich-text
+        type: folder
+        buildPhase: resources
+      - path: ../../docs/specs/fixtures/rich-text-samples.json
+        buildPhase: resources
     dependencies:
       - target: Thi360
     settings:

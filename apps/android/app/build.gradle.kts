@@ -3,6 +3,10 @@ import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 import javax.imageio.ImageIO
 import kotlin.math.floor
 import kotlin.math.hypot
@@ -28,6 +32,10 @@ val openApiSpecFile = rootProject.file("../../contracts/mobile/openapi-mobile.js
 val legalSourceDir = rootProject.file("../../contracts/mobile/legal")
 val legalGeneratedAssetsDir = layout.buildDirectory.dir("generated/legal/assets")
 val brandIconSourceFile = rootProject.file("../../docs/design/app-hoc-vien/brand/thi360-icon.png")
+// AND-RICH: Reference rich-text corpus and samples bundled only in androidTest assets.
+val richTextContractsDir = rootProject.file("../../contracts/mobile/rich-text")
+val richTextSamplesFile = rootProject.file("../../docs/specs/fixtures/rich-text-samples.json")
+val richTextAndroidTestAssetsDir = layout.buildDirectory.dir("generated/richcontent/androidTestAssets")
 
 android {
     namespace = "vn.unicom.thi360"
@@ -130,6 +138,9 @@ android {
             kotlin.directories.add(openApiGeneratedDir.get().dir("src/main/kotlin").asFile.path)
             assets.directories.add(legalGeneratedAssetsDir.get().asFile.path)
         }
+        getByName("androidTest") {
+            assets.directories.add(richTextAndroidTestAssetsDir.get().asFile.path)
+        }
     }
 }
 
@@ -174,6 +185,110 @@ val copyLegalContent = tasks.register<Sync>("copyLegalContent") {
         include("*.json")
     }
     into(legalGeneratedAssetsDir.map { it.dir("legal") })
+}
+
+// AND-RICH: Copy read-only rich-text reference corpus into androidTest assets (excluded from main APK).
+val copyRichTextAndroidTestAssets = tasks.register<Sync>("copyRichTextAndroidTestAssets") {
+    from(richTextContractsDir) {
+        include("formulas.json")
+        include("formula-exemptions.json")
+        include("web-renders/**")
+    }
+    from(richTextSamplesFile)
+    into(richTextAndroidTestAssetsDir.map { it.dir("rich-text") })
+}
+
+// AND-RICH: Verify 16 KB APK zip alignment (zipalign -c -P 16) and ELF64 PT_LOAD p_align >= 16384 for every .so.
+tasks.register("check16KbAlignment") {
+    group = "verification"
+    description = "Verifies 16 KB page-size alignment for all native libraries in devDebug APK."
+    dependsOn("assembleDevDebug")
+    val apkProvider = layout.buildDirectory.file("outputs/apk/dev/debug/app-dev-debug.apk")
+    val sdkDirProvider = androidComponents.sdkComponents.sdkDirectory
+
+    doLast {
+        val apkFile = apkProvider.get().asFile
+        require(apkFile.isFile) { "Missing APK for 16 KB alignment check: ${apkFile.canonicalPath}" }
+
+        val buildToolsDir = File(sdkDirProvider.get().asFile, "build-tools")
+        val zipalignNames = listOf("zipalign.exe", "zipalign")
+        val zipalignBin = buildToolsDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.sortedByDescending { it.name }
+            ?.firstNotNullOfOrNull { dir -> zipalignNames.map { File(dir, it) }.firstOrNull { it.isFile } }
+            ?: error("Could not locate zipalign in ${buildToolsDir.canonicalPath}")
+
+        val proc = ProcessBuilder(zipalignBin.absolutePath, "-c", "-P", "16", "4", apkFile.absolutePath)
+            .redirectErrorStream(true)
+            .start()
+        val zipalignOut = proc.inputStream.bufferedReader().readText()
+        val zipalignExit = proc.waitFor()
+        if (zipalignExit != 0) {
+            error("zipalign -c -P 16 failed (exit=$zipalignExit) for ${apkFile.name}:\n$zipalignOut")
+        }
+
+        val inspected64BitLibs = mutableListOf<String>()
+        val failures = mutableListOf<String>()
+        ZipFile(apkFile).use { zip ->
+            val entries = zip.entries().toList().filter { it.name.startsWith("lib/") && it.name.endsWith(".so") }
+            require(entries.isNotEmpty()) { "Expected native .so libraries inside ${apkFile.name}, found none." }
+            for (entry in entries) {
+                if (entry.method != ZipEntry.STORED) {
+                    failures += "${entry.name}: compressed in APK (method=${entry.method}), must be STORED for 16 KB alignment"
+                }
+                val bytes = zip.getInputStream(entry).use { it.readBytes() }
+                if (bytes.size < 64 ||
+                    bytes[0] != 0x7F.toByte() ||
+                    bytes[1] != 'E'.code.toByte() ||
+                    bytes[2] != 'L'.code.toByte() ||
+                    bytes[3] != 'F'.code.toByte()
+                ) {
+                    failures += "${entry.name}: invalid ELF header"
+                    continue
+                }
+                val elfClass = bytes[4].toInt() and 0xFF
+                if (elfClass != 2) {
+                    // 32-bit ELF (e.g. armeabi-v7a) uses 4 KB pages on Android; 16 KB applies to 64-bit ABIs.
+                    continue
+                }
+                inspected64BitLibs += entry.name
+                val byteOrder = if ((bytes[5].toInt() and 0xFF) == 1) ByteOrder.LITTLE_ENDIAN else ByteOrder.BIG_ENDIAN
+                val buf = ByteBuffer.wrap(bytes).order(byteOrder)
+                val ePhOff = buf.getLong(32).toInt()
+                val ePhEntSize = buf.getShort(54).toInt() and 0xFFFF
+                val ePhNum = buf.getShort(56).toInt() and 0xFFFF
+                var loadSegments = 0
+                for (i in 0 until ePhNum) {
+                    val phOff = ePhOff + i * ePhEntSize
+                    val pType = buf.getInt(phOff)
+                    if (pType == 1) {
+                        loadSegments++
+                        val pAlign = buf.getLong(phOff + 48)
+                        if (pAlign < 16384L || pAlign % 16384L != 0L) {
+                            failures += "${entry.name}: PT_LOAD[$i] p_align=$pAlign is not 16 KB aligned"
+                        }
+                    }
+                }
+                if (loadSegments == 0) {
+                    failures += "${entry.name}: no PT_LOAD program headers found"
+                }
+            }
+        }
+
+        val requiredRatexAbis = listOf("lib/arm64-v8a/libratex_ffi.so", "lib/x86_64/libratex_ffi.so")
+        for (req in requiredRatexAbis) {
+            if (req !in inspected64BitLibs) {
+                failures += "Missing required 64-bit RaTeX library in APK: $req"
+            }
+        }
+
+        if (failures.isNotEmpty()) {
+            error("16 KB alignment check failed:\n" + failures.joinToString("\n"))
+        }
+        logger.lifecycle(
+            "check16KbAlignment PASSED: zipalign -c -P 16 OK, ${inspected64BitLibs.size} 64-bit .so libraries verified (${inspected64BitLibs.joinToString()}).",
+        )
+    }
 }
 
 tasks.register("generateBrandBitmaps") {
@@ -288,7 +403,7 @@ tasks.register("generateBrandBitmaps") {
 }
 
 tasks.named("preBuild").configure {
-    dependsOn(generateMobileOpenApiClient, copyLegalContent)
+    dependsOn(generateMobileOpenApiClient, copyLegalContent, copyRichTextAndroidTestAssets)
 }
 
 tasks.withType<KotlinCompile>().configureEach {
@@ -297,10 +412,20 @@ tasks.withType<KotlinCompile>().configureEach {
 
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(copyLegalContent)
+    if (name.contains("AndroidTest")) {
+        dependsOn(copyRichTextAndroidTestAssets)
+    }
 }
 
 tasks.matching { it.name.startsWith("generate") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(copyLegalContent)
+    if (name.contains("AndroidTest")) {
+        dependsOn(copyRichTextAndroidTestAssets)
+    }
+}
+
+tasks.matching { it.name.contains("AndroidTest") && it.name.contains("Lint") }.configureEach {
+    dependsOn(copyRichTextAndroidTestAssets)
 }
 
 roborazzi {
@@ -324,6 +449,11 @@ dependencies {
     implementation(libs.retrofit.converter.scalars)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    // AND-RICH: Pinned RaTeX LaTeX engine (0.1.16) and Jsoup HTML tree parser.
+    implementation(libs.ratex.android)
+    implementation(libs.jsoup)
+    // AND-PAY: Custom Tabs browser launcher for VNPAY checkout (R-39, Spec 7.1, B1.13).
+    implementation(libs.androidx.browser)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

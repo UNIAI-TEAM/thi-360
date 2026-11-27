@@ -29,8 +29,9 @@
         <item quantity="one">%1$d attempt per exam</item>
         <item quantity="other">%1$d attempts per exam</item>
     </plurals>
-    <string name="storefront_units_minutes">%1$d minutes</string>
-    <string name="storefront_units_questions">%1$d questions</string>
+    <string name="storefront_units_minutes">%1$s minutes</string>
+    <string name="storefront_units_questions">%1$s questions</string>
 
     <string name="account_deletion_deletedNotice">Your account has been deleted.</string>
+    <string name="common_close">Close</string>
 </resources>

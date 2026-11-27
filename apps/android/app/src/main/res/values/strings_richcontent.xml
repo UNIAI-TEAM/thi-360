@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="richcontent_image_load_failed">Không tải được ảnh. Bấm để tải lại.</string>
+    <string name="richcontent_image_zoom_action">Phóng to ảnh</string>
+    <string name="richcontent_table_scroll_region">Bảng số liệu, cuộn ngang để xem hết</string>
+    <string name="richcontent_formula_scroll_region">Công thức, cuộn ngang để xem hết</string>
+    <string name="richcontent_image_loading">Đang tải ảnh</string>
+</resources>

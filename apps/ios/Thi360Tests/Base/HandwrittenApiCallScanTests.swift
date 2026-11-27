@@ -5,7 +5,8 @@ final class HandwrittenApiCallScanTests: XCTestCase {
     // Only binary image downloading and phase-1 public web theme fetch are allowed outside Core/Network.
     private static let allowedRelativePaths: Set<String> = [
         "Core/Image/ImageLoader.swift",
-        "Core/Appearance/AppearanceRepository.swift"
+        "Core/Appearance/AppearanceRepository.swift",
+        "Features/RichContent/Assets/AttemptAssetSource.swift"
     ]
 
     func testNoHandwrittenApiRequestsOutsideGeneratedClientAndAllowlist() throws {

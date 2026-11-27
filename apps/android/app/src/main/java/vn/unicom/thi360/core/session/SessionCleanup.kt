@@ -104,7 +104,17 @@ class SessionCleanup(
         private const val HEX_CHARS = "0123456789abcdef"
 
         fun create(context: Context): SessionCleanup =
-            SessionCleanup(AccountScopedStore.defaultRootDir(context))
+            SessionCleanup(AccountScopedStore.defaultRootDir(context)).also { cleanup ->
+                val attemptAssetsDir = File(context.cacheDir, ATTEMPT_ASSETS_DIR_NAME)
+                cleanup.register {
+                    attemptAssetsDir.deleteRecursively()
+                }
+                cleanup.registerAppStartCleaner {
+                    attemptAssetsDir.deleteRecursively()
+                }
+            }
+
+        private const val ATTEMPT_ASSETS_DIR_NAME = "attempt-assets"
 
         private fun hashAccountId(accountId: String): String {
             val digest = MessageDigest.getInstance("SHA-256")
