@@ -13,8 +13,12 @@ final class StartupBenchmarkUITests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         let authDir = repoRoot.appendingPathComponent("contracts/mobile/auth", isDirectory: true)
+        let apiDir = repoRoot.appendingPathComponent("contracts/mobile/api", isDirectory: true)
         let loginBody = try Data(contentsOf: authDir.appendingPathComponent("login-200.json"))
         let refreshBody = try Data(contentsOf: authDir.appendingPathComponent("refresh-200.json"))
+        let filtersBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-filters-200.json"))
+        let productsBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-list-200.json"))
+        let accessBody = try Data(contentsOf: apiDir.appendingPathComponent("exam-access-query-200.json"))
 
         let mockServer = try RecoveryFixtureHTTPServer { method, path, _ in
             if method == "POST", path == "/api/v1/auth/mobile/login" {
@@ -22,6 +26,15 @@ final class StartupBenchmarkUITests: XCTestCase {
             }
             if method == "POST", path == "/api/v1/auth/mobile/refresh" {
                 return (200, refreshBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/filters" {
+                return (200, filtersBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/products" {
+                return (200, productsBody)
+            }
+            if method == "POST", path == "/api/v1/me/exam-access/query" {
+                return (200, accessBody)
             }
             return (404, Data(#"{"code":"NOT_FOUND","message":"Not found","fieldErrors":[],"traceId":"0"}"#.utf8))
         }
@@ -74,7 +87,7 @@ final class StartupBenchmarkUITests: XCTestCase {
         verifyApp.launchArguments = coldLaunchArguments
         verifyApp.launch()
         XCTAssertTrue(
-            verifyApp.staticTexts["Trang chủ"].firstMatch.waitForExistence(timeout: 10),
+            verifyApp.staticTexts["catalog.heading"].firstMatch.waitForExistence(timeout: 10),
             "Cold launch with persisted session must land directly on interactive Home screen"
         )
         XCTAssertFalse(
@@ -94,7 +107,7 @@ final class StartupBenchmarkUITests: XCTestCase {
     }
 
     private func waitForSeedHome(in app: XCUIApplication) {
-        let homeTitle = app.staticTexts["Trang chủ"].firstMatch
+        let homeTitle = app.staticTexts["catalog.heading"].firstMatch
         let bioLater = app.buttons["biometric.enable.laterButton"].firstMatch
         let deadline = Date().addingTimeInterval(12)
 

@@ -14,8 +14,12 @@ final class LoginFlowUITests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         let authDir = repoRoot.appendingPathComponent("contracts/mobile/auth", isDirectory: true)
+        let apiDir = repoRoot.appendingPathComponent("contracts/mobile/api", isDirectory: true)
         let loginBody = try Data(contentsOf: authDir.appendingPathComponent("login-200.json"))
         let refreshBody = try Data(contentsOf: authDir.appendingPathComponent("refresh-200.json"))
+        let filtersBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-filters-200.json"))
+        let productsBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-list-200.json"))
+        let accessBody = try Data(contentsOf: apiDir.appendingPathComponent("exam-access-query-200.json"))
 
         let mockServer = try LocalFixtureHTTPServer { method, path in
             if method == "POST", path == "/api/v1/auth/mobile/login" {
@@ -23,6 +27,15 @@ final class LoginFlowUITests: XCTestCase {
             }
             if method == "POST", path == "/api/v1/auth/mobile/refresh" {
                 return (200, refreshBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/filters" {
+                return (200, filtersBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/products" {
+                return (200, productsBody)
+            }
+            if method == "POST", path == "/api/v1/me/exam-access/query" {
+                return (200, accessBody)
             }
             return (404, Data(#"{"code":"NOT_FOUND","message":"Not found","fieldErrors":[],"traceId":"0"}"#.utf8))
         }
@@ -87,11 +100,12 @@ final class LoginFlowUITests: XCTestCase {
 
         submitButton.tap()
 
+        let homeHeading = app.staticTexts["catalog.heading"].firstMatch
         XCTAssertTrue(
-            app.staticTexts["Trang chủ"].waitForExistence(timeout: 8),
-            "Successful login must navigate to Home destination"
+            homeHeading.waitForExistence(timeout: 8),
+            "Successful login must navigate to Home catalog destination"
         )
-        XCTAssertTrue(app.staticTexts["Chưa có nội dung"].waitForExistence(timeout: 5))
+        XCTAssertEqual(homeHeading.label, "Chọn bài thi")
         XCTAssertTrue(
             server.recordedPaths.contains("POST /api/v1/auth/mobile/login"),
             "Expected login call to local fixture server, got: \(server.recordedPaths)"
@@ -107,11 +121,12 @@ final class LoginFlowUITests: XCTestCase {
         ]
         relaunched.launch()
 
+        let relaunchedHeading = relaunched.staticTexts["catalog.heading"].firstMatch
         XCTAssertTrue(
-            relaunched.staticTexts["Trang chủ"].waitForExistence(timeout: 8),
+            relaunchedHeading.waitForExistence(timeout: 8),
             "Relaunching after successful login must open directly into Home without showing Login screen"
         )
-        XCTAssertTrue(relaunched.staticTexts["Chưa có nội dung"].waitForExistence(timeout: 5))
+        XCTAssertEqual(relaunchedHeading.label, "Chọn bài thi")
         XCTAssertFalse(relaunched.textFields["login.identifierField"].exists)
     }
 }

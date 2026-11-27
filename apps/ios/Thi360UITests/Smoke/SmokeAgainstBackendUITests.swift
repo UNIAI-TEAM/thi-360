@@ -340,8 +340,8 @@ final class SmokeAgainstBackendUITests: XCTestCase {
     }
 
     private func waitForAuthenticatedHome(in app: XCUIApplication) {
-        let homeHeading = app.staticTexts["shell.placeholder.heading.home"].firstMatch
-        let homeTitle = app.staticTexts["Trang chủ"].firstMatch
+        let homeHeading = app.staticTexts["catalog.heading"].firstMatch
+        let homeTitle = app.staticTexts["Chọn bài thi"].firstMatch
         let bioLater = app.buttons["biometric.enable.laterButton"].firstMatch
         let deadline = Date().addingTimeInterval(networkTimeout)
 

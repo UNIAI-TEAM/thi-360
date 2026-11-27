@@ -1,11 +1,27 @@
 import XCTest
 
 final class LocalePreferenceTests: XCTestCase {
+    private var server: ContractFixtureHTTPServer?
+
     override func setUpWithError() throws {
         continueAfterFailure = false
+        let fixtureServer = try ContractFixtureHTTPServer()
+        try fixtureServer.registerStandardAuthFixtures()
+        try fixtureServer.registerFixture(method: "GET", path: "/api/v1/public/storefront/filters", relativePath: "api/storefront-filters-200.json")
+        try fixtureServer.registerFixture(method: "GET", path: "/api/v1/public/storefront/products", relativePath: "api/storefront-products-list-200.json")
+        try fixtureServer.registerFixture(method: "POST", path: "/api/v1/me/exam-access/query", relativePath: "api/exam-access-query-200.json")
+        try fixtureServer.start()
+        self.server = fixtureServer
     }
 
-    func testFirstLaunchDefaultsToVietnameseRegardlessOfDeviceLanguageAndPersistsSwitch() {
+    override func tearDownWithError() throws {
+        server?.stop()
+        server = nil
+    }
+
+    func testFirstLaunchDefaultsToVietnameseRegardlessOfDeviceLanguageAndPersistsSwitch() throws {
+        let server = try XCTUnwrap(server)
+        let baseURL = "http://127.0.0.1:\(server.port)"
         let suite = "vn.unicom.thi360.uitest.locale.\(UUID().uuidString)"
         let app = XCUIApplication()
         app.launchArguments = [
@@ -13,12 +29,15 @@ final class LocalePreferenceTests: XCTestCase {
             "-AppleLocale", "en_US",
             "-uitest-defaults-suite", suite,
             "-uitest-reset-preferences",
-            "-uitest-authenticated"
+            "-uitest-authenticated",
+            "-uitest-api-base-url", baseURL
         ]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Trang chủ"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Chưa có nội dung"].waitForExistence(timeout: 5))
+        let viHeading = app.staticTexts["catalog.heading"].firstMatch
+        XCTAssertTrue(viHeading.waitForExistence(timeout: 8))
+        XCTAssertEqual(viHeading.label, "Chọn bài thi")
+        XCTAssertFalse(app.staticTexts["Chưa có nội dung"].exists)
 
         openDestination(titled: "Tài khoản", identifier: "shell.dest.account", in: app)
         XCTAssertTrue(app.staticTexts["Hiển thị"].waitForExistence(timeout: 5))
@@ -40,9 +59,10 @@ final class LocalePreferenceTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Hiển thị"].exists)
 
         openDestination(titled: "Home", identifier: "shell.dest.home", in: app)
-        XCTAssertTrue(app.staticTexts["Home"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["No content yet"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Chưa có nội dung"].exists)
+        let enHeading = app.staticTexts["catalog.heading"].firstMatch
+        XCTAssertTrue(enHeading.waitForExistence(timeout: 5))
+        XCTAssertEqual(enHeading.label, "Choose an exam")
+        XCTAssertFalse(app.staticTexts["Chọn bài thi"].exists)
 
         app.terminate()
 
@@ -51,12 +71,14 @@ final class LocalePreferenceTests: XCTestCase {
             "-AppleLanguages", "(en)",
             "-AppleLocale", "en_US",
             "-uitest-defaults-suite", suite,
-            "-uitest-authenticated"
+            "-uitest-authenticated",
+            "-uitest-api-base-url", baseURL
         ]
         relaunched.launch()
 
-        XCTAssertTrue(relaunched.staticTexts["Home"].waitForExistence(timeout: 5))
-        XCTAssertTrue(relaunched.staticTexts["No content yet"].waitForExistence(timeout: 5))
+        let relaunchedHeading = relaunched.staticTexts["catalog.heading"].firstMatch
+        XCTAssertTrue(relaunchedHeading.waitForExistence(timeout: 8))
+        XCTAssertEqual(relaunchedHeading.label, "Choose an exam")
     }
 
     private func openDestination(titled title: String, identifier: String, in app: XCUIApplication) {

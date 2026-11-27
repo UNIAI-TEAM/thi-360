@@ -1,26 +1,44 @@
 import XCTest
 
 final class LocaleSwitchOnPortalRoutesUITests: XCTestCase {
+    private var server: ContractFixtureHTTPServer?
+
     override func setUpWithError() throws {
         continueAfterFailure = false
+        let fixtureServer = try ContractFixtureHTTPServer()
+        try fixtureServer.registerStandardAuthFixtures()
+        try fixtureServer.registerFixture(method: "GET", path: "/api/v1/public/storefront/filters", relativePath: "api/storefront-filters-200.json")
+        try fixtureServer.registerFixture(method: "GET", path: "/api/v1/public/storefront/products", relativePath: "api/storefront-products-list-200.json")
+        try fixtureServer.registerFixture(method: "GET", path: "/api/v1/public/storefront/products/EXAM-DEMO-01", relativePath: "api/storefront-products-detail-200-exam.json")
+        try fixtureServer.registerFixture(method: "POST", path: "/api/v1/me/exam-access/query", relativePath: "api/exam-access-query-200.json")
+        try fixtureServer.start()
+        self.server = fixtureServer
     }
 
-    func testSwitchingLocaleUpdatesPortalSubRouteTitleImmediatelyAndKeepsServerParameters() {
+    override func tearDownWithError() throws {
+        server?.stop()
+        server = nil
+    }
+
+    func testSwitchingLocaleUpdatesPortalSubRouteTitleImmediatelyAndKeepsServerParameters() throws {
+        let server = try XCTUnwrap(server)
+        let baseURL = "http://127.0.0.1:\(server.port)"
         let suite = "vn.unicom.thi360.uitest.portallocale.\(UUID().uuidString)"
         let app = XCUIApplication()
         app.launchArguments = [
             "-uitest-defaults-suite", suite,
             "-uitest-reset-preferences",
             "-uitest-authenticated",
+            "-uitest-api-base-url", baseURL,
             "-uitest-destination", "home",
-            "-uitest-route", "product/ielts-2026"
+            "-uitest-route", "product/EXAM-DEMO-01"
         ]
         app.launch()
 
-        let title = app.staticTexts["route.placeholder.title"].firstMatch
-        XCTAssertTrue(title.waitForExistence(timeout: 8))
-        XCTAssertEqual(title.label, "Chi tiết bài thi")
-        XCTAssertEqual(app.staticTexts["route.placeholder.param.code"].firstMatch.label, "ielts-2026")
+        let codeLabel = app.staticTexts["productDetail.code"].firstMatch
+        XCTAssertTrue(codeLabel.waitForExistence(timeout: 8))
+        XCTAssertEqual(codeLabel.label, "Mã sản phẩm EXAM-DEMO-01")
+        XCTAssertTrue(app.staticTexts["Cấu trúc bài thi"].firstMatch.waitForExistence(timeout: 5))
 
         openDestination(titled: "Tài khoản", identifier: "shell.dest.account", in: app)
         let englishButton = app.buttons["shell.account.locale.en"].firstMatch
@@ -32,14 +50,14 @@ final class LocaleSwitchOnPortalRoutesUITests: XCTestCase {
 
         openDestination(titled: "Home", identifier: "shell.dest.home", in: app)
 
-        let updatedTitle = app.staticTexts["route.placeholder.title"].firstMatch
-        XCTAssertTrue(updatedTitle.waitForExistence(timeout: 5))
-        XCTAssertEqual(updatedTitle.label, "Product details")
+        let updatedCodeLabel = app.staticTexts["productDetail.code"].firstMatch
+        XCTAssertTrue(updatedCodeLabel.waitForExistence(timeout: 8))
         XCTAssertEqual(
-            app.staticTexts["route.placeholder.param.code"].firstMatch.label,
-            "ielts-2026",
-            "Route server parameter must remain unchanged after locale switch"
+            updatedCodeLabel.label,
+            "Product code EXAM-DEMO-01",
+            "Locale switch must update ProductDetailView immediately while keeping server product code unchanged"
         )
+        XCTAssertTrue(app.staticTexts["Exam structure"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertFalse(app.textFields["login.identifierField"].exists, "Locale switch must not sign out")
     }
 

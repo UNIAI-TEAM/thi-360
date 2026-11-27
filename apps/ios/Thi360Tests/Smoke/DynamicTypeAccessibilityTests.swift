@@ -201,19 +201,35 @@ final class DynamicTypeAccessibilityTests: XCTestCase {
     }
 
     func testHomeDynamicTypeAndAccessibility() throws {
+        let filtersData = try ContractFixtureLoader.loadApiFixture("storefront-filters-200.json")
+        let productsData = try ContractFixtureLoader.loadApiFixture("storefront-products-list-200.json")
+        let accessData = try ContractFixtureLoader.loadApiFixture("exam-access-query-200.json")
+
         for scale in requiredScales {
             let stack = AccountTestFactory.makeStack(
                 initialTokens: AccountTestFactory.sampleTokens(username: "minhanh.tran"),
                 capability: .faceIDAvailable,
                 initialEnrolled: false
-            ) { _ in
-                MockClientTransport.emptyResponse(statusCode: 200)
+            ) { request in
+                let path = request.path.split(separator: "?", maxSplits: 1).first.map(String.init) ?? request.path
+                if path == "/api/v1/public/storefront/filters" {
+                    return MockClientTransport.jsonResponse(statusCode: 200, data: filtersData)
+                }
+                if path == "/api/v1/public/storefront/products" {
+                    return MockClientTransport.jsonResponse(statusCode: 200, data: productsData)
+                }
+                if path == "/api/v1/me/exam-access/query" {
+                    return MockClientTransport.jsonResponse(statusCode: 200, data: accessData)
+                }
+                return MockClientTransport.emptyResponse(statusCode: 200)
             }
             defer {
                 UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName)
             }
 
             let router = AppRouter(initialDestination: .home)
+            defer { CatalogFeedRegistry.shared.clear(for: router) }
+
             let view = AppRootView(
                 router: router,
                 preferences: stack.preferences,

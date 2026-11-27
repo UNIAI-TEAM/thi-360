@@ -21,6 +21,9 @@ final class AccessibilityAuditUITests: XCTestCase {
         let loginBody = try Data(contentsOf: authDir.appendingPathComponent("login-200.json"))
         let refreshBody = try Data(contentsOf: authDir.appendingPathComponent("refresh-200.json"))
         let profileBody = try Data(contentsOf: apiDir.appendingPathComponent("me-profile-200.json"))
+        let filtersBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-filters-200.json"))
+        let productsBody = try Data(contentsOf: apiDir.appendingPathComponent("storefront-products-list-200.json"))
+        let accessBody = try Data(contentsOf: apiDir.appendingPathComponent("exam-access-query-200.json"))
 
         let mockServer = try RecoveryFixtureHTTPServer { method, path, _ in
             if method == "POST", path == "/api/v1/auth/mobile/login" {
@@ -31,6 +34,15 @@ final class AccessibilityAuditUITests: XCTestCase {
             }
             if method == "GET", path == "/api/v1/me/profile" {
                 return (200, profileBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/filters" {
+                return (200, filtersBody)
+            }
+            if method == "GET", path == "/api/v1/public/storefront/products" {
+                return (200, productsBody)
+            }
+            if method == "POST", path == "/api/v1/me/exam-access/query" {
+                return (200, accessBody)
             }
             if method == "POST", path == "/api/v1/auth/mobile/logout" {
                 return (204, Data())
@@ -134,7 +146,7 @@ final class AccessibilityAuditUITests: XCTestCase {
 
         waitForHome(in: app)
 
-        let homeHeading = app.staticTexts["shell.placeholder.heading.home"].firstMatch
+        let homeHeading = app.staticTexts["catalog.heading"].firstMatch
         XCTAssertTrue(homeHeading.waitForExistence(timeout: uiTimeout), "Home heading must exist")
         assertNonEmptyLabel(homeHeading, context: "Home heading")
 
@@ -255,7 +267,7 @@ final class AccessibilityAuditUITests: XCTestCase {
     }
 
     private func waitForHome(in app: XCUIApplication) {
-        let homeHeading = app.staticTexts["shell.placeholder.heading.home"].firstMatch
+        let homeHeading = app.staticTexts["catalog.heading"].firstMatch
         let bioLater = app.buttons["biometric.enable.laterButton"].firstMatch
         let deadline = Date().addingTimeInterval(uiTimeout)
 
