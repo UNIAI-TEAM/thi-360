@@ -82,12 +82,12 @@ class RoutePlaceholderTest {
         composeRule.runOnIdle { nav.closeAttempt() }
 
         composeRule.runOnIdle { nav.openResult("att-55") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("result")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=att-55", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.screenFor("att-55")).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openReview("att-55") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("review")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=att-55", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.review.ReviewTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.review.ReviewTestTags.screenFor("att-55")).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.switchTab(Destination.Account) }
         composeRule.runOnIdle { nav.openProfile() }

@@ -103,14 +103,14 @@ class TabBackStackTest {
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
         composeRule.waitForIdle()
         composeRule.runOnIdle { nav.openResult("ATT-1") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("result")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=ATT-1", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.screenFor("ATT-1")).assertIsDisplayed()
 
         // Switch to History and open result/ATT-2 inside History.
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.History)).performClick()
         composeRule.waitForIdle()
         composeRule.runOnIdle { nav.openResult("ATT-2") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=ATT-2", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.screenFor("ATT-2")).assertIsDisplayed()
 
         // Back from History's result returns to History root.
         composeRule.runOnIdle { nav.back() }
@@ -120,7 +120,7 @@ class TabBackStackTest {
         // Switch back to MyExams -> still on ATT-1; back returns to MyExams root.
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=ATT-1", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.screenFor("ATT-1")).assertIsDisplayed()
         composeRule.runOnIdle { nav.back() }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.MyExams)).assertIsDisplayed()

@@ -68,8 +68,8 @@ class ChromelessAttemptRouteTest {
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShellTestTags.BOTTOM_BAR).assertIsDisplayed()
         composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.MyExams)).assertIsSelected()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("result")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=att-compact-2", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.result.ResultTestTags.screenFor("att-compact-2")).assertIsDisplayed()
     }
 
     @Test

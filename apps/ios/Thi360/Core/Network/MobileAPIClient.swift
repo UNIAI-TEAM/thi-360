@@ -122,6 +122,15 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         )
     }
 
+    func makePublicClient(leadingMiddlewares: [any ClientMiddleware]) -> Client {
+        Client(
+            serverURL: serverURL,
+            configuration: configuration,
+            transport: transport,
+            middlewares: leadingMiddlewares + [acceptLanguage, retryAfter, logging]
+        )
+    }
+
     func makeAuthenticatedClient(leadingMiddlewares: [any ClientMiddleware]) -> Client {
         Client(
             serverURL: serverURL,
