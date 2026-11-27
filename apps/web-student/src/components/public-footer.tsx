@@ -88,7 +88,7 @@ export function PublicFooter({ variant = "default" }: { variant?: "default" | "l
   const moitUrl = moitRegistrationUrl();
   const containerClass = cn(
     "mx-auto px-4",
-    isLanding ? "w-full sm:w-[90%] sm:max-w-[90%] sm:px-0" : "max-w-[1170px] sm:px-6",
+    isLanding ? "w-full sm:w-[90%] sm:max-w-[90%] sm:px-0" : "max-w-[1440px] sm:px-6",
   );
 
   const linkClass = cn(

@@ -46,7 +46,7 @@ describe("initialsOf", () => {
 });
 
 describe("AppShell", () => {
-  it("hiện sidebar, breadcrumb Tổng quan › Bảng điều khiển, và menu avatar có Đổi mật khẩu, Đăng xuất (ẩn Hồ sơ)", async () => {
+  it("hiện sidebar, breadcrumb Tổng quan › Bảng điều khiển, và menu avatar chỉ có Đổi mật khẩu, Đăng xuất", async () => {
     renderWithProviders(
       <SessionProvider loadSession={async () => TEST_ADMIN_SESSION}>
         <AppShell skipLabel="Chuyển tới nội dung chính">
@@ -94,12 +94,11 @@ describe("AppShell", () => {
     expect(trigger.className).not.toContain("ring-primary-600/30");
     await userEvent.click(trigger);
 
-    expect(screen.getByRole("menuitem", { name: "Trang quản trị" })).toHaveAttribute("href", "/");
-    expect(screen.getByRole("menuitem", { name: "Trang học viên" })).toHaveAttribute(
-      "href",
-      "http://localhost:3000/home",
-    );
+    // UNI-2877: menu tài khoản không lặp mục điều hướng (Trang quản trị, Trang học viên, Hồ sơ).
+    expect(screen.queryByRole("menuitem", { name: "Trang quản trị" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Trang học viên" })).toBeNull();
     expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Đổi mật khẩu", "Đăng xuất"]);
     expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
       "href",
       "http://localhost:3000/change-password?source=account-menu",

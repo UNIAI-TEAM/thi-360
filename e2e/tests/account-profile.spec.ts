@@ -65,8 +65,8 @@ test.describe("Hồ sơ học viên", () => {
     await context.addCookies(cookies);
     await page.goto(`${WEB_URL}/home`);
 
-    await page.getByRole("button", { name: "Menu tài khoản" }).click();
-    await page.getByRole("menuitem", { name: "Hồ sơ" }).click();
+    // UNI-2877: Hồ sơ chỉ nằm trên thanh điều hướng, menu tài khoản không lặp lại.
+    await page.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: "Hồ sơ" }).click();
     await expect(page).toHaveURL(`${WEB_URL}/account/profile`);
     await expect(page.getByRole("heading", { name: "Hồ sơ", level: 1 })).toBeVisible();
   });

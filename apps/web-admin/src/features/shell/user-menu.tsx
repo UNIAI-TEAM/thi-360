@@ -1,7 +1,7 @@
 "use client";
 
 import { initialsOf } from "@thi360/web-kit/client";
-import { ChevronDown, GraduationCap, KeyRound, LogOut, ShieldCheck } from "lucide-react";
+import { ChevronDown, KeyRound, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,6 @@ import {
   notify,
 } from "@thi360/ui";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { webUrl } from "@/lib/env";
 import { logout } from "@/features/session/api";
 import { useSession } from "@/features/session/session-provider";
@@ -22,7 +21,7 @@ import { useSession } from "@/features/session/session-provider";
 export { initialsOf };
 
 /**
- * Nút avatar ở thanh trên: Trang quản trị (khi access = MANAGE), Trang học viên, Đổi mật khẩu, Đăng xuất.
+ * Nút avatar ở thanh trên: Đổi mật khẩu, Đăng xuất. Không lặp mục điều hướng đã có ở menu bên (UNI-2877).
  */
 export function UserMenu() {
   const t = useTranslations("shell.userMenu");
@@ -61,20 +60,6 @@ export function UserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuLabel className="sm:hidden">{t("signedInAs", { username: session.username })}</DropdownMenuLabel>
-        {session.access === "MANAGE" && (
-          <DropdownMenuItem asChild>
-            <Link href="/">
-              <ShieldCheck aria-hidden />
-              {t("adminPortal")}
-            </Link>
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem asChild>
-          <a href={`${webUrl()}/home`}>
-            <GraduationCap aria-hidden />
-            {t("studentPortal")}
-          </a>
-        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           {/* `source=account-menu`: trang Đổi mật khẩu của web học viên hiện lối quay lại cho người tự mở từ menu. */}
           <a href={`${webUrl()}/change-password?source=account-menu`}>

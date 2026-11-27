@@ -2025,8 +2025,6 @@
     "logout": "Đăng xuất",
     "logoutFailed": "Không đăng xuất được. Hãy thử lại.",
     "menuLabel": "Tài khoản",
-    "profile": "Hồ sơ",
-    "studentPortal": "Trang học viên",
     "trigger": "Menu tài khoản"
   }
 }

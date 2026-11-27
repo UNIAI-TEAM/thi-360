@@ -67,8 +67,9 @@ describe("StudentHomeView", () => {
 
     await userEvent.click(menuButton);
     expect(screen.queryByRole("menuitem", { name: "Trang quản trị" })).toBeNull();
-    expect(screen.getByRole("menuitem", { name: "Hồ sơ" })).toHaveAttribute("href", "/account/profile");
-    expect(screen.getByRole("menuitem", { name: "Trang học viên" })).toHaveAttribute("href", "/home");
+    // UNI-2877: Hồ sơ và Bài thi của tôi đã có trên thanh điều hướng, menu tài khoản không lặp lại.
+    expect(screen.queryByRole("menuitem", { name: "Hồ sơ" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Trang học viên" })).toBeNull();
     expect(screen.getByRole("menuitem", { name: "Đổi mật khẩu" })).toHaveAttribute(
       "href",
       "/change-password?source=account-menu",
@@ -86,6 +87,6 @@ describe("StudentHomeView", () => {
     const trigger = screen.getByRole("button", { name: "Menu tài khoản" });
     await userEvent.click(trigger);
     expect(screen.getByRole("menuitem", { name: "Trang quản trị" })).toHaveAttribute("href", "http://localhost:3001");
-    expect(screen.getByRole("menuitem", { name: "Trang học viên" })).toHaveAttribute("href", "/home");
+    expect(screen.queryByRole("menuitem", { name: "Trang học viên" })).toBeNull();
   });
 });

@@ -226,7 +226,7 @@ export function AttemptReviewView({
     <div className="min-h-screen bg-page text-text">
       <StudentHeader account={account} />
 
-      <main className="mx-auto flex max-w-[1170px] flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
+      <main className="mx-auto flex max-w-[1440px] flex-col gap-6 px-4 py-8 sm:px-6 sm:py-10">
         <Link
           href={resultHref}
           className={cn(

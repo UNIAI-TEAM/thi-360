@@ -54,7 +54,7 @@ export function StudentHeader({
       <div
         className={cn(
           "mx-auto flex flex-wrap items-center gap-x-6 gap-y-1 px-4 py-3",
-          isLanding ? "w-full sm:w-[90%] sm:max-w-[90%] sm:px-0" : "max-w-[1170px] sm:px-6",
+          isLanding ? "w-full sm:w-[90%] sm:max-w-[90%] sm:px-0" : "max-w-[1440px] sm:px-6",
         )}
       >
         <Link href="/" className="flex items-center">

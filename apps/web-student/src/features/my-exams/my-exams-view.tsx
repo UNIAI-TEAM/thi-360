@@ -57,7 +57,7 @@ export function MyExamsView({
           role="status"
           aria-busy="true"
           aria-label={common("loading")}
-          className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5"
+          className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-5"
         >
           {[0, 1, 2].map((index) => (
             <div
@@ -219,7 +219,7 @@ export function MyExamsView({
                     </div>
 
                     {group.cards.length > 0 && (
-                      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5">
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-5">
                         {group.cards.map((card) => (
                           <MyExamCard key={card.entitlementId ?? card.code} card={card} headingLevel={4} />
                         ))}
@@ -273,7 +273,7 @@ export function MyExamsView({
                   className="flex-wrap"
                 />
               )}
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(20rem,100%),1fr))] gap-5">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-5">
                 {standaloneCards.map((card) => (
                   <MyExamCard key={card.entitlementId ?? card.code} card={card} />
                 ))}

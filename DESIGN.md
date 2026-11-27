@@ -105,7 +105,7 @@ Tiêu đề trang ở web admin dùng 22 / 30, đậm 700.
 ## 4. Khoảng cách, bo góc, viền, bóng
 
 - **Lưới khoảng cách:** bội số của 4px. Khoảng đệm trong thẻ 16–24px. Khoảng cách giữa các khối 24–32px (admin), 48–64px (web học viên).
-- **Chiều rộng nội dung:** web học viên tối đa 1170px; admin giãn theo màn hình, lề 24px (16px dưới 640px, mục 5.8).
+- **Chiều rộng nội dung:** web học viên tối đa 1440px (thanh đầu trang, chân trang và nội dung các trang cùng một bề rộng; lưới thẻ dùng `auto-fill` để thẻ giữ bề rộng khi ít thẻ, không kéo giãn hết hàng); admin giãn theo màn hình, lề 24px (16px dưới 640px, mục 5.8).
 - **Viền:** 1px, màu `border`.
 
 | Bo góc | Giá trị | Dùng cho |
@@ -340,6 +340,7 @@ Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
 - **Nút bật/tắt** nêu trạng thái **một lần**: hoặc nhãn hành động đổi theo trạng thái ("Chuyển sang chế độ tối"), hoặc nhãn cố định kèm `aria-pressed`, không dùng cả hai. Thành phần chung dùng kiểu nhãn đổi theo trạng thái.
 - **Vùng xem trước chỉ để nhìn** (xem trước giao diện) mang `inert` và `aria-hidden`, không nhận focus.
 - **Trang đổi mật khẩu** mở từ menu tài khoản dùng `?source=account-menu` để hiện lối "Quay lại"; luồng bắt buộc đổi mật khẩu không có lối này.
+- **Menu tài khoản** (nút avatar ở thanh trên, cả hai web) chỉ chứa thông tin tài khoản, Đổi mật khẩu và Đăng xuất; không lặp mục đã có trên thanh điều hướng (Bài thi của tôi, Hồ sơ, Trang quản trị khi đang ở web quản trị). Ngoại lệ: tài khoản quản trị ở web học viên không có thanh điều hướng nên menu giữ mục "Trang quản trị".
 
 ### 5.14 Màn đợt 2: Ngân hàng câu hỏi, Bài thi và Hàng chờ chấm (API thật)
 

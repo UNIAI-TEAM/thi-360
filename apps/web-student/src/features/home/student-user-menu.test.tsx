@@ -45,9 +45,9 @@ async function openMenu() {
 }
 
 describe("StudentUserMenu", () => {
-  it("có mục Hồ sơ trỏ tới /account/profile (AC-19)", async () => {
+  it("chỉ có Đổi mật khẩu và Đăng xuất: không lặp Hồ sơ, Trang học viên của thanh điều hướng (UNI-2877)", async () => {
     await openMenu();
-    expect(screen.getByRole("menuitem", { name: "Hồ sơ" })).toHaveAttribute("href", "/account/profile");
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Đổi mật khẩu", "Đăng xuất"]);
   });
 
   it("Đăng xuất gọi API rồi về trang chủ /, không về /login (AC-10)", async () => {
