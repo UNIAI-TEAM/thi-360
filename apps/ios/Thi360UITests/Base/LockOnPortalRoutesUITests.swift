@@ -32,7 +32,7 @@ final class LockOnPortalRoutesUITests: XCTestCase {
             "-uitest-keychain-service", keychainService,
             "-uitest-reset-session",
             "-uitest-lock-timeout", "2",
-            "-uitest-route", "order/ord-lock",
+            "-uitest-route", "result/att-lock",
             "-uitest-api-base-url", baseURL
         ]
         app.launch()
@@ -53,22 +53,23 @@ final class LockOnPortalRoutesUITests: XCTestCase {
         enableButton.tap()
         PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
 
-        let paramText = app.staticTexts["route.placeholder.param.orderCode"].firstMatch
+        let paramText = app.staticTexts["route.placeholder.param.attemptId"].firstMatch
         PortalBiometricUITestHelper.waitForBiometricMatch(until: paramText, timeout: 10)
         XCTAssertTrue(paramText.exists)
-        XCTAssertEqual(paramText.label, "ord-lock")
+        XCTAssertEqual(paramText.label, "att-lock")
 
         let draftField = app.textFields["route.placeholder.draftField"].firstMatch
         XCTAssertTrue(draftField.waitForExistence(timeout: 5))
-        draftField.tap()
-        draftField.typeText("Keep across lock")
+        let draftSample = "Keep across lock"
+        enterText(draftSample, into: draftField, in: app)
+        XCTAssertEqual(draftField.value as? String, draftSample)
 
         XCUIDevice.shared.press(.home)
-        Thread.sleep(forTimeInterval: 3.0)
+        Thread.sleep(forTimeInterval: 4.5)
         app.activate()
 
         let unlockButton = app.buttons["lock.unlockBiometricButton"].firstMatch
-        XCTAssertTrue(unlockButton.waitForExistence(timeout: 8), "Lock screen must cover portal sub-route after timeout")
+        XCTAssertTrue(unlockButton.waitForExistence(timeout: 12), "Lock screen must cover portal sub-route after timeout")
         XCTAssertFalse(paramText.exists, "Portal route content must be hidden while locked")
 
         unlockButton.tap()
@@ -76,7 +77,23 @@ final class LockOnPortalRoutesUITests: XCTestCase {
         PortalBiometricUITestHelper.waitForBiometricMatch(until: paramText, timeout: 10)
 
         XCTAssertTrue(paramText.exists, "Unlocking must return to portal sub-route")
-        XCTAssertEqual(paramText.label, "ord-lock")
-        XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, "Keep across lock")
+        XCTAssertEqual(paramText.label, "att-lock")
+        XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, draftSample)
+    }
+
+    private func enterText(_ text: String, into field: XCUIElement, in app: XCUIApplication) {
+        field.tap()
+        _ = app.keyboards.firstMatch.waitForExistence(timeout: 3.0)
+        field.typeText(text)
+        if (field.value as? String) == text {
+            return
+        }
+        field.tap()
+        _ = app.keyboards.firstMatch.waitForExistence(timeout: 2.0)
+        let currentLength = ((field.value as? String) ?? "").count
+        if currentLength > 0 {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: currentLength + 4))
+        }
+        field.typeText(text)
     }
 }

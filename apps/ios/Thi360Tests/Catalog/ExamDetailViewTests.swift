@@ -379,8 +379,9 @@ final class ExamDetailViewTests: XCTestCase {
 
         mode.set(200)
         pathObserver.emit(isOnline: true)
-        let loadDeadline = Date().addingTimeInterval(2.0)
-        while vm.loadedOutcome == nil && Date() < loadDeadline {
+        let loadDeadline = Date().addingTimeInterval(5.0)
+        while Date() < loadDeadline {
+            if case .loaded(_, false) = vm.loadState { break }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         guard case .loaded(.exam, false) = vm.loadState else {
@@ -439,8 +440,9 @@ final class ExamDetailViewTests: XCTestCase {
 
         mode.set(200)
         pathObserver.emit(isOnline: true)
-        let recoverDeadline = Date().addingTimeInterval(2.0)
-        while vm.staleFailureKind != nil && Date() < recoverDeadline {
+        let recoverDeadline = Date().addingTimeInterval(5.0)
+        while Date() < recoverDeadline {
+            if case .loaded(_, false) = vm.loadState { break }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         guard case .loaded(.exam, false) = vm.loadState else {

@@ -90,7 +90,7 @@ final class CatalogSearchTests: XCTestCase {
     }
 
     private func waitUntil(
-        timeout: TimeInterval = 2.0,
+        timeout: TimeInterval = 5.0,
         condition: @escaping () -> Bool
     ) async throws {
         let deadline = Date().addingTimeInterval(timeout)

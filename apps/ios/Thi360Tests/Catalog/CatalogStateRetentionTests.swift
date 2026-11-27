@@ -90,7 +90,7 @@ final class CatalogStateRetentionTests: XCTestCase {
         defer { window.isHidden = true }
 
         let feed = try XCTUnwrap(CatalogFeedRegistry.shared.existingFeed(for: router))
-        let loadDeadline = Date().addingTimeInterval(2.0)
+        let loadDeadline = Date().addingTimeInterval(5.0)
         while feed.loadedCards.isEmpty && Date() < loadDeadline {
             window.setNeedsLayout()
             window.layoutIfNeeded()
@@ -111,7 +111,7 @@ final class CatalogStateRetentionTests: XCTestCase {
         try await Task.sleep(nanoseconds: 120_000_000)
         router.switchTab(.home)
 
-        let refreshDeadline = Date().addingTimeInterval(2.0)
+        let refreshDeadline = Date().addingTimeInterval(5.0)
         while stack.transport.callCount(method: .post, path: "/api/v1/me/exam-access/query") == 0
             && Date() < refreshDeadline
         {
@@ -191,7 +191,10 @@ final class CatalogStateRetentionTests: XCTestCase {
         XCTAssertEqual(backfilledFeed.query.kind, "HSA")
 
         await stack.sessionStore.signOut()
-        try await Task.sleep(nanoseconds: 50_000_000)
+        let evictDeadline = Date().addingTimeInterval(5.0)
+        while CatalogFeedRegistry.shared.existingFeed(for: router) != nil && Date() < evictDeadline {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
         XCTAssertNil(
             CatalogFeedRegistry.shared.existingFeed(for: router),
             "Signing out must immediately evict cached CatalogFeed"

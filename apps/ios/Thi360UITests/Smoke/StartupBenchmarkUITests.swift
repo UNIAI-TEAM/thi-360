@@ -98,11 +98,14 @@ final class StartupBenchmarkUITests: XCTestCase {
 
         let options = XCTMeasureOptions()
         options.iterationCount = 5
-        // Keep the measure block limited to app.launch() so XCTApplicationLaunchMetric records OS launch-to-responsive duration without XCUITest IPC overhead.
+        options.invocationOptions = [.manuallyStop]
+        // Stop measuring right after launch and terminate so back-to-back iterations never contend on automation sessions.
         measure(metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)], options: options) {
             let app = XCUIApplication()
             app.launchArguments = coldLaunchArguments
             app.launch()
+            stopMeasuring()
+            app.terminate()
         }
     }
 

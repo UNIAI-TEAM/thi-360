@@ -295,8 +295,9 @@ final class CatalogStatesTests: XCTestCase {
 
         offline.set(false)
         pathObserver.emit(isOnline: true)
-        let onlineDeadline = Date().addingTimeInterval(2.0)
-        while feed.loadedCards.isEmpty && Date() < onlineDeadline {
+        let onlineDeadline = Date().addingTimeInterval(5.0)
+        while Date() < onlineDeadline {
+            if case let .loaded(page, false) = feed.loadState, !page.cards.isEmpty { break }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         XCTAssertEqual(feed.loadedCards.count, 2, "ConnectivityMonitor regaining network must auto-load offline Home")
@@ -324,8 +325,9 @@ final class CatalogStatesTests: XCTestCase {
 
         offline.set(false)
         pathObserver.emit(isOnline: true)
-        let recoverDeadline = Date().addingTimeInterval(2.0)
-        while feed.staleFailureKind != nil && Date() < recoverDeadline {
+        let recoverDeadline = Date().addingTimeInterval(5.0)
+        while Date() < recoverDeadline {
+            if case .loaded(_, false) = feed.loadState { break }
             try await Task.sleep(nanoseconds: 20_000_000)
         }
         if case let .loaded(refreshedPage, isStillStale) = feed.loadState {

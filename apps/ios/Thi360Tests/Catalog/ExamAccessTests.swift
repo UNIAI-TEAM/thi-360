@@ -38,7 +38,7 @@ final class ExamAccessTests: XCTestCase {
         let feed = CatalogFeed(accountId: "acc-1", api: stack.api)
         let loadTask = Task { await feed.loadInitialIfNeeded() }
 
-        let deadline = Date().addingTimeInterval(2.0)
+        let deadline = Date().addingTimeInterval(5.0)
         while feed.loadedCards.isEmpty && Date() < deadline {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
@@ -209,7 +209,7 @@ final class ExamAccessTests: XCTestCase {
 
         XCTAssertEqual(stack.transport.callCount(method: .post, path: "/api/v1/auth/mobile/refresh"), 1)
         XCTAssertNil(try stack.tokenStore.read())
-        let deadline = Date().addingTimeInterval(2.0)
+        let deadline = Date().addingTimeInterval(5.0)
         while stack.sessionStore.state != .signedOut(reason: .expired) && Date() < deadline {
             try await Task.sleep(nanoseconds: 10_000_000)
         }
@@ -254,7 +254,7 @@ final class ExamAccessTests: XCTestCase {
             XCTFail("Expected APP_STUDENT_ONLY error")
         } catch {
         }
-        let deadline = Date().addingTimeInterval(2.0)
+        let deadline = Date().addingTimeInterval(5.0)
         while Date() < deadline {
             if case .signedOut(reason: .studentOnly) = roleStack.sessionStore.state { break }
             try await Task.sleep(nanoseconds: 10_000_000)

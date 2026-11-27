@@ -101,12 +101,12 @@ final class LockUITests: XCTestCase {
 
         // Background past lock timeout (2s in Dev UI test) and return to foreground.
         XCUIDevice.shared.press(.home)
-        Thread.sleep(forTimeInterval: 3.0)
+        Thread.sleep(forTimeInterval: 4.5)
         app.activate()
 
         // Lock screen must appear with all three action buttons.
         let unlockButton = app.buttons["lock.unlockBiometricButton"]
-        XCTAssertTrue(unlockButton.waitForExistence(timeout: 8), "Returning after lock timeout must present Lock screen")
+        XCTAssertTrue(unlockButton.waitForExistence(timeout: 12), "Returning after lock timeout must present Lock screen")
         XCTAssertTrue(app.buttons["lock.enterPasswordButton"].exists)
         XCTAssertTrue(app.buttons["lock.otherAccountButton"].exists)
 

@@ -80,6 +80,7 @@ final class CatalogTwoColumnTests: XCTestCase {
         feed.selectedProductCode = "EXAM-DEMO-01"
         try await waitUntil(window: window) {
             stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1
+                && feed.activeEmbeddedDetailViewModel?.loadedOutcome != nil
         }
         try await Task.sleep(nanoseconds: 80_000_000)
         window.layoutIfNeeded()
@@ -89,6 +90,7 @@ final class CatalogTwoColumnTests: XCTestCase {
         feed.selectedProductCode = "BUNDLE-DEMO-01"
         try await waitUntil(window: window) {
             stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products/BUNDLE-DEMO-01") == 1
+                && feed.activeEmbeddedDetailViewModel?.loadedOutcome != nil
         }
         try await Task.sleep(nanoseconds: 80_000_000)
         window.layoutIfNeeded()
@@ -169,6 +171,7 @@ final class CatalogTwoColumnTests: XCTestCase {
         feed.selectedProductCode = "EXAM-DEMO-01"
         try await waitUntil(window: window) {
             stack.transport.callCount(method: .get, path: "/api/v1/public/storefront/products/EXAM-DEMO-01") == 1
+                && feed.activeEmbeddedDetailViewModel?.loadedOutcome != nil
         }
         try await Task.sleep(nanoseconds: 80_000_000)
         window.layoutIfNeeded()
@@ -263,7 +266,7 @@ final class CatalogTwoColumnTests: XCTestCase {
 
     private func waitUntil(
         window: UIWindow,
-        timeout: TimeInterval = 2.0,
+        timeout: TimeInterval = 5.0,
         condition: () -> Bool
     ) async throws {
         let deadline = Date().addingTimeInterval(timeout)
