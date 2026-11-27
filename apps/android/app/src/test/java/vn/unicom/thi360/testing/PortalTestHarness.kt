@@ -4,6 +4,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.nio.file.Files
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,7 +68,7 @@ internal class PortalTestHarness(
                 rootDir = rootDir,
                 accountIdProvider = { tokenStore.read()?.accountId },
             )
-            val logs = mutableListOf<String>()
+            val logs: MutableList<String> = CopyOnWriteArrayList()
             val logger = object : AppLogger {
                 override fun debug(tag: String, message: String) {
                     logs += "D/$tag: $message"
