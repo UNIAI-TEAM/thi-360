@@ -426,6 +426,8 @@ struct AppRootView: View {
         #if THI360_DEV
         if let richScenario = RichContentUITestScenario.fromLaunchArguments() {
             RichContentUITestHarnessView(scenario: richScenario, preferences: preferences)
+        } else if let questionScenario = QuestionUITestScenario.fromLaunchArguments() {
+            QuestionUITestHarnessView(scenario: questionScenario, preferences: preferences)
         } else {
             standardRootContent
         }

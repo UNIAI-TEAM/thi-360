@@ -74,8 +74,7 @@ class RoutePlaceholderTest {
         composeRule.onNodeWithTag(vn.unicom.thi360.feature.payment.ui.PaymentTestTags.ORDER_DETAIL_SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openPrepare("ent-99") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("prepare")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("entitlementId=ent-99", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.prepare.PrepareTestTags.SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openAttempt("att-55") }
         composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("attempt")
