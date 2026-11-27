@@ -85,7 +85,7 @@ describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có tha
     await user.click(await screen.findByRole("option", { name: /Vật lí/ }));
     expect(screen.getByRole("textbox", { name: "Điểm tối đa" })).toHaveValue("");
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(byTextContent("1. Vật lí"))).toBeInTheDocument();
     expect(within(dialog).getByText(/0 câu/)).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe("Thông tin chung của bài ôn (ADV:FIX-QA:3: bài ôn không có tha
     const name = screen.getByRole("textbox", { name: /Tên bài thi/ });
     await user.clear(name);
     await user.type(name, "Bài ôn HSA (sửa)");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" }));
 
     await waitFor(() => expect(server.calls("PATCH", EXAM_PATH)).toHaveLength(1));
     const body = server.calls("PATCH", EXAM_PATH)[0]!.body as Wire;
@@ -123,7 +123,7 @@ describe("Thông tin chung của bài ôn: đi vòng phạm vi (FE-R2-1)", () =>
     expect(scale).not.toBeRequired();
 
     await user.type(screen.getByRole("textbox", { name: /Tên bài thi/ }), " (vòng phạm vi)");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" }));
     await waitFor(() => expect(server.calls("PATCH", EXAM_PATH)).toHaveLength(1));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const body = server.calls("PATCH", EXAM_PATH)[0]!.body as Wire;

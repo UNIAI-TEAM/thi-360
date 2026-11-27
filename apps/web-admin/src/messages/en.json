@@ -5583,7 +5583,7 @@
       },
       "back": "Back",
       "saveDraftAndExit": "Save draft and exit",
-      "continueToListing": "Continue → Listing",
+      "continueToListing": "Continue: Listing",
       "saveAndReturnReview": "Save and return to check",
       "needsCompletionChip": "Needs completion",
       "savedNeedsCompletion": "Draft saved · Structure needs completion.",
@@ -5749,7 +5749,7 @@
       },
       "back": "Back",
       "saveDraftAndExit": "Save draft and exit",
-      "continueToReview": "Continue → Check and preview",
+      "continueToReview": "Continue: Check and preview",
       "saveAndReturnReview": "Save and return to check"
     },
     "review": {
@@ -6877,7 +6877,7 @@
           "pointsInvalid": "Points must be greater than 0."
         }
       },
-      "continueToStructure": "Continue → Structure and matrix",
+      "continueToStructure": "Continue: Structure and matrix",
       "saveDraftAndExit": "Save draft and exit"
     },
     "matrix": {

@@ -48,7 +48,7 @@ test("HSA Tự thiết lập: chỉ số câu, thời lượng, thang điểm �
   // Mọi thứ khác (phạm vi, dạng câu, phân bố, câu chùm) nằm trong vùng đóng, không bắt buộc.
   await expect(page.locator("details").filter({ hasText: "Tùy chọn thêm (không bắt buộc)" }).first()).not.toHaveAttribute("open", "");
 
-  await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
+  await page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click();
   await page.waitForURL(/\/exams\/[^/]+\/listing/, { timeout: 60_000 });
 });
 

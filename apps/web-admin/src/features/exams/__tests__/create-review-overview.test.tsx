@@ -113,13 +113,13 @@ describe("bước 1, Theo môn + Tự thiết lập: một bảng ba cột (UNI-
 
     const score = within(table).getByRole("textbox", { name: "Điểm tối đa" });
     await user.type(score, "0");
-    await user.click(screen.getAllByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" })[0]!);
     expect(await within(table).findByText("Thang điểm phải lớn hơn 0.")).toBeInTheDocument();
     expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(0);
 
     await user.clear(score);
     await user.type(score, "100");
-    await user.click(screen.getAllByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" })[0]!);
+    await user.click(screen.getAllByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" })[0]!);
     await waitFor(() => expect(backend.calls("POST", EXAMS_PATH)).toHaveLength(1));
     expect(backend.calls("POST", EXAMS_PATH)[0]!.body).toMatchObject({ scope: "SUBJECT", buildMode: "REVIEW", maxScore: 100 });
   }, 30_000);

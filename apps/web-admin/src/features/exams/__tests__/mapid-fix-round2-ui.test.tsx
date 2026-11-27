@@ -285,7 +285,7 @@ describe("R1-F4: xóa nhóm có quy tắc rồi Lưu", () => {
     await u.click(await screen.findByRole("button", { name: "Xóa nhóm Trả lời ngắn" }));
     const confirm = await screen.findByRole("dialog", { name: /Xóa nhóm Trả lời ngắn\?/ });
     await u.click(within(confirm).getByRole("button", { name: "Xóa nhóm" }));
-    await u.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await u.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     const messages = await screen.findAllByText(/Chưa lưu được: quy tắc/);
     expect(messages[0]).toHaveTextContent("Trả lời ngắn (đã xóa) · Đúng 3 câu thuộc Mệnh đề và tập hợp");
     expect(messages[0]).toHaveTextContent("nhóm «Trả lời ngắn»");

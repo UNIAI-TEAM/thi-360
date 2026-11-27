@@ -1295,17 +1295,22 @@ public class ExamService {
                 code -> catalogLookup.findActiveItem("QUESTION_TAG", code).map(CatalogItemView::id).orElse(null));
     }
 
-    private static final Set<String> MAPID_RULE_KINDS = Set.of("HSA", "QDA", "BCA");
+    private static final Set<String> MAPID_RULE_KINDS = Set.of("HSA", "QDA", "BCA", "SPT", "SP2E");
     private static final Set<String> MAPID_DISALLOWED_SUBJECTS = Set.of("VAN", "ANH");
+    /** Exam kinds where only Toán is a matrix subject; their other subjects keep the row form without MAPID rules. */
+    private static final Set<String> MAPID_MATH_ONLY_KINDS = Set.of("SPT", "SP2E");
+    private static final String MAPID_MATH_SUBJECT = "TOAN";
 
     /**
-     * MAPID rules are supported for matrix subjects of HSA, QDA, and BCA (UNI-2758, UNI-2839, UNI-2840);
-     * other exam kinds and non-matrix subjects (VAN, ANH — e.g. BCA:VAN essay) cannot save a {@code mapidMode}.
+     * MAPID rules are supported for matrix subjects of HSA, QDA, and BCA (UNI-2758, UNI-2839, UNI-2840) and for
+     * Toán of SPT and SP2E (UNI-2876); other exam kinds and non-matrix subjects (VAN, ANH — e.g. BCA:VAN essay —
+     * and every SPT/SP2E subject other than TOAN) cannot save a {@code mapidMode}.
      */
     private void rejectMapidOutsideSupportedKinds(Exam exam, ExamStructureDocument doc) {
         String kindCode = exam.getKindItemId() == null ? null
                 : catalogLookup.findItem(exam.getKindItemId()).map(CatalogItemView::code).orElse(null);
         boolean kindSupported = kindCode != null && MAPID_RULE_KINDS.contains(kindCode);
+        boolean mathOnly = kindCode != null && MAPID_MATH_ONLY_KINDS.contains(kindCode);
         List<ExamStructureInvalidException.Detail> details = new ArrayList<>();
         for (int p = 0; p < doc.parts().size(); p++) {
             ExamPart part = doc.parts().get(p);
@@ -1319,14 +1324,15 @@ public class ExamService {
                 if (!kindSupported) {
                     details.add(new ExamStructureInvalidException.Detail("parts[" + p + "].sections.mapidMode",
                             "MAPID_KIND_NOT_ALLOWED", "STRUCTURE_FIELD_INVALID", List.of("sections.mapidMode")));
-                } else if (section.subjectCode() != null && MAPID_DISALLOWED_SUBJECTS.contains(section.subjectCode())) {
+                } else if (mathOnly ? !MAPID_MATH_SUBJECT.equals(section.subjectCode())
+                        : section.subjectCode() != null && MAPID_DISALLOWED_SUBJECTS.contains(section.subjectCode())) {
                     details.add(new ExamStructureInvalidException.Detail("parts[" + p + "].sections.mapidMode",
                             "MAPID_SUBJECT_NOT_ALLOWED", "STRUCTURE_FIELD_INVALID", List.of("sections.mapidMode")));
                 }
             }
         }
         if (!details.isEmpty()) {
-            throw new ExamStructureInvalidException("MAPID rules are only available for matrix subjects of HSA, QDA, and BCA exam kinds", details);
+            throw new ExamStructureInvalidException("MAPID rules are only available for matrix subjects of HSA, QDA, and BCA and for Toán of SPT and SP2E", details);
         }
     }
 

@@ -38,9 +38,9 @@ const CANONICAL_PAIRS: ReadonlySet<string> = new Set([
   "VACT:VIETNAMESE",
   "VACT:ANH",
   "VACT:SCIENTIFIC_THINKING",
-  // SP2E (9 DS)
+  // SP2E (Toán MT từ UNI-2876 + 8 DS)
   ...["TOAN", "VAN", "ANH", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW"].map((subj) => `SP2E:${subj}`),
-  // SPT (12 DS)
+  // SPT (Toán MT từ UNI-2876 + 11 DS)
   ...["TOAN", "VAN", "ANH", "LY", "HOA", "SINH", "SU", "DIA", "ECON_LAW", "INFORMATICS", "TECH_INDUSTRY", "TECH_AGRICULTURE"].map(
     (subj) => `SPT:${subj}`,
   ),
@@ -163,7 +163,7 @@ test("R-2 lùi MD có thông báo, ghim hết phiên, tải lại về MT và gi
   const qdaReturnUrl = page.url();
   const [saveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${qdaId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
   ]);
   expect(saveRes.status(), await saveRes.text()).toBe(200);
   await page.waitForURL(/\/exams\/[^/]+\/listing/);
@@ -196,7 +196,7 @@ test("R-2 lùi MD có thông báo, ghim hết phiên, tải lại về MT và gi
   await nameInput.fill(`${currentRowName} QA`);
   const [anhSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${hsaAnhId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
   ]);
   expect(anhSaveRes.status(), await anhSaveRes.text()).toBe(200);
   await page.waitForURL(/\/exams\/[^/]+\/listing/);
@@ -415,7 +415,7 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   await expect(picker).toBeHidden();
   const [bcaSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${bcaVanId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
   ]);
   expect(bcaSaveRes.status(), await bcaSaveRes.text()).toBe(200);
   await page.waitForURL(/\/exams\/[^/]+\/listing/);
@@ -463,7 +463,7 @@ test("DS đặc thù sống: THPTQG Văn chỉ đọc vs BCA Văn sửa MAPID, v
   const vsatReturnUrl = page.url();
   const [vsatSaveRes] = await Promise.all([
     page.waitForResponse((res) => res.url().endsWith(`/exams/${vsatId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
   ]);
   expect(vsatSaveRes.status(), await vsatSaveRes.text()).toBe(200);
   await page.waitForURL(/\/exams\/[^/]+\/listing/);
@@ -550,7 +550,7 @@ test("Sau FU #155: GET /exam-templates khớp BCA REFERENCE, REVIEW UUID + Bài 
   const [putReq, putRes] = await Promise.all([
     page.waitForRequest((req) => req.url().endsWith(`/exams/${sptId}/structure`) && req.method() === "PUT"),
     page.waitForResponse((res) => res.url().endsWith(`/exams/${sptId}/structure`) && res.request().method() === "PUT"),
-    page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
   ]);
   expect(putRes.status(), await putRes.text()).toBe(200);
   const putBody = putReq.postDataJSON() as { parts: StructurePart[] };

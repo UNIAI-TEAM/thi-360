@@ -373,8 +373,9 @@ describe("R1-4 / F-VIS-04: tên mẫu/DB ở cấu trúc, tổng quan, phiên b�
     expect(openChange).toHaveAccessibleName(/Phần I · Trắc nghiệm/);
   });
 
+  // SPT, SP2E không còn khối này (UNI-2876): kiểm trên một kỳ còn khối.
   it("StructureVersionPicker bản en: nhãn mẫu, tóm tắt, khối Nếu chọn và hộp thoại đổi phiên bản không lọt tiếng Việt", async () => {
-    const exam = mapExamDetail(examDetailWire({ kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", templateCode: "SP2E_2026" }));
+    const exam = mapExamDetail(examDetailWire({ kind: "QDA", scope: "SUBJECT", subjectCode: "MATH", templateCode: "QDA_2026" }));
     const makeTemplate = (code: string, label: string, summary: string) =>
       mapExamTemplate({
         active: true,
@@ -383,9 +384,9 @@ describe("R1-4 / F-VIS-04: tên mẫu/DB ở cấu trúc, tổng quan, phiên b�
         fixedBlockCounts: false,
         omittedLocked: false,
         buildMode: "STANDARD",
-        isDefault: code === "SP2E_2026",
+        isDefault: code === "QDA_2026",
         code,
-        kindCode: "SP2E",
+        kindCode: "QDA",
         scope: "SUBJECT",
         subjectCode: "MATH",
         timing: "PER_PART",
@@ -394,8 +395,8 @@ describe("R1-4 / F-VIS-04: tên mẫu/DB ở cấu trúc, tổng quan, phiên b�
         structure: { parts: [{ id: "p1", order: 1, name: "Phần I · Đại số", questionCount: 10, durationMinutes: 45, participation: { mode: "ALL" }, sections: [] }] },
         parts: [],
       } as never);
-    const t2026 = makeTemplate("SP2E_2026", "SP2E – Toán – Cấu trúc 2026", "40 câu, thang 10 điểm, 90 phút.");
-    const t2025 = makeTemplate("SP2E_2025", "SP2E – Toán – Đề minh họa 2025", "30 câu, thang 10 điểm, 60 phút.");
+    const t2026 = makeTemplate("QDA_2026", "QDA – Toán – Cấu trúc 2026", "40 câu, thang 10 điểm, 90 phút.");
+    const t2025 = makeTemplate("QDA_2025", "QDA – Toán – Đề minh họa 2025", "30 câu, thang 10 điểm, 60 phút.");
 
     const user = userEvent.setup();
     const { container } = renderWithProviders(
@@ -413,7 +414,7 @@ describe("R1-4 / F-VIS-04: tên mẫu/DB ở cấu trúc, tổng quan, phiên b�
     expect(vietnameseOutsideExamContent(container)).toEqual([]);
     await user.click(screen.getByRole("combobox", { name: /Structure version/ }));
     expect(vietnameseOutsideExamContent(document.body)).toEqual([]);
-    await user.click(await screen.findByRole("option", { name: "SP2E – Toán – Đề minh họa 2025" }));
+    await user.click(await screen.findByRole("option", { name: "QDA – Toán – Đề minh họa 2025" }));
     const dialog = await screen.findByRole("dialog");
     expect(vietnameseOutsideExamContent(dialog)).toEqual([]);
   });

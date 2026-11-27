@@ -169,7 +169,7 @@ test.describe("HSA: mức Bắt buộc cố định (UNI-1701 AC-4)", () => {
     const returnUrl = page.url();
     const [putRes] = await Promise.all([
       page.waitForResponse((res) => res.url().endsWith(`/exams/${id}/structure`) && res.request().method() === "PUT"),
-      page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click(),
+      page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click(),
     ]);
     expect(putRes.status(), await putRes.text()).toBe(200);
     await page.waitForURL(/\/exams\/[^/]+\/listing/);

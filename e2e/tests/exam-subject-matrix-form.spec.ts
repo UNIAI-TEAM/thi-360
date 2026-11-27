@@ -66,7 +66,7 @@ async function checkSection(admin: AdminApi, examId: string, sectionId: string):
 
 async function saveInUi(page: Page, examId: string): Promise<void> {
   const returnUrl = page.url();
-  const next = page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true });
+  const next = page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true });
   const [response] = await Promise.all([
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/structure`) && item.request().method() === "PUT", { timeout: SOLVER_TIMEOUT_MS }),
     next.click(),

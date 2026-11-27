@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -442,6 +443,7 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
     }
 
     // ---- Q4 + UNI-2839 / UNI-2840: MAPID rules are allowed for HSA, QDA, and BCA, rejected for other exam kinds ----
+    // (SPT and SP2E allow them for Toán only, see the UNI-2876 test below.)
 
     @Test
     void qdaAndBcaCanSaveMapidModeWhileOtherKindsCannot() throws Exception {
@@ -468,6 +470,30 @@ class ExamMapidRulesIT extends AbstractIntegrationTest {
         String legacy = "{\"id\":\"section\",\"subjectCode\":\"" + subjectCode + "\",\"questionCount\":3,\"blocks\":["
                 + block("g1", "SINGLE_CHOICE", 3) + "]}";
         putStructure(vact, legacy).andExpect(status().isOk());
+    }
+
+    // ---- UNI-2876: Toán of SPT and SP2E uses the HSA MAPID rule flow; their other subjects stay without MAPID ----
+
+    @Test
+    void sptAndSp2eToanCanSaveMapidModeWhileTheirOtherSubjectsCannot() throws Exception {
+        arrange();
+        for (String kind : List.of("spt", "sp2e")) {
+            UUID toan = examRow(kind);
+            putStructure(toan, subjectSection("TOAN")).andExpect(status().isOk());
+            assertThat(structure(toan).path("parts").get(0).path("sections").get(0).path("mapidMode").asText())
+                    .isEqualTo("MATRIX");
+            for (String other : List.of("LY", "VAN", "ANH")) {
+                UUID exam = examRow(kind);
+                putStructure(exam, subjectSection(other)).andExpect(status().isUnprocessableEntity())
+                        .andExpect(jsonPath("$.fieldErrors[0].code").value("MAPID_SUBJECT_NOT_ALLOWED"));
+                assertThat(structure(exam).path("parts")).isEmpty();
+            }
+        }
+    }
+
+    private String subjectSection(String subject) {
+        return "{\"id\":\"section\",\"subjectCode\":\"" + subject + "\",\"questionCount\":3,\"mapidMode\":\"MATRIX\","
+                + "\"mapidRules\":[" + rule("present", "PRESENT", null, a()) + "],\"blocks\":[" + block("g1", "SINGLE_CHOICE", 3) + "]}";
     }
 
     // ---- rule node references are validated like legacy scopes (review R1-8) ----------------------------------

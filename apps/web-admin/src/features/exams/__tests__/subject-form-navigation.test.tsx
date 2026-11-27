@@ -82,7 +82,7 @@ describe("Điều hướng tới dòng của Danh sách dòng thật (CR-3 AC-13
     openStructure("?section=sec-toan");
     await screen.findByRole("heading", { level: 2, name: /TOAN/ });
     await user.click((await screen.findAllByRole("button", { name: "Khai chỉ tiêu" }))[0]!);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await editorOf(/Van dong 2/);
     await waitFor(() => expect(document.querySelector('[data-form-row-editor="van-r2"]')).toContainElement(document.activeElement as HTMLElement));
     expect(checkCalls(server)).toHaveLength(0);

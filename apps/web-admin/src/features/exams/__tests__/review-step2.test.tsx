@@ -112,12 +112,12 @@ describe("Bài ôn: chỗ sửa của khối duy nhất là màn bài ôn (AC-3)
     expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
   });
 
-  it("'Tiếp tục → Thông tin bán' chuyển thẳng sang bước 3 khi bài ôn chưa sửa", async () => {
+  it("'Tiếp tục: Thông tin bán' chuyển thẳng sang bước 3 khi bài ôn chưa sửa", async () => {
     const server = boot();
     const user = userEvent.setup();
     open("?section=sec-1");
     await reviewHeading();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(router.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/listing`);
     expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
   });

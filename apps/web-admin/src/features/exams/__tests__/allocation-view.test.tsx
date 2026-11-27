@@ -74,14 +74,14 @@ describe("Row 5: tổng tỷ lệ khác 100% (R-118)", () => {
     open();
     expect(await screen.findByText(/Theo khối lớp đang là 90%/)).toBeInTheDocument();
     await makeDirty(user);
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
     expect(screen.getByText(/Theo khối lớp đang là 90%/)).toBeInTheDocument();
 
     const grade = screen.getByRole("textbox", { name: /Lớp 12 · tỷ lệ phần trăm/ });
     await user.clear(grade);
     await user.type(grade, "100");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
   });
 });
@@ -110,7 +110,7 @@ describe("R1-03: đổi tổng của nhóm tính lại chỉ tiêu chủ đề t
     await user.clear(count);
     await user.type(count, "20");
     expect(await screen.findByText("2 câu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { parts: Array<{ sections: Array<{ blocks: Array<{ topicQuotas: TopicQuota[] }> }> }> };
     expect(sent.parts[0]!.sections[0]!.blocks[0]!.topicQuotas[0]).toMatchObject({ count: 2, percent: 10 });
@@ -313,7 +313,7 @@ describe("H20: không xác định được cấp từ fieldErrors (ADV:FE-3b:2)
     open("?block=blk-1");
     const first = await screen.findByRole("textbox", { name: "Tên chủ đề của chỉ tiêu 1" });
     await user.type(first, "x");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const block = screen.getByRole("region", { name: /Chỉ tiêu chủ đề của/ }).closest("section")!;
     expect(await within(block).findByRole("alert")).toHaveTextContent(/tối đa 8 chỉ tiêu chủ đề/);

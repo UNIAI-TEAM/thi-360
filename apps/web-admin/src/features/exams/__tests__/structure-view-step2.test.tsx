@@ -112,7 +112,7 @@ describe("bước 2 trong màn cấu trúc (FE-7)", () => {
     await user.type(rate, "28,6");
     expect(await screen.findByText("Không ghép được chùm nguyên.")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(await screen.findAllByText(/một dòng nhập theo tỷ lệ chưa ra chùm nguyên/)).not.toHaveLength(0);
     expect(backend.calls("PUT", STRUCTURE_PATH)).toHaveLength(0);
   }, 30_000);

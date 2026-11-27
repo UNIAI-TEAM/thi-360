@@ -253,7 +253,7 @@ test("PUT wire giữ nguyên GET đã nạp, chỉ đổi ô đã sửa (HSA FUL
     const edited = (await points.inputValue()) === "77" ? "78" : "77";
     await points.fill(edited);
     await expect(page.getByText("Có thay đổi chưa lưu")).toBeVisible();
-    await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
+    await page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click();
     await expect.poll(() => putRequests.length, { timeout: 20_000 }).toBe(1);
     await page.waitForURL(/\/exams\/[^/]+\/listing/);
 

@@ -18,13 +18,13 @@ import {
   TabsTrigger,
   type TableCards,
 } from "@thi360/ui";
-import { ArrowLeft, ArrowRight, ChevronDown, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
+import { ArrowRight, ChevronDown, ClipboardCheck, Eye, Info, LoaderCircle, RefreshCw, SearchCheck, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { createContext, Fragment, type RefObject, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { EXTENDED_CHECK_TIME_LIMIT_SECONDS } from "../check";
-import { examTabHref, withFromReview } from "../editor-tabs";
+import { withFromReview } from "../editor-tabs";
 import { type DeepCheck, useDeepCheck, useExamCheck, useRunExamCheck } from "../review-queries";
 import type {
   BlockCheck,
@@ -324,13 +324,8 @@ function CheckResultView({
         onOpenChange={onBlocksOpenChange}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button asChild variant="secondary">
-          <Link href={examTabHref(exam.id, "listing")}>
-            <ArrowLeft aria-hidden />
-            {t("backToListing")}
-          </Link>
-        </Button>
+      {/* "Quay lại" nằm ở hàng thao tác dính đầu bước 4 (UNI-2876). */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="outline" onClick={() => onPreview(null)}>
           <Eye />
           {t("toPreview")}

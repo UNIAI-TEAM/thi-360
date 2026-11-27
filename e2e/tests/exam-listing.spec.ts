@@ -119,7 +119,7 @@ function solidPng(size: number): Buffer {
 const priceBox = (page: Page) => page.getByRole("textbox", { name: "Giá bán", exact: true });
 const attemptsBox = (page: Page) => page.getByRole("spinbutton", { name: "Số lượt mỗi lần mua" });
 const descriptionBox = (page: Page) => page.getByRole("textbox", { name: "Mô tả", exact: true });
-const saveButton = (page: Page) => page.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước", exact: true });
+const saveButton = (page: Page) => page.getByRole("button", { name: "Tiếp tục: Kiểm tra và xem trước", exact: true });
 const listingForm = (page: Page) => page.getByRole("form", { name: "Thông tin bán" });
 const isListingPut = (id: string) => (response: { url(): string; request(): { method(): string } }) =>
   response.url().endsWith(`/exams/${id}/listing`) && response.request().method() === "PUT";

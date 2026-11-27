@@ -74,12 +74,12 @@ describe("Chỉ tiêu cấp bài: lưu và chặn (R1-09, R1-16)", () => {
     open();
     await setPercent(user, 1, "60");
     expect(await screen.findByRole("alert", { name: "" })).toHaveTextContent("Tổng tỷ lệ là 90%");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     expect(server.calls("PUT", STRUCTURE)).toHaveLength(0);
     expect(screen.getByText(/Tổng tỷ lệ là 90%/)).toBeInTheDocument();
 
     await setPercent(user, 0, "40");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
   });
 
@@ -91,7 +91,7 @@ describe("Chỉ tiêu cấp bài: lưu và chặn (R1-09, R1-16)", () => {
     await setPercent(user, 1, "60");
     const section = screen.getByRole("region", { name: "Lớp tham khảo" });
     await user.click(within(section).getByRole("radio", { name: "Bắt buộc" }));
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: unknown[] };
     expect(sent.examQuotas).toEqual([
@@ -134,7 +134,7 @@ describe("Chỉ tiêu cấp bài khi đổi phiên bản cấu trúc (R1-10)", (
       });
       await setPercent(user, 0, "25");
       await setPercent(user, 1, "75");
-      await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+      await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
       await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
       const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ id: string; enforcement: string }> };
       expect(sent.examQuotas).toMatchObject([{ id: "q-later", enforcement: saved }]);
@@ -170,7 +170,7 @@ describe("Chỉ tiêu cấp bài của kỳ thi HSA có mức cố định (UNI-
     expect(within(section).queryByRole("radio", { name: "Tham khảo" })).not.toBeInTheDocument();
     expect(within(section).queryByRole("group", { name: "Mức của Lớp tham khảo" })).not.toBeInTheDocument();
     expect(within(section).queryByText("Kỳ thi HSA: sinh đề luôn theo ma trận")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", STRUCTURE)).toHaveLength(1));
     const sent = server.calls("PUT", STRUCTURE)[0]!.body as { examQuotas: Array<{ enforcement: string }> };
     expect(sent.examQuotas.map((quota) => quota.enforcement)).toEqual(["REQUIRED"]);

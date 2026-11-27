@@ -223,7 +223,7 @@ async function saveStructure(page: Page) {
   const returnUrl = page.url();
   const [response] = await Promise.all([
     page.waitForResponse((res) => /\/exams\/[^/]+\/structure$/.test(res.url()) && res.request().method() === "PUT", { timeout: 60_000 }),
-    page.getByRole("button", { name: /^(Tiếp tục → Thông tin bán|Lưu và quay lại kiểm tra)$/ }).click(),
+    page.getByRole("button", { name: /^(Tiếp tục: Thông tin bán|Lưu và quay lại kiểm tra)$/ }).click(),
   ]);
   expect(response.status(), await response.text()).toBe(200);
   await page.waitForURL(/\/exams\/[^/]+\/(listing|review)/, { timeout: 60_000 });

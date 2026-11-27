@@ -142,7 +142,7 @@ describe("UNI-1720 §6: kịch bản nghiệm thu luồng 4 bước & lưu nháp
     expect(server.calls("PUT", `${EXAM_PATH}/structure`)).toHaveLength(0);
     expect(server.calls("POST", `${EXAM_PATH}/check`)).toHaveLength(0);
 
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(server.calls("PUT", `${EXAM_PATH}/structure`)).toHaveLength(1));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/listing`));
   });
@@ -273,7 +273,7 @@ describe("UNI-1720 §6: kịch bản nghiệm thu luồng 4 bước & lưu nháp
 
     const priceInput = await screen.findByRole("textbox", { name: /Giá bán/ });
     await user.type(priceInput, "199000");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Kiểm tra và xem trước" }));
 
     await waitFor(() => expect(router.push).toHaveBeenCalledWith(`/exams/${EXAM_ID}/review`));
   });

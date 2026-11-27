@@ -75,9 +75,9 @@ export function ExamStructureSubjectPanel({
   const tGap = useTranslations("exams.structure.gap");
   const tContent = useTranslations("content");
   const { section, option } = context;
-  // Môn thuộc kỳ dùng quy tắc MAPID (HSA, QDA, BCA) có hai chế độ MAPID; môn khác, kỳ thi khác, và môn còn dữ liệu cũ không chuyển được giữ kiểu cũ.
+  // Môn dùng quy tắc MAPID (môn MT của HSA, QDA, BCA; Toán của SPT, SP2E) có hai chế độ MAPID; môn khác, kỳ thi khác, và môn còn dữ liệu cũ không chuyển được giữ kiểu cũ.
   const hsaContext = useHsaExam();
-  const mapidMode = hsaContext || supportsMapidRules(examKind) ? mapidViewMode(section) : null;
+  const mapidMode = hsaContext || supportsMapidRules(examKind, section.subjectCode) ? mapidViewMode(section) : null;
   const cases = sectionCaseCounts(section, option);
   const [caseIndex, setCaseIndex] = useState(0);
   const count = cases[Math.min(caseIndex, cases.length - 1)] ?? null;

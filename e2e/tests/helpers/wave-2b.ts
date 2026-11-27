@@ -564,8 +564,8 @@ export async function fillExamStep1InUi(page: Page, spec: UiExamSpec): Promise<v
 export async function submitExamStep1InUi(page: Page, spec: UiExamSpec): Promise<string> {
   await page.getByRole("textbox", { name: /Mã bài thi/ }).fill(spec.code);
   await page.getByRole("textbox", { name: /Tên bài thi/ }).fill(spec.name);
-  await page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }).click();
-  // Form có ô sai thì "Tiếp tục → Cấu trúc và ma trận" không gửi gì: báo ngay tên ô sai thay vì chờ hết hạn của cả kịch bản.
+  await page.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" }).click();
+  // Form có ô sai thì "Tiếp tục: Cấu trúc và ma trận" không gửi gì: báo ngay tên ô sai thay vì chờ hết hạn của cả kịch bản.
   const form = page.getByRole("form", { name: "Tạo bài thi" });
   const invalid = form.locator('[aria-invalid="true"]');
   const stepTwo = /\/exams\/[^/]+\/structure$/;
@@ -599,10 +599,10 @@ export async function expectStructureQuestions(page: Page, questions: RegExp): P
   await expect(summary.locator("div").filter({ has: page.locator("dt", { hasText: /^Số câu$/ }) }).locator("dd")).toHaveText(questions);
 }
 
-/** Lưu bản nháp bước 2 bằng "Tiếp tục → Thông tin bán" (PUT 200), rồi quay lại đúng URL bước 2 để kịch bản làm tiếp. */
+/** Lưu bản nháp bước 2 bằng "Tiếp tục: Thông tin bán" (PUT 200), rồi quay lại đúng URL bước 2 để kịch bản làm tiếp. */
 export async function saveStructureInUi(page: Page, examId: string): Promise<void> {
   const returnUrl = page.url();
-  const next = page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true });
+  const next = page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true });
   const [response] = await Promise.all([
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}/structure`) && item.request().method() === "PUT", {
       timeout: SOLVER_TIMEOUT_MS,
@@ -619,6 +619,9 @@ const MATRIX_SUBJECTS_BY_KIND: Readonly<Record<string, ReadonlySet<string>>> = {
   QDA: new Set(["TOAN", "LY", "HOA", "SINH", "SU", "DIA"]),
   BCA: new Set(["TOAN", "SU", "LY", "HOA", "SINH", "DIA"]),
   VACT: new Set(["TOAN", "VIETNAMESE"]),
+  // UNI-2876: Toán của SP2E, SPT thiết lập như HSA (MT, quy tắc MAPID).
+  SP2E: new Set(["TOAN"]),
+  SPT: new Set(["TOAN"]),
 };
 
 function isEditableBlockSection(kindCode: string | undefined, section: StructureSection): boolean {
@@ -727,11 +730,11 @@ export async function renameFirstBlockAndSaveInUi(page: Page, admin: AdminApi, e
  */
 export async function continueToReviewInUi(page: Page, examId: string): Promise<CheckResult> {
   if (/\/exams\/[^/]+\/structure/.test(page.url())) {
-    await page.getByRole("button", { name: "Tiếp tục → Thông tin bán", exact: true }).click();
+    await page.getByRole("button", { name: "Tiếp tục: Thông tin bán", exact: true }).click();
     await page.waitForURL(/\/exams\/[^/]+\/listing/, { timeout: SOLVER_TIMEOUT_MS });
   }
   if (/\/exams\/[^/]+\/listing/.test(page.url())) {
-    await page.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước", exact: true }).click();
+    await page.getByRole("button", { name: "Tiếp tục: Kiểm tra và xem trước", exact: true }).click();
     await page.waitForURL(/\/exams\/[^/]+\/review/, { timeout: SOLVER_TIMEOUT_MS });
   }
   const runButton = page.getByRole("button", { name: /^Kiểm tra( cấu hình| lại)$/ }).first();
@@ -855,7 +858,7 @@ export async function ensureListingFilledInUi(page: Page, examId: string): Promi
     await descriptionInput.fill("Đề thi luyện tập chuẩn bị kỳ thi.");
     shouldSave = true;
   }
-  const saveListing = page.getByRole("button", { name: "Tiếp tục → Kiểm tra và xem trước", exact: true });
+  const saveListing = page.getByRole("button", { name: "Tiếp tục: Kiểm tra và xem trước", exact: true });
   if (shouldSave) {
     await expect(saveListing).toBeEnabled();
     const [savedListing, refreshedExam] = await Promise.all([
@@ -990,7 +993,7 @@ export async function setMaxScoreInGeneralTab(page: Page, admin: AdminApi, examI
     page.waitForResponse((item) => item.url().endsWith(`/exams/${examId}`) && item.request().method() !== "GET", {
       timeout: SOLVER_TIMEOUT_MS,
     }),
-    page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận", exact: true }).click(),
   ]);
   expect(response.status(), await response.text()).toBe(200);
   expect((await getExam(admin, examId)).maxScore).toBe(maxScore);

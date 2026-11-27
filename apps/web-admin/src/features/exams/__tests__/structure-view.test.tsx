@@ -39,7 +39,7 @@ describe("Cấu trúc và ma trận", () => {
     await user.clear(duration);
     await user.type(duration, "85");
     expect(await screen.findByText("Có thay đổi chưa lưu")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(backend.app("ex-qda-f-001").check.status).toBe("NEEDS_RECHECK"));
     expect(backend.app("ex-qda-f-001")).toMatchObject({ hasUnpublishedChanges: true, durationMinutes: 200 });
   });
@@ -94,7 +94,7 @@ describe("Thông tin chung", () => {
     await user.clear(name);
     // Dán một lần thay cho gõ từng ký tự: một lần render của biểu mẫu thay vì hơn hai mươi lần.
     await user.paste("QDA FULL · Đề luyện 1 (sửa)");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" }));
     await waitFor(() => expect(backend.app("ex-qda-f-001").name).toBe("QDA FULL · Đề luyện 1 (sửa)"));
     const facts = screen.getByRole("heading", { name: "Tình trạng" }).closest("div")!;
     expect(within(facts).getByText("Có bản sửa chưa công bố")).toBeInTheDocument();

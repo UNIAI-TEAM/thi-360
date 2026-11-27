@@ -93,16 +93,16 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
     combinedMatrix: "NONE",
     percent: { MATRIX: "NONE", ROWS: "COUNT_OR_PERCENT" },
     hideGrade: SOCIAL_AND_ENGLISH,
-    matrix: [],
-    rows: ["TOAN", "VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"],
+    matrix: ["TOAN"],
+    rows: ["VAN", "LY", "HOA", "SINH", "DIA", "SU", "ECON_LAW", "ANH"],
   },
   SPT: {
     enforcement: "REFERENCE_WITH_APPLY",
     combinedMatrix: "NONE",
     percent: { MATRIX: "NONE", ROWS: "COUNT_OR_PERCENT" },
     hideGrade: SOCIAL_AND_ENGLISH,
-    matrix: [],
-    rows: TWELVE_SUBJECTS,
+    matrix: ["TOAN"],
+    rows: TWELVE_SUBJECTS.filter((subject) => subject !== "TOAN"),
   },
   THPTQG: {
     enforcement: "DECLARED_REQUIRED",
@@ -133,7 +133,8 @@ const KIND_RULES: Readonly<Record<SubjectFormExamKind, KindRule>> = {
 const SCIENCE_SET_COUNT = { min: 1, max: 2, size: 3 } as const;
 const SCIENCE_LIMITS: Readonly<Record<string, number>> = { LY: 1, HOA: 1, SINH: 1, SU: 0, DIA: 0 };
 const LIMITED_KINDS: readonly SubjectFormExamKind[] = ["HSA", "QDA"];
-const MAPID_RULE_KINDS: readonly SubjectFormExamKind[] = ["HSA", "QDA", "BCA"];
+/** Kỳ có môn MT dùng quy tắc MAPID kiểu HSA. SPT, SP2E chỉ có Toán là MT (UNI-2876), nên chỉ Toán của hai kỳ này đi luồng này. */
+const MAPID_RULE_KINDS: readonly SubjectFormExamKind[] = ["HSA", "QDA", "BCA", "SPT", "SP2E"];
 
 function buildEntry(kind: SubjectFormExamKind, subject: string, form: SubjectFormKind): SubjectFormEntry {
   const rule = KIND_RULES[kind];

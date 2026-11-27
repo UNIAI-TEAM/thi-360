@@ -146,9 +146,9 @@ export function BlockEditor({
         }
       : {};
   const anchor = (field: BlockField) => blockFieldAnchor(block.id, field);
-  // Môn thuộc kỳ dùng quy tắc MAPID (HSA, QDA, BCA): phạm vi và chỉ tiêu chủ đề của nhóm không còn dùng, thay bằng quy tắc của môn.
+  // Môn dùng quy tắc MAPID (môn MT của HSA, QDA, BCA; Toán của SPT, SP2E): phạm vi và chỉ tiêu chủ đề của nhóm không còn dùng, thay bằng quy tắc của môn.
   const hsaContext = useHsaExam();
-  const mapidMode = hsaContext || supportsMapidRules(examKind) ? mapidViewMode(section) : null;
+  const mapidMode = hsaContext || supportsMapidRules(examKind, section.subjectCode) ? mapidViewMode(section) : null;
 
   // Bấm lỗi: tiêu điểm vào đúng ô của lỗi, từ vùng tổng hợp (yêu cầu trong bộ nhớ) hoặc từ tab Kiểm tra (`?block=&field=`).
   const fieldRequest = useBlockFieldRequest(block.id);

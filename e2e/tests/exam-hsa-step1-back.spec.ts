@@ -41,7 +41,7 @@ async function backToStep1(page: Page, id: string, spec: UiExamSpec): Promise<vo
   await expect(page.getByRole("textbox", { name: /Tên bài thi/ })).toHaveValue(spec.name);
 }
 
-/** Từ tab Thông tin chung: đặt số câu của phần đầu rồi "Tiếp tục → Cấu trúc và ma trận", kiểm chứng ở bước 2. */
+/** Từ tab Thông tin chung: đặt số câu của phần đầu rồi "Tiếp tục: Cấu trúc và ma trận", kiểm chứng ở bước 2. */
 async function editFirstCountAndContinue(page: Page, id: string, newCount: number): Promise<void> {
   const admin = await adminApi();
   const before = await getStructure(admin, id);
@@ -54,7 +54,7 @@ async function editFirstCountAndContinue(page: Page, id: string, newCount: numbe
     page.waitForResponse(
       (item) => new URL(item.url()).pathname === `/api/v1/admin/exams/${id}/structure` && item.request().method() === "PUT",
     ),
-    page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận", exact: true }).click(),
+    page.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận", exact: true }).click(),
   ]);
   expect(savedStructure.status(), await savedStructure.text()).toBe(200);
   await page.waitForURL(new RegExp(`/exams/${id}/structure$`));
@@ -136,7 +136,7 @@ test("HSA Toàn bài: đổi sang Theo môn ở bước 1 hỏi nạp lại cấ
   await page.getByRole("radio", { name: /^Theo môn/ }).check();
   await subjectCombobox(page).click();
   await page.getByRole("option", { name: "Toán học", exact: true }).click();
-  await page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận", exact: true }).click();
+  await page.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận", exact: true }).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -174,10 +174,10 @@ async function buildModeOf(id: string): Promise<string | undefined> {
   return body.buildMode;
 }
 
-/** Tab Thông tin chung mở lại, đổi cách dựng bài rồi "Tiếp tục → Cấu trúc và ma trận": hộp cảnh báo hiện trước khi gửi gì; trả hộp để kịch bản xác nhận hay hủy. */
+/** Tab Thông tin chung mở lại, đổi cách dựng bài rồi "Tiếp tục: Cấu trúc và ma trận": hộp cảnh báo hiện trước khi gửi gì; trả hộp để kịch bản xác nhận hay hủy. */
 async function changeBuildModeAndContinue(page: Page, mode: RegExp) {
   await page.getByRole("radio", { name: mode }).check();
-  await page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận", exact: true }).click();
+  await page.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(
@@ -302,7 +302,7 @@ test("AC-1697-5c bài đã công bố: /exams/new?exam=<id> chuyển hướng v�
   expect(await buildModeOf(id)).toBe("STANDARD");
 });
 
-test("tab Thông tin chung của bài đã lưu hợp nhất: hiển thị cả Tóm tắt, Tình trạng, Hoàn tác và Tiếp tục → Cấu trúc và ma trận", async ({ context, page }) => {
+test("tab Thông tin chung của bài đã lưu hợp nhất: hiển thị cả Tóm tắt, Tình trạng, Hoàn tác và Tiếp tục: Cấu trúc và ma trận", async ({ context, page }) => {
   await loginAdmin(context, "vi");
   const spec: UiExamSpec = { kind: "HSA", scope: "FULL", code: examCode("E2E-HSA-GENERAL"), name: "HSA tab thông tin chung nghiệm thu" };
   const id = await createExamInUi(page, spec);
@@ -310,5 +310,5 @@ test("tab Thông tin chung của bài đã lưu hợp nhất: hiển thị cả 
   await expect(page.getByRole("region", { name: "Tóm tắt" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Tình trạng" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Hoàn tác", exact: true }).filter({ hasText: "Hoàn tác" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận", exact: true })).toBeVisible();
 });

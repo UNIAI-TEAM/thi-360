@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { supportsMapidRules } from "../hsa-enforcement";
 import { subjectFormLimits } from "../subject-forms/limits";
 import { listSubjectFormPairs, subjectFormFor } from "../subject-forms/registry";
 
@@ -14,9 +15,9 @@ const TABLE: ReadonlyArray<readonly [string, string, "M" | "D"]> = [
   ["BCA", "VAN", "D"], ["BCA", "TOAN", "M"], ["BCA", "SU", "M"], ["BCA", "ANH", "D"],
   ["BCA", "LY", "M"], ["BCA", "HOA", "M"], ["BCA", "SINH", "M"], ["BCA", "DIA", "M"],
   ["VACT", "VIETNAMESE", "M"], ["VACT", "ANH", "D"], ["VACT", "TOAN", "M"], ["VACT", "SCIENTIFIC_THINKING", "D"],
-  ["SP2E", "TOAN", "D"], ["SP2E", "VAN", "D"], ["SP2E", "LY", "D"], ["SP2E", "HOA", "D"], ["SP2E", "SINH", "D"],
+  ["SP2E", "TOAN", "M"], ["SP2E", "VAN", "D"], ["SP2E", "LY", "D"], ["SP2E", "HOA", "D"], ["SP2E", "SINH", "D"],
   ["SP2E", "DIA", "D"], ["SP2E", "SU", "D"], ["SP2E", "ECON_LAW", "D"], ["SP2E", "ANH", "D"],
-  ["SPT", "TOAN", "D"], ["SPT", "LY", "D"], ["SPT", "HOA", "D"], ["SPT", "SINH", "D"], ["SPT", "SU", "D"],
+  ["SPT", "TOAN", "M"], ["SPT", "LY", "D"], ["SPT", "HOA", "D"], ["SPT", "SINH", "D"], ["SPT", "SU", "D"],
   ["SPT", "DIA", "D"], ["SPT", "ECON_LAW", "D"], ["SPT", "TECH_INDUSTRY", "D"], ["SPT", "TECH_AGRICULTURE", "D"],
   ["SPT", "VAN", "D"], ["SPT", "ANH", "D"], ["SPT", "INFORMATICS", "D"],
   ["THPTQG", "TOAN", "D"], ["THPTQG", "LY", "D"], ["THPTQG", "HOA", "D"], ["THPTQG", "SINH", "D"], ["THPTQG", "SU", "D"],
@@ -54,9 +55,32 @@ describe("Bảng đăng ký biểu mẫu theo môn (FTM R-1)", () => {
     expect(at("VACT", "ANH")).toMatchObject({ form: "ROWS", percentEntry: "COUNT_OR_PERCENT" });
     expect(at("THPTQG", "LY").enforcement).toBe("DECLARED_REQUIRED");
     expect(at("THPTQG", "LY").percentEntry).toBe("NONE");
-    for (const kind of ["SP2E", "SPT", "HSCA"]) expect(at(kind, "TOAN")).toMatchObject({ percentEntry: "COUNT_OR_PERCENT", combinedMatrix: "NONE" });
+    expect(at("HSCA", "TOAN")).toMatchObject({ percentEntry: "COUNT_OR_PERCENT", combinedMatrix: "NONE" });
+    // UNI-2876 (UNI-1734): Toán của SP2E, SPT thiết lập như HSA (MT, quy tắc MAPID, không nhập %, không Nguồn chùm), giữ mức Tham khảo của kỳ;
+    // các môn khác của hai kỳ vẫn là DS nhập số câu hoặc %.
+    for (const kind of ["SP2E", "SPT"]) {
+      expect(at(kind, "TOAN")).toMatchObject({ form: "MATRIX", percentEntry: "NONE", enforcement: "REFERENCE_WITH_APPLY", combinedMatrix: "NONE", hideGrade: false, mapidFlow: "HSA_RULES", setSource: false });
+      expect(at(kind, "LY")).toMatchObject({ form: "ROWS", percentEntry: "COUNT_OR_PERCENT", mapidFlow: "NONE", setSource: false });
+      expect(at(kind, "VAN")).toMatchObject({ form: "ROWS", mapidFlow: "NONE" });
+    }
+    const mapidPairs = TABLE.filter(([kind, subject]) => at(kind, subject).mapidFlow === "HSA_RULES").map(([kind, subject]) => `${kind}:${subject}`);
+    expect(mapidPairs.filter((pair) => !/^(HSA|QDA|BCA):/.test(pair))).toEqual(["SP2E:TOAN", "SPT:TOAN"]);
     expect(at("VSAT", "TOAN")).toMatchObject({ percentEntry: "COUNT_OR_PERCENT", combinedMatrix: "PART_LEVEL" });
     expect(TABLE.filter(([kind]) => kind !== "VSAT").every(([kind, subject]) => at(kind, subject).combinedMatrix === "NONE")).toBe(true);
+  });
+
+  it("supportsMapidRules theo cặp kỳ–môn (UNI-2876): môn MT của HSA, QDA, BCA và Toán của SP2E, SPT; môn DS và kỳ khác không", () => {
+    for (const kind of ["HSA", "QDA", "BCA"]) {
+      for (const subject of ["TOAN", "LY", "SU"]) expect(supportsMapidRules(kind, subject), `${kind}:${subject}`).toBe(true);
+      for (const subject of ["VAN", "ANH"]) expect(supportsMapidRules(kind, subject), `${kind}:${subject}`).toBe(false);
+    }
+    for (const kind of ["SP2E", "SPT"]) {
+      expect(supportsMapidRules(kind, "TOAN")).toBe(true);
+      for (const subject of ["LY", "SU", "VAN", "ANH", "GDKTPL"]) expect(supportsMapidRules(kind, subject), `${kind}:${subject}`).toBe(false);
+    }
+    for (const kind of ["VACT", "THPTQG", "HSCA", "VSAT"]) expect(supportsMapidRules(kind, "TOAN"), kind).toBe(false);
+    expect(supportsMapidRules(null, "TOAN")).toBe(false);
+    expect(supportsMapidRules(undefined, "TOAN")).toBe(false);
   });
 
   it("thêm, tách dòng chỉ ở H-SCA Anh và V-ACT Tư duy khoa học; THPTQG Văn chỉ đọc (R-7)", () => {

@@ -272,7 +272,7 @@ describe("Red-first B-01 / B-02 / B-06 (AC-09, AC-10, AC-12)", () => {
     await user.clear(screen.getByRole("textbox", { name: /Mã bài thi/ }));
     await user.type(screen.getByRole("textbox", { name: /Mã bài thi/ }), "SP2E-NEW-2026");
     await user.click(confirmCheckbox);
-    await user.click(screen.getByRole("button", { name: /Tiếp tục → Cấu trúc và ma trận/ }));
+    await user.click(screen.getByRole("button", { name: /Tiếp tục: Cấu trúc và ma trận/ }));
 
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledTimes(1));
     const writes = backend.server.requests
@@ -321,7 +321,7 @@ describe("Red-first B-01 / B-02 / B-06 (AC-09, AC-10, AC-12)", () => {
 
     await user.clear(pointInputs[0]!);
     await user.type(pointInputs[0]!, "30");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Cấu trúc và ma trận" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Cấu trúc và ma trận" }));
 
     await waitFor(() => expect(backend.calls("PATCH", bcaPath)).toHaveLength(1));
     expect(backend.calls("PUT", bcaStructurePath)).toHaveLength(1);
@@ -422,7 +422,7 @@ describe("Red-first B-01 / B-02 / B-06 (AC-09, AC-10, AC-12)", () => {
     await user.clear(screen.getByRole("textbox", { name: /Mã bài thi/ }));
     await user.type(screen.getByRole("textbox", { name: /Mã bài thi/ }), "SP2E-PATCH-500");
     await user.click(confirmCheckbox);
-    await user.click(screen.getByRole("button", { name: /Tiếp tục → Cấu trúc và ma trận/ }));
+    await user.click(screen.getByRole("button", { name: /Tiếp tục: Cấu trúc và ma trận/ }));
 
     await waitFor(() => expect(routerMock.push).toHaveBeenCalledTimes(1));
     const createdId = backend.wireByCode("SP2E-PATCH-500")!.id;

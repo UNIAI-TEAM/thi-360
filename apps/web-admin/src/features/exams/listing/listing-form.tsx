@@ -10,6 +10,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { useUnsavedChangesGuard } from "@/features/shell/unsaved-changes-guard";
 import { getErrorStatus } from "@/lib/api/query-client";
 import { ChoiceCardGroup } from "../components/choice-card-group";
+import { EditorStepToolbar } from "../components/editor-step-toolbar";
 import { ExamDraftLeaveDialog } from "../components/exam-draft-leave-dialog";
 import { reviewHref } from "../components/exam-review-shared";
 import { examTabHref, isFromReview, reviewReturnHref } from "../editor-tabs";
@@ -245,10 +246,51 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
           onSubmit={(event) => void submitWithIntent(fromReview ? "review" : "continue")(event)}
           className="flex min-w-0 flex-col gap-4"
         >
-          <p className="flex flex-wrap gap-x-3 gap-y-1 text-caption text-text-muted">
-            {listing.updatedAt && <span>{t("updatedAt", { time: format.dateTime(new Date(listing.updatedAt), "dateTime") })}</span>}
-            <span>{t("effectNote")}</span>
-          </p>
+          <EditorStepToolbar
+            testId="listing-toolbar"
+            start={
+              <p className="flex flex-wrap gap-x-3 gap-y-1 text-caption text-text-muted">
+                {listing.updatedAt && <span>{t("updatedAt", { time: format.dateTime(new Date(listing.updatedAt), "dateTime") })}</span>}
+                <span>{t("effectNote")}</span>
+              </p>
+            }
+          >
+            <Button type="button" variant="secondary" size="sm" disabled={save.isPending} onClick={handleBack}>
+              <ArrowLeft aria-hidden />
+              {t("back")}
+            </Button>
+            {canEdit ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  loading={save.isPending && activeSubmitIntent === "exit"}
+                  disabled={save.isPending || cover.uploading}
+                  onClick={handleSaveDraftAndExit}
+                >
+                  <Save aria-hidden />
+                  {t("saveDraftAndExit")}
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  loading={save.isPending && activeSubmitIntent !== "exit"}
+                  disabled={cover.uploading}
+                >
+                  {fromReview ? t("saveAndReturnReview") : t("continueToReview")}
+                  <ArrowRight aria-hidden />
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="sm">
+                <Link href={examTabHref(exam.id, "review")}>
+                  {t("continueToReview")}
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+            )}
+          </EditorStepToolbar>
           {!canEdit && (
             <p role="note" className="flex items-start gap-2 rounded-lg border border-border bg-subtle px-3.5 py-2.5 text-body text-text-secondary">
               <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -410,43 +452,6 @@ export function ListingForm({ exam, listing, canEdit, onConflict, onSaved }: Lis
             />
             <p className="text-caption text-text-muted">{t("result.note")}</p>
           </Section>
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <Button type="button" variant="secondary" disabled={save.isPending} onClick={handleBack}>
-              <ArrowLeft aria-hidden />
-              {t("back")}
-            </Button>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {canEdit ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    loading={save.isPending && activeSubmitIntent === "exit"}
-                    disabled={save.isPending || cover.uploading}
-                    onClick={handleSaveDraftAndExit}
-                  >
-                    <Save aria-hidden />
-                    {t("saveDraftAndExit")}
-                  </Button>
-                  <Button
-                    type="submit"
-                    loading={save.isPending && activeSubmitIntent !== "exit"}
-                    disabled={cover.uploading}
-                  >
-                    {fromReview ? t("saveAndReturnReview") : t("continueToReview")}
-                    <ArrowRight aria-hidden />
-                  </Button>
-                </>
-              ) : (
-                <Button asChild>
-                  <Link href={examTabHref(exam.id, "review")}>
-                    {t("continueToReview")}
-                    <ArrowRight aria-hidden />
-                  </Link>
-                </Button>
-              )}
-            </div>
-          </div>
         </form>
 
         <aside aria-labelledby="listing-preview-title" className="flex min-w-0 flex-col gap-3 @5xl:sticky @5xl:top-4">

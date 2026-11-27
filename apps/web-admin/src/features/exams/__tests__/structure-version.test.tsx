@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "@/test/render";
 import { createExam } from "../api";
 import { ExamStructureView } from "../components/exam-structure-view";
-import { FIXTURE_TEMPLATES } from "./exam-fixture";
+import { EXAMS_FIXTURE, FIXTURE_TEMPLATES } from "./exam-fixture";
 import { ExamsBackend, toWireTemplate } from "./fake-exams-backend";
 import { byTextContent } from "./text-content";
 
@@ -26,24 +26,44 @@ beforeEach(() => {
   backend.install();
 });
 
+/**
+ * UNI-2876 (UNI-1734): SPT, SP2E bỏ khối Phiên bản cấu trúc. Ô chọn phiên bản được kiểm trên kỳ QDA với hai mẫu Toán theo môn
+ * mượn từ hai mẫu SP2E Toán (đổi kỳ và mã); chỉ thêm vào fixture trong file này.
+ */
+const PICKER_KIND = "QDA";
+const pickerCode = (code: string) => code.replace("SP2E_", `${PICKER_KIND}_`);
+const pickerClones = FIXTURE_TEMPLATES.filter((template) => template.code === "SP2E_MATH_2025" || template.code === "SP2E_MATH_2026").map((template) => ({
+  ...template,
+  kind: PICKER_KIND,
+  code: pickerCode(template.code),
+}));
+beforeAll(() => {
+  EXAMS_FIXTURE.templates.push(...pickerClones);
+});
+afterAll(() => {
+  for (const clone of pickerClones) EXAMS_FIXTURE.templates.splice(EXAMS_FIXTURE.templates.indexOf(clone), 1);
+});
+const createPickerExam = (code: string) =>
+  createExam({ name: "Toán thử", code, kind: PICKER_KIND, scope: "SUBJECT", subjectCode: "MATH", description: null });
+
 function openStructure(examId: string, search = "") {
   window.history.replaceState(null, "", `/exams/${examId}/structure${search}`);
   return renderWithProviders(<ExamStructureView examId={examId} />);
 }
 
 describe("Cấu trúc: phiên bản năm", () => {
-  it("SP2E Toán: chọn phiên bản 2025 hiện danh sách phần sẽ nạp lại, chỉ thay sau khi xác nhận", async () => {
-    const exam = await createExam({ name: "SP2E thử", code: "SP2E-S-902", kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", description: null });
-    expect(exam.templateCode).toBe("SP2E_MATH_2026");
+  it("Toán theo môn: chọn phiên bản 2025 hiện danh sách phần sẽ nạp lại, chỉ thay sau khi xác nhận", async () => {
+    const exam = await createPickerExam("QDA-S-902");
+    expect(exam.templateCode).toBe("QDA_MATH_2026");
     const user = userEvent.setup();
     openStructure(exam.id);
     const picker = await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ });
     // Máy chủ không trả tên mẫu: tên dựng từ kỳ thi, môn và năm cấu trúc.
-    expect(picker).toHaveTextContent("SP2E · Toán · 2026");
+    expect(picker).toHaveTextContent("QDA · Toán · 2026");
 
     await user.click(picker);
-    await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
-    const dialog = await screen.findByRole("dialog", { name: /Đổi sang “SP2E · Toán · 2025”\?/ });
+    await user.click(await screen.findByRole("option", { name: /QDA · Toán · 2025/ }));
+    const dialog = await screen.findByRole("dialog", { name: /Đổi sang “QDA · Toán · 2025”\?/ });
     expect(within(dialog).getByText("Bước 1/2")).toBeInTheDocument();
     expect(within(dialog).getByText("Các phần sẽ được nạp lại (1)")).toBeInTheDocument();
     expect(within(dialog).getByText(byTextContent("1. Toán"))).toBeInTheDocument();
@@ -51,37 +71,37 @@ describe("Cấu trúc: phiên bản năm", () => {
     expect(within(dialog).getByText(/→ 22 câu · chưa có thời lượng$/)).toBeInTheDocument();
     expect(within(dialog).getByText(byTextContent(/^Toán · \d+ câu .* → /))).toBeInTheDocument();
     // Chưa xác nhận: cấu trúc chưa đổi.
-    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    expect(backend.app(exam.id)?.templateCode).toBe("QDA_MATH_2026");
 
     await user.click(within(dialog).getByRole("button", { name: "Nạp lại cấu trúc" }));
-    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
+    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("QDA_MATH_2025"));
     expect(backend.app(exam.id)).toMatchObject({ totalQuestions: 22, structureYear: 2025 });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   }, 20_000);
 
   it("hủy hộp xác nhận thì giữ nguyên cấu trúc và bản nháp chưa lưu", async () => {
-    const exam = await createExam({ name: "SP2E thử", code: "SP2E-S-903", kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", description: null });
+    const exam = await createPickerExam("QDA-S-903");
     const user = userEvent.setup();
     openStructure(exam.id);
     await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
-    await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
+    await user.click(await screen.findByRole("option", { name: /QDA · Toán · 2025/ }));
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "Hủy" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    expect(backend.app(exam.id)?.templateCode).toBe("QDA_MATH_2026");
   }, 20_000);
 
   it("'Nếu chọn …': mỗi phiên bản khác hiện nhãn và tóm tắt của máy chủ; phiên bản chưa có tóm tắt thì không hiện", async () => {
     // Máy chủ trả nhãn và tóm tắt cho phiên bản 2025; phiên bản 2026 (đang dùng) không có.
     const wire = FIXTURE_TEMPLATES.map((template) =>
-      template.code === "SP2E_MATH_2025"
+      template.code === "QDA_MATH_2025"
         ? { ...toWireTemplate(template), label: "Đề minh họa cũ", summary: "22 câu, 10 điểm." }
         : toWireTemplate(template),
     );
     backend = new ExamsBackend();
     backend.server.on("GET", "/api/v1/admin/exam-templates", { status: 200, body: wire });
     backend.install();
-    const exam = await createExam({ name: "SP2E thử", code: "SP2E-S-907", kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", description: null });
+    const exam = await createPickerExam("QDA-S-907");
     openStructure(exam.id);
     const preview = await screen.findByTestId("structure-version-preview");
     expect(preview).toHaveTextContent("Nếu chọn “Đề minh họa cũ”");
@@ -109,14 +129,56 @@ describe("Cấu trúc: phiên bản năm", () => {
 
 const policyOf = (body: unknown): unknown => (typeof body === "object" && body !== null && "overviewPolicy" in body ? body.overviewPolicy : undefined);
 
+describe("Cấu trúc: SPT, SP2E bỏ khối Phiên bản cấu trúc (UNI-2876, UNI-1734)", () => {
+  const templateNote = /Ghi chú của mẫu cấu trúc/;
+
+  it("SP2E Toán (hai phiên bản 2025, 2026): không ô chọn, tóm tắt, 'Nếu chọn …', ghi chú của mẫu; dải trạng thái và nút đầu trang còn đủ", async () => {
+    const exam = await createExam({ name: "SP2E thử", code: "SP2E-S-910", kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", description: null });
+    expect(exam.templateCode).toBe("SP2E_MATH_2026");
+    openStructure(exam.id);
+    const toolbar = await screen.findByTestId("structure-toolbar");
+    expect(await within(toolbar).findByText(/Đã phân bổ/)).toBeInTheDocument();
+    for (const name of ["Quay lại", "Lưu nháp và thoát", "Kiểm tra cấu trúc", "Tiếp tục: Thông tin bán"]) {
+      expect(within(toolbar).getByRole("button", { name })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("combobox", { name: /Phiên bản cấu trúc/ })).not.toBeInTheDocument();
+    expect(screen.queryByTestId("structure-version")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("structure-version-summary")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("structure-version-preview")).not.toBeInTheDocument();
+    expect(screen.queryByText("Chờ chuyên gia xác nhận")).not.toBeInTheDocument();
+    expect(screen.queryByText(templateNote)).not.toBeInTheDocument();
+    // Mẫu 2026 dùng ma trận 2025 chưa xác nhận: dải trên chỉ còn ghi chú năm (không thuộc khối bị bỏ).
+    const strip = screen.getByTestId("structure-top-strip");
+    expect(strip).toHaveTextContent(/Năm cấu trúc \(2026\) khác năm ma trận \(2025\)/);
+    expect(strip.children).toHaveLength(1);
+  }, 20_000);
+
+  it("SPT Toán: mẫu có ghi chú nhưng không hiện; không còn gì khác thì không có dải trống", async () => {
+    const exam = await createExam({ name: "SPT thử", code: "SPT-S-910", kind: "SPT", scope: "SUBJECT", subjectCode: "MATH", description: null });
+    expect(exam.templateCode).toBe("SPT_MATH_2025");
+    openStructure(exam.id);
+    await screen.findByTestId("structure-toolbar");
+    await screen.findByRole("navigation", { name: "Cấu trúc" });
+    expect(screen.queryByText(templateNote)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("structure-top-strip")).not.toBeInTheDocument();
+  }, 20_000);
+
+  it("kỳ khác có hai phiên bản vẫn hiện ô chọn và ghi chú của mẫu", async () => {
+    const exam = await createPickerExam("QDA-S-910");
+    openStructure(exam.id);
+    expect(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ })).toBeInTheDocument();
+    expect(screen.getByText(templateNote)).toBeInTheDocument();
+  }, 20_000);
+});
+
 describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVERVIEW_CONFIRM)", () => {
   async function startReload(code: string) {
-    const exam = await createExam({ name: "SP2E thử", code, kind: "SP2E", scope: "SUBJECT", subjectCode: "MATH", description: null });
+    const exam = await createPickerExam(code);
     backend.requireOverviewConfirm(exam.id);
     const user = userEvent.setup();
     openStructure(exam.id);
     await user.click(await screen.findByRole("combobox", { name: /Phiên bản cấu trúc/ }));
-    await user.click(await screen.findByRole("option", { name: /SP2E · Toán · 2025/ }));
+    await user.click(await screen.findByRole("option", { name: /QDA · Toán · 2025/ }));
     const reload = await screen.findByRole("dialog", { name: /Đổi sang “/ });
     await user.click(within(reload).getByRole("button", { name: "Nạp lại cấu trúc" }));
     const ask = await screen.findByRole("dialog", { name: "Giữ số tổng quan đã sửa?" });
@@ -125,8 +187,8 @@ describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVER
   const templatePath = (id: string) => `/api/v1/admin/exams/${id}/structure/template`;
 
   it("hỏi lại sau hộp xác nhận nạp lại; chọn giữ số đã sửa thì gửi lại kèm KEEP_EDITED", async () => {
-    const { exam, user, ask } = await startReload("SP2E-S-904");
-    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    const { exam, user, ask } = await startReload("QDA-S-904");
+    expect(backend.app(exam.id)?.templateCode).toBe("QDA_MATH_2026");
     expect(within(ask).getByText("Bước 2/2 · chỉ hiện khi bạn đã sửa tổng quan ở bước 1")).toBeInTheDocument();
     // So sánh số: mẫu đang dùng, bài hiện tại, mẫu mới (chỉ hàng có số).
     const table = within(ask).getByRole("table", { name: "So sánh số tổng quan" });
@@ -137,24 +199,24 @@ describe("Cấu trúc: đổi phiên bản khi tổng quan đã sửa (EXAM_OVER
     // Mặc định giữ số đã sửa.
     expect(within(ask).getByRole("radio", { name: /Giữ số đã sửa/ })).toBeChecked();
     await user.click(within(ask).getByRole("button", { name: "Nạp lại cấu trúc" }));
-    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
+    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("QDA_MATH_2025"));
     expect(backend.server.calls("POST", templatePath(exam.id)).map((call) => policyOf(call.body))).toEqual([undefined, "KEEP_EDITED"]);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   }, 20_000);
 
   it("chọn lấy số của mẫu thì gửi lại kèm USE_TEMPLATE", async () => {
-    const { exam, user, ask } = await startReload("SP2E-S-905");
+    const { exam, user, ask } = await startReload("QDA-S-905");
     await user.click(within(ask).getByRole("radio", { name: /Lấy số của mẫu mới/ }));
     await user.click(within(ask).getByRole("button", { name: "Nạp lại cấu trúc" }));
-    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2025"));
+    await waitFor(() => expect(backend.app(exam.id)?.templateCode).toBe("QDA_MATH_2025"));
     expect(backend.server.calls("POST", templatePath(exam.id)).map((call) => policyOf(call.body))).toEqual([undefined, "USE_TEMPLATE"]);
   }, 20_000);
 
   it("hủy ở câu hỏi giữ số thì không nạp lại: cấu trúc giữ nguyên, không gửi thêm yêu cầu", async () => {
-    const { exam, user, ask } = await startReload("SP2E-S-906");
+    const { exam, user, ask } = await startReload("QDA-S-906");
     await user.click(within(ask).getByRole("button", { name: "Hủy đổi phiên bản" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(backend.app(exam.id)?.templateCode).toBe("SP2E_MATH_2026");
+    expect(backend.app(exam.id)?.templateCode).toBe("QDA_MATH_2026");
     expect(backend.server.calls("POST", templatePath(exam.id))).toHaveLength(1);
   }, 20_000);
 });
@@ -184,7 +246,7 @@ describe("Cấu trúc: phần thi", () => {
     const points = await screen.findByRole("textbox", { name: /Điểm tối đa của phần/ });
     expect(points).toHaveValue("");
     await user.type(points, "50");
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() => expect(backend.app("ex-qda-f-001")?.parts.find((part) => part.id === "part-42")?.maxPoints).toBe(50));
   });
 
@@ -195,7 +257,7 @@ describe("Cấu trúc: phần thi", () => {
     const points = await screen.findByRole("textbox", { name: "Điểm mỗi câu" });
     await user.clear(points);
     expect(screen.getByText(/Không bắt buộc\. Để trống thì câu nào cũng vào nguồn/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Tiếp tục → Thông tin bán" }));
+    await user.click(screen.getByRole("button", { name: "Tiếp tục: Thông tin bán" }));
     await waitFor(() =>
       expect(
         backend.app("ex-hsa-f-001")?.parts[0]?.sections[0]?.blocks.find((block) => block.id === blockId)?.requiredPointsPerQuestion,
