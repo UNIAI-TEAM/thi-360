@@ -90,10 +90,17 @@ final class ShellLayoutTests: XCTestCase {
         XCTAssertTrue(findViews(ofType: UITabBar.self, in: controller.view).isEmpty)
         let defaultNavControllers = findViewControllers(ofType: UINavigationController.self, in: controller)
         XCTAssertEqual(defaultNavControllers.count, 2)
+        let combinedPaneWidth = defaultNavControllers.reduce(CGFloat(0)) { $0 + $1.view.bounds.width }
+        XCTAssertEqual(
+            combinedPaneWidth + 1,
+            controller.view.bounds.width,
+            accuracy: 2.0,
+            "Both Duo half-panes plus the 1pt divider must fill the host width"
+        )
         for navController in defaultNavControllers {
             let paneWidth = navController.view.bounds.width
             XCTAssertGreaterThan(paneWidth, 300)
-            XCTAssertLessThan(paneWidth, 500)
+            XCTAssertLessThan(paneWidth, 600, "Hosted Duo half-pane must remain below the 600pt twoColumn threshold")
             XCTAssertEqual(
                 ShellWidth.resolve(
                     horizontalSizeClass: .regular,
@@ -177,18 +184,21 @@ final class ShellLayoutTests: XCTestCase {
         pumpLayout(window: window)
         defer { window.isHidden = true }
 
+        let hostSize = controller.view.bounds.size
         let navControllers = findViewControllers(ofType: UINavigationController.self, in: controller)
         XCTAssertEqual(navControllers.count, 1, "Full-span Duo destination must render a single full-width NavigationStack")
         let fullWidth = try XCTUnwrap(navControllers.first?.view.bounds.width)
-        XCTAssertGreaterThanOrEqual(fullWidth, 940, "Full-span Duo NavigationStack must span full 951pt width")
+        XCTAssertEqual(fullWidth, hostSize.width, accuracy: 2.0, "Full-span Duo NavigationStack must span full host width")
+        XCTAssertGreaterThanOrEqual(fullWidth, 600)
         XCTAssertEqual(
             ShellWidth.resolve(horizontalSizeClass: .regular, layoutMode: .phoneTwoPaneBook, availableWidth: fullWidth),
             .twoColumn
         )
 
-        let rootImage = renderWindow(window, size: CGSize(width: 951, height: 669))
-        let bottomLeadingBarRect = CGRect(x: 20, y: 605, width: 100, height: 50)
-        let bottomTrailingEmptyRect = CGRect(x: 830, y: 605, width: 100, height: 50)
+        let rootImage = renderWindow(window, size: hostSize)
+        let barY = max(0, hostSize.height - 64)
+        let bottomLeadingBarRect = CGRect(x: 20, y: barY, width: 100, height: 50)
+        let bottomTrailingEmptyRect = CGRect(x: hostSize.width - 120, y: barY, width: 100, height: 50)
         XCTAssertTrue(
             hasNonUniformPixels(in: rootImage, rect: bottomLeadingBarRect),
             "Full-span Duo root must render duoLeftTabBar at bottom-leading"
@@ -210,11 +220,14 @@ final class ShellLayoutTests: XCTestCase {
             2,
             "Pushed route on full-span Duo must push onto the single full-width NavigationStack"
         )
-        let pushedImage = renderWindow(window, size: CGSize(width: 951, height: 669))
-        XCTAssertTrue(
-            hasNonUniformPixels(in: pushedImage, rect: bottomTrailingEmptyRect),
-            "Pushed full-span route must render across the full 951pt width"
+        let pushedWidth = try XCTUnwrap(navControllers.first?.topViewController?.view.bounds.width)
+        XCTAssertEqual(
+            pushedWidth,
+            hostSize.width,
+            accuracy: 2.0,
+            "Pushed full-span route must span the full host width"
         )
+        let pushedImage = renderWindow(window, size: hostSize)
         XCTAssertNotEqual(
             rootImage.pngData(),
             pushedImage.pngData(),
@@ -225,7 +238,7 @@ final class ShellLayoutTests: XCTestCase {
         pumpLayout(window: window, duration: 0.15)
         XCTAssertEqual(router.path(for: .myExams), [])
         XCTAssertEqual(navControllers.first?.viewControllers.count, 1)
-        let restoredImage = renderWindow(window, size: CGSize(width: 951, height: 669))
+        let restoredImage = renderWindow(window, size: hostSize)
         XCTAssertTrue(
             hasNonUniformPixels(in: restoredImage, rect: bottomLeadingBarRect),
             "Returning to full-span Duo root must restore duoLeftTabBar"
