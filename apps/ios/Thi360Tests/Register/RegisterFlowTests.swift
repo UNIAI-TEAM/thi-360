@@ -16,15 +16,7 @@ final class RegisterFlowTests: XCTestCase {
             }
         }
 
-        let legalDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("thi360-reg-legal-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: legalDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: legalDir) }
-        let sampleTerms = """
-        {"id":"terms","locale":"vi","version":"2026-11-26","status":"published","effectiveDate":"2026-11-26","title":"Điều kiện giao dịch chung","note":null,"blocks":[{"type":"paragraph","text":"Nội dung"}]}
-        """
-        try Data(sampleTerms.utf8).write(to: legalDir.appendingPathComponent("terms.vi.json"))
-        let legalRepo = LegalRepository(directoryOverride: legalDir)
+        let legalRepo = LegalRepository(bundle: .main)
 
         let clock = ManualClock()
         let viewModel = RegisterViewModel(sessionStore: sessionStore, legalRepository: legalRepo, clock: clock)

@@ -63,6 +63,29 @@ final class CommonStringsMatchWebTests: XCTestCase {
         }
     }
 
+    func testLegalCatalogKeysMatchWebMessagesInViAndEn() throws {
+        let repoRoot = ContractFixtureLoader.repoRootURL
+        let viWeb = try Self.loadFlattenedWebMessages(
+            at: repoRoot.appendingPathComponent("apps/web-student/src/messages/vi.json")
+        )
+        let enWeb = try Self.loadFlattenedWebMessages(
+            at: repoRoot.appendingPathComponent("apps/web-student/src/messages/en.json")
+        )
+
+        let sharedLegalKeys = [
+            "legal.draftBanner",
+            "legal.effectiveFrom",
+            "legal.terms.title",
+            "legal.privacy.title"
+        ]
+        for key in sharedLegalKeys {
+            let webVi = try XCTUnwrap(viWeb[key], "Missing \(key) in web vi.json")
+            let webEn = try XCTUnwrap(enWeb[key], "Missing \(key) in web en.json")
+            XCTAssertEqual(AppStrings.legal(key, locale: .vi), webVi, "Legal.xcstrings vi mismatch for '\(key)'")
+            XCTAssertEqual(AppStrings.legal(key, locale: .en), webEn, "Legal.xcstrings en mismatch for '\(key)'")
+        }
+    }
+
     static func loadFlattenedWebMessages(at url: URL) throws -> [String: String] {
         let data = try Data(contentsOf: url)
         let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])

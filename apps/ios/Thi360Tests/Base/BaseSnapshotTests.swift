@@ -146,17 +146,7 @@ final class BaseSnapshotTests: XCTestCase {
     }
 
     func testLegalDocumentAt360PtAnd200PercentTextSnapshotsLightAndDark() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("thi360-snap-legal-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
-
-        let fixtureURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .appendingPathComponent("Fixtures/legal-draft-fixture.vi.json")
-        try Data(contentsOf: fixtureURL).write(to: dir.appendingPathComponent("terms.vi.json"))
-
-        let repo = LegalRepository(directoryOverride: dir)
+        let repo = LegalRepository(bundle: .main)
         var pngs: [ThemeMode: Data] = [:]
 
         for mode in ThemeMode.allCases {

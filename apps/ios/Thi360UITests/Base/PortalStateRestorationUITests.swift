@@ -33,7 +33,6 @@ final class PortalStateRestorationUITests: XCTestCase {
         draftField.typeText(sample)
         XCTAssertEqual(draftField.value as? String, sample)
 
-        // Dismiss keyboard if present, then rotate to landscape and back.
         let title = app.staticTexts["route.placeholder.title"].firstMatch
         if title.isHittable {
             title.tap()

@@ -28,7 +28,6 @@ final class AccountScopedStoreTests: XCTestCase {
         let stillNilForB = await storeB.read(namespace: "drafts", key: "only-in-A")
         XCTAssertNil(stillNilForB, "Account B must never read Account A's namespace or keys")
 
-        // Path traversal in accountId, namespace, or key cannot escape the account directory.
         let tricky = try XCTUnwrap(provider.store(for: "../account-A"))
         let traversalRead = await tricky.read(namespace: "../drafts", key: "../only-in-A")
         XCTAssertNil(traversalRead)

@@ -1707,7 +1707,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "I have read and agree to the <terms>General transaction terms</terms> and <privacy>Information privacy policy</privacy> of Thi360."
+            "value" : "I have read and agree to the <terms>General Transaction Terms</terms> and <privacy>Information Privacy Policy</privacy> of Thi360."
           }
         },
         "vi" : {
@@ -1724,7 +1724,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You must agree to the General transaction terms and Information privacy policy to register."
+            "value" : "You must agree to the General Transaction Terms and Information Privacy Policy to register."
           }
         },
         "vi" : {

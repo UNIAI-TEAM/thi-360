@@ -12,6 +12,7 @@ struct Thi360App: App {
     @State private var connectivityMonitor: ConnectivityMonitor
     private let sessionCleanup: SessionCleanup
     private let imageLoader: ImageLoader
+    private let catalogOptionsCache: CatalogOptionsCache
 
     init() {
         let preferences = AppPreferences.makeForCurrentProcess()
@@ -31,6 +32,7 @@ struct Thi360App: App {
             tokenStore: sessionStore.tokenStore,
             refresher: sessionStore.apiClient.refresher
         )
+        let catalogOptionsCache = CatalogOptionsCache(apiClient: sessionStore.apiClient)
         let connectivityMonitor = ConnectivityMonitor()
         connectivityMonitor.start()
 
@@ -49,6 +51,7 @@ struct Thi360App: App {
         _connectivityMonitor = State(initialValue: connectivityMonitor)
         self.sessionCleanup = sessionCleanup
         self.imageLoader = imageLoader
+        self.catalogOptionsCache = catalogOptionsCache
     }
 
     var body: some Scene {
@@ -59,7 +62,9 @@ struct Thi360App: App {
                 sessionStore: sessionStore,
                 appearanceRepository: appearanceRepository,
                 biometricManager: biometricManager,
-                imageLoader: imageLoader
+                imageLoader: imageLoader,
+                catalogOptionsCache: catalogOptionsCache,
+                connectivityMonitor: connectivityMonitor
             )
             .task {
                 await sessionCleanup.register(imageLoader)

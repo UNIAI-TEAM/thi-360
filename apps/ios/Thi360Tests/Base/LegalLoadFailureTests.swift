@@ -11,10 +11,8 @@ final class LegalLoadFailureTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
-        // terms.vi.json is intentionally missing; privacy.vi.json is malformed JSON.
         try Data("{not-valid-json".utf8).write(to: dir.appendingPathComponent("privacy.vi.json"))
 
-        // Also test unknown block type causes .malformed.
         let unknownBlockJSON = """
         {"id":"terms","locale":"en","version":"2026-11-26","status":"published","effectiveDate":"2026-11-26","title":"Terms","note":null,"blocks":[{"type":"video","url":"https://example.com"}]}
         """
@@ -52,7 +50,6 @@ final class LegalLoadFailureTests: XCTestCase {
         view.triggerOpenOnWeb()
         XCTAssertEqual(openedURLs, [URL(string: "https://demo.thi360.vn/dieu-khoan-giao-dich-chung")!])
 
-        // Verify error view has NO Retry button in LegalDocumentView.swift.
         let source = try String(
             contentsOf: ContractFixtureLoader.repoRootURL
                 .appendingPathComponent("apps/ios/Thi360/Core/Legal/LegalDocumentView.swift"),
@@ -60,7 +57,6 @@ final class LegalLoadFailureTests: XCTestCase {
         )
         XCTAssertFalse(source.contains("common.retry"), "LegalDocumentView error state must NOT offer a Retry button")
 
-        // Registration must still succeed even when bundled legal files are missing/malformed.
         let registerFixture = try ContractFixtureLoader.loadApiFixture("register-200.json")
         let (sessionStore, _, transport, _) = try SessionTestFactory.makeContractStack { transport in
             transport.registerJSON(method: .post, path: "/api/v1/auth/register", statusCode: 200, data: registerFixture)
@@ -76,7 +72,6 @@ final class LegalLoadFailureTests: XCTestCase {
 
         XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/register"), 1)
         if case .otp = vm.state {
-            // Expected.
         } else {
             XCTFail("Registration must still proceed when bundled legal file is missing/malformed")
         }

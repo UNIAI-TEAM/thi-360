@@ -21,14 +21,12 @@ final class LockOnPortalRoutesTests: XCTestCase {
         router.openAttempt(attemptId: "att-99")
         router.routeStateStore.setDraftText("attempt note", for: .myExams, route: .attempt(attemptId: "att-99"))
 
-        // Leave app for 4m59s (299s) -> must NOT lock.
         XCTAssertFalse(stack.biometricManager.handleScenePhaseChange(.background, sessionState: stack.sessionStore.state))
         stack.clock.advance(by: 299)
         let shouldLockAt299 = stack.biometricManager.handleScenePhaseChange(.active, sessionState: stack.sessionStore.state)
         XCTAssertFalse(shouldLockAt299, "4m59s in background must not lock")
         XCTAssertEqual(stack.sessionStore.state, .active)
 
-        // Leave app for 5m00s (300s) -> MUST lock.
         XCTAssertFalse(stack.biometricManager.handleScenePhaseChange(.background, sessionState: stack.sessionStore.state))
         stack.clock.advance(by: 300)
         let shouldLockAt300 = stack.biometricManager.handleScenePhaseChange(.active, sessionState: stack.sessionStore.state)
@@ -36,7 +34,6 @@ final class LockOnPortalRoutesTests: XCTestCase {
         stack.sessionStore.lockSession()
         XCTAssertEqual(stack.sessionStore.state, .locked)
 
-        // Unlocking returns to exact same attempt, stack, and draft text.
         stack.sessionStore.unlockSession()
         XCTAssertEqual(stack.sessionStore.state, .active)
         XCTAssertEqual(router.presentedAttempt, AttemptRef(attemptId: "att-99", originDestination: .myExams))

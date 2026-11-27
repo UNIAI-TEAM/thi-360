@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum CatalogOptionType: String, Hashable, CaseIterable, Sendable {
     case exam = "EXAM"
@@ -44,6 +45,65 @@ actor CatalogOptionsCache {
         self.fetcher = fetcher
     }
 
+    init(
+        apiClient: MobileAPIClient,
+        ttlSeconds: TimeInterval = CatalogOptionsCache.defaultTTLSeconds,
+        clock: any AppClock = SystemClock()
+    ) {
+        self.init(ttlSeconds: ttlSeconds, clock: clock) { type in
+            do {
+                let output = try await apiClient.publicClient.getOptions(
+                    query: .init(group: type.rawValue)
+                )
+                switch output {
+                case let .ok(response):
+                    let decoded = try await MobileAPIClient.decodeJSONBody(
+                        [Components.Schemas.CatalogOptionResponse].self,
+                        from: try response.body.any
+                    )
+                    return decoded.map {
+                        CatalogOptionItem(
+                            code: $0.code,
+                            nameVi: $0.nameVi,
+                            nameEn: $0.nameEn ?? ""
+                        )
+                    }
+                case let .badRequest(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 400, body: try response.body.any)
+                case let .unauthorized(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 401, body: try response.body.any)
+                case let .forbidden(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 403, body: try response.body.any)
+                case let .notFound(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 404, body: try response.body.any)
+                case let .conflict(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 409, body: try response.body.any)
+                case let .preconditionFailed(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 412, body: try response.body.any)
+                case let .contentTooLarge(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 413, body: try response.body.any)
+                case let .unprocessableContent(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 422, body: try response.body.any)
+                case let .tooManyRequests(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 429, body: try response.body.any)
+                case let .internalServerError(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 500, body: try response.body.any)
+                case let .notImplemented(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 501, body: try response.body.any)
+                case let .badGateway(response):
+                    throw await MobileApiError.decodeErrorBody(statusCode: 502, body: try response.body.any)
+                case let .undocumented(statusCode, payload):
+                    if let body = payload.body {
+                        throw await MobileApiError.decodeErrorBody(statusCode: statusCode, body: body)
+                    }
+                    throw MobileApiError.unexpectedResponse(statusCode: statusCode)
+                }
+            } catch {
+                throw MobileApiError.classify(error)
+            }
+        }
+    }
+
     func options(for type: CatalogOptionType) async throws -> [CatalogOptionItem] {
         let now = clock.now
         if let entry = entries[type] {
@@ -80,5 +140,16 @@ actor CatalogOptionsCache {
             task.cancel()
         }
         inFlight.removeAll()
+    }
+}
+
+private struct CatalogOptionsCacheEnvironmentKey: EnvironmentKey {
+    static let defaultValue: CatalogOptionsCache? = nil
+}
+
+extension EnvironmentValues {
+    var catalogOptionsCache: CatalogOptionsCache? {
+        get { self[CatalogOptionsCacheEnvironmentKey.self] }
+        set { self[CatalogOptionsCacheEnvironmentKey.self] = newValue }
     }
 }

@@ -59,7 +59,6 @@ final class AccountDeletedSignOutTests: XCTestCase {
         XCTAssertEqual(loginVM.serverBanner?.message(locale: .vi), "Tài khoản của bạn đã được xóa.")
         XCTAssertEqual(loginVM.serverBanner?.message(locale: .en), "Your account has been deleted.")
 
-        // Rebuilding session store after process restart stays signed out with NO deleted banner.
         let relaunchedSession = SessionStore(
             tokenStore: stack.tokenStore,
             apiClient: stack.sessionStore.apiClient,

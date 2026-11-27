@@ -120,7 +120,6 @@ final class LoadControllerTests: XCTestCase {
         await controller.load()
         XCTAssertEqual(controller.state, .loaded(value: ["User A secret exam"], stale: false))
 
-        // Switching to account-B drops account-A's in-memory cache immediately.
         activeAccount = "account-B"
         await flag.set(true)
         await controller.load()

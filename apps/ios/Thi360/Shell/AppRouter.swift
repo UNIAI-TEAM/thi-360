@@ -307,6 +307,8 @@ struct AppRootView: View {
     var appearanceRepository: AppearanceRepository? = nil
     var biometricManager: BiometricManager? = nil
     var imageLoader: ImageLoader? = nil
+    var catalogOptionsCache: CatalogOptionsCache? = nil
+    var connectivityMonitor: ConnectivityMonitor? = nil
     var legalRepository: LegalRepository = LegalRepository()
     var webBaseURL: URL = AppEnvironment.current.webBaseURL
     var paletteSet: BrandPaletteSet = .defaultThi360Green
@@ -359,6 +361,8 @@ struct AppRootView: View {
         .environment(\.brandPalette, activePalette)
         .environment(\.statusPalette, activeStatusPalette)
         .environment(\.imageLoader, imageLoader)
+        .environment(\.catalogOptionsCache, catalogOptionsCache)
+        .environment(\.connectivityMonitor, connectivityMonitor)
         .environment(\.locale, preferences.locale.locale)
         .tint(activePalette.primaryFillColor)
         .preferredColorScheme(effectiveThemeMode.colorScheme)

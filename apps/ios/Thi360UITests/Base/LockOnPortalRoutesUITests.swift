@@ -51,10 +51,10 @@ final class LockOnPortalRoutesUITests: XCTestCase {
         let enableButton = app.buttons["biometric.enable.confirmButton"].firstMatch
         XCTAssertTrue(enableButton.waitForExistence(timeout: 8))
         enableButton.tap()
-        SimulatorBiometricHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
+        PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
 
         let paramText = app.staticTexts["route.placeholder.param.code"].firstMatch
-        waitForBiometricMatch(until: paramText, timeout: 10)
+        PortalBiometricUITestHelper.waitForBiometricMatch(until: paramText, timeout: 10)
         XCTAssertTrue(paramText.exists)
         XCTAssertEqual(paramText.label, "ielts-lock")
 
@@ -72,24 +72,11 @@ final class LockOnPortalRoutesUITests: XCTestCase {
         XCTAssertFalse(paramText.exists, "Portal route content must be hidden while locked")
 
         unlockButton.tap()
-        SimulatorBiometricHelper.acceptFaceIDPermissionIfPresent(timeout: 1.5)
-        waitForBiometricMatch(until: paramText, timeout: 10)
+        PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 1.5)
+        PortalBiometricUITestHelper.waitForBiometricMatch(until: paramText, timeout: 10)
 
         XCTAssertTrue(paramText.exists, "Unlocking must return to portal sub-route")
         XCTAssertEqual(paramText.label, "ielts-lock")
         XCTAssertEqual(app.textFields["route.placeholder.draftField"].firstMatch.value as? String, "Keep across lock")
-    }
-
-    private func waitForBiometricMatch(until element: XCUIElement, timeout: TimeInterval) {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if element.exists {
-                return
-            }
-            SimulatorBiometricHelper.triggerMatch()
-            if element.waitForExistence(timeout: 1.0) {
-                return
-            }
-        }
     }
 }

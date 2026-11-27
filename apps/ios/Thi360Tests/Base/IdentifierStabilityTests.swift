@@ -4,7 +4,6 @@ import XCTest
 
 final class IdentifierStabilityTests: XCTestCase {
     func testBundleIdKeychainIdentifiersAndRenamedStringKeysMatchBaseSha() throws {
-        // 1. Bundle identifier matches base_sha in runtime bundle and xcconfig.
         XCTAssertEqual(Bundle.main.bundleIdentifier, "vn.unicom.thi360")
 
         let iosRoot = URL(fileURLWithPath: #filePath)
@@ -17,12 +16,10 @@ final class IdentifierStabilityTests: XCTestCase {
         )
         XCTAssertTrue(baseConfig.contains("PRODUCT_BUNDLE_IDENTIFIER = vn.unicom.thi360"))
 
-        // 2. Keychain token & biometric identifiers match base_sha exactly so updates stay logged in.
         XCTAssertEqual(KeychainTokenStore.defaultService, "vn.unicom.thi360.session")
         XCTAssertEqual(KeychainTokenStore.defaultAccount, "mobile-session-tokens")
         XCTAssertEqual(FirstRunKeychainCleaner.defaultFlagKey, "thi360.storage.hasCompletedFirstRun")
 
-        // 3. String catalog keys renamed from "Thi 360" -> "Thi360" preserve exact base_sha key names.
         let expectedPreservedKeys: [(table: String, keys: [String])] = [
             ("Shell", ["shell.app.name"]),
             ("Account", [

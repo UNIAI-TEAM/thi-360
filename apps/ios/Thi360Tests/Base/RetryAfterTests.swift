@@ -24,7 +24,6 @@ final class RetryAfterTests: XCTestCase {
     func testMobileApiClientPopulatesRetryAfterSecondsFromHeaderOrBody() async throws {
         let rateLimitedBody = try ContractFixtureLoader.loadApiFixture("register-429-otp-rate-limited.json")
 
-        // 1. Header Retry-After: 1 beats body field.
         let (session1, _, _, _) = try SessionTestFactory.makeContractStack { transport in
             transport.registerRateLimited(
                 method: .get,
@@ -41,7 +40,6 @@ final class RetryAfterTests: XCTestCase {
             XCTAssertEqual(error.retryAfterSeconds, 1)
         }
 
-        // 2. Empty body + Retry-After header still surfaces retryAfterSeconds.
         let (session2, _, _, _) = try SessionTestFactory.makeContractStack { transport in
             transport.registerRateLimited(
                 method: .get,
@@ -58,7 +56,6 @@ final class RetryAfterTests: XCTestCase {
             XCTAssertEqual(error.retryAfterSeconds, 25)
         }
 
-        // 3. Body retryAfter without HTTP header.
         let (session3, _, _, _) = try SessionTestFactory.makeContractStack { transport in
             transport.registerRateLimited(
                 method: .get,
@@ -75,7 +72,6 @@ final class RetryAfterTests: XCTestCase {
             XCTAssertEqual(error.retryAfterSeconds, 60)
         }
 
-        // 4. 429 without header or body retryAfter yields nil.
         let noRetryBody = try ContractFixtureLoader.loadAuthFixture("login-429-rate-limited.json")
         let (session4, _, _, _) = try SessionTestFactory.makeContractStack { transport in
             transport.registerRateLimited(

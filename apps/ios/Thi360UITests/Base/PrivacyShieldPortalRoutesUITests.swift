@@ -51,15 +51,14 @@ final class PrivacyShieldPortalRoutesUITests: XCTestCase {
         let enableButton = app.buttons["biometric.enable.confirmButton"].firstMatch
         XCTAssertTrue(enableButton.waitForExistence(timeout: 8))
         enableButton.tap()
-        SimulatorBiometricHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
+        PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
 
         let attemptParam = app.staticTexts["route.placeholder.param.attemptId"].firstMatch
-        waitForBiometricMatch(until: attemptParam, timeout: 10)
+        PortalBiometricUITestHelper.waitForBiometricMatch(until: attemptParam, timeout: 10)
         XCTAssertTrue(attemptParam.exists)
         XCTAssertEqual(attemptParam.label, "att-shield-42")
         XCTAssertFalse(app.tabBars.firstMatch.exists, "Attempt screen must be chromeless")
 
-        // Background beyond lock timeout -> Lock screen must completely cover chromeless attempt screen.
         XCUIDevice.shared.press(.home)
         Thread.sleep(forTimeInterval: 3.0)
         app.activate()
@@ -69,21 +68,8 @@ final class PrivacyShieldPortalRoutesUITests: XCTestCase {
         XCTAssertFalse(attemptParam.exists, "Attempt content must never be visible behind lock screen")
 
         unlockButton.tap()
-        SimulatorBiometricHelper.acceptFaceIDPermissionIfPresent(timeout: 1.5)
-        waitForBiometricMatch(until: attemptParam, timeout: 10)
+        PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 1.5)
+        PortalBiometricUITestHelper.waitForBiometricMatch(until: attemptParam, timeout: 10)
         XCTAssertTrue(attemptParam.exists)
-    }
-
-    private func waitForBiometricMatch(until element: XCUIElement, timeout: TimeInterval) {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if element.exists {
-                return
-            }
-            SimulatorBiometricHelper.triggerMatch()
-            if element.waitForExistence(timeout: 1.0) {
-                return
-            }
-        }
     }
 }

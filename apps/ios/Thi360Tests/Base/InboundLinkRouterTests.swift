@@ -28,19 +28,16 @@ final class InboundLinkRouterTests: XCTestCase {
             webBaseURL: URL(string: "https://student.thi360.test")!
         )
 
-        // While locked, incoming payment link is queued and NOT executed yet.
         await router.inboundLinkRouter.notifySessionStateChanged(.locked)
         XCTAssertTrue(router.handleIncomingURL(returnURL, environment: env))
         XCTAssertTrue(router.inboundLinkRouter.hasPendingLink)
         XCTAssertTrue(receivedOrders.isEmpty)
         XCTAssertEqual(router.path(for: .home), [])
 
-        // Reset link bypasses lock immediately.
         let resetURL = URL(string: "https://student.thi360.test/reset-password?token=reset-tok-123")!
         XCTAssertTrue(router.handleIncomingURL(resetURL, environment: env))
         XCTAssertEqual(router.activeResetLink?.token, "reset-tok-123")
 
-        // Unlocking to .active delivers the queued payment link.
         await router.inboundLinkRouter.notifySessionStateChanged(.active)
         XCTAssertFalse(router.inboundLinkRouter.hasPendingLink)
         XCTAssertEqual(receivedOrders, ["ORD-55"])

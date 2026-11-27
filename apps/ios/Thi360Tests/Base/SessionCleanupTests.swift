@@ -73,7 +73,6 @@ final class SessionCleanupTests: XCTestCase {
         let pendingBefore = await firstCleanup.pendingAccountIdsForTesting()
         XCTAssertEqual(pendingBefore, ["acc-crashed"])
 
-        // Simulate next process launch with fresh provider and cleanup instance.
         let restartedProvider = AccountScopedStoreProvider(rootDirectoryURL: rootDir)
         let restartedCleanup = SessionCleanup(storeProvider: restartedProvider)
         let startupParticipant = RecordingParticipant(id: "p.startup")

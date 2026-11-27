@@ -13,7 +13,6 @@ final class BrandMarkUsageTests: XCTestCase {
         )
         defer { UserDefaults(suiteName: stack.defaultsSuiteName)?.removePersistentDomain(forName: stack.defaultsSuiteName) }
 
-        // 1. LoginView
         let loginVM = LoginViewModel(sessionStore: stack.sessionStore)
         let loginView = LoginView(viewModel: loginVM, preferences: stack.preferences, idiom: .phone)
             .environment(\.brandPalette, .defaultLight)
@@ -26,7 +25,6 @@ final class BrandMarkUsageTests: XCTestCase {
         defer { loginWindow.isHidden = true }
         XCTAssertGreaterThan(loginVC.view.bounds.width, 0)
 
-        // 2. LockView
         let lockVM = LockViewModel(sessionStore: stack.sessionStore, biometricManager: stack.biometricManager)
         let lockView = LockView(viewModel: lockVM, preferences: stack.preferences, displayName: "Nguyễn Văn An")
             .environment(\.brandPalette, .defaultLight)
@@ -39,7 +37,6 @@ final class BrandMarkUsageTests: XCTestCase {
         defer { lockWindow.isHidden = true }
         XCTAssertGreaterThan(lockVC.view.bounds.width, 0)
 
-        // 3. PlaceholderDestinationView
         let placeholderView = PlaceholderDestinationView(destination: .home, locale: .vi, showsBrandHeader: true)
             .environment(\.brandPalette, .defaultLight)
         let (phWindow, phVC) = RecoveryViewTestHelper.host(
@@ -51,7 +48,6 @@ final class BrandMarkUsageTests: XCTestCase {
         defer { phWindow.isHidden = true }
         XCTAssertGreaterThan(phVC.view.bounds.width, 0)
 
-        // Verify BrandMark accessibility identifier is defined and BrandMark asset loads from bundle.
         XCTAssertNotNil(UIImage(named: "BrandMark"), "BrandMark asset must load from main asset catalog")
         let brandMarkSource = try String(
             contentsOf: ContractFixtureLoader.repoRootURL

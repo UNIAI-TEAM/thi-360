@@ -49,6 +49,9 @@ targets:
           - Resources/Info-Dev.plist
           - Resources/Info-Demo.plist
           - Thi360.entitlements
+      - path: ../../contracts/mobile/legal
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: SwiftOpenAPIRuntime
         product: OpenAPIRuntime

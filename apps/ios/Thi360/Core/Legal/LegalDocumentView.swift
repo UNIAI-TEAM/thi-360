@@ -211,7 +211,7 @@ struct LegalDocumentView: View {
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(palette.textColor)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .frame(minWidth: 110, maxWidth: 200, alignment: .leading)
+                                .frame(minWidth: 120, maxWidth: 240, alignment: .leading)
                                 .padding(10)
                                 .background(palette.bgSubtleColor)
                                 .overlay(alignment: .trailing) {
@@ -236,7 +236,7 @@ struct LegalDocumentView: View {
                                 .font(.footnote)
                                 .foregroundStyle(palette.textSecondaryColor)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .frame(minWidth: 110, maxWidth: 200, alignment: .leading)
+                                .frame(minWidth: 120, maxWidth: 240, alignment: .leading)
                                 .padding(10)
                                 .background(palette.bgSurfaceColor)
                                 .overlay(alignment: .trailing) {
@@ -255,12 +255,13 @@ struct LegalDocumentView: View {
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(palette.borderColor, lineWidth: 1)
-            )
         }
+        .background(palette.bgSurfaceColor)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(palette.borderColor, lineWidth: 1)
+        )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("legal.block.table.\(index)")
     }

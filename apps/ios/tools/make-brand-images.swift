@@ -7,10 +7,10 @@ import UniformTypeIdentifiers
 let fileManager = FileManager.default
 let scriptURL = URL(fileURLWithPath: #filePath)
 let repoRoot = scriptURL
-    .deletingLastPathComponent() // tools
-    .deletingLastPathComponent() // ios
-    .deletingLastPathComponent() // apps
-    .deletingLastPathComponent() // repo root
+    .deletingLastPathComponent()
+    .deletingLastPathComponent()
+    .deletingLastPathComponent()
+    .deletingLastPathComponent()
 
 let sourceURL = repoRoot.appendingPathComponent("docs/design/app-hoc-vien/brand/thi360-icon.png")
 let assetsRoot = repoRoot.appendingPathComponent("apps/ios/Thi360/Resources/Assets.xcassets", isDirectory: true)

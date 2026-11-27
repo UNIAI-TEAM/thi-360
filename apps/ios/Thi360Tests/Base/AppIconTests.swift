@@ -16,7 +16,6 @@ final class AppIconTests: XCTestCase {
         let sourceMarkURL = repoRoot
             .appendingPathComponent("docs/design/app-hoc-vien/brand/thi360-icon.png")
 
-        // 1. Validate Contents.json declares single 1024x1024 universal iOS icon.
         let contentsData = try Data(contentsOf: contentsURL)
         let contentsJSON = try XCTUnwrap(JSONSerialization.jsonObject(with: contentsData) as? [String: Any])
         let images = try XCTUnwrap(contentsJSON["images"] as? [[String: Any]])
@@ -26,7 +25,6 @@ final class AppIconTests: XCTestCase {
         XCTAssertEqual(images[0]["platform"] as? String, "ios")
         XCTAssertEqual(images[0]["size"] as? String, "1024x1024")
 
-        // 2. Read PNG via CGImageSource and verify dimensions & no alpha channel.
         let iconSource = try XCTUnwrap(CGImageSourceCreateWithURL(iconURL as CFURL, nil))
         let iconProps = try XCTUnwrap(CGImageSourceCopyPropertiesAtIndex(iconSource, 0, nil) as? [CFString: Any])
         XCTAssertEqual(iconProps[kCGImagePropertyPixelWidth] as? Int, Self.expectedIconDimension)
@@ -40,7 +38,6 @@ final class AppIconTests: XCTestCase {
 
         let iconBytes = try Self.rgbaPixels(of: iconImage, width: 1024, height: 1024)
 
-        // 3. Verify all 4 corners are pure white (255, 255, 255).
         let corners = [(0, 0), (1023, 0), (0, 1023), (1023, 1023)]
         for (x, y) in corners {
             let idx = (y * 1024 + x) * 4
@@ -49,7 +46,6 @@ final class AppIconTests: XCTestCase {
             XCTAssertEqual(iconBytes[idx + 2], 255, "Corner (\(x),\(y)) B must be 255")
         }
 
-        // 4. Composite source thi360-icon.png on white inside the 700x700 centered box and diff pixels.
         XCTAssertLessThanOrEqual(Self.expectedMarkBoxSize, 700, "Source mark must never be upscaled beyond 700px")
         let sourceImageSource = try XCTUnwrap(CGImageSourceCreateWithURL(sourceMarkURL as CFURL, nil))
         let sourceMarkImage = try XCTUnwrap(CGImageSourceCreateImageAtIndex(sourceImageSource, 0, nil))

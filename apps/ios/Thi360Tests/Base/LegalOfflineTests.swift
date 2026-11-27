@@ -11,25 +11,14 @@ final class LegalOfflineTests: XCTestCase {
         XCTAssertFalse(monitor.isOnline)
 
         let transport = ContractFakeTransport()
-
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("thi360-offline-legal-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
-
-        let sampleTerms = """
-        {"id":"terms","locale":"vi","version":"2026-11-26","status":"published","effectiveDate":"2026-11-26","title":"Điều kiện giao dịch chung","note":null,"blocks":[{"type":"heading","level":2,"text":"1. Quy định chung"},{"type":"paragraph","text":"Nội dung ngoại tuyến."}]}
-        """
-        try Data(sampleTerms.utf8).write(to: dir.appendingPathComponent("terms.vi.json"))
-
-        let repo = LegalRepository(directoryOverride: dir)
+        let repo = LegalRepository(bundle: .main)
         let loaded = repo.load(.terms, locale: .vi)
         guard case let .success(doc) = loaded else {
-            return XCTFail("Expected legal document to load offline, got \(loaded)")
+            return XCTFail("Expected bundled legal document to load offline, got \(loaded)")
         }
 
-        XCTAssertEqual(doc.title, "Điều kiện giao dịch chung")
-        XCTAssertEqual(doc.blocks.count, 2)
+        XCTAssertFalse(doc.title.isEmpty)
+        XCTAssertFalse(doc.blocks.isEmpty)
         XCTAssertEqual(transport.recordedRequests.count, 0, "Loading legal document must make zero network requests")
     }
 }

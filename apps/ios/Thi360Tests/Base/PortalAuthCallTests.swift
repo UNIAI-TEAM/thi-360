@@ -6,7 +6,7 @@ import XCTest
 final class PortalAuthCallTests: XCTestCase {
     func testRefreshOnceThenRetry() async throws {
         let refreshFixture = try ContractFixtureLoader.loadAuthFixture("refresh-200.json")
-        let profileFixture = try ContractFixtureLoader.loadApiFixture("me-profile-200.json")
+        let myExamsFixture = try ContractFixtureLoader.loadApiFixture("my-exams-list-200.json")
         let expired401 = try ContractFixtureLoader.loadApiFixture("me-401-unauthenticated.json")
 
         let initialTokens = SessionTokens(
@@ -23,29 +23,33 @@ final class PortalAuthCallTests: XCTestCase {
             initialTokens: initialTokens
         ) { transport in
             transport.registerJSON(method: .post, path: "/api/v1/auth/mobile/refresh", statusCode: 200, data: refreshFixture)
-            transport.enqueue(method: .get, path: "/api/v1/me/profile", handlers: [
+            transport.enqueue(method: .get, path: "/api/v1/me/exams", handlers: [
                 { req in
                     XCTAssertEqual(req.header(.authorization), "Bearer expired-access")
                     return ContractFakeTransport.jsonResponse(statusCode: 401, data: expired401)
                 },
                 { req in
                     XCTAssertEqual(req.header(.authorization), "Bearer fixture-access-token")
-                    return ContractFakeTransport.jsonResponse(statusCode: 200, data: profileFixture)
+                    return ContractFakeTransport.jsonResponse(statusCode: 200, data: myExamsFixture)
                 }
             ])
         }
 
-        let profile = try await sessionStore.apiClient.getMyProfile()
-        XCTAssertEqual(profile.username, "student.demo")
+        let output = try await sessionStore.apiClient.authenticatedClient.listMyExams()
+        guard case let .ok(response) = output else {
+            return XCTFail("Expected 200 from listMyExams after token refresh, got \(output)")
+        }
+        let payload = try response.body.json
+        XCTAssertFalse(payload.items.isEmpty)
         XCTAssertEqual(sessionStore.state, .active)
         XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/mobile/refresh"), 1)
-        XCTAssertEqual(transport.callCount(method: .get, path: "/api/v1/me/profile"), 2)
+        XCTAssertEqual(transport.callCount(method: .get, path: "/api/v1/me/exams"), 2)
         XCTAssertEqual(try tokenStore.read()?.accountId, "acc-refresh-1", "Refresh must preserve accountId")
     }
 
     func testConcurrentCallsSingleRefresh() async throws {
         let refreshFixture = try ContractFixtureLoader.loadAuthFixture("refresh-200.json")
-        let meFixture = try ContractFixtureLoader.loadApiFixture("me-200.json")
+        let myExamsFixture = try ContractFixtureLoader.loadApiFixture("my-exams-list-200.json")
         let expired401 = try ContractFixtureLoader.loadApiFixture("me-401-unauthenticated.json")
         let refreshGate = TestAsyncGate()
 
@@ -66,27 +70,31 @@ final class PortalAuthCallTests: XCTestCase {
                 await refreshGate.enterAndWait()
                 return ContractFakeTransport.jsonResponse(statusCode: 200, data: refreshFixture)
             }
-            transport.register(method: .get, path: "/api/v1/me") { req in
+            transport.register(method: .get, path: "/api/v1/me/exams") { req in
                 if req.header(.authorization) == "Bearer expired-concurrent-access" {
                     return ContractFakeTransport.jsonResponse(statusCode: 401, data: expired401)
                 }
                 XCTAssertEqual(req.header(.authorization), "Bearer fixture-access-token")
-                return ContractFakeTransport.jsonResponse(statusCode: 200, data: meFixture)
+                return ContractFakeTransport.jsonResponse(statusCode: 200, data: myExamsFixture)
             }
         }
 
-        let client = sessionStore.apiClient
-        let t1 = Task { try await client.me() }
-        let t2 = Task { try await client.me() }
-        let t3 = Task { try await client.me() }
+        let client = sessionStore.apiClient.authenticatedClient
+        let t1 = Task { try await client.listMyExams() }
+        let t2 = Task { try await client.listMyExams() }
+        let t3 = Task { try await client.listMyExams() }
 
         await refreshGate.waitUntilEntered()
         await refreshGate.release()
 
-        let (r1, r2, r3) = try await (t1.value, t2.value, t3.value)
-        XCTAssertEqual(r1.username, "student.demo")
-        XCTAssertEqual(r2.username, "student.demo")
-        XCTAssertEqual(r3.username, "student.demo")
+        let outputs = try await [t1.value, t2.value, t3.value]
+        for output in outputs {
+            guard case let .ok(response) = output else {
+                XCTFail("Expected 200 for concurrent listMyExams call, got \(output)")
+                continue
+            }
+            XCTAssertFalse(try response.body.json.items.isEmpty)
+        }
         XCTAssertEqual(
             transport.callCount(method: .post, path: "/api/v1/auth/mobile/refresh"),
             1,
@@ -131,12 +139,12 @@ final class PortalAuthCallTests: XCTestCase {
             accountId: accountId
         )
 
-        let (sessionStore, tokenStore, transport, _) = try SessionTestFactory.makeContractStack(
+        let (sessionStore, tokenStore, _, _) = try SessionTestFactory.makeContractStack(
             initialTokens: initialTokens,
             storeProvider: storeProvider,
             sessionCleanup: cleanup
         ) { transport in
-            transport.registerJSON(method: .get, path: "/api/v1/me/profile", statusCode: 401, data: revoked401)
+            transport.registerJSON(method: .get, path: "/api/v1/me/exams", statusCode: 401, data: revoked401)
             transport.registerJSON(method: .post, path: "/api/v1/auth/mobile/refresh", statusCode: 401, data: revoked401)
             transport.registerJSON(method: .post, path: "/api/v1/auth/mobile/login", statusCode: 200, data: loginFixture)
             transport.registerJSON(method: .get, path: "/api/v1/me", statusCode: 200, data: meFixture)
@@ -147,7 +155,7 @@ final class PortalAuthCallTests: XCTestCase {
         XCTAssertTrue(written)
 
         do {
-            _ = try await sessionStore.apiClient.getMyProfile()
+            _ = try await sessionStore.apiClient.authenticatedClient.listMyExams()
             XCTFail("Expected 401 error after failed refresh")
         } catch {}
 

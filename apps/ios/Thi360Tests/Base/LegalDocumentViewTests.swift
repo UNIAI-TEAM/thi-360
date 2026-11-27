@@ -114,46 +114,44 @@ final class LegalDocumentViewTests: XCTestCase {
     }
 
     func testTableScrollsInFrame() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("thi360-table-legal-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
-
-        let draftData = try Data(contentsOf: Self.draftFixtureURL)
-        try draftData.write(to: dir.appendingPathComponent("terms.vi.json"))
-
-        let repo = LegalRepository(directoryOverride: dir)
+        let repo = LegalRepository(bundle: .main)
         let suite = "vn.unicom.thi360.tests.legal.table.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let preferences = AppPreferences(userDefaults: defaults)
         preferences.locale = .vi
 
-        let view = NavigationStack {
-            LegalDocumentView(legalId: .terms, preferences: preferences, repository: repo)
-        }
-        .environment(\.brandPalette, .defaultLight)
-        .environment(\.statusPalette, .light)
-        .environment(\.dynamicTypeSize, .accessibility2)
+        for id in LegalId.allCases {
+            let view = NavigationStack {
+                LegalDocumentView(legalId: id, preferences: preferences, repository: repo)
+            }
+            .environment(\.brandPalette, .defaultLight)
+            .environment(\.statusPalette, .light)
+            .environment(\.dynamicTypeSize, .accessibility2)
 
-        let size = CGSize(width: 360, height: 800)
-        let (window, controller) = RecoveryViewTestHelper.host(
-            view,
-            size: size,
-            sizeClass: .compact,
-            themeMode: .light
-        )
-        defer { window.isHidden = true }
-
-        let scrollViews = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view)
-        XCTAssertGreaterThanOrEqual(scrollViews.count, 2, "Expected outer vertical scroll view plus nested horizontal table scroll view")
-
-        if let outerScroll = scrollViews.first {
-            XCTAssertLessThanOrEqual(
-                outerScroll.contentSize.width,
-                size.width + 1,
-                "Outer legal screen scroll view must not scroll horizontally at 360pt"
+            let size = CGSize(width: 360, height: 800)
+            let (window, controller) = RecoveryViewTestHelper.host(
+                view,
+                size: size,
+                sizeClass: .compact,
+                themeMode: .light
             )
+            defer { window.isHidden = true }
+
+            let scrollViews = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view)
+            XCTAssertGreaterThanOrEqual(
+                scrollViews.count,
+                2,
+                "Expected outer vertical scroll view plus nested horizontal table scroll view for \(id.rawValue)"
+            )
+
+            if let outerScroll = scrollViews.first {
+                XCTAssertLessThanOrEqual(
+                    outerScroll.contentSize.width,
+                    size.width + 1,
+                    "Outer legal screen scroll view must not scroll horizontally at 360pt for \(id.rawValue)"
+                )
+            }
         }
     }
 

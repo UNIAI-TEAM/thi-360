@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import Observation
+import SwiftUI
 
 protocol NetworkPathObserving: Sendable {
     func start(onUpdate: @escaping @Sendable (Bool) -> Void)
@@ -63,8 +64,12 @@ final class ConnectivityMonitor {
     @discardableResult
     func addObserver(_ listener: @escaping @MainActor (Bool) -> Void) -> UUID {
         let token = UUID()
-        listeners[token] = listener
+        addObserver(id: token, listener)
         return token
+    }
+
+    func addObserver(id token: UUID, _ listener: @escaping @MainActor (Bool) -> Void) {
+        listeners[token] = listener
     }
 
     func removeObserver(_ token: UUID) {
@@ -79,5 +84,16 @@ final class ConnectivityMonitor {
         for listener in currentListeners {
             listener(online)
         }
+    }
+}
+
+private struct ConnectivityMonitorEnvironmentKey: EnvironmentKey {
+    static let defaultValue: ConnectivityMonitor? = nil
+}
+
+extension EnvironmentValues {
+    var connectivityMonitor: ConnectivityMonitor? {
+        get { self[ConnectivityMonitorEnvironmentKey.self] }
+        set { self[ConnectivityMonitorEnvironmentKey.self] = newValue }
     }
 }

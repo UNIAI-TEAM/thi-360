@@ -12,7 +12,7 @@ final class LoadController<T: Sendable> {
     private var cachedValue: T?
     private var cachedAccountId: String?
     private var isLoading: Bool = false
-    private var connectivityToken: UUID?
+    private let connectivityObserverId = UUID()
 
     private let fetch: @Sendable () async throws -> T
     private let isEmptyValue: (T) -> Bool
@@ -34,13 +34,22 @@ final class LoadController<T: Sendable> {
         self.fetch = fetch
 
         if let connectivityMonitor {
-            self.connectivityToken = connectivityMonitor.addObserver { [weak self] isOnline in
+            connectivityMonitor.addObserver(id: connectivityObserverId) { [weak self] isOnline in
                 guard let self, isOnline else { return }
                 if case .failed(kind: .offline, _, _) = self.state {
                     Task { @MainActor in
                         await self.load()
                     }
                 }
+            }
+        }
+    }
+
+    deinit {
+        if let connectivityMonitor {
+            let observerId = connectivityObserverId
+            Task { @MainActor in
+                connectivityMonitor.removeObserver(observerId)
             }
         }
     }

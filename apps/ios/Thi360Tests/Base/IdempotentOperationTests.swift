@@ -33,7 +33,6 @@ final class IdempotentOperationTests: XCTestCase {
         let persistedKey = await operation.activeKey
         XCTAssertEqual(persistedKey, firstKey)
 
-        // Succeeding with the retried key rotates key for the next click.
         let successKeys = KeyLog()
         let result = try await operation.run { key -> String in
             await successKeys.append(key)
@@ -54,7 +53,6 @@ final class IdempotentOperationTests: XCTestCase {
         let nextClickKey = try XCTUnwrap(nextClickRaw)
         XCTAssertNotEqual(nextClickKey, firstKey, "Next operation after success must mint a new Idempotency-Key")
 
-        // Terminal 4xx errors clear the key so the next click generates a fresh key.
         let terminalStatuses = [400, 404, 409, 410, 422]
         var seenTerminalKeys = Set<String>()
         for status in terminalStatuses {
