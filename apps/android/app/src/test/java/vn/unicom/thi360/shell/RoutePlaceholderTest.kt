@@ -1,5 +1,6 @@
 package vn.unicom.thi360.shell
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -13,6 +14,9 @@ import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.legal.LegalId
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.feature.catalog.CatalogTestFixtures
+import vn.unicom.thi360.feature.catalog.LocalCatalogDependencies
+import vn.unicom.thi360.feature.catalog.ProductDetailTestTags
 import vn.unicom.thi360.shell.routes.AppNavigator
 import vn.unicom.thi360.shell.routes.AppRoute
 import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
@@ -27,23 +31,28 @@ class RoutePlaceholderTest {
     @Config(qualifiers = "w412dp-h915dp")
     fun everyRouteOpenedViaAppNavigatorRendersPlaceholderWithTypedParams() {
         var navigator: AppNavigator? = null
+        val catalogDeps = CatalogTestFixtures.createDeterministicFixtureDependencies()
 
         composeRule.setContent {
             val navController = rememberNavController()
             val appNav = AppNavigator(navController)
             navigator = appNav
-            Thi360App(
-                preferences = AppPreferences(locale = AppLocale.VI),
-                navController = navController,
-                navigator = appNav,
-            )
+            CompositionLocalProvider(LocalCatalogDependencies provides catalogDeps) {
+                Thi360App(
+                    preferences = AppPreferences(locale = AppLocale.VI),
+                    navController = navController,
+                    navigator = appNav,
+                )
+            }
         }
 
         val nav = checkNotNull(navigator)
 
         composeRule.runOnIdle { nav.openProduct("TOEIC-2026") }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertIsDisplayed().assertTextContains("product")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("code=TOEIC-2026", substring = true)
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ProductDetailTestTags.SCREEN).assertIsDisplayed()
+        composeRule.onNodeWithTag(ProductDetailTestTags.PRODUCT_CODE)
+            .assertTextContains("TOEIC-2026", substring = true)
 
         composeRule.runOnIdle { nav.openCheckout("TOEIC-2026", seenVersionNo = 2, seenPrice = 150_000L) }
         composeRule.onNodeWithTag(vn.unicom.thi360.feature.payment.ui.PaymentTestTags.CHECKOUT_SCREEN).assertIsDisplayed()
