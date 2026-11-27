@@ -187,7 +187,7 @@ class NoLinkReturnTest {
         )
         try {
             vm.start()
-            val deadline = System.currentTimeMillis() + 5_000L
+            val deadline = System.currentTimeMillis() + 10_000L
             while (vm.uiState.value.state !is PaymentResultState.NoResultYet && System.currentTimeMillis() < deadline) {
                 testScope.advanceUntilIdle()
                 Thread.sleep(10)
@@ -199,6 +199,14 @@ class NoLinkReturnTest {
                 testScope.advanceTimeBy(2_000L)
                 testScope.advanceUntilIdle()
                 Thread.sleep(5)
+            }
+            val timeoutDeadline = System.currentTimeMillis() + 10_000L
+            while (
+                (vm.uiState.value.state as? PaymentResultState.NoResultYet)?.timedOut != true &&
+                System.currentTimeMillis() < timeoutDeadline
+            ) {
+                testScope.advanceUntilIdle()
+                Thread.sleep(10)
             }
             val finalState = vm.uiState.value.state as PaymentResultState.NoResultYet
             assertTrue("Poller must stop after 60s", finalState.timedOut)
@@ -261,7 +269,7 @@ class NoLinkReturnTest {
         )
         try {
             vm.start()
-            val deadline1 = System.currentTimeMillis() + 5_000L
+            val deadline1 = System.currentTimeMillis() + 10_000L
             while (vm.uiState.value.state !is PaymentResultState.NoResultYet && System.currentTimeMillis() < deadline1) {
                 testScope.advanceUntilIdle()
                 Thread.sleep(10)
@@ -269,7 +277,7 @@ class NoLinkReturnTest {
             assertTrue(vm.uiState.value.state is PaymentResultState.NoResultYet)
 
             testScope.advanceTimeBy(2_000L)
-            val deadline2 = System.currentTimeMillis() + 5_000L
+            val deadline2 = System.currentTimeMillis() + 10_000L
             while (vm.uiState.value.state !is PaymentResultState.Fulfilled && System.currentTimeMillis() < deadline2) {
                 testScope.advanceUntilIdle()
                 Thread.sleep(10)

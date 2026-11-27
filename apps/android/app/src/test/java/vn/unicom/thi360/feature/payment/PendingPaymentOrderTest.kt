@@ -69,7 +69,7 @@ class PendingPaymentOrderTest {
                     scope = testScope,
                 )
                 vm.start()
-                val deadline = System.currentTimeMillis() + 5_000L
+                val deadline = System.currentTimeMillis() + 10_000L
                 while (store.readValid(1_000L) != null && System.currentTimeMillis() < deadline) {
                     testScope.advanceUntilIdle()
                     Thread.sleep(10)

@@ -343,7 +343,8 @@ class OrdersListScreenTest {
                 fakeLifecycle.registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
             }
             composeRule.waitUntilMainIdle {
-                harness.server.requestCount("GET", "/api/v1/me/orders") > countBeforeResume
+                harness.server.requestCount("GET", "/api/v1/me/orders") > countBeforeResume &&
+                    !vm.state.value.isRefreshing
             }
         } finally {
             scope.cancel()

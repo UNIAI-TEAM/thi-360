@@ -192,7 +192,8 @@ class PaymentResultPollingTest {
             val callsBeforeCheckAgain = harness.server.requestCount("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}")
             composeRule.onNodeWithTag(PaymentTestTags.RESULT_CHECK_AGAIN_BUTTON).performClick()
             waitUntil(testScope) {
-                harness.server.requestCount("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}") > callsBeforeCheckAgain
+                harness.server.requestCount("GET", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}") > callsBeforeCheckAgain &&
+                    !vm.uiState.value.isCheckingAgain
             }
             val checking = vm.uiState.value.state as PaymentResultState.Checking
             assertEquals(false, checking.timedOut)
@@ -203,7 +204,7 @@ class PaymentResultPollingTest {
     }
 
     private fun waitUntil(scope: TestScope, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 5_000L
+        val deadline = System.currentTimeMillis() + 10_000L
         while (!condition() && System.currentTimeMillis() < deadline) {
             scope.runCurrent()
             Thread.sleep(10)

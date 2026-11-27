@@ -30,6 +30,7 @@ import vn.unicom.thi360.core.config.SupportContact
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.core.ui.LoadState
 import vn.unicom.thi360.feature.payment.domain.PendingPaymentOrderStore
 import vn.unicom.thi360.feature.payment.domain.SeenPrice
 import vn.unicom.thi360.feature.payment.ui.CheckoutScreen
@@ -88,8 +89,9 @@ class CheckoutScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
 
             composeRule.onNodeWithText("Xác nhận mua").assertIsDisplayed()
@@ -174,8 +176,10 @@ class CheckoutScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.access is LoadState.Loaded &&
+                    vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
 
             composeRule.onNodeWithText("2 bài thi trong bộ", substring = true).assertIsDisplayed()
@@ -418,11 +422,12 @@ class CheckoutScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).performScrollTo().performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilMainIdle {
                 composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_GONE_STATE).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).assertDoesNotExist()
@@ -566,11 +571,12 @@ class CheckoutScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).performScrollTo().performClick()
-            composeRule.waitUntil(5_000) {
+            composeRule.waitUntilMainIdle {
                 composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_UNAVAILABLE_BANNER).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Một bài trong bộ vừa ngừng bán. Chưa có khoản nào bị trừ.").performScrollTo().assertIsDisplayed()
@@ -625,8 +631,9 @@ class CheckoutScreenTest {
             }
             composeRule.onNodeWithText("Không thể tải thông tin thanh toán").assertIsDisplayed()
             composeRule.onNodeWithText("Thử lại").performClick()
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Đề thi HSA tổng hợp DEMO").assertIsDisplayed()
         } finally {

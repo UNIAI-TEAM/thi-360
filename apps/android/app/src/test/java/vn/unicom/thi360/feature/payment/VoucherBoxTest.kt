@@ -66,8 +66,9 @@ class VoucherBoxTest {
         try {
             vm.loadInitial()
             mountCheckout(vm)
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
             }
             val quoteCallsBefore = harness.server.requestCount("POST", "/api/v1/me/price-quote")
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_VOUCHER_INPUT).performScrollTo().performTextInput("   ")
@@ -154,8 +155,9 @@ class VoucherBoxTest {
         try {
             vm.loadInitial()
             mountCheckout(vm)
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
             }
 
             // 1. Trims whitespace and shows appliedReplacedPromo
@@ -250,8 +252,9 @@ class VoucherBoxTest {
         try {
             vm.loadInitial()
             mountCheckout(vm)
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_VOUCHER_INPUT).performScrollTo().performTextInput("BADCODE")
 
@@ -309,8 +312,9 @@ class VoucherBoxTest {
         try {
             bundleVm.loadInitial()
             mountCheckout(bundleVm)
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                bundleVm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
             }
             bundleVm.onVoucherInputChanged("SINGLEONLY")
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).performScrollTo().performClick()
@@ -354,8 +358,9 @@ class VoucherBoxTest {
         try {
             vm.loadInitial()
             mountCheckout(vm)
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VOUCHER_APPLY).fetchSemanticsNodes().isNotEmpty()
             }
             vm.onVoucherInputChanged("EXAM-DEMO-03")
             vm.applyVoucher()

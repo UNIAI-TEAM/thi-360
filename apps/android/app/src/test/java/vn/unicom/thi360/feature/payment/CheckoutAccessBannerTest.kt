@@ -89,8 +89,10 @@ class CheckoutAccessBannerTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VIEW_STATUS_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.activeQuote != null &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_VIEW_STATUS_BUTTON).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Đang kiểm tra đơn DH261126000099").assertIsDisplayed()
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).performScrollTo().assertIsNotEnabled()
@@ -206,8 +208,10 @@ class CheckoutAccessBannerTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_ENTER_EXAM_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm1.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_ENTER_EXAM_BUTTON).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Bạn đang có 3 lượt với bài thi này").assertIsDisplayed()
             composeRule.onNodeWithText("Vào bài thi").performClick()
@@ -397,8 +401,10 @@ class CheckoutAccessBannerTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_ACCESS_RETRY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.activeQuote != null &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_ACCESS_RETRY_BUTTON).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Chưa kiểm tra được quyền sử dụng").assertIsDisplayed()
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).performScrollTo().assertIsNotEnabled()

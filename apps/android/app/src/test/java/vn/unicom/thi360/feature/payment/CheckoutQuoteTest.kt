@@ -64,7 +64,10 @@ class CheckoutQuoteTest {
                 scope = scope,
             )
             vmWithSeen.loadInitial()
-            composeRule.waitUntilMainIdle { harness.server.requestCount("POST", "/api/v1/me/price-quote") == 1 }
+            composeRule.waitUntilMainIdle {
+                harness.server.requestCount("POST", "/api/v1/me/price-quote") == 1 &&
+                    vmWithSeen.state.value.isPayButtonEnabled
+            }
             val bodyWithSeen = Json.parseToJsonElement(
                 harness.server.lastRequest("POST", "/api/v1/me/price-quote")!!.body.readUtf8(),
             ).jsonObject
@@ -83,7 +86,10 @@ class CheckoutQuoteTest {
                 scope = scope,
             )
             vmWithoutSeen.loadInitial()
-            composeRule.waitUntilMainIdle { harness.server.requestCount("POST", "/api/v1/me/price-quote") == 1 }
+            composeRule.waitUntilMainIdle {
+                harness.server.requestCount("POST", "/api/v1/me/price-quote") == 1 &&
+                    vmWithoutSeen.state.value.isPayButtonEnabled
+            }
             val bodyWithoutSeen = Json.parseToJsonElement(
                 harness.server.lastRequest("POST", "/api/v1/me/price-quote")!!.body.readUtf8(),
             ).jsonObject
@@ -148,8 +154,9 @@ class CheckoutQuoteTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Giá gốc").performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText("250.000 đ").performScrollTo().assertIsDisplayed()
@@ -217,8 +224,9 @@ class CheckoutQuoteTest {
                     )
                 }
             }
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onAllNodesWithText(expectedTotal).onLast().performScrollTo().assertIsDisplayed()
             composeRule.onNodeWithText(expectedCta).performScrollTo().assertIsDisplayed()
@@ -273,8 +281,9 @@ class CheckoutQuoteTest {
             }
             assertEquals(1, harness.server.requestCount("POST", "/api/v1/me/price-quote"))
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_QUOTE_RETRY_BUTTON).performScrollTo().performClick()
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                vm.state.value.isPayButtonEnabled &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_PAY_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             assertEquals(2, harness.server.requestCount("POST", "/api/v1/me/price-quote"))
             assertTrue(vm.state.value.activeQuote != null)

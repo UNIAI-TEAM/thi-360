@@ -74,7 +74,7 @@ class PriceChangeTest {
                 scope = testScope,
             )
             vm.loadInitial()
-            waitUntilIdle(testScope) { vm.state.value.activeQuote != null }
+            waitUntilIdle(testScope) { vm.state.value.activeQuote != null && vm.state.value.isPayButtonEnabled }
             assertEquals(expectedShown, vm.state.value.showPriceChangedBanner)
             assertEquals(expectedSeenPrice, vm.state.value.bannerSeenPrice)
         } finally {
@@ -117,7 +117,7 @@ class PriceChangeTest {
             vm.loadInitial()
             waitUntilIdle(testScope) { vm.state.value.isPayButtonEnabled }
             vm.submitOrder()
-            waitUntilIdle(testScope) { vm.state.value.activeQuote?.versionNo == 4 }
+            waitUntilIdle(testScope) { vm.state.value.activeQuote?.versionNo == 4 && vm.state.value.isPayButtonEnabled }
 
             assertTrue(vm.state.value.showPriceChangedBanner)
             assertEquals(200_000L, vm.state.value.bannerSeenPrice)
@@ -196,14 +196,18 @@ class PriceChangeTest {
 
             // Trigger 409 PRICE_CHANGED
             vm.submitOrder()
-            waitUntilIdle(testScope) { vm.state.value.activeQuote?.versionNo == 5 }
+            waitUntilIdle(testScope) { vm.state.value.activeQuote?.versionNo == 5 && vm.state.value.isPayButtonEnabled }
             assertEquals(initialSeen, vm.state.value.seenPrice)
             assertTrue(vm.state.value.showPriceChangedBanner)
 
             // Apply voucher: must send ONLY original seenVersionNo (no seenPrice)
             vm.onVoucherInputChanged("EXAM-DEMO-03")
             vm.applyVoucher()
-            waitUntilIdle(testScope) { harness.server.requestCount("POST", "/api/v1/me/price-quote") == 2 }
+            waitUntilIdle(testScope) {
+                harness.server.requestCount("POST", "/api/v1/me/price-quote") == 2 &&
+                    !vm.state.value.voucher.submitting &&
+                    vm.state.value.isPayButtonEnabled
+            }
             val applyBody = Json.parseToJsonElement(
                 harness.server.requests("POST", "/api/v1/me/price-quote")[1].body.readUtf8(),
             ).jsonObject
@@ -213,7 +217,11 @@ class PriceChangeTest {
 
             // Remove voucher: must send BOTH original seenPrice and seenVersionNo
             vm.removeVoucher()
-            waitUntilIdle(testScope) { harness.server.requestCount("POST", "/api/v1/me/price-quote") == 3 }
+            waitUntilIdle(testScope) {
+                harness.server.requestCount("POST", "/api/v1/me/price-quote") == 3 &&
+                    !vm.state.value.voucher.submitting &&
+                    vm.state.value.isPayButtonEnabled
+            }
             val removeBody = Json.parseToJsonElement(
                 harness.server.requests("POST", "/api/v1/me/price-quote")[2].body.readUtf8(),
             ).jsonObject
@@ -223,7 +231,10 @@ class PriceChangeTest {
 
             // Next createMyOrder sends expectedAmountDue and expectedVersionNo of the currently displayed quote (260000, v5)
             vm.submitOrder()
-            waitUntilIdle(testScope) { harness.server.requestCount("POST", "/api/v1/me/orders") == 2 }
+            waitUntilIdle(testScope) {
+                harness.server.requestCount("POST", "/api/v1/me/orders") == 2 &&
+                    vm.state.value.isPayButtonEnabled
+            }
             val secondCreateBody = Json.parseToJsonElement(
                 harness.server.requests("POST", "/api/v1/me/orders")[1].body.readUtf8(),
             ).jsonObject
@@ -235,7 +246,7 @@ class PriceChangeTest {
     }
 
     private fun waitUntilIdle(scope: TestScope, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 5_000L
+        val deadline = System.currentTimeMillis() + 10_000L
         while (!condition() && System.currentTimeMillis() < deadline) {
             scope.advanceUntilIdle()
             Thread.sleep(10)

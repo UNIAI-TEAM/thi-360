@@ -39,7 +39,10 @@ class CreateOrderTest {
             vm.loadInitial()
             waitUntilIdle(testScope) { vm.state.value.isPayButtonEnabled }
             vm.submitOrder()
-            waitUntilIdle(testScope) { harness.server.requestCount("POST", "/api/v1/me/orders") == 1 }
+            waitUntilIdle(testScope) {
+                harness.server.requestCount("POST", "/api/v1/me/orders") == 1 &&
+                    vm.state.value.navigationEvent != null
+            }
 
             val req = harness.server.lastRequest("POST", "/api/v1/me/orders")!!
             val keyHeader = req.getHeader("Idempotency-Key")
@@ -75,7 +78,10 @@ class CreateOrderTest {
             vm2.loadInitial()
             waitUntilIdle(scope2) { vm2.state.value.isPayButtonEnabled }
             vm2.submitOrder()
-            waitUntilIdle(scope2) { noVoucherHarness.server.requestCount("POST", "/api/v1/me/orders") == 1 }
+            waitUntilIdle(scope2) {
+                noVoucherHarness.server.requestCount("POST", "/api/v1/me/orders") == 1 &&
+                    vm2.state.value.navigationEvent != null
+            }
             val body = Json.parseToJsonElement(
                 noVoucherHarness.server.lastRequest("POST", "/api/v1/me/orders")!!.body.readUtf8(),
             ).jsonObject
@@ -142,7 +148,7 @@ class CreateOrderTest {
     }
 
     private fun waitUntilIdle(scope: TestScope, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + 5_000L
+        val deadline = System.currentTimeMillis() + 10_000L
         while (!condition() && System.currentTimeMillis() < deadline) {
             scope.advanceUntilIdle()
             Thread.sleep(10)

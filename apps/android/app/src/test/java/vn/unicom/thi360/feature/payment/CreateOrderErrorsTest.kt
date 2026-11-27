@@ -184,7 +184,8 @@ class CreateOrderErrorsTest {
             composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_ACCOUNT_CONTINUE_BUTTON).performScrollTo().performClick()
             composeRule.waitUntilMainIdle {
                 harness.server.requestCount("POST", "/api/v1/me/price-quote") == 2 &&
-                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") == 2
+                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") == 2 &&
+                    vm.state.value.isPayButtonEnabled
             }
             assertNull(vm.state.value.accountConflict)
             assertEquals("student.other", vm.state.value.acknowledgedUser?.username)

@@ -3,6 +3,7 @@ package vn.unicom.thi360.feature.payment
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -205,8 +206,9 @@ class ClosedOrderStatesTest {
             }
             // Stale click on Continue Payment after 15-min window expired -> 409 ORDER_EXPIRED + reload updates badge to "Hết hạn" + "Tạo đơn mới"
             composeRule.onNodeWithTag(PaymentTestTags.ORDER_DETAIL_CONTINUE_BUTTON).performClick()
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.ORDER_DETAIL_CREATE_NEW_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                composeRule.onAllNodesWithTag(PaymentTestTags.ORDER_DETAIL_CREATE_NEW_BUTTON).fetchSemanticsNodes().isNotEmpty() &&
+                    composeRule.onAllNodesWithText("Hết hạn").fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithText("Hết hạn").assertIsDisplayed()
             composeRule.onNodeWithText("Đơn đã hết hạn thanh toán. Vui lòng tạo đơn mới theo giá hiện tại.").assertIsDisplayed()

@@ -247,7 +247,7 @@ internal class RecordingPaymentBrowser(
 }
 
 internal fun ComposeContentTestRule.waitUntilMainIdle(
-    timeoutMillis: Long = 5_000L,
+    timeoutMillis: Long = 10_000L,
     condition: () -> Boolean,
 ) {
     waitUntil(timeoutMillis) {

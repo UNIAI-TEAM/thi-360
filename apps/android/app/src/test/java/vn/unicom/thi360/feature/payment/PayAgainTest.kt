@@ -31,6 +31,7 @@ import vn.unicom.thi360.core.config.SupportContact
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.feature.payment.domain.OrderActionErrorKey
 import vn.unicom.thi360.feature.payment.domain.PaymentResultEntry
 import vn.unicom.thi360.feature.payment.domain.PendingPaymentOrderStore
 import vn.unicom.thi360.feature.payment.ui.OrdersScreen
@@ -221,8 +222,13 @@ class PayAgainTest {
 
             // ORDER_EXPIRED -> "Tạo đơn mới"
             composeRule.onNodeWithTag(PaymentTestTags.orderContinueButton(PaymentTestFixtures.ORDER_CODE)).performClick()
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.ORDERS_CREATE_NEW_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                harness.server.requestCount("POST", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}/pay") == 1 &&
+                    harness.server.requestCount("GET", "/api/v1/me/orders") >= 2 &&
+                    !vm.state.value.anyActionInFlight &&
+                    !vm.state.value.isRefreshing &&
+                    vm.state.value.actionError?.errorKey == OrderActionErrorKey.ORDER_EXPIRED &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.ORDERS_CREATE_NEW_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(PaymentTestTags.ORDERS_CREATE_NEW_BUTTON).performClick()
             assertEquals("EXAM-DEMO-03", openedCheckout)
@@ -231,15 +237,23 @@ class PayAgainTest {
             composeRule.onNodeWithTag(PaymentTestTags.orderContinueButton(PaymentTestFixtures.ORDER_CODE)).performClick()
             composeRule.waitUntilMainIdle {
                 harness.server.requestCount("POST", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}/pay") == 2 &&
-                    !vm.state.value.anyActionInFlight
+                    harness.server.requestCount("GET", "/api/v1/me/orders") >= 3 &&
+                    !vm.state.value.anyActionInFlight &&
+                    !vm.state.value.isRefreshing &&
+                    vm.state.value.actionError?.errorKey == OrderActionErrorKey.PAYMENT_ATTEMPTS_EXCEEDED
             }
             composeRule.onNodeWithTag(PaymentTestTags.ORDERS_CREATE_NEW_BUTTON).assertIsDisplayed()
             composeRule.onNodeWithTag(PaymentTestTags.orderCancelButton(PaymentTestFixtures.ORDER_CODE)).assertIsDisplayed()
 
             // PRODUCT_DISCONTINUED -> "Về danh mục bài thi"
             composeRule.onNodeWithTag(PaymentTestTags.orderContinueButton(PaymentTestFixtures.ORDER_CODE)).performClick()
-            composeRule.waitUntil(5_000) {
-                composeRule.onAllNodesWithTag(PaymentTestTags.ORDERS_TO_CATALOG_BUTTON).fetchSemanticsNodes().isNotEmpty()
+            composeRule.waitUntilMainIdle {
+                harness.server.requestCount("POST", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}/pay") == 3 &&
+                    harness.server.requestCount("GET", "/api/v1/me/orders") >= 4 &&
+                    !vm.state.value.anyActionInFlight &&
+                    !vm.state.value.isRefreshing &&
+                    vm.state.value.actionError?.errorKey == OrderActionErrorKey.PRODUCT_DISCONTINUED &&
+                    composeRule.onAllNodesWithTag(PaymentTestTags.ORDERS_TO_CATALOG_BUTTON).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.onNodeWithTag(PaymentTestTags.ORDERS_TO_CATALOG_BUTTON).performClick()
             assertTrue(openedCatalog)
@@ -248,8 +262,11 @@ class PayAgainTest {
             val listCountBefore = harness.server.requestCount("GET", "/api/v1/me/orders")
             composeRule.onNodeWithTag(PaymentTestTags.orderContinueButton(PaymentTestFixtures.ORDER_CODE)).performClick()
             composeRule.waitUntilMainIdle {
-                harness.server.requestCount("GET", "/api/v1/me/orders") > listCountBefore &&
-                    !vm.state.value.anyActionInFlight
+                harness.server.requestCount("POST", "/api/v1/me/orders/${PaymentTestFixtures.ORDER_CODE}/pay") == 4 &&
+                    harness.server.requestCount("GET", "/api/v1/me/orders") > listCountBefore &&
+                    !vm.state.value.anyActionInFlight &&
+                    !vm.state.value.isRefreshing &&
+                    vm.state.value.actionError?.errorKey == OrderActionErrorKey.ORDER_NOT_PENDING
             }
             composeRule.onNodeWithText("Đơn không còn ở trạng thái chờ thanh toán.").assertIsDisplayed()
         } finally {
