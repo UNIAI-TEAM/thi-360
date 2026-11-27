@@ -22,6 +22,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -30,9 +31,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.feature.payment.ui.PaymentTestTags
 import vn.unicom.thi360.shell.Thi360App
 import vn.unicom.thi360.shell.routes.AppNavigator
-import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
+import vn.unicom.thi360.shell.routes.AppRoute
 import vn.unicom.thi360.testing.ContractFakeServer
 import vn.unicom.thi360.testing.PortalTestHarness
 
@@ -201,14 +203,14 @@ class BundleDetailScreenTest {
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).performScrollTo().performClick()
             composeRule.waitUntilIdle {
-                composeRule.onAllNodesWithTag(RoutePlaceholderTestTags.ROUTE_NAME).fetchSemanticsNodes().isNotEmpty()
+                composeRule.onAllNodesWithTag(PaymentTestTags.CHECKOUT_SCREEN).fetchSemanticsNodes().isNotEmpty()
             }
             composeRule.waitForIdle()
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("checkout")
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)
-                .assertTextContains("code=BUNDLE-DEMO-01", substring = true)
-                .assertTextContains("seenVersionNo=1", substring = true)
-                .assertTextContains("seenPrice=320000", substring = true)
+            composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_SCREEN).assertIsDisplayed()
+            val checkoutArgs = navRef!!.navController.currentBackStackEntry?.arguments
+            assertEquals("BUNDLE-DEMO-01", checkoutArgs?.getString(AppRoute.ARG_CODE))
+            assertEquals("1", checkoutArgs?.getString(AppRoute.ARG_SEEN_VERSION_NO))
+            assertEquals("320000", checkoutArgs?.getString(AppRoute.ARG_SEEN_PRICE))
         }
     }
 }

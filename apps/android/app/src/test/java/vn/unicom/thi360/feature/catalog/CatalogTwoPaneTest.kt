@@ -26,8 +26,8 @@ import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.ui.ListDetailTestTags
+import vn.unicom.thi360.feature.payment.ui.PaymentTestTags
 import vn.unicom.thi360.shell.Thi360App
-import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
 import vn.unicom.thi360.testing.PortalTestHarness
 
@@ -111,7 +111,7 @@ class CatalogTwoPaneTest {
 
             composeRule.onNodeWithTag(ProductDetailTestTags.BUNDLE_BUY_BUTTON).performScrollTo().performClick()
             composeRule.waitForIdle()
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("checkout")
+            composeRule.onNodeWithTag(PaymentTestTags.CHECKOUT_SCREEN).assertIsDisplayed()
         }
     }
 
