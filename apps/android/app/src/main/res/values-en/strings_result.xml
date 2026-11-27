@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="result_actions_myExams">My exams</string>
+    <string name="result_actions_pendingReviewNote">Essay questions can be reviewed once grading completes.</string>
+    <string name="result_actions_reviewAutoGraded">Review auto-graded questions</string>
+    <string name="result_actions_reviewFull">Review attempt</string>
+    <string name="result_actions_scoreOnlyNote">This exam includes score only and does not include attempt review.</string>
+    <string name="result_actions_unavailableNote">Attempt review is not available in the current state.</string>
+
+    <string name="result_attemptNo">Attempt %1$d</string>
+    <string name="result_backToHistory">Practice history</string>
+    <string name="result_back">Back</string>
+
+    <string name="result_choiceOptions_ANH">English</string>
+    <string name="result_choiceOptions_CS">Computer science</string>
+    <string name="result_choiceOptions_ENGLISH">English</string>
+    <string name="result_choiceOptions_ICT">Applied informatics</string>
+    <string name="result_choiceOptions_KH">Science</string>
+    <string name="result_choiceOptions_SCIENCE">Science</string>
+    <string name="result_choiceOptions_TA">English</string>
+
+    <string name="result_endReasons_CHOICE_TIMEOUT">Section 3 selection timed out</string>
+    <string name="result_endReasons_FAULT_CLOSED">Closed due to system fault</string>
+    <string name="result_endReasons_SUBMITTED">Submitted</string>
+    <string name="result_endReasons_TIME_UP">Time up</string>
+
+    <string name="result_errorDescription">Check your network connection and try again.</string>
+    <string name="result_errorTitle">Unable to load attempt result</string>
+    <string name="result_eyebrow">Attempt result</string>
+
+    <string name="result_fault_compensatedBanner">This attempt was affected by a system fault; 1 replacement attempt has been granted</string>
+    <string name="result_fault_faultNoticeBanner">Attempt ended due to a system fault</string>
+    <string name="result_fault_reasonLabel">Note:</string>
+
+    <string name="result_grading_description">Your submission has been recorded. The system is calculating your score and this screen will update automatically.</string>
+    <string name="result_grading_heading">Grading</string>
+    <string name="result_grading_reload">Reload</string>
+    <string name="result_grading_timeoutDescription">Scoring is taking longer than expected. Your result will appear in Practice history once complete.</string>
+    <string name="result_grading_timeoutHeading">Scoring is still in progress; you can check back later</string>
+
+    <string name="result_gradingError_heading">Processing result</string>
+    <string name="result_gradingError_message">Your attempt has been recorded; the result is being processed</string>
+
+    <string name="result_info_attemptNo">Attempt</string>
+    <string name="result_info_choices">Selected options</string>
+    <string name="result_info_duration">Actual duration</string>
+    <string name="result_info_durationHoursMinutes" tools:ignore="PluralsCandidate">%1$d hr %2$d min</string>
+    <string name="result_info_durationMinutes">%1$d min</string>
+    <string name="result_info_durationSeconds" tools:ignore="PluralsCandidate">%1$d sec</string>
+    <string name="result_info_durationZero">0 sec</string>
+    <string name="result_info_endReason">End reason</string>
+    <string name="result_info_examKind">Exam</string>
+    <string name="result_info_finishedAt">Finished</string>
+    <string name="result_info_noChoices">None</string>
+    <string name="result_info_part">Section</string>
+    <string name="result_info_scope">Scope</string>
+    <string name="result_info_startedAt">Started</string>
+    <string name="result_info_subject">Subject</string>
+    <string name="result_info_title">Attempt details</string>
+
+    <string name="result_loading">Loading attempt result</string>
+
+    <string name="result_notFinished_continueAttempt">Continue attempt</string>
+    <string name="result_notFinished_description">This attempt is still open or being prepared, so results are not available yet.</string>
+    <string name="result_notFinished_title">Attempt not finished yet</string>
+    <string name="result_notFinished_toHistory">Practice history</string>
+
+    <string name="result_notFound_description">This attempt does not exist or does not belong to the signed-in account.</string>
+    <string name="result_notFound_eyebrow">ERROR 404</string>
+    <string name="result_notFound_title">Attempt result not found</string>
+    <string name="result_notFound_toHistory">Practice history</string>
+    <string name="result_notFound_toHome">My exams</string>
+
+    <string name="result_pageTitle">Attempt result</string>
+
+    <string name="result_parts_description">Section score is the sum of question points in that section.</string>
+    <string name="result_parts_manualChip">Manual grading</string>
+    <string name="result_parts_maxScoreNote">Section maximum score: %1$s.</string>
+    <string name="result_parts_partScoreLabel">Section score</string>
+    <string name="result_parts_pendingDescription">Scores shown for graded sections are section scores only, not the total exam score.</string>
+    <string name="result_parts_skippedBadge">Skipped</string>
+    <string name="result_parts_skippedChoiceTimeout">Section 3 not taken: selection time expired</string>
+    <string name="result_parts_skippedFallback">This section was skipped and scored 0 points.</string>
+    <string name="result_parts_skippedFaultClosed">Section skipped because the attempt closed due to a system fault.</string>
+    <string name="result_parts_title">Section breakdown</string>
+
+    <string name="result_scopes_FULL">FULL exam</string>
+    <string name="result_scopes_PART">Section exam</string>
+    <string name="result_scopes_SUBJECT">Subject exam</string>
+
+    <string name="result_segments_columns_blank">Blank</string>
+    <string name="result_segments_columns_correct">Correct</string>
+    <string name="result_segments_columns_partial">Partial</string>
+    <string name="result_segments_columns_pending">Pending review</string>
+    <string name="result_segments_columns_wrong">Wrong</string>
+    <string name="result_segments_description">Scores by display segment within your exam scope.</string>
+    <string name="result_segments_manualChip">Manual grading</string>
+    <string name="result_segments_pendingDescription">Scores shown for graded segments are segment scores only, not the total exam score.</string>
+    <string name="result_segments_range">Questions %1$d–%2$d</string>
+    <string name="result_segments_segmentScoreLabel">Segment score</string>
+    <string name="result_segments_title">Segment breakdown</string>
+
+    <string name="result_states_GRADING">Grading</string>
+    <string name="result_states_GRADING_ERROR">Processing result</string>
+    <string name="result_states_PENDING_REVIEW">Pending review</string>
+    <string name="result_states_REGRADING">Regrading</string>
+    <string name="result_states_SCORED">Scored</string>
+
+    <string name="result_stats_blank">Blank</string>
+    <string name="result_stats_correct">Correct</string>
+    <string name="result_stats_denominator">Out of %1$s required questions.</string>
+    <string name="result_stats_partial">Partial</string>
+    <string name="result_stats_pending">Pending review</string>
+    <string name="result_stats_title">Question statistics</string>
+    <string name="result_stats_wrong">Wrong</string>
+
+    <string name="result_subjects_columns_blank">Blank</string>
+    <string name="result_subjects_columns_correct">Correct</string>
+    <string name="result_subjects_columns_partial">Partial</string>
+    <string name="result_subjects_columns_pending">Pending review</string>
+    <string name="result_subjects_columns_wrong">Wrong</string>
+    <string name="result_subjects_description">Scores by subject taken in this attempt.</string>
+    <string name="result_subjects_manualChip">Manual grading</string>
+    <string name="result_subjects_maxScoreNote">Max %1$s</string>
+    <string name="result_subjects_pendingDescription">Scores shown for graded subjects are subject scores only, not the total exam score.</string>
+    <string name="result_subjects_subjectScoreLabel">Subject score</string>
+    <string name="result_subjects_title">Subject breakdown</string>
+
+    <string name="result_total_pendingDescription">This exam includes manually graded essay questions. The total score appears once all essays are graded.</string>
+    <string name="result_total_pendingReturnNote">You may leave this screen. Open this attempt from Practice history once grading finishes to view your total score.</string>
+    <string name="result_total_pendingTitle">Pending review</string>
+    <string name="result_total_regradingNote">A grader is regrading an essay response. The score shown above is the previous score and may change once regrading finishes.</string>
+    <string name="result_total_scaleDescription">Total points earned across required questions. Blank questions score 0.</string>
+    <string name="result_total_title">Total score</string>
+    <string name="result_total_vactScaleDescription">Practice score scaled from question points to a %1$s scale.</string>
+
+    <string name="result_vact_collapseSubsections">Hide 2 subsections</string>
+    <string name="result_vact_components_ANH">English</string>
+    <string name="result_vact_components_SCIENTIFIC_THINKING">Scientific thinking</string>
+    <string name="result_vact_components_TOAN">Mathematics</string>
+    <string name="result_vact_components_VIETNAMESE">Vietnamese</string>
+    <string name="result_vact_componentsCaption">Correct counts and accuracy rates by component (per-component scores are not displayed).</string>
+    <string name="result_vact_componentsTitle">Performance by component</string>
+    <string name="result_vact_correctRatio" tools:ignore="PluralsCandidate">%1$d/%2$d correct · %3$s%%</string>
+    <string name="result_vact_expandSubsections">Show 2 subsections (12 and 18 questions)</string>
+    <string name="result_vact_practiceNote">Not an official V-ACT score</string>
+    <string name="result_vact_scoreLabel">Practice score</string>
+    <plurals name="result_vact_subsectionQuestions">
+        <item quantity="one">%1$d question</item>
+        <item quantity="other">%1$d questions</item>
+    </plurals>
+    <string name="result_vact_subsections_logicData">Logic and data analysis</string>
+    <string name="result_vact_subsections_scientificReasoning">Scientific reasoning</string>
+
+    <string name="review_backToResult">Back to result</string>
+    <string name="review_emptyPart_description">This section does not have any questions available to review.</string>
+    <string name="review_emptyPart_title">No questions in this section</string>
+    <string name="review_errorDescription">Check your network connection and try again.</string>
+    <string name="review_errorTitle">Unable to load attempt review</string>
+
+    <string name="review_essayCriteria_commentCol">Criterion comment</string>
+    <string name="review_essayCriteria_criterionCol">Criterion</string>
+    <string name="review_essayCriteria_criterionFallback">Criterion %1$d</string>
+    <string name="review_essayCriteria_pointsCol">Score</string>
+    <string name="review_essayCriteria_pointsValue">%1$s pts</string>
+    <string name="review_essayCriteria_title">Criterion breakdown</string>
+
+    <string name="review_loading">Loading attempt review</string>
+
+    <string name="review_nav_currentItem">current</string>
+    <string name="review_nav_next">Next</string>
+    <string name="review_nav_paletteItemAria">%1$s, %2$s</string>
+    <string name="review_nav_paletteLegend">Question status legend</string>
+    <string name="review_nav_paletteSummary">Correct %1$d · Partial %2$d · Wrong %3$d · Blank %4$d</string>
+    <string name="review_nav_paletteTitle">Question list</string>
+    <string name="review_nav_partsLabel">Exam sections</string>
+    <string name="review_nav_prev">Previous</string>
+    <string name="review_nav_skippedPartBadge">Skipped</string>
+
+    <string name="review_notAvailable_backToResult">Back to result</string>
+    <string name="review_notAvailable_description">The result for this attempt is not ready yet. You can review your attempt once grading completes.</string>
+    <string name="review_notAvailable_title">Attempt review is not available yet</string>
+
+    <string name="review_notFound_description">This attempt does not exist or does not belong to the signed-in account.</string>
+    <string name="review_notFound_eyebrow">ERROR 404</string>
+    <string name="review_notFound_title">Attempt review not found</string>
+    <string name="review_notFound_toHistory">Practice history</string>
+    <string name="review_notFound_toHome">My exams</string>
+
+    <string name="review_notIncluded_backToResult">Back to result</string>
+    <string name="review_notIncluded_description">The exam package you purchased includes score only. You can still view your score on the result screen.</string>
+    <string name="review_notIncluded_title">This exam does not include attempt review</string>
+
+    <string name="review_outcomes_BLANK">blank</string>
+    <string name="review_outcomes_CORRECT">correct</string>
+    <string name="review_outcomes_PARTIAL">partial</string>
+    <string name="review_outcomes_PENDING_REVIEW">pending review</string>
+    <string name="review_outcomes_WRONG">wrong</string>
+
+    <string name="review_pageTitle">Review attempt</string>
+    <string name="review_pendingBanner">This attempt still has essay questions pending manual grading. Only auto-graded questions are shown until grading completes.</string>
+    <string name="review_questionLabel">Question %1$d</string>
+    <string name="review_questionRangeLabel">Questions %1$d–%2$d</string>
+    <string name="review_scoreOnlyNotice">Solutions are not included in your purchased tier.</string>
+
+    <string name="review_skippedPart_description">This section was skipped, so there are no questions to review. Section score: %1$s/%2$s.</string>
+    <string name="review_skippedPart_descriptionNoScore">This section was skipped, so there are no questions to review.</string>
+    <string name="review_skippedPart_title">This section was skipped</string>
+
+    <string name="review_subtitle">%1$s · %2$s · Attempt %3$d</string>
+    <string name="review_subtitleWithScore">%1$s · %2$s · Attempt %3$d · Total score: %4$s/%5$s</string>
+</resources>
