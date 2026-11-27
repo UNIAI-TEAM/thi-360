@@ -19,6 +19,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -278,9 +279,9 @@ class ImeCompositionInstrumentedTest {
         composeRule.waitForIdle()
         val edits = QuestionAndroidTestSupport.findAllEditTexts(composeRule.activity.window.decorView)
         assertTrue("Expected ShortAnswer + Cloze blanks + Essay EditTexts, got ${edits.size}", edits.size >= 3)
-        val shortEdit = edits.first()
-        val clozeEdit = edits[1]
-        val essayEdit = edits.last()
+        val shortEdit = edits.first { it.hint?.toString() == "Nhập đáp số" }
+        val clozeEdit = edits.first { it.hint?.toString() == "Ô 1" }
+        val essayEdit = edits.first { it.hint?.toString() == "Viết bài của bạn tại đây" }
 
         composeRule.runOnUiThread {
             shortEdit.requestFocus()
@@ -356,14 +357,15 @@ class ImeCompositionInstrumentedTest {
         assertEquals(EssayAnswer("<p>Tiếng</p>", 1), essayAns)
         assertEquals("Tiếng", essayEdit.text.toString())
 
-        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_UNDO).performClick()
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_UNDO).performScrollTo().performClick()
         composeRule.waitForIdle()
         assertEquals("", essayEdit.text.toString())
-        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_REDO).performClick()
+        composeRule.onNodeWithTag(QuestionTestTags.ESSAY_BTN_REDO).performScrollTo().performClick()
         composeRule.waitForIdle()
         assertEquals("Tiếng", essayEdit.text.toString())
 
         composeRule.runOnUiThread {
+            essayEdit.requestFocus()
             val ic = essayEdit.onCreateInputConnection(EditorInfo())!!
             ic.commitText(" ", 1)
             ic.setComposingText("Việt", 1)
