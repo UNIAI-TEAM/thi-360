@@ -21,7 +21,8 @@ final class LocalPersistenceScanTests: XCTestCase {
         "Core/Biometric/BiometricManager.swift",
         "Core/Biometric/BiometricKeychainStore.swift",
         "Core/Biometric/BiometricModels.swift",
-        "Core/Legal/LegalRepository.swift"
+        "Core/Legal/LegalRepository.swift",
+        "Features/RichContent/Assets/AttemptAssetSource.swift"
     ]
 
     func testNoDirectLocalPersistenceOutsideAccountScopedStoreAndAllowlist() throws {

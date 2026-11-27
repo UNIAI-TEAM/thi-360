@@ -1,5 +1,5 @@
 {
-  "originHash" : "84e6b351a277bf91ab6a4a07344af2e18b312828f04e8e7b71ec8b1793165a38",
+  "originHash" : "966a569806378cc37751a48a03186dba5fe7cd7062d8e02697d2d855ca2d5621",
   "pins" : [
     {
       "identity" : "openapikit",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "5b72eb9a6b23b1fec439d9a0bf38f115400421f9",
         "version" : "6.4.0"
+      }
+    },
+    {
+      "identity" : "swatex",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/PhraseHQ/SwaTex.git",
+      "state" : {
+        "revision" : "153738a2bcdcb62450ead9ab292989e3de0a449f",
+        "version" : "0.6.0"
       }
     },
     {
@@ -80,6 +89,15 @@
       "state" : {
         "revision" : "c97e0f0187d95542b4a254f5bb4dc67f43bf73c9",
         "version" : "1.4.0"
+      }
+    },
+    {
+      "identity" : "swiftsoup",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/scinfu/SwiftSoup.git",
+      "state" : {
+        "revision" : "dee225a3da7b68d34936abc4dc8f34f2264db647",
+        "version" : "2.9.6"
       }
     },
     {

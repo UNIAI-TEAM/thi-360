@@ -89,13 +89,13 @@ class RoutePlaceholderTest {
 
         composeRule.runOnIdle { nav.switchTab(Destination.Account) }
         composeRule.runOnIdle { nav.openProfile() }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("profile")
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.account.ProfileTestTags.SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openProfileVerifyEmail() }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("profile/verify-email")
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.account.VerifyEmailTestTags.SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openDeleteAccount() }
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("account/delete")
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.account.DeleteAccountTestTags.SCREEN).assertIsDisplayed()
 
         composeRule.runOnIdle { nav.openLegal(LegalId.TERMS) }
         composeRule.onNodeWithTag(vn.unicom.thi360.core.legal.LegalTestTags.SCREEN).assertIsDisplayed()
