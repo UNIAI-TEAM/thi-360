@@ -1,6 +1,8 @@
 import SwiftUI
 
 enum CatalogRoutes {
+    @MainActor static var spansBothPanesOnPhoneBook: Bool = false
+
     @MainActor
     static func homeRoot(
         router: AppRouter? = nil,

@@ -80,12 +80,18 @@ extension AppRouter {
         if presentedAttempt != nil {
             closeAttempt()
         }
-        historyResetFilters = resetFilters
         selectedDestination = .history
+        historyResetFilters = resetFilters
         if resetFilters {
             setPath([], for: .history)
             reloadTokens[.history, default: 0] += 1
         }
+    }
+
+    @discardableResult
+    func consumeHistoryResetFilters() -> Bool {
+        defer { historyResetFilters = false }
+        return historyResetFilters
     }
 
     func openSignedOutLegal(_ id: LegalId) {
@@ -164,10 +170,10 @@ extension AppRouter {
 
     func switchTab(_ destination: Destination, reload: Bool = false) {
         selectedDestination = destination
+        if destination == .history {
+            historyResetFilters = false
+        }
         if reload {
-            if destination == .history {
-                historyResetFilters = true
-            }
             setPath([], for: destination)
             reloadTokens[destination, default: 0] += 1
         }

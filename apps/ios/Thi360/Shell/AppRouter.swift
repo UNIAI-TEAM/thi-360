@@ -17,7 +17,13 @@ enum RecoveryOverlay: Equatable, Sendable {
 @Observable
 @MainActor
 final class AppRouter {
-    var selectedDestination: Destination = .home
+    var selectedDestination: Destination = .home {
+        didSet {
+            if oldValue == .history && selectedDestination != .history {
+                historyResetFilters = false
+            }
+        }
+    }
     var paths: [Destination: [AppRoute]] = [:]
     var presentedAttempt: AttemptRef?
     var reloadTokens: [Destination: Int] = [:]

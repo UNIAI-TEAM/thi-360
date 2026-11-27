@@ -176,6 +176,15 @@ final class RouteOpenersTests: XCTestCase {
         XCTAssertTrue(router.historyResetFilters)
         XCTAssertEqual(router.path(for: .history), [])
         XCTAssertEqual(router.reloadCount(for: .history), 1)
+
+        XCTAssertTrue(router.consumeHistoryResetFilters())
+        XCTAssertFalse(router.historyResetFilters)
+        XCTAssertFalse(router.consumeHistoryResetFilters())
+
+        router.openHistory(resetFilters: true)
+        XCTAssertTrue(router.historyResetFilters)
+        router.selectedDestination = .home
+        XCTAssertFalse(router.historyResetFilters, "Leaving History tab must clear one-shot historyResetFilters")
     }
 
     func testAppRootViewExposesSessionStoreAndAppRouterInEnvironment() throws {

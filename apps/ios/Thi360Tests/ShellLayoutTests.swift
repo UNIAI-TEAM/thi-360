@@ -88,7 +88,22 @@ final class ShellLayoutTests: XCTestCase {
         defer { window.isHidden = true }
 
         XCTAssertTrue(findViews(ofType: UITabBar.self, in: controller.view).isEmpty)
-        XCTAssertEqual(findViewControllers(ofType: UINavigationController.self, in: controller).count, 2)
+        let defaultNavControllers = findViewControllers(ofType: UINavigationController.self, in: controller)
+        XCTAssertEqual(defaultNavControllers.count, 2)
+        for navController in defaultNavControllers {
+            let paneWidth = navController.view.bounds.width
+            XCTAssertGreaterThan(paneWidth, 300)
+            XCTAssertLessThan(paneWidth, 500)
+            XCTAssertEqual(
+                ShellWidth.resolve(
+                    horizontalSizeClass: .regular,
+                    layoutMode: .phoneTwoPaneBook,
+                    availableWidth: paneWidth
+                ),
+                .wide,
+                "Hosted Duo half-pane must resolve to .wide, never .twoColumn"
+            )
+        }
 
         router.openProduct(code: "duo-exam-1")
         pumpLayout(window: window)
@@ -105,6 +120,128 @@ final class ShellLayoutTests: XCTestCase {
         XCTAssertEqual(router.selectedDestination, .history)
         XCTAssertTrue(router.historyResetFilters)
         XCTAssertEqual(router.reloadCount(for: .history), 1)
+
+        let landscapeHalf = AdaptiveShellView.phoneBookHalfPaneShellWidth(
+            horizontalSizeClass: .regular,
+            layoutMode: .phoneTwoPaneBook,
+            totalWidth: 951
+        )
+        let portraitHalf = AdaptiveShellView.phoneBookHalfPaneShellWidth(
+            horizontalSizeClass: .regular,
+            layoutMode: .phoneTwoPaneBook,
+            totalWidth: 669
+        )
+        let initialZeroHalf = AdaptiveShellView.phoneBookHalfPaneShellWidth(
+            horizontalSizeClass: .regular,
+            layoutMode: .phoneTwoPaneBook,
+            totalWidth: 0
+        )
+        XCTAssertEqual(landscapeHalf, .wide, "Default 475pt half-pane on iPhone Duo must resolve to .wide, never .twoColumn")
+        XCTAssertEqual(portraitHalf, .wide, "Default 334pt half-pane on iPhone Duo portrait must resolve to .wide, never .twoColumn")
+        XCTAssertEqual(initialZeroHalf, .wide, "Initial 0pt layout pass on Duo half-pane must never flicker to .twoColumn")
+    }
+
+    func testIPhoneDuoUnfoldedFullSpanModeRendersSingleFullWidthNavigationStackAndTwoColumnShellWidth() throws {
+        let prevCatalog = CatalogRoutes.spansBothPanesOnPhoneBook
+        let prevMyExams = MyExamsRoutes.myExamsSpansBothPanesOnPhoneBook
+        let prevHistory = MyExamsRoutes.historySpansBothPanesOnPhoneBook
+        defer {
+            CatalogRoutes.spansBothPanesOnPhoneBook = prevCatalog
+            MyExamsRoutes.myExamsSpansBothPanesOnPhoneBook = prevMyExams
+            MyExamsRoutes.historySpansBothPanesOnPhoneBook = prevHistory
+        }
+
+        CatalogRoutes.spansBothPanesOnPhoneBook = true
+        MyExamsRoutes.myExamsSpansBothPanesOnPhoneBook = true
+        MyExamsRoutes.historySpansBothPanesOnPhoneBook = true
+
+        let suite = "vn.unicom.thi360.tests.layout.duo.fullspan.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let preferences = AppPreferences(userDefaults: defaults)
+        let router = AppRouter(initialDestination: .myExams)
+        let rootView = AppRootView(router: router, preferences: preferences, idiomOverride: .phone)
+        let controller = UIHostingController(rootView: rootView)
+        controller.traitOverrides.horizontalSizeClass = .regular
+
+        let window: UIWindow
+        if let activeScene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+            window = UIWindow(windowScene: activeScene)
+            window.frame = CGRect(origin: .zero, size: CGSize(width: 951, height: 669))
+        } else {
+            window = UIWindow(frame: CGRect(origin: .zero, size: CGSize(width: 951, height: 669)))
+        }
+        window.rootViewController = controller
+        window.makeKeyAndVisible()
+        pumpLayout(window: window)
+        defer { window.isHidden = true }
+
+        let navControllers = findViewControllers(ofType: UINavigationController.self, in: controller)
+        XCTAssertEqual(navControllers.count, 1, "Full-span Duo destination must render a single full-width NavigationStack")
+        let fullWidth = try XCTUnwrap(navControllers.first?.view.bounds.width)
+        XCTAssertGreaterThanOrEqual(fullWidth, 940, "Full-span Duo NavigationStack must span full 951pt width")
+        XCTAssertEqual(
+            ShellWidth.resolve(horizontalSizeClass: .regular, layoutMode: .phoneTwoPaneBook, availableWidth: fullWidth),
+            .twoColumn
+        )
+
+        let rootImage = renderWindow(window, size: CGSize(width: 951, height: 669))
+        let bottomLeadingBarRect = CGRect(x: 20, y: 605, width: 100, height: 50)
+        let bottomTrailingEmptyRect = CGRect(x: 830, y: 605, width: 100, height: 50)
+        XCTAssertTrue(
+            hasNonUniformPixels(in: rootImage, rect: bottomLeadingBarRect),
+            "Full-span Duo root must render duoLeftTabBar at bottom-leading"
+        )
+        XCTAssertFalse(
+            hasNonUniformPixels(in: rootImage, rect: bottomTrailingEmptyRect),
+            "Full-span Duo root must keep bottom-trailing clear of duoLeftTabBar"
+        )
+
+        let prevAnimationsEnabled = UIView.areAnimationsEnabled
+        UIView.setAnimationsEnabled(false)
+        defer { UIView.setAnimationsEnabled(prevAnimationsEnabled) }
+
+        router.openPrepare(entitlementId: "ent-duo-full")
+        pumpLayout(window: window, duration: 0.15)
+        XCTAssertEqual(router.path(for: .myExams), [.prepare(entitlementId: "ent-duo-full")])
+        XCTAssertEqual(
+            navControllers.first?.viewControllers.count,
+            2,
+            "Pushed route on full-span Duo must push onto the single full-width NavigationStack"
+        )
+        let pushedImage = renderWindow(window, size: CGSize(width: 951, height: 669))
+        XCTAssertTrue(
+            hasNonUniformPixels(in: pushedImage, rect: bottomTrailingEmptyRect),
+            "Pushed full-span route must render across the full 951pt width"
+        )
+        XCTAssertNotEqual(
+            rootImage.pngData(),
+            pushedImage.pngData(),
+            "Pushing route on full-span Duo must replace root and hide duoLeftTabBar"
+        )
+
+        router.back()
+        pumpLayout(window: window, duration: 0.15)
+        XCTAssertEqual(router.path(for: .myExams), [])
+        XCTAssertEqual(navControllers.first?.viewControllers.count, 1)
+        let restoredImage = renderWindow(window, size: CGSize(width: 951, height: 669))
+        XCTAssertTrue(
+            hasNonUniformPixels(in: restoredImage, rect: bottomLeadingBarRect),
+            "Returning to full-span Duo root must restore duoLeftTabBar"
+        )
+        XCTAssertFalse(
+            hasNonUniformPixels(in: restoredImage, rect: bottomTrailingEmptyRect),
+            "Returning to full-span Duo root must restore trailing bottom clearance"
+        )
+
+        router.switchTab(.account)
+        pumpLayout(window: window)
+        XCTAssertEqual(
+            findViewControllers(ofType: UINavigationController.self, in: controller).count,
+            2,
+            "Account tab must keep two-pane Duo split even when portal tabs opt into full-span"
+        )
     }
 
     func testSplitViewCompact() {
@@ -294,10 +431,10 @@ final class ShellLayoutTests: XCTestCase {
         return true
     }
 
-    private func pumpLayout(window: UIWindow) {
+    private func pumpLayout(window: UIWindow, duration: TimeInterval = 0.05) {
         window.setNeedsLayout()
         window.layoutIfNeeded()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        RunLoop.main.run(until: Date().addingTimeInterval(duration))
         window.layoutIfNeeded()
     }
 
@@ -324,5 +461,56 @@ final class ShellLayoutTests: XCTestCase {
             found.append(contentsOf: findViewControllers(ofType: type, in: child))
         }
         return found
+    }
+
+    private func renderWindow(_ window: UIWindow, size: CGSize) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1.0
+        format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: size, format: format)
+        return renderer.image { context in
+            let drew = window.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
+            if !drew {
+                window.layer.render(in: context.cgContext)
+            }
+        }
+    }
+
+    private func hasNonUniformPixels(in image: UIImage, rect: CGRect) -> Bool {
+        guard let cgImage = image.cgImage,
+              let data = cgImage.dataProvider?.data,
+              let bytes = CFDataGetBytePtr(data)
+        else {
+            return false
+        }
+        let scale = image.scale
+        let minX = max(0, Int(rect.minX * scale))
+        let maxX = min(cgImage.width - 1, Int(rect.maxX * scale))
+        let minY = max(0, Int(rect.minY * scale))
+        let maxY = min(cgImage.height - 1, Int(rect.maxY * scale))
+        guard minX < maxX, minY < maxY else { return false }
+
+        let bytesPerPixel = max(4, cgImage.bitsPerPixel / 8)
+        let bytesPerRow = cgImage.bytesPerRow
+        let baseOffset = minY * bytesPerRow + minX * bytesPerPixel
+        let baseR = Int(bytes[baseOffset])
+        let baseG = Int(bytes[baseOffset + 1])
+        let baseB = Int(bytes[baseOffset + 2])
+
+        var y = minY
+        while y <= maxY {
+            var x = minX
+            while x <= maxX {
+                let offset = y * bytesPerRow + x * bytesPerPixel
+                if abs(Int(bytes[offset]) - baseR) > 6
+                    || abs(Int(bytes[offset + 1]) - baseG) > 6
+                    || abs(Int(bytes[offset + 2]) - baseB) > 6 {
+                    return true
+                }
+                x += 4
+            }
+            y += 4
+        }
+        return false
     }
 }

@@ -39,7 +39,7 @@ struct AdaptiveShellView: View {
                 case .iPadSidebar:
                     iPadSidebarShell
                 case .phoneTwoPaneBook:
-                    phoneTwoPaneBookShell
+                    phoneTwoPaneBookShell(totalWidth: proxy.size.width, fullWidthClass: widthClass)
                 }
             }
             .environment(\.shellWidth, widthClass)
@@ -157,33 +157,49 @@ struct AdaptiveShellView: View {
         .navigationSplitViewStyle(.balanced)
     }
 
-    private var phoneTwoPaneBookShell: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                NavigationStack {
-                    leftBookPaneContent
-                        .id(router.reloadCount(for: router.selectedDestination))
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private func destinationSpansBothPanesOnPhoneBook(_ destination: Destination) -> Bool {
+        switch destination {
+        case .home:
+            CatalogRoutes.spansBothPanesOnPhoneBook
+        case .myExams:
+            MyExamsRoutes.myExamsSpansBothPanesOnPhoneBook
+        case .history:
+            MyExamsRoutes.historySpansBothPanesOnPhoneBook
+        case .account:
+            false
+        }
+    }
 
-                duoLeftTabBar
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
-                    .background(palette.bgPageColor)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.bgPageColor)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("shell.duo.leftPane")
+    static func phoneBookHalfPaneWidth(totalWidth: CGFloat) -> CGFloat {
+        max(0, (totalWidth - 1) / 2)
+    }
 
-            Rectangle()
-                .fill(palette.borderColor)
-                .frame(width: 1)
-                .ignoresSafeArea()
+    static func phoneBookHalfPaneShellWidth(
+        horizontalSizeClass: UserInterfaceSizeClass?,
+        layoutMode: ShellLayoutMode,
+        totalWidth: CGFloat
+    ) -> ShellWidth {
+        let halfWidth = phoneBookHalfPaneWidth(totalWidth: totalWidth)
+        guard halfWidth > 0 else { return .wide }
+        return ShellWidth.resolve(
+            horizontalSizeClass: horizontalSizeClass,
+            layoutMode: layoutMode,
+            availableWidth: halfWidth
+        )
+    }
 
+    @ViewBuilder
+    private func phoneTwoPaneBookShell(totalWidth: CGFloat, fullWidthClass: ShellWidth) -> some View {
+        let halfWidth = Self.phoneBookHalfPaneWidth(totalWidth: totalWidth)
+        let halfWidthClass = Self.phoneBookHalfPaneShellWidth(
+            horizontalSizeClass: effectiveSizeClass,
+            layoutMode: layoutMode,
+            totalWidth: totalWidth
+        )
+
+        if destinationSpansBothPanesOnPhoneBook(router.selectedDestination) {
             NavigationStack(path: router.pathBinding(for: router.selectedDestination)) {
-                rightBookPaneContent
+                destinationContent(for: router.selectedDestination, showsBrandHeader: true)
                     .id(router.reloadCount(for: router.selectedDestination))
                     .navigationDestination(for: AppRoute.self) { route in
                         AppRouteView(
@@ -196,12 +212,71 @@ struct AdaptiveShellView: View {
                         )
                     }
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if router.path(for: router.selectedDestination).isEmpty {
+                    HStack(spacing: 0) {
+                        duoLeftTabBar
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 12)
+                            .frame(width: halfWidth)
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(palette.bgPageColor)
+            .background(palette.bgPageColor.ignoresSafeArea())
+            .environment(\.shellWidth, fullWidthClass)
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("shell.duo.rightPane")
+            .accessibilityIdentifier("shell.duo.fullSpanPane")
+        } else {
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    NavigationStack {
+                        leftBookPaneContent
+                            .id(router.reloadCount(for: router.selectedDestination))
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    duoLeftTabBar
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
+                        .background(palette.bgPageColor)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(palette.bgPageColor)
+                .environment(\.shellWidth, halfWidthClass)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("shell.duo.leftPane")
+
+                Rectangle()
+                    .fill(palette.borderColor)
+                    .frame(width: 1)
+                    .ignoresSafeArea()
+
+                NavigationStack(path: router.pathBinding(for: router.selectedDestination)) {
+                    rightBookPaneContent
+                        .id(router.reloadCount(for: router.selectedDestination))
+                        .navigationDestination(for: AppRoute.self) { route in
+                            AppRouteView(
+                                route: route,
+                                destination: router.selectedDestination,
+                                router: router,
+                                preferences: preferences,
+                                legalRepository: legalRepository,
+                                webBaseURL: webBaseURL
+                            )
+                        }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(palette.bgPageColor)
+                .environment(\.shellWidth, halfWidthClass)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("shell.duo.rightPane")
+            }
+            .background(palette.bgPageColor.ignoresSafeArea())
         }
-        .background(palette.bgPageColor.ignoresSafeArea())
     }
 
     @ViewBuilder

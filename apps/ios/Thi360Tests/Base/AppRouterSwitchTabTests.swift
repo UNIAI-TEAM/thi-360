@@ -52,16 +52,16 @@ final class AppRouterSwitchTabTests: XCTestCase {
         XCTAssertEqual(router.path(for: .myExams), [.result(attemptId: "att-42")])
     }
 
-    func testSwitchTabReloadTrueOnHistorySetsResetFiltersAndIncrementsReload() {
+    func testSwitchTabReloadTrueOnHistoryPreservesExistingFiltersAndIncrementsReload() {
         let router = AppRouter(initialDestination: .myExams)
-        router.switchTab(.history)
+        router.openHistory(resetFilters: true)
+        XCTAssertTrue(router.historyResetFilters)
         router.openResult(attemptId: "att-9")
-        router.switchTab(.myExams)
 
         router.switchTab(.history, reload: true)
         XCTAssertEqual(router.selectedDestination, .history)
-        XCTAssertTrue(router.historyResetFilters)
+        XCTAssertFalse(router.historyResetFilters, "switchTab(.history, reload: true) must preserve existing History filters")
         XCTAssertEqual(router.path(for: .history), [])
-        XCTAssertEqual(router.reloadCount(for: .history), 1)
+        XCTAssertEqual(router.reloadCount(for: .history), 2)
     }
 }

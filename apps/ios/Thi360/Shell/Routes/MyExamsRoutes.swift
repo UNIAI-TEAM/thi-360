@@ -1,6 +1,9 @@
 import SwiftUI
 
 enum MyExamsRoutes {
+    @MainActor static var myExamsSpansBothPanesOnPhoneBook: Bool = false
+    @MainActor static var historySpansBothPanesOnPhoneBook: Bool = false
+
     @MainActor
     static func myExamsRoot(
         router: AppRouter? = nil,
