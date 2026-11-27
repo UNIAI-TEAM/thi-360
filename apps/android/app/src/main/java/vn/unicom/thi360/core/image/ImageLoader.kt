@@ -24,7 +24,9 @@ internal class HostScopedBearerInterceptor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         val builder = original.newBuilder().removeHeader(AUTHORIZATION_HEADER)
-        if (original.url.host.equals(apiHost, ignoreCase = true)) {
+        if (original.url.host.equals(apiHost, ignoreCase = true) &&
+            !original.url.encodedPath.startsWith(PUBLIC_API_PATH_PREFIX)
+        ) {
             val token = accessTokenProvider()
             if (!token.isNullOrBlank()) {
                 builder.header(AUTHORIZATION_HEADER, "Bearer $token")
@@ -35,6 +37,7 @@ internal class HostScopedBearerInterceptor(
 
     companion object {
         private const val AUTHORIZATION_HEADER = "Authorization"
+        internal const val PUBLIC_API_PATH_PREFIX = "/api/v1/public/"
     }
 }
 
@@ -43,7 +46,10 @@ internal class HostScopedTokenAuthenticator(
     private val delegate: TokenAuthenticator,
 ) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request? {
-        if (!response.request.url.host.equals(apiHost, ignoreCase = true)) {
+        val url = response.request.url
+        if (!url.host.equals(apiHost, ignoreCase = true) ||
+            url.encodedPath.startsWith(HostScopedBearerInterceptor.PUBLIC_API_PATH_PREFIX)
+        ) {
             return null
         }
         return delegate.authenticate(route, response)
