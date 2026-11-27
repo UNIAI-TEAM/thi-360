@@ -39,10 +39,10 @@ import vn.unicom.thi360.core.preferences.AppPreferences
 import vn.unicom.thi360.core.preferences.ThemeMode
 import vn.unicom.thi360.core.session.SignOutReason
 import vn.unicom.thi360.core.theme.Thi360Theme
+import vn.unicom.thi360.core.ui.LoadState
 import vn.unicom.thi360.feature.account.AccountDetailPane
 import vn.unicom.thi360.feature.account.AccountScreenContent
 import vn.unicom.thi360.feature.account.AccountTestTags
-import vn.unicom.thi360.feature.account.ProfileLoadState
 import vn.unicom.thi360.feature.account.UserProfile
 import vn.unicom.thi360.feature.lock.LockScreenContent
 import vn.unicom.thi360.feature.lock.LockTestTags
@@ -680,7 +680,7 @@ class AccessibilityAndFontScaleTest {
             accountContent = { isTwoPane ->
                 AccountScreenContent(
                     isTwoPaneWidth = isTwoPane,
-                    profileState = ProfileLoadState.Loaded(sampleProfile),
+                    profileState = LoadState.Loaded(sampleProfile),
                     preferences = AppPreferences(locale = AppLocale.VI, themeMode = ThemeMode.LIGHT),
                     biometricState = BiometricState.On,
                     selectedPane = AccountDetailPane.CHANGE_PASSWORD,

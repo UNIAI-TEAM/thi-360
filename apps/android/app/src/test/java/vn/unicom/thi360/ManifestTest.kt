@@ -99,12 +99,15 @@ class ManifestTest {
             declaredPermissions += element.getAttribute("android:name")
         }
         assertEquals(
-            "AndroidManifest.xml must only declare INTERNET and ACCESS_NETWORK_STATE",
-            setOf(Manifest.permission.INTERNET, Manifest.permission.ACCESS_NETWORK_STATE),
+            "AndroidManifest.xml must only declare INTERNET, ACCESS_NETWORK_STATE, and CAMERA",
+            setOf(
+                Manifest.permission.INTERNET,
+                Manifest.permission.ACCESS_NETWORK_STATE,
+                Manifest.permission.CAMERA,
+            ),
             declaredPermissions,
         )
 
-        // Verify shared FileProvider declaration.
         val providerInfo = context.packageManager.getProviderInfo(
             ComponentName(context, FileProvider::class.java),
             PackageManager.GET_META_DATA,
@@ -113,21 +116,25 @@ class ManifestTest {
         assertFalse("Shared FileProvider must not be exported", providerInfo.exported)
         assertTrue("Shared FileProvider must enable grantUriPermissions", providerInfo.grantUriPermissions)
 
-        // Verify file_provider_paths.xml exists and has zero child path entries in Wave 1.
         val parser = context.resources.getXml(R.xml.file_provider_paths)
-        val childTags = mutableListOf<String>()
+        val childEntries = mutableListOf<Triple<String, String?, String?>>()
         parser.use { xml ->
             var event = xml.eventType
             while (event != XmlPullParser.END_DOCUMENT) {
                 if (event == XmlPullParser.START_TAG && xml.name != "paths") {
-                    childTags += xml.name
+                    childEntries += Triple(
+                        xml.name,
+                        xml.getAttributeValue(null, "name"),
+                        xml.getAttributeValue(null, "path"),
+                    )
                 }
                 event = xml.next()
             }
         }
-        assertTrue(
-            "file_provider_paths.xml must be empty in Wave 1, found: $childTags",
-            childTags.isEmpty(),
+        assertEquals(
+            "file_provider_paths.xml must declare only the avatar camera cache-path entry",
+            listOf(Triple("cache-path", "avatar_camera", "avatar-captures/")),
+            childEntries,
         )
     }
 }

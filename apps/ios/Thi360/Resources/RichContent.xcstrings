@@ -1,0 +1,40 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "richContent.image.loadError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not load the image. Tap to reload."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không tải được ảnh. Bấm để tải lại."
+          }
+        }
+      }
+    },
+    "richContent.image.zoomButton" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom image"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phóng to ảnh"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
