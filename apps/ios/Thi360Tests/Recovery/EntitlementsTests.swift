@@ -26,8 +26,14 @@ final class EntitlementsTests: XCTestCase {
         )
 
         let domains = try XCTUnwrap(plist["com.apple.developer.associated-domains"] as? [String])
-        XCTAssertEqual(domains.count, 1, "Entitlements must contain exactly one applinks entry")
-        XCTAssertEqual(domains.first, "applinks:$(THI360_WEB_APPLINKS_HOST)")
+        XCTAssertEqual(
+            domains,
+            [
+                "applinks:$(THI360_WEB_APPLINKS_HOST)",
+                "webcredentials:$(THI360_WEB_APPLINKS_HOST)"
+            ],
+            "Entitlements must declare exact applinks and webcredentials entries for THI360_WEB_APPLINKS_HOST"
+        )
         XCTAssertFalse(domains.contains { $0.contains("*") }, "Associated Domains must never use wildcards")
     }
 

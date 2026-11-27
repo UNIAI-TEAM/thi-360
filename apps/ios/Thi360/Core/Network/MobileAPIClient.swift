@@ -70,6 +70,12 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
     let authenticatedClient: Client
     let refresher: TokenRefresher
 
+    private let configuration: Configuration
+    private let transport: any ClientTransport
+    private let acceptLanguage: AcceptLanguageMiddleware
+    private let retryAfter: RetryAfterMiddleware
+    private let logging: NetworkLoggingMiddleware
+
     init(
         serverURL: URL,
         tokenStore: any TokenStore,
@@ -83,6 +89,12 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
         let acceptLanguage = AcceptLanguageMiddleware(localeProvider: localeProvider)
         let retryAfter = RetryAfterMiddleware()
         let logging = NetworkLoggingMiddleware(logger: logger)
+
+        self.configuration = configuration
+        self.transport = transport
+        self.acceptLanguage = acceptLanguage
+        self.retryAfter = retryAfter
+        self.logging = logging
 
         let publicClient = Client(
             serverURL: serverURL,
@@ -106,6 +118,15 @@ final class MobileAPIClient: MobileAuthClientProtocol, MobileRecoveryClientProto
             configuration: configuration,
             transport: transport,
             middlewares: [acceptLanguage, retryAfter, bearer, logging]
+        )
+    }
+
+    func makePublicClient(leadingMiddlewares: [any ClientMiddleware]) -> Client {
+        Client(
+            serverURL: serverURL,
+            configuration: configuration,
+            transport: transport,
+            middlewares: leadingMiddlewares + [acceptLanguage, retryAfter, logging]
         )
     }
 
