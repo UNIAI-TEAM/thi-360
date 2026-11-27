@@ -7,7 +7,7 @@
 export { RichTextView, type RichTextViewProps } from "./rich-text-view";
 export { hasUnbalancedMath, questionHtmlText, sanitizeQuestionHtml } from "./sanitize";
 export type { SanitizeResult, SanitizeViolation } from "./sanitize";
-export { deferUntilMhchem, renderMath } from "./math-render";
+export { deferUntilMhchem, markChargeSigns, renderMath } from "./math-render";
 export {
   ALLOWED_TAGS,
   attributeAllowed,

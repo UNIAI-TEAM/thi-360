@@ -131,12 +131,20 @@ describe("trinh soan Dien khuyet", () => {
     expect(first).toHaveAttribute("aria-invalid", "true");
     expect(navigation.push).not.toHaveBeenCalled();
 
-    // Xóa chỗ trống trong đề bài bằng tay làm số chỗ trống lệch số ô.
-    await user.clear(first);
-    await user.type(first, "1");
-    await user.type(screen.getByRole("textbox", { name: "Answer 1 for blank 1" }), "thủ đô");
-    const text = screen.getByRole("textbox", { name: /^Question text/ });
-    rich(text).set("<p>Chỉ còn một chỗ trống ___ thôi.</p>");
+  });
+
+  it("dữ liệu cũ có số ___ lệch số ô thì vẫn chặn lưu, mở biểu mẫu không tự bỏ ô nào", async () => {
+    const user = userEvent.setup();
+    const id = await seedQuestion("CLOZE", (values) => {
+      values.content = "Chỉ còn một chỗ trống ___ thôi.";
+      values.body.blanks = [
+        { id: "b1", answers: [{ id: "a1", value: "x" }], points: "1" },
+        { id: "b2", answers: [{ id: "a2", value: "y" }], points: "1" },
+      ];
+    });
+    renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+    expect(await screen.findByText("The text has 1 gap ___ and 2 answer blanks.")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Answer 1 for blank 2" })).toHaveValue("y");
     await user.click(screen.getByRole("button", { name: "Save question" }));
     expect(
       await screen.findByText("The number of ___ gaps in the text must equal the number of answer blanks."),
@@ -180,5 +188,67 @@ describe("trinh soan Dien khuyet", () => {
     expect(screen.getByRole("textbox", { name: "Answer 1 for blank 1" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "Answer 1 for blank 2" })).toHaveValue("x");
     expect(screen.getByRole("textbox", { name: "Answer 1 for blank 3" })).toHaveValue("y");
+  });
+
+  describe("xóa ___ khỏi Đề bài bỏ đúng ô đáp án tương ứng (UNI-2878)", () => {
+    const html = "<p>A ___ B ___ C ___.</p>";
+
+    async function openThreeBlanks() {
+      const id = await seedQuestion("CLOZE", (values) => {
+        values.content = html;
+        values.body.blanks = ["x", "y", "z"].map((value, index) => ({
+          id: `b${index + 1}`,
+          answers: [{ id: `a${index + 1}`, value }],
+          points: "1",
+        }));
+      });
+      renderEn(<QuestionEditorView mode="edit" questionId={id} />);
+      const text = await screen.findByRole("textbox", { name: /^Question text/ });
+      expect(await screen.findByRole("textbox", { name: "Answer 1 for blank 3" })).toHaveValue("z");
+      return text;
+    }
+
+    const answers = () =>
+      screen.queryAllByRole("textbox", { name: /^Answer 1 for blank \d+$/ }).map((input) => (input as HTMLInputElement).value);
+
+    it("xóa ___ ở giữa bỏ ô giữa, các ô khác giữ đáp án; hoàn tác trả lại ô cùng đáp án", async () => {
+      const text = await openThreeBlanks();
+      await rich(text).placeCaretAfter("C ");
+
+      rich(text).set("<p>A ___ B  C ___.</p>");
+      await waitFor(() => expect(answers()).toEqual(["x", "z"]));
+      expect(screen.getByText("The text has 2 gaps ___ and 2 answer blanks.")).toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: /^Points \(calculated\)/ })).toHaveValue("2");
+      // Bỏ ô không cướp tiêu điểm khỏi ô Đề bài.
+      expect(text.contains(document.activeElement)).toBe(true);
+
+      // Ctrl+Z đưa đề bài về như cũ: ô 2 quay lại đúng chỗ với đáp án cũ.
+      rich(text).set(html);
+      await waitFor(() => expect(answers()).toEqual(["x", "y", "z"]));
+      expect(screen.getByText("The text has 3 gaps ___ and 3 answer blanks.")).toBeInTheDocument();
+    });
+
+    it("bôi đen nhiều ___ rồi xóa bỏ đủ các ô đó", async () => {
+      const text = await openThreeBlanks();
+      rich(text).set("<p>A  C ___.</p>");
+      await waitFor(() => expect(answers()).toEqual(["z"]));
+      expect(screen.getByText("The text has 1 gap ___ and 1 answer blank.")).toBeInTheDocument();
+    });
+
+    it("chọn tất cả rồi xóa thì không còn ô nào", async () => {
+      const text = await openThreeBlanks();
+      rich(text).set("<p></p>");
+      await waitFor(() => expect(answers()).toEqual([]));
+      expect(screen.getByText("The text has 0 gaps ___ and 0 answer blanks.")).toBeInTheDocument();
+      expect(screen.queryByText("Enter at least one accepted answer.")).not.toBeInTheDocument();
+    });
+
+    it("sửa chữ khác trong đề bài không bỏ ô nào", async () => {
+      const text = await openThreeBlanks();
+      rich(text).set("<p>A ___ Bờ biển ___ C ___ thêm chữ.</p>");
+      rich(text).set("<p>A ___ ___ C ___.</p>");
+      await waitFor(() => expect(answers()).toEqual(["x", "y", "z"]));
+      expect(screen.getByText("The text has 3 gaps ___ and 3 answer blanks.")).toBeInTheDocument();
+    });
   });
 });

@@ -68,6 +68,39 @@ test("ED-QA flow 1: Toan question with a formula built in the visual math field"
   await expect(paper.locator(".math-inline .katex").first()).toBeVisible();
 });
 
+test("UNI-2878: multi-digit exponents stay in the superscript for every power template", async ({ page, context }) => {
+  await loginAdmin(context);
+  await openNewQuestion(page, "SINGLE_CHOICE");
+  await editable(page, 0).click();
+  await insertButton(page, "Math formula").click();
+  const dialog = page.getByRole("dialog");
+  const field = dialog.locator("math-field");
+  await expect(field).toBeVisible();
+  const latex = dialog.getByLabel("LaTeX code");
+
+  // Typed caret: mathlive's default smartSuperscript used to jump out after the first digit (2^12 became 2^1 2).
+  await field.click();
+  await page.keyboard.type("2^12");
+  await expect(latex).toHaveValue("2^{12}");
+
+  const cases: Array<{ button: string; keys: string[]; expected: string }> = [
+    { button: "Power of e", keys: ["12"], expected: "e^{12}" },
+    { button: "Power of ten", keys: ["12"], expected: "10^{12}" },
+    { button: "Power", keys: ["2", "Tab", "12"], expected: "2^{12}" },
+    { button: "Subscript and superscript", keys: ["a", "Tab", "123", "Tab", "45"], expected: "a_{123}^{45}" },
+  ];
+  await dialog.getByRole("tab", { name: "Powers, indices" }).click();
+  for (const item of cases) {
+    await latex.fill("");
+    await dialog.getByRole("button", { name: item.button, exact: true }).click();
+    for (const key of item.keys) {
+      if (key === "Tab") await page.keyboard.press("Tab");
+      else await page.keyboard.type(key);
+    }
+    await expect(latex).toHaveValue(item.expected);
+  }
+});
+
 test("ED-QA flow 2: Hoa question with a chemical equation from the chemistry dialog", async ({ page, context }) => {
   await loginAdmin(context);
   const admin = await adminApi();

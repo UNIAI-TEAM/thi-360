@@ -1,5 +1,6 @@
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import "./math-render.css";
 
 const MHCHEM_COMMAND = /\\(?:ce|pu)(?![A-Za-z])/;
 let mhchemLoaded = false;
@@ -22,6 +23,22 @@ function whenMhchemReady(latex: string): Promise<void> | null {
     },
   );
   return mhchemLoading;
+}
+
+/** Dấu điện tích của mhchem: `+` hoặc dấu trừ U+2212, đứng riêng một nút trong chỉ số trên. */
+const CHARGE_SIGN = /^[+\u2212]$/;
+
+/**
+ * Đánh dấu dấu `+`/`−` của điện tích ion (`Fe^3-`, `Na+`, `SO4^2-`) trong một công thức `\ce`/`\pu` KaTeX vừa dựng.
+ * Glyph `+`/`−` của KaTeX_Main là nét mảnh bằng độ dày gạch phân số; ở cỡ chỉ số trên nét chỉ còn khoảng nửa điểm ảnh
+ * nên trình duyệt làm mờ, trông nhạt hơn chữ số bên cạnh. Lớp `math-charge-sign` (math-render.css) tô dày nét bằng
+ * chính màu chữ. Công thức toán thường không đổi.
+ */
+export function markChargeSigns(latex: string, target: HTMLElement) {
+  if (!MHCHEM_COMMAND.test(latex)) return;
+  for (const node of target.querySelectorAll<HTMLElement>(".katex .msupsub .mord.mtight")) {
+    if (!node.firstElementChild && CHARGE_SIGN.test(node.textContent ?? "")) node.classList.add("math-charge-sign");
+  }
 }
 
 /**
@@ -53,6 +70,7 @@ function renderLatex(latex: string, displayMode: boolean, target: HTMLElement, f
   if (deferUntilMhchem(latex, target, () => renderLatex(latex, displayMode, target, fallbackText))) return;
   try {
     katex.render(latex, target, { displayMode, throwOnError: true });
+    markChargeSigns(latex, target);
   } catch {
     target.classList.add("math-error");
     target.textContent = fallbackText ?? latex;

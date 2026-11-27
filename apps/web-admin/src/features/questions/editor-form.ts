@@ -157,6 +157,48 @@ export function findInsertedBlankIndex(previousContent: string, nextContent: str
   return keptBefore;
 }
 
+/** Vị trí bắt đầu của từng `___` (quét trái sang phải như `countBlankMarkers`). */
+function blankMarkerStarts(content: string): number[] {
+  const starts: number[] = [];
+  let found = content.indexOf(BLANK_MARKER);
+  while (found !== -1) {
+    starts.push(found);
+    found = content.indexOf(BLANK_MARKER, found + BLANK_MARKER.length);
+  }
+  return starts;
+}
+
+/**
+ * Chiều ngược của `findInsertedBlankIndex`: khi đề bài mất bớt `___` (xóa, cắt, bôi đen rồi xóa, sửa một dấu gạch), trả
+ * chỉ số (tính từ 0, tăng dần) của các chỗ trống cũ đã biến mất. Đối chiếu tiền tố chung và hậu tố chung của hai nội dung:
+ * chỗ trống nằm trọn trong phần giữ nguyên ở hai đầu được giữ; trong đoạn bị thay, chỗ trống mới còn lại được coi là
+ * những chỗ trống đầu của đoạn, phần dư phía sau là phần bị xóa. Không mất chỗ trống nào thì trả mảng rỗng.
+ */
+export function findRemovedBlankIndices(previousContent: string, nextContent: string): number[] {
+  const starts = blankMarkerStarts(previousContent);
+  const nextCount = countBlankMarkers(nextContent);
+  if (nextCount >= starts.length) return [];
+  const maxShared = Math.min(previousContent.length, nextContent.length);
+  let prefixLen = 0;
+  while (prefixLen < maxShared && previousContent[prefixLen] === nextContent[prefixLen]) prefixLen += 1;
+  let suffixLen = 0;
+  while (
+    suffixLen < maxShared - prefixLen &&
+    previousContent[previousContent.length - 1 - suffixLen] === nextContent[nextContent.length - 1 - suffixLen]
+  ) {
+    suffixLen += 1;
+  }
+  const changedEnd = previousContent.length - suffixLen;
+  const keptBefore = starts.filter((start) => start + BLANK_MARKER.length <= prefixLen).length;
+  const keptAfter = starts.filter((start) => start >= changedEnd).length;
+  const affected = starts.length - keptBefore - keptAfter;
+  const survivors = Math.max(0, nextCount - keptBefore - keptAfter);
+  const removed = Math.min(affected - survivors, starts.length - nextCount);
+  if (removed <= 0) return [];
+  const first = keptBefore + survivors;
+  return Array.from({ length: removed }, (_, offset) => first + offset);
+}
+
 /** Khoảng hợp lệ của `blankNumberStart` (spec UNI-2638 mục 3.4). */
 export const BLANK_NUMBER_START_MIN = 1;
 export const BLANK_NUMBER_START_MAX = 200;

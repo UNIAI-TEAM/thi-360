@@ -1,7 +1,7 @@
 import type { Editor, JSONContent } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { MATH_BLOCK_NODE, MATH_INLINE_NODE } from "../../extensions";
-import { isCeLatex, parseCeLatex, type CeParts } from "./ce";
+import { isCeLatex, parseCeLatex } from "./ce";
 
 /** Công thức hóa học đang được chọn khi hộp mở lại để sửa (spec 4.3). */
 export interface ChemistryTarget {
@@ -10,8 +10,8 @@ export interface ChemistryTarget {
   to: number;
   /** `true` khi công thức đang ở dạng khối (`span.math-block`). */
   display: boolean;
-  /** Ba ô của hộp tách từ `\ce{…}`. */
-  parts: CeParts;
+  /** Chuỗi gõ nhanh đọc từ `\ce{…}`, kèm điều kiện của mọi mũi tên. */
+  body: string;
 }
 
 /** Công thức hóa học trong vùng chọn hiện tại (NodeSelection của node công thức mà `latex` bắt đầu bằng `\ce`). */
@@ -23,9 +23,9 @@ export function readChemistryTarget(editor: Editor): ChemistryTarget | null {
   if (name !== MATH_INLINE_NODE && name !== MATH_BLOCK_NODE) return null;
   const latex = typeof node.attrs.latex === "string" ? node.attrs.latex : "";
   if (!isCeLatex(latex)) return null;
-  const parts = parseCeLatex(latex);
-  if (!parts) return null;
-  return { from: selection.from, to: selection.to, display: name === MATH_BLOCK_NODE, parts };
+  const body = parseCeLatex(latex);
+  if (body === null) return null;
+  return { from: selection.from, to: selection.to, display: name === MATH_BLOCK_NODE, body };
 }
 
 export interface ChemistryInsertion {

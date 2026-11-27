@@ -22,7 +22,10 @@ export function DropdownMenuContent({
         sideOffset={sideOffset}
         align={align}
         className={cn(
-          "z-50 min-w-48 overflow-hidden rounded-lg border border-border bg-surface p-1 shadow-md",
+          "z-50 min-w-48 overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-md",
+          // Danh sách dài (vd. Thêm nhãn của câu hỏi) gọn trong 20rem (~8 mục) và cuộn bên trong; màn thấp thì nhỏ hơn nữa
+          // theo chỗ trống Radix đo được, trừ lề 8px (UNI-2878).
+          "max-h-[min(20rem,calc(var(--radix-dropdown-menu-content-available-height)-0.5rem))]",
           // Chỉ chạy hiệu ứng trong `motion-safe:`: lớp `motion-reduce:animate-none` không thắng nổi bộ chọn `[data-state]` (U-13).
           "motion-safe:data-[state=open]:animate-fade-in",
           className,

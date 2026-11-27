@@ -58,4 +58,12 @@ describe("math palette data", () => {
     expect(PALETTE_LATEX.frac).toBe(`\\frac{${PLACEHOLDER}}{${PLACEHOLDER}}`);
     expect(paletteGlyphLatex(PALETTE_LATEX.frac ?? "")).toBe("\\frac{\\square}{\\square}");
   });
+
+  it("offers a space and a wide space in the common tab, since typed spaces are ignored in math (UNI-2878)", () => {
+    expect(PALETTE_TABS.find((tab) => tab.id === "common")?.items).toEqual(expect.arrayContaining(["space", "wideSpace"]));
+    expect(PALETTE_LATEX.space).toBe("\\ ");
+    expect(PALETTE_LATEX.wideSpace).toBe("\\quad");
+    expect(vi.richText.insertDialog.math.palette.space).toBe("Dấu cách");
+    expect(vi.richText.insertDialog.math.palette.wideSpace).toBe("Khoảng cách rộng (tách hai công thức)");
+  });
 });

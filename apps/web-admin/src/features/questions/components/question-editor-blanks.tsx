@@ -11,7 +11,9 @@ import {
   draftRowId,
   emptyBlank,
   findInsertedBlankIndex,
+  findRemovedBlankIndices,
   removeBlankMarker,
+  type EditorBlank,
   type QuestionEditorValues,
 } from "../editor-form";
 import { FieldErrorText, GroupError, useAnnounce, useEditorError, useRichEditorRegistry, type BodyPath, type ContentPath } from "./question-editor-shared";
@@ -19,8 +21,8 @@ import { FieldErrorText, GroupError, useAnnounce, useEditorError, useRichEditorR
 /**
  * Ô trống của câu Điền đáp án (canvas `CauHoiDienDapAnForm`). Chỗ trống là `___` trong đề bài: "Thêm ô trống" chèn
  * `___` đúng chỗ con trỏ trong ô Đề bài (cuối đề bài nếu ô chưa từng được focus) và thêm dòng đáp án đúng thứ tự; xóa
- * dòng thì bỏ chỗ trống tương ứng. Mỗi ô có thể có nhiều đáp án chấp nhận. Kiểu đáp án (Số / Văn bản) của bản vẽ chưa
- * có trong mô hình dữ liệu.
+ * dòng thì bỏ chỗ trống tương ứng; gõ/dán `___` thẳng vào đề bài thì thêm dòng, xóa `___` khỏi đề bài thì bỏ dòng
+ * tương ứng. Mỗi ô có thể có nhiều đáp án chấp nhận. Kiểu đáp án (Số / Văn bản) của bản vẽ chưa có trong mô hình dữ liệu.
  */
 export function BlanksEditor({ prefix, contentPath }: { prefix: BodyPath; contentPath: ContentPath }) {
   const t = useTranslations("questions.editor.blanks");
@@ -32,6 +34,9 @@ export function BlanksEditor({ prefix, contentPath }: { prefix: BodyPath; conten
   const { fields, insert, remove } = useFieldArray({ control, name: `${prefix}.blanks`, keyName: "rowKey" });
   const content = useWatch({ control, name: contentPath }) ?? "";
   const prevContentRef = useRef(content);
+  // Các dòng vừa bị bỏ vì người dùng xóa `___` khỏi đề bài, kèm nội dung đề bài ngay trước lúc xóa: hoàn tác (Ctrl+Z)
+  // đưa đề bài về đúng nội dung đó thì trả lại các dòng cũ cùng đáp án thay vì dòng trống.
+  const removedRef = useRef<{ content: string; at: number; blanks: EditorBlank[] } | null>(null);
   const markers = countBlankMarkers(content);
   const groupError = useEditorError(`${prefix}.blanks`);
 
@@ -39,21 +44,43 @@ export function BlanksEditor({ prefix, contentPath }: { prefix: BodyPath; conten
     if (formState.isSubmitted) void trigger([contentPath, `${prefix}.blanks`]);
   };
 
-  // Khi người dùng gõ trực tiếp `___` (hoặc dán nhiều `___`) vào Đề bài, tự chèn đủ ô đáp án đúng vị trí mới thêm mà không làm lệch các đáp án phía sau và không cướp tiêu điểm khỏi ô Đề bài.
+  // Đồng bộ dòng đáp án với `___` người dùng gõ/dán/xóa thẳng trong Đề bài: thêm hoặc bỏ đúng vị trí để đáp án các ô
+  // còn lại không bị lệch, và không cướp tiêu điểm khỏi ô Đề bài. Sửa chữ khác (số `___` không đổi) không đụng tới dòng nào.
   useEffect(() => {
     const previous = prevContentRef.current;
     prevContentRef.current = content;
     const current = getValues(`${prefix}.blanks`) ?? [];
-    const missing = markers - current.length;
-    if (missing <= 0) return;
-    const insertAt = Math.min(current.length, findInsertedBlankIndex(previous, content));
-    insert(
-      insertAt,
-      Array.from({ length: missing }, () => emptyBlank()),
-      { shouldFocus: false },
-    );
+    if (markers > current.length) {
+      const missing = markers - current.length;
+      const restored = removedRef.current;
+      if (restored && restored.content === content && restored.blanks.length === missing) {
+        removedRef.current = null;
+        insert(Math.min(current.length, restored.at), restored.blanks, { shouldFocus: false });
+      } else {
+        const insertAt = Math.min(current.length, findInsertedBlankIndex(previous, content));
+        insert(
+          insertAt,
+          Array.from({ length: missing }, () => emptyBlank()),
+          { shouldFocus: false },
+        );
+      }
+    } else if (markers < current.length) {
+      const removed = findRemovedBlankIndices(previous, content)
+        .filter((index) => index < current.length)
+        .slice(0, current.length - markers);
+      const [at] = removed;
+      if (at === undefined) return;
+      removedRef.current = {
+        content: previous,
+        at,
+        blanks: current.slice(at, at + removed.length).map((blank) => structuredClone(blank)),
+      };
+      remove(removed);
+    } else {
+      return;
+    }
     if (formState.isSubmitted) void trigger([contentPath, `${prefix}.blanks`]);
-  }, [content, contentPath, formState.isSubmitted, getValues, insert, markers, prefix, trigger]);
+  }, [content, contentPath, formState.isSubmitted, getValues, insert, markers, prefix, remove, trigger]);
 
   const addBlank = () => {
     const editor = registry?.get(contentPath);

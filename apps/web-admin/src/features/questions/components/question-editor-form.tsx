@@ -244,6 +244,10 @@ export function QuestionEditorForm(props: QuestionEditorFormProps) {
                 : { href: "/questions", label: tCommon("backTo.questions") }
             }
             linkComponent={Link}
+            // Đầu trang dính trên cùng khi cuộn biểu mẫu dài để Hủy / Lưu luôn trong tầm tay (UNI-2878). `top` âm bằng
+            // phần lối quay lại (pt-3 + 24px, hoặc 44px khi chạm + gap 12px − 12px chừa thoáng): lối quay lại cuộn đi,
+            // hàng tiêu đề và nút ở lại. Lề âm trải nền hết bề ngang vùng nội dung để chữ cuộn bên dưới không lộ ra.
+            className="sticky -top-9 z-20 -mx-4 -mt-3 border-b border-border bg-page/95 px-4 pt-3 pb-3 backdrop-blur-xs pointer-coarse:-top-14 sm:-mx-6 sm:px-6"
             title={question ? t("editTitle") : t("createTitle")}
             description={description}
             actions={

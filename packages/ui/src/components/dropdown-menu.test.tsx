@@ -30,6 +30,13 @@ function Example({ onSelect }: { onSelect: (name: string) => void }) {
 }
 
 describe("DropdownMenu", () => {
+  it("menu dài gọn trong 20rem (hoặc chỗ trống nếu ít hơn) và cuộn bên trong (UNI-2878)", async () => {
+    render(<Example onSelect={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
+    const menu = await screen.findByRole("menu");
+    expect(menu).toHaveClass("overflow-y-auto", "max-h-[min(20rem,calc(var(--radix-dropdown-menu-content-available-height)-0.5rem))]");
+  });
+
   it("mở khi bấm nút kích hoạt, chọn mục thì gọi onSelect và đóng menu", async () => {
     const onSelect = vi.fn();
     render(<Example onSelect={onSelect} />);

@@ -71,6 +71,21 @@ describe("biểu mẫu soạn câu hỏi", () => {
     expect(within(actions).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
+  it("UNI-2878: đầu trang dính trên cùng khi cuộn và giữ cả hàng nút (Đổi dạng câu, Dán từ Word, Hủy, Lưu nháp)", async () => {
+    renderEn(<QuestionEditorView mode="create" type="SINGLE_CHOICE" />);
+    // Khung chờ tải cũng có đầu trang (không dính): đợi biểu mẫu hiện rồi mới kiểm.
+    await screen.findByRole("button", { name: "Save draft" });
+    const heading = screen.getByRole("heading", { level: 1, name: "Create question" });
+    const header = heading.closest('[data-slot="detail-header"]') as HTMLElement;
+    // `top` âm cho lối quay lại cuộn đi, hàng tiêu đề và nút ở lại; nền che chữ cuộn bên dưới.
+    expect(header).toHaveClass("sticky", "-top-9", "z-20", "bg-page/95");
+    const actions = header.querySelector('[data-slot="page-actions"]') as HTMLElement;
+    expect(header).toContainElement(actions);
+    for (const name of ["Change type", "Paste from Word", "Cancel", "Save draft"]) {
+      expect(within(actions).getByRole(name === "Change type" ? "link" : "button", { name })).toBeInTheDocument();
+    }
+  });
+
   it("UNI-2825: trang tạo có lối quay lại Ngân hàng câu hỏi ở trên tiêu đề", async () => {
     renderEn(<QuestionEditorView mode="create" type="SINGLE_CHOICE" />);
     const backLink = await screen.findByRole("link", { name: "Question bank" });

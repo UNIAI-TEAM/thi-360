@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   emptyChild,
   emptyEditorValues,
+  findRemovedBlankIndices,
   parsePoints,
   questionSetPoints,
   removeBlankMarker,
@@ -156,6 +157,34 @@ describe("chỗ trống của câu Điền đáp án", () => {
   it("xóa đúng chỗ trống thứ n", () => {
     expect(removeBlankMarker("a ___ b ___ c", 1)).toBe("a ___ b  c");
     expect(removeBlankMarker("a ___ b", 3)).toBe("a ___ b");
+  });
+
+  it("tìm đúng chỗ trống đã bị xóa khỏi đề bài (UNI-2878)", () => {
+    const html = "<p>A ___ B ___ C ___.</p>";
+    // Xóa một chỗ trống ở đầu, giữa, cuối.
+    expect(findRemovedBlankIndices(html, "<p>A  B ___ C ___.</p>")).toEqual([0]);
+    expect(findRemovedBlankIndices(html, "<p>A ___ B  C ___.</p>")).toEqual([1]);
+    expect(findRemovedBlankIndices(html, "<p>A ___ B ___ C .</p>")).toEqual([2]);
+    // Xóa một dấu gạch hoặc gõ chen vào giữa `___` cũng làm mất chỗ trống đó.
+    expect(findRemovedBlankIndices(html, "<p>A ___ B __ C ___.</p>")).toEqual([1]);
+    expect(findRemovedBlankIndices(html, "<p>A ___ B _x__ C ___.</p>")).toEqual([1]);
+    // Bôi đen nhiều chỗ trống rồi xóa/cắt, hoặc chọn tất cả rồi xóa.
+    expect(findRemovedBlankIndices(html, "<p>A  C ___.</p>")).toEqual([0, 1]);
+    expect(findRemovedBlankIndices(html, "<p>A ___.</p>")).toEqual([1, 2]);
+    expect(findRemovedBlankIndices(html, "<p></p>")).toEqual([0, 1, 2]);
+    expect(findRemovedBlankIndices(html, "")).toEqual([0, 1, 2]);
+    // Dán đè đoạn có ba chỗ trống bằng chữ có một chỗ trống: giữ chỗ trống đầu của đoạn, bỏ phần dư.
+    expect(findRemovedBlankIndices("<p>A ___ B ___ C ___ D.</p>", "<p>A x ___ y D.</p>")).toEqual([1, 2]);
+    // Chỗ trống đứng sát nhau.
+    expect(findRemovedBlankIndices("<p>___ ___ ___</p>", "<p> ___ ___</p>")).toEqual([0]);
+  });
+
+  it("không báo xóa khi số chỗ trống không giảm", () => {
+    const html = "<p>A ___ B ___</p>";
+    expect(findRemovedBlankIndices(html, html)).toEqual([]);
+    expect(findRemovedBlankIndices(html, "<p>A ___ Bờ ___ thêm</p>")).toEqual([]);
+    expect(findRemovedBlankIndices(html, "<p>___ A ___ B ___</p>")).toEqual([]);
+    expect(findRemovedBlankIndices(html, "<p>A ___ B</p><p>___</p>")).toEqual([]);
   });
 });
 

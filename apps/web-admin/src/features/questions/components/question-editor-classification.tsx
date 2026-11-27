@@ -3,10 +3,7 @@
 import {
   Badge,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  ComboboxMenu,
   FormField,
   IconButton,
   Input,
@@ -279,28 +276,23 @@ function TagsField({ reference }: { reference: ContentReference }) {
             </li>
           ))}
         </ul>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {/* Danh mục nhãn có thể dài (hàng chục mục): menu có ô lọc (DESIGN.md mục 5.2, UNI-2878). */}
+        <ComboboxMenu
+          aria-label={t("tags")}
+          labels={{ filterLabel: t("filterTags") }}
+          options={available.map((tag) => ({ value: tag.code, label: tag.name }))}
+          onSelect={(code) => {
+            setTags([...getValues("tagCodes"), code]);
+            announce(t("tagAdded", { name: nameOf(code) }));
+          }}
+          trigger={
             <Button type="button" variant="link" size="sm" disabled={available.length === 0}>
               <Plus aria-hidden />
               {t("addTag")}
               <ChevronDown aria-hidden />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {available.map((tag) => (
-              <DropdownMenuItem
-                key={tag.code}
-                onSelect={() => {
-                  setTags([...getValues("tagCodes"), tag.code]);
-                  announce(t("tagAdded", { name: tag.name }));
-                }}
-              >
-                {tag.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          }
+        />
       </div>
     </div>
   );

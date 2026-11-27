@@ -5,6 +5,7 @@ import { Check, ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { fieldBase } from "../lib/styles";
+import { Combobox, type ComboboxLabels } from "./combobox";
 
 /**
  * `label` nhận nút React để bọc phần chữ là nội dung đề (`data-exam-content`); chữ thuần vẫn dùng như trước.
@@ -24,13 +25,27 @@ export type SelectProps = {
   id?: string;
   size?: "md" | "lg";
   className?: string;
+  /**
+   * Ô lọc trong danh sách (DESIGN.md mục 5.2). `"auto"` (mặc định): có ô lọc khi danh sách dài hơn
+   * `SELECT_FILTER_THRESHOLD` mục, tức danh sách lấy từ dữ liệu; danh sách ngắn cố định giữ nguyên. `true` luôn có,
+   * `false` không bao giờ.
+   */
+  searchable?: boolean | "auto";
+  /** Chữ của ô lọc khi có; mặc định lấy từ `UiStringsProvider`. */
+  filterLabels?: Partial<ComboboxLabels>;
   "aria-label"?: string;
   "aria-invalid"?: boolean;
   "aria-required"?: boolean;
   "aria-describedby"?: string;
 };
 
-/** Ô chọn một giá trị. Giá trị rỗng không hợp lệ: dùng `placeholder` cho trạng thái chưa chọn. */
+/** Danh sách dài hơn số mục này thì `Select` (`searchable="auto"`) có ô lọc. */
+export const SELECT_FILTER_THRESHOLD = 10;
+
+/**
+ * Ô chọn một giá trị. Giá trị rỗng không hợp lệ: dùng `placeholder` cho trạng thái chưa chọn. Danh sách dài thì
+ * dùng `Combobox` (có ô lọc), xem `searchable`.
+ */
 export function Select({
   options,
   value,
@@ -41,8 +56,27 @@ export function Select({
   name,
   size = "md",
   className,
+  searchable = "auto",
+  filterLabels,
   ...triggerProps
 }: SelectProps) {
+  if (searchable === true || (searchable === "auto" && options.length > SELECT_FILTER_THRESHOLD)) {
+    return (
+      <Combobox
+        options={options}
+        value={value}
+        defaultValue={defaultValue}
+        onValueChange={onValueChange}
+        placeholder={placeholder}
+        disabled={disabled}
+        name={name}
+        size={size}
+        className={className}
+        labels={filterLabels}
+        {...triggerProps}
+      />
+    );
+  }
   return (
     <SelectPrimitive.Root
       value={value}
@@ -69,7 +103,7 @@ export function Select({
         <SelectPrimitive.Content
           position="popper"
           sideOffset={4}
-          className="z-50 max-h-72 min-w-(--radix-select-trigger-width) overflow-hidden rounded-lg border border-border bg-surface shadow-md"
+          className="z-50 max-h-[min(18rem,calc(var(--radix-select-content-available-height)-0.5rem))] min-w-(--radix-select-trigger-width) overflow-hidden rounded-lg border border-border bg-surface shadow-md"
         >
           <SelectPrimitive.Viewport className="p-1">
             {options.map((option) => (

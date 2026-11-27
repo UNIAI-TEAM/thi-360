@@ -118,19 +118,26 @@ describe("chemistry dialog: quick typing", () => {
   });
 });
 
+const quickInput = () => screen.getByLabelText(t.quickLabel) as HTMLInputElement;
+const arrowLabel = (index: number, arrow: string) =>
+  t.conditions.arrowLabel.replace("{index}", String(index)).replace("{arrow}", arrow);
+const rowInput = (index: number, arrow: string, column: string) =>
+  screen.getByRole("textbox", { name: `${arrowLabel(index, arrow)} ${column}` }) as HTMLInputElement;
+
 describe("chemistry dialog: arrow conditions", () => {
-  it("attaches above and below conditions to the first arrow only", async () => {
+  it("with one arrow: the Above/Below fields write ->[above][below] into the quick text", async () => {
     const user = userEvent.setup();
     const editor = createEditor("<p></p>");
     renderDialog(editor);
 
-    await fill(user, t.quickLabel, "C6H12O6 -> 2C2H5OH + 2CO2 -> x");
+    await fill(user, t.quickLabel, "C6H12O6 -> 2C2H5OH + 2CO2");
     await fill(user, t.topLabel, "enzyme");
     await fill(user, t.bottomLabel, "30 °C");
+    expect(quickInput().value).toBe("C6H12O6 ->[enzyme][30 °C] 2C2H5OH + 2CO2");
     await user.click(insertButton());
 
     expect(emitted(editor)).toBe(
-      '<p><span class="math-inline">\\(\\ce{C6H12O6 -&gt;[enzyme][30 °C] 2C2H5OH + 2CO2 -&gt; x}\\)</span></p>',
+      '<p><span class="math-inline">\\(\\ce{C6H12O6 -&gt;[enzyme][30 °C] 2C2H5OH + 2CO2}\\)</span></p>',
     );
   });
 
@@ -147,15 +154,91 @@ describe("chemistry dialog: arrow conditions", () => {
     expect(emitted(editor)).toContain("\\ce{A &lt;=&gt;[][cat.] B}");
   });
 
-  it("ignores conditions when the text has no arrow, and replaces ones typed by hand when a field is filled", async () => {
+  it("locks the condition fields while the text has no arrow", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor("<p></p>"));
+
+    await fill(user, t.quickLabel, "H2O");
+    expect(screen.getByLabelText(t.topLabel)).toBeDisabled();
+    expect(screen.getByLabelText(t.bottomLabel)).toBeDisabled();
+    expect(screen.getByLabelText(t.topLabel)).toHaveAttribute("placeholder", t.conditions.noArrow);
+  });
+
+  it("shows conditions typed inline in the quick text in that arrow's fields", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor("<p></p>"));
+
+    await fill(user, t.quickLabel, "A ->[t°, xt][p] B");
+    expect((screen.getByLabelText(t.topLabel) as HTMLInputElement).value).toBe("t°, xt");
+    expect((screen.getByLabelText(t.bottomLabel) as HTMLInputElement).value).toBe("p");
+  });
+
+  it("shows one row per arrow, in order, labelled with the arrow glyph", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor("<p></p>"));
+
+    await fill(user, t.quickLabel, "A -> B <=>[x][y] C");
+    expect(screen.getByText(arrowLabel(1, "→"))).toBeTruthy();
+    expect(screen.getByText(arrowLabel(2, "⇌"))).toBeTruthy();
+    expect(rowInput(1, "→", t.topLabel).value).toBe("");
+    expect(rowInput(2, "⇌", t.topLabel).value).toBe("x");
+    expect(rowInput(2, "⇌", t.bottomLabel).value).toBe("y");
+  });
+
+  it("typing in the second row rewrites that arrow's conditions in the quick text and the preview", async () => {
     const user = userEvent.setup();
     const editor = createEditor("<p></p>");
     renderDialog(editor);
 
-    await fill(user, t.quickLabel, "H2O");
-    await fill(user, t.topLabel, "t°");
+    await fill(user, t.quickLabel, "C2H5OH + O2 -> CO2 -> H2CO3");
+    await user.type(rowInput(2, "→", t.topLabel), "t° x");
+    expect(rowInput(2, "→", t.topLabel).value).toBe("t° x");
+    expect(rowInput(2, "→", t.topLabel)).toHaveFocus();
+    await user.type(rowInput(2, "→", t.bottomLabel), "p");
+    expect(quickInput().value).toBe("C2H5OH + O2 -> CO2 ->[t° x][p] H2CO3");
+    await waitFor(() =>
+      expect(screen.getByTestId("chemistry-preview").querySelector("annotation")?.textContent).toBe(
+        "\\ce{C2H5OH + O2 -> CO2 ->[t° x][p] H2CO3}",
+      ),
+    );
+
     await user.click(insertButton());
-    expect(emitted(editor)).toBe('<p><span class="math-inline">\\(\\ce{H2O}\\)</span></p>');
+    expect(emitted(editor)).toContain("\\ce{C2H5OH + O2 -&gt; CO2 -&gt;[t° x][p] H2CO3}");
+  });
+
+  it("adds and removes rows as arrows are added to or removed from the quick text", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor("<p></p>"));
+
+    await fill(user, t.quickLabel, "A ->[x] B");
+    expect(screen.queryByText(arrowLabel(1, "→"))).toBeNull();
+    await user.click(quickInput());
+    await user.paste(" ->[z] C");
+    expect(rowInput(1, "→", t.topLabel).value).toBe("x");
+    expect(rowInput(2, "→", t.topLabel).value).toBe("z");
+
+    await fill(user, t.quickLabel, "A B ->[z] C");
+    expect(screen.queryByText(arrowLabel(2, "→"))).toBeNull();
+    expect((screen.getByLabelText(t.topLabel) as HTMLInputElement).value).toBe("z");
+  });
+});
+
+describe("chemistry dialog: typing guide", () => {
+  it("shows the core rules with the capitals hint, and the full guide behind 'More typing examples'", async () => {
+    renderDialog(createEditor("<p></p>"));
+    expect(screen.getByText(t.rules.capitalsLead, { exact: false })).toBeTruthy();
+
+    const guide = screen.getByTestId("chemistry-guide");
+    expect(guide.tagName).toBe("DETAILS");
+    expect(guide).not.toHaveAttribute("open");
+    expect(within(guide).getByText(t.rules.more)).toBeTruthy();
+    for (const [id, text] of Object.entries(t.rules.guide)) {
+      expect(within(guide).getByText(text), id).toBeTruthy();
+    }
+    for (const code of ["A ->[t°, xt][p] B", "2H2 + O2 -> 2H2O", "Ca(OH)2", "CuSO4*5H2O", "CaCO3 -> CaO + CO2 ^"]) {
+      expect(within(guide).getByText(code)).toBeTruthy();
+    }
+    await waitFor(() => expect(guide.querySelectorAll(".katex")).toHaveLength(Object.keys(t.rules.guide).length));
   });
 });
 
@@ -201,6 +284,19 @@ describe("chemistry dialog: buttons", () => {
     expect(screen.getByTestId("chemistry-preview").querySelector(".katex")).toBeTruthy();
     expect(screen.getByTestId("chemistry-preview").querySelector(".math-error")).toBeNull();
   });
+
+  it("marks the charge signs of ions in the preview so they render as strong as the digits", async () => {
+    const user = userEvent.setup();
+    renderDialog(createEditor("<p></p>"));
+
+    await fill(user, t.quickLabel, "Fe^3- + SO4^2- + Na+ + Cl-");
+    const preview = screen.getByTestId("chemistry-preview");
+    await waitFor(() => expect(preview.querySelectorAll(".math-charge-sign")).toHaveLength(4));
+    for (const sign of preview.querySelectorAll<HTMLElement>(".math-charge-sign")) {
+      expect(sign.textContent).toMatch(/^[+\u2212]$/);
+      expect(sign.closest("[style*='opacity'], [style*='color'], .text-text-muted, .text-text-placeholder")).toBeNull();
+    }
+  });
 });
 
 describe("chemistry dialog: display and placement", () => {
@@ -244,7 +340,7 @@ describe("chemistry dialog: reopen", () => {
     expect(entry.openForSelection(node)).toBeNull();
   });
 
-  it("splits the first arrow's conditions back into the Above and Below fields, replaces the node on update", async () => {
+  it("loads the arrow's conditions into the Above and Below fields, replaces the node on update", async () => {
     const user = userEvent.setup();
     const editor = createEditor(
       '<p>a <span class="math-inline">\\(\\ce{C6H12O6 -&gt;[enzyme][30 °C] 2C2H5OH + 2CO2}\\)</span> b</p>',
@@ -252,7 +348,7 @@ describe("chemistry dialog: reopen", () => {
     selectFirstMath(editor);
     renderDialog(editor);
 
-    expect((screen.getByLabelText(t.quickLabel) as HTMLInputElement).value).toBe("C6H12O6 -> 2C2H5OH + 2CO2");
+    expect((screen.getByLabelText(t.quickLabel) as HTMLInputElement).value).toBe("C6H12O6 ->[enzyme][30 °C] 2C2H5OH + 2CO2");
     expect((screen.getByLabelText(t.topLabel) as HTMLInputElement).value).toBe("enzyme");
     expect((screen.getByLabelText(t.bottomLabel) as HTMLInputElement).value).toBe("30 °C");
     expect((screen.getByLabelText(t.afterLabel) as HTMLInputElement).value).toBe("");
@@ -262,6 +358,26 @@ describe("chemistry dialog: reopen", () => {
 
     expect(emitted(editor)).toBe(
       '<p>a <span class="math-inline">\\(\\ce{C6H12O6 -&gt;[yeast][30 °C] 2C2H5OH + 2CO2}\\)</span> b</p>',
+    );
+  });
+
+  it("loads every arrow's conditions into its own row when reopening a two-arrow formula", async () => {
+    const user = userEvent.setup();
+    const editor = createEditor(
+      '<p><span class="math-inline">\\(\\ce{A -&gt;[t°][xt] B &lt;=&gt;[][p] C}\\)</span></p>',
+    );
+    selectFirstMath(editor);
+    renderDialog(editor);
+
+    expect(rowInput(1, "→", t.topLabel).value).toBe("t°");
+    expect(rowInput(1, "→", t.bottomLabel).value).toBe("xt");
+    expect(rowInput(2, "⇌", t.topLabel).value).toBe("");
+    expect(rowInput(2, "⇌", t.bottomLabel).value).toBe("p");
+
+    await user.type(rowInput(2, "⇌", t.topLabel), "450 °C");
+    await user.click(screen.getByRole("button", { name: t.update }));
+    expect(emitted(editor)).toBe(
+      '<p><span class="math-inline">\\(\\ce{A -&gt;[t°][xt] B &lt;=&gt;[450 °C][p] C}\\)</span></p>',
     );
   });
 
@@ -320,7 +436,7 @@ describe("chemistry dialog: recent", () => {
     renderDialog(createEditor("<p></p>"), client);
     expect(screen.getByText(t.recentLabel)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "A ->[x] B" }));
-    expect((screen.getByLabelText(t.quickLabel) as HTMLInputElement).value).toBe("A -> B");
+    expect((screen.getByLabelText(t.quickLabel) as HTMLInputElement).value).toBe("A ->[x] B");
     expect((screen.getByLabelText(t.topLabel) as HTMLInputElement).value).toBe("x");
   });
 
