@@ -1,0 +1,4698 @@
+{
+  "sourceLanguage": "vi",
+  "strings": {
+    "bundle.checkout.backToBundle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to bundle"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại chi tiết bộ đề"
+          }
+        }
+      }
+    },
+    "bundle.checkout.existingNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For exams you already own, newly purchased attempts are added to your remaining balance. Benefits apply per grant."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài đã có quyền thì lượt mua thêm cộng vào lượt đang có. Quyền lợi theo từng lần cấp."
+          }
+        }
+      }
+    },
+    "bundle.checkout.grantNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Once completed, all {count, plural, one {# exam in the bundle} other {# exams in the bundle}} will be granted to account {username}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sau khi hoàn tất, toàn bộ {count, plural, other {# bài thi trong bộ}} sẽ được cấp cho tài khoản {username}."
+          }
+        }
+      }
+    },
+    "bundle.checkout.itemsTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Included exams ({count})"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các bài thi trong bộ ({count})"
+          }
+        }
+      }
+    },
+    "bundle.checkout.pendingExamOrder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order {orderCode} for {name} is being checked. You do not need to pay again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn {orderCode} cho bài {name} đang được kiểm tra. Bạn không cần thanh toán lại."
+          }
+        }
+      }
+    },
+    "bundle.checkout.pendingExamOrderNoCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An order for {name} is being checked. You do not need to pay again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có đơn đang được kiểm tra cho bài {name}. Bạn không cần thanh toán lại."
+          }
+        }
+      }
+    },
+    "bundle.checkout.refundBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exams in the bundle are granted immediately after completion and cannot be refunded once any attempt is activated."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các bài thi trong bộ được cấp ngay sau khi giao dịch hoàn tất và không hỗ trợ hoàn tiền sau khi đã kích hoạt lượt thi."
+          }
+        }
+      }
+    },
+    "bundle.checkout.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected bundle"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bộ đề đã chọn"
+          }
+        }
+      }
+    },
+    "bundle.checkout.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review the included exams, access rights, and receiving account before paying."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra danh sách bài thi trong bộ, quyền lợi nhận được và tài khoản nhận bài trước khi thanh toán."
+          }
+        }
+      }
+    },
+    "bundle.checkout.summaryLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundle summary"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tóm tắt bộ đề"
+          }
+        }
+      }
+    },
+    "bundle.checkout.tableCaption": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exams in this bundle and granted attempts"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các bài trong bộ và quyền nhận được"
+          }
+        }
+      }
+    },
+    "bundle.checkout.unavailableActionBack": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to bundle"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Về chi tiết bộ đề"
+          }
+        }
+      }
+    },
+    "bundle.checkout.unavailableBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One exam in this bundle has just been discontinued. No amount has been charged."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một bài trong bộ vừa ngừng bán. Chưa có khoản nào bị trừ."
+          }
+        }
+      }
+    },
+    "bundle.checkout.unavailableTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This bundle is temporarily unavailable."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bộ đề tạm thời chưa bán được."
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.buyMore": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buy more attempts"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mua thêm lượt"
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.checkingDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An order for this exam is currently awaiting payment verification. You do not need to place a new order or pay again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn mua bài thi này đang chờ đối soát thanh toán. Bạn không cần tạo đơn mới hay thanh toán lại."
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.checkingTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking order {orderCode}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra đơn {orderCode}"
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.continueAttempt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.enterExam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go to exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vào bài thi"
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.existingInProgressTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have an attempt in progress ({count, plural, one {# attempt} other {# attempts}} for this exam)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đang có lượt làm dở ({count, plural, other {# lượt với bài thi này}})"
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.existingTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You currently have {count, plural, one {# attempt} other {# attempts}} for this exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đang có {count, plural, other {# lượt với bài thi này}}"
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.loadErrorDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not verify your current access to this exam. Please try again before continuing."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể kiểm tra quyền làm bài hiện tại của bạn. Vui lòng thử lại trước khi tiếp tục."
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.loadErrorTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to verify exam access"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa kiểm tra được quyền sử dụng"
+          }
+        }
+      }
+    },
+    "checkout.accessBanner.viewPaymentStatus": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View payment status"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem trạng thái thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.account.changedDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You opened this page with account {previous}, while the active session is now {current}. Please review the account before paying."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn mở trang này với tài khoản {previous}, nhưng phiên hiện tại đang là {current}. Vui lòng kiểm tra lại tài khoản trước khi thanh toán."
+          }
+        }
+      }
+    },
+    "checkout.account.changedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed-in account changed"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản đăng nhập đã thay đổi"
+          }
+        }
+      }
+    },
+    "checkout.account.continueAsCurrent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue as {username}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục với {username}"
+          }
+        }
+      }
+    },
+    "checkout.account.grantNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Once completed, the exam will be granted to account {username}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sau khi hoàn tất, bài thi sẽ được cấp cho tài khoản {username}."
+          }
+        }
+      }
+    },
+    "checkout.account.switchAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with another account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập bằng tài khoản khác"
+          }
+        }
+      }
+    },
+    "checkout.account.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account receiving exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản nhận bài thi"
+          }
+        }
+      }
+    },
+    "checkout.backToCatalog": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to exam catalog"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Về danh mục bài thi"
+          }
+        }
+      }
+    },
+    "checkout.backToExam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại bài thi"
+          }
+        }
+      }
+    },
+    "checkout.gone.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{name} has been discontinued and is no longer available for purchase."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sản phẩm {name} đã ngừng kinh doanh. Bạn không thể tạo đơn mua mới."
+          }
+        }
+      }
+    },
+    "checkout.gone.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This exam is no longer on sale"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài thi này hiện đã ngừng bán"
+          }
+        }
+      }
+    },
+    "checkout.heading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm purchase"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận mua"
+          }
+        }
+      }
+    },
+    "checkout.loadError.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please check your internet connection and try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng kiểm tra kết nối mạng và thử lại."
+          }
+        }
+      }
+    },
+    "checkout.loadError.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to load checkout details"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể tải thông tin thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.notFound.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The requested exam does not exist or is no longer listed."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài thi bạn yêu cầu không tồn tại hoặc đã bị gỡ khỏi danh mục."
+          }
+        }
+      }
+    },
+    "checkout.notFound.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam not found"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy bài thi"
+          }
+        }
+      }
+    },
+    "checkout.pageTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm purchase"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận mua"
+          }
+        }
+      }
+    },
+    "checkout.priceChanged.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Price or benefits have been updated to the latest version ({latest}). Please review before paying."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giá hoặc quyền lợi vừa được cập nhật theo phiên bản mới nhất ({latest}). Vui lòng kiểm tra lại trước khi thanh toán."
+          }
+        }
+      }
+    },
+    "checkout.priceChanged.descriptionWithSeen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Price or benefits updated to {latest} (previously shown {seen}). Please review before paying."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giá hoặc quyền lợi vừa được cập nhật lên {latest} (trước đó hiển thị {seen}). Vui lòng kiểm tra lại trước khi thanh toán."
+          }
+        }
+      }
+    },
+    "checkout.priceChanged.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Price or benefits changed"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giá hoặc quyền lợi đã thay đổi"
+          }
+        }
+      }
+    },
+    "checkout.product.attemptsGranted": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, one {# attempt} other {# attempts}}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, other {# lượt thi}}"
+          }
+        }
+      }
+    },
+    "checkout.product.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam summary"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông tin bài thi"
+          }
+        }
+      }
+    },
+    "checkout.product.version": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version v{version}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên bản v{version}"
+          }
+        }
+      }
+    },
+    "checkout.refund.body": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam access is granted immediately after completion and cannot be refunded once activated."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài thi được cấp ngay sau khi giao dịch hoàn tất và không hỗ trợ hoàn tiền sau khi đã kích hoạt lượt thi."
+          }
+        }
+      }
+    },
+    "checkout.refund.supportLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment support:"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hỗ trợ thanh toán:"
+          }
+        }
+      }
+    },
+    "checkout.refund.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refund policy"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chính sách hoàn tiền"
+          }
+        }
+      }
+    },
+    "checkout.result.buyAgain": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buy exam again"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mua lại bài thi"
+          }
+        }
+      }
+    },
+    "checkout.result.checkAgain": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check again"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra lại ngay"
+          }
+        }
+      }
+    },
+    "checkout.result.checkingBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra"
+          }
+        }
+      }
+    },
+    "checkout.result.checkingHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Awaiting payment confirmation"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chờ xác nhận thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.result.checkingPending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirming VNPAY transaction status for order {code}. Please wait a moment."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hệ thống đang đối soát phản hồi từ VNPAY cho đơn {code}. Vui lòng đợi trong giây lát."
+          }
+        }
+      }
+    },
+    "checkout.result.checkingTimeoutBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verification has taken longer than 60 seconds for order {code}. Status remains Checking — please do not pay again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã quá 60 giây nhưng VNPAY chưa gửi xác nhận cuối cùng cho đơn {code}. Trạng thái hiện vẫn là Đang kiểm tra — bạn không cần thanh toán lại."
+          }
+        }
+      }
+    },
+    "checkout.result.checkingTimeoutHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking payment"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.result.checkingTimeoutSupport": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If the exam does not appear in a few minutes, contact support via {contact} with order code {code}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu bài thi chưa xuất hiện sau ít phút, hãy liên hệ hỗ trợ qua {contact} kèm mã đơn {code}."
+          }
+        }
+      }
+    },
+    "checkout.result.closedBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order {code} is no longer awaiting payment."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn hàng {code} không còn ở trạng thái chờ thanh toán."
+          }
+        }
+      }
+    },
+    "checkout.result.closedHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order closed"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn hàng đã đóng"
+          }
+        }
+      }
+    },
+    "checkout.result.failedBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transaction for order {code} did not complete."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch cho đơn {code} chưa hoàn tất."
+          }
+        }
+      }
+    },
+    "checkout.result.failedHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment unsuccessful"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán chưa thành công"
+          }
+        }
+      }
+    },
+    "checkout.result.invalidSignatureBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The VNPAY response signature is invalid or corrupted. Please check My orders before retrying payment."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chữ ký phản hồi thanh toán từ VNPAY không hợp lệ hoặc dữ liệu đã bị thay đổi. Vui lòng kiểm tra trong mục Đơn của tôi trước khi thử thanh toán lại."
+          }
+        }
+      }
+    },
+    "checkout.result.invalidSignatureHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not verify payment response"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không xác minh được phản hồi thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.result.loadErrorBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not load order details right now. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể tải thông tin đơn hàng lúc này. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "checkout.result.loadErrorHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to check payment result"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể kiểm tra kết quả thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.result.missingOrderBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No valid order code or payment return parameters were found in this link."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy mã đơn hoặc phản hồi thanh toán hợp lệ trong đường dẫn này."
+          }
+        }
+      }
+    },
+    "checkout.result.missingOrderHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Missing transaction details"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thiếu thông tin giao dịch"
+          }
+        }
+      }
+    },
+    "checkout.result.noResultBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you completed payment on VNPAY, the status of order {code} will update shortly. If you closed the payment page, the order price is held until {time}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu bạn đã thanh toán xong trên VNPAY, trạng thái đơn {code} sẽ cập nhật trong giây lát. Nếu bạn đã đóng trang thanh toán, đơn vẫn giữ giá tới {time}."
+          }
+        }
+      }
+    },
+    "checkout.result.noResultBodyNoExpiry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you completed payment on VNPAY, the status of order {code} will update shortly. If you closed the payment page, you can continue payment below."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu bạn đã thanh toán xong trên VNPAY, trạng thái đơn {code} sẽ cập nhật trong giây lát. Nếu bạn đã đóng trang thanh toán, bạn có thể tiếp tục thanh toán bên dưới."
+          }
+        }
+      }
+    },
+    "checkout.result.noResultHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment result not received yet"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa nhận được kết quả thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.result.notOwnedBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order {code} was not found in account {username}. You may be signed in with a different account."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy đơn {code} trong tài khoản {username}. Có thể bạn đang đăng nhập bằng một tài khoản khác."
+          }
+        }
+      }
+    },
+    "checkout.result.notOwnedHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order not found in the signed-in account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy đơn trong tài khoản đang đăng nhập"
+          }
+        }
+      }
+    },
+    "checkout.result.pollErrorNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not refresh the latest order status right now. Checking will continue automatically."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạm thời không kiểm tra được trạng thái mới nhất. Hệ thống vẫn đang tiếp tục thử lại."
+          }
+        }
+      }
+    },
+    "checkout.result.pollErrorTimeoutNotice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not refresh order status right now. Click Check again or contact support."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không kiểm tra lại được trạng thái đơn lúc này. Hãy bấm Kiểm tra lại ngay hoặc liên hệ hỗ trợ."
+          }
+        }
+      }
+    },
+    "checkout.result.retryPay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry payment"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán lại"
+          }
+        }
+      }
+    },
+    "checkout.result.successBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order {code} has been confirmed. Exam access is now active in your account."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn {code} đã được xác nhận thành công. Bài thi đã được cấp vào tài khoản của bạn."
+          }
+        }
+      }
+    },
+    "checkout.result.successFreeBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order {code} used a free voucher and exam access has been granted immediately."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn {code} đã được áp dụng voucher miễn phí và cấp bài thi ngay lập tức."
+          }
+        }
+      }
+    },
+    "checkout.result.successHeading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam granted"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cấp bài thi"
+          }
+        }
+      }
+    },
+    "checkout.result.txnRefLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transaction ref:"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giao dịch:"
+          }
+        }
+      }
+    },
+    "checkout.result.verifyNotFoundBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No order was found for this payment response."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy đơn hàng tương ứng với phản hồi thanh toán này."
+          }
+        }
+      }
+    },
+    "checkout.result.viewMyExams": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go to My exams"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vào Bài thi của tôi"
+          }
+        }
+      }
+    },
+    "checkout.result.viewOrder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View order details"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem chi tiết đơn"
+          }
+        }
+      }
+    },
+    "checkout.result.viewOrders": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View my orders"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem đơn của tôi"
+          }
+        }
+      }
+    },
+    "checkout.resultPageTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment result"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kết quả thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review your account, exam details, and payment breakdown before continuing."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra thông tin tài khoản, bài thi và chi tiết thanh toán trước khi tiếp tục."
+          }
+        }
+      }
+    },
+    "checkout.summary.ctaFree": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply voucher & get exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dùng voucher và nhận bài thi"
+          }
+        }
+      }
+    },
+    "checkout.summary.ctaFreeNoVoucher": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get free exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận bài thi miễn phí"
+          }
+        }
+      }
+    },
+    "checkout.summary.ctaVnpay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pay with VNPAY"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán qua VNPAY"
+          }
+        }
+      }
+    },
+    "checkout.summary.errorGeneric": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to create order. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể tạo đơn hàng. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "checkout.summary.errorRateLimited": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many requests. Please wait a moment and try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại."
+          }
+        }
+      }
+    },
+    "checkout.summary.freeVoucher": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 VND (voucher applied)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 đ (đã áp dụng voucher)"
+          }
+        }
+      }
+    },
+    "checkout.summary.listPrice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "List price"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giá gốc"
+          }
+        }
+      }
+    },
+    "checkout.summary.promotion": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto promotion ({name})"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ưu đãi tự động ({name})"
+          }
+        }
+      }
+    },
+    "checkout.summary.promotionFallback": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto promotion"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ưu đãi tự động"
+          }
+        }
+      }
+    },
+    "checkout.summary.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment summary"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi tiết thanh toán"
+          }
+        }
+      }
+    },
+    "checkout.summary.totalDue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total due"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành tiền"
+          }
+        }
+      }
+    },
+    "checkout.summary.voucherDiscount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voucher ({code})"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giảm giá ({code})"
+          }
+        }
+      }
+    },
+    "checkout.voucher.applied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applied voucher {code} (-{discount})."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã áp dụng mã {code} (-{discount})."
+          }
+        }
+      }
+    },
+    "checkout.voucher.appliedCombined": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applied voucher {code} (-{discount}) together with the auto promotion."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã áp dụng mã {code} (-{discount}) cùng ưu đãi tự động."
+          }
+        }
+      }
+    },
+    "checkout.voucher.appliedReplacedPromo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Applied voucher {code} (-{discount}). Replaced the auto promotion because this voucher saves more."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã áp dụng mã {code} (-{discount}). Mã này giảm nhiều hơn nên đã thay thế ưu đãi tự động."
+          }
+        }
+      }
+    },
+    "checkout.voucher.apply": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apply"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Áp dụng"
+          }
+        }
+      }
+    },
+    "checkout.voucher.emptyInput": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter a voucher code."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng nhập mã giảm giá."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.RATE_LIMITED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many voucher checks. Please try again in a few minutes."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn kiểm tra mã quá nhanh. Vui lòng thử lại sau ít phút."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.VOUCHER_EXHAUSTED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This voucher code has reached its usage limit."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giảm giá đã hết lượt sử dụng."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.VOUCHER_EXPIRED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This voucher code has expired."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giảm giá đã hết hạn sử dụng."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.VOUCHER_INVALID": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This voucher code does not exist or is invalid."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giảm giá không tồn tại hoặc không hợp lệ."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.VOUCHER_NOT_APPLICABLE": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This voucher code is not applicable to this exam."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giảm giá không áp dụng cho bài thi này."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.VOUCHER_NOT_APPLICABLE_BUNDLE": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This voucher code only applies to selected exams, not to exam bundles."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã này chỉ áp cho một số bài thi, không áp cho bộ đề."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.VOUCHER_NOT_ELIGIBLE": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your account is not eligible for this voucher."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản của bạn chưa đủ điều kiện sử dụng mã này."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.VOUCHER_USER_LIMIT": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have reached your personal usage limit for this voucher."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã dùng hết số lượt cho phép của mã giảm giá này."
+          }
+        }
+      }
+    },
+    "checkout.voucher.errors.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to apply voucher code. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thể áp dụng mã giảm giá. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "checkout.voucher.label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter voucher code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhập mã giảm giá"
+          }
+        }
+      }
+    },
+    "checkout.voucher.notBetter": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code {code} does not beat the active auto promotion, so the best price is kept."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã {code} không giảm nhiều hơn ưu đãi tự động hiện tại nên hệ thống giữ nguyên mức giá tốt nhất."
+          }
+        }
+      }
+    },
+    "checkout.voucher.placeholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Example: SAVE20"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ví dụ: GIAM20"
+          }
+        }
+      }
+    },
+    "checkout.voucher.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gỡ mã"
+          }
+        }
+      }
+    },
+    "checkout.voucher.sectionTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voucher code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giảm giá"
+          }
+        }
+      }
+    },
+    "orders.actions.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel order"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy đơn"
+          }
+        }
+      }
+    },
+    "orders.actions.continuePayment": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue payment"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục thanh toán"
+          }
+        }
+      }
+    },
+    "orders.actions.createNew": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create new order"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo đơn mới"
+          }
+        }
+      }
+    },
+    "orders.actions.goMyExams": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go to My exams"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vào Bài thi của tôi"
+          }
+        }
+      }
+    },
+    "orders.actions.toCatalog": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to the exam catalog"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Về danh mục bài thi"
+          }
+        }
+      }
+    },
+    "orders.actions.viewDetail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View details"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem chi tiết"
+          }
+        }
+      }
+    },
+    "orders.actions.viewReplacement": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View replacement order {code}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem đơn thay thế {code}"
+          }
+        }
+      }
+    },
+    "orders.amount.discountSummary": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{amount} off"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "đã giảm {amount}"
+          }
+        }
+      }
+    },
+    "orders.amount.free": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miễn phí"
+          }
+        }
+      }
+    },
+    "orders.amount.freeAmount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 VND"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 đ"
+          }
+        }
+      }
+    },
+    "orders.amount.freeVoucher": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 VND (voucher applied)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 đ (đã áp dụng voucher)"
+          }
+        }
+      }
+    },
+    "orders.amount.freeVoucherNote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free with voucher"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miễn phí nhờ voucher"
+          }
+        }
+      }
+    },
+    "orders.amount.vnpay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VNPAY"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VNPAY"
+          }
+        }
+      }
+    },
+    "orders.backToList": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My orders"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn của tôi"
+          }
+        }
+      }
+    },
+    "orders.bundleBadge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundle"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bộ đề"
+          }
+        }
+      }
+    },
+    "orders.cancelDialog.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel order"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy đơn"
+          }
+        }
+      }
+    },
+    "orders.cancelDialog.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pending order {code} will be cancelled. Any discount code used on this order will be released."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn chờ thanh toán {code} sẽ bị hủy. Mã giảm giá đã dùng cho đơn này được trả lại."
+          }
+        }
+      }
+    },
+    "orders.cancelDialog.keep": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep order"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ đơn"
+          }
+        }
+      }
+    },
+    "orders.cancelDialog.success": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order {code} cancelled."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hủy đơn {code}."
+          }
+        }
+      }
+    },
+    "orders.cancelDialog.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel order {code}?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy đơn {code}?"
+          }
+        }
+      }
+    },
+    "orders.columns.actions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actions"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thao tác"
+          }
+        }
+      }
+    },
+    "orders.columns.amount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amount"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tiền"
+          }
+        }
+      }
+    },
+    "orders.columns.code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã đơn"
+          }
+        }
+      }
+    },
+    "orders.columns.createdAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created at"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngày tạo"
+          }
+        }
+      }
+    },
+    "orders.columns.product": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài thi"
+          }
+        }
+      }
+    },
+    "orders.columns.status": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trạng thái"
+          }
+        }
+      }
+    },
+    "orders.detail.attemptsValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, one {# attempt} other {# attempts}}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, other {# lượt}}"
+          }
+        }
+      }
+    },
+    "orders.detail.benefits.ai": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI explanations"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giải thích bằng AI"
+          }
+        }
+      }
+    },
+    "orders.detail.benefits.no": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không"
+          }
+        }
+      }
+    },
+    "orders.detail.benefits.practice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extra practice"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ôn luyện bổ sung"
+          }
+        }
+      }
+    },
+    "orders.detail.benefits.resultView": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Result view"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xem kết quả"
+          }
+        }
+      }
+    },
+    "orders.detail.benefits.strengths": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strengths and weaknesses"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đánh giá điểm mạnh, điểm yếu"
+          }
+        }
+      }
+    },
+    "orders.detail.benefits.yes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có"
+          }
+        }
+      }
+    },
+    "orders.detail.errorTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to load order details"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được chi tiết đơn hàng"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.amountDue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amount due"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tiền phải trả"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.attempts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attempts granted"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số lượt được cấp"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.benefits": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benefits"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quyền lợi"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.buyer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buyer account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản mua"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.createdAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created at"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo lúc"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.expiresAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Price held until"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ giá tới"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.fulfilledAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Granted at"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cấp bài thi lúc"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.listPrice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "List price"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giá gốc"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.paidAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paid at"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán lúc"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.product": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Product"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sản phẩm"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.promotion": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic promotion"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khuyến mãi tự động"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.version": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Purchased version"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phiên bản lúc mua"
+          }
+        }
+      }
+    },
+    "orders.detail.fields.voucher": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discount code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã giảm giá"
+          }
+        }
+      }
+    },
+    "orders.detail.heading": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order {code}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn {code}"
+          }
+        }
+      }
+    },
+    "orders.detail.history.actors.ADMIN": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Administrator"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quản trị viên"
+          }
+        }
+      }
+    },
+    "orders.detail.history.actors.LEARNER": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learner"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học viên"
+          }
+        }
+      }
+    },
+    "orders.detail.history.actors.SYSTEM": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hệ thống"
+          }
+        }
+      }
+    },
+    "orders.detail.history.actors.VNPAY_IPN": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VNPAY gateway"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cổng thanh toán VNPAY"
+          }
+        }
+      }
+    },
+    "orders.detail.history.actors.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hệ thống"
+          }
+        }
+      }
+    },
+    "orders.detail.history.created": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order created"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo đơn"
+          }
+        }
+      }
+    },
+    "orders.detail.history.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No history events yet."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có lịch sử xử lý."
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.AUTO_EXCESS_AFTER_COUNTED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transaction {ref} automatically recorded as excess after counted payment"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch {ref} tự động ghi nhận thu thừa sau khoản đã tính"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.CANCELLED_BY_USER": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelled by learner"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Học viên đã hủy đơn hàng"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.DOUBLE_CHARGE_REPLACED_ORDER": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate charge flagged on replacement order chain ({ref})"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cảnh báo thu trùng trên chuỗi đơn thay thế ({ref})"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.DOUBLE_CHARGE_REVIEW": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate charge pending review ({ref})"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cần đối soát thu trùng ({ref})"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.EXCESS_AFTER_COUNTED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Excess payment {ref} received after order was already paid"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch {ref} thu thừa sau khi đơn đã thanh toán"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.EXPIRED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order payment window expired"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn hàng đã hết hạn thanh toán"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.FREE_ORDER_PAID": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zero-amount order confirmed immediately"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn hàng 0 đồng được xác nhận ngay"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.FULFILLED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam access granted"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cấp quyền vào bài thi"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.LATE_PAYMENT_RECLAIMED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Late payment {ref} received and reconciled for fulfillment"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận thanh toán muộn ({ref}) và đã đối soát cấp quyền"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.LATE_PAYMENT_REPLACED_DOUBLE_CHARGE": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Late payment {ref} on replaced order (duplicate charge review)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận thanh toán muộn ({ref}) trên đơn đã thay thế (cần kiểm tra thu trùng)"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.LATE_PAYMENT_REPLACED_RECLAIMED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Late payment {ref} received on replaced order"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nhận thanh toán muộn ({ref}) trên đơn đã thay thế"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.LATE_SUCCESS_PENDING_REVIEW": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Late success on transaction {ref}, pending review"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch {ref} báo thành công muộn, đang chờ đối soát"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.ORDER_CREATED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created order awaiting payment"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi tạo đơn hàng chờ thanh toán"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.PAYMENT_ATTEMPT_CREATED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created payment attempt {ref}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi tạo giao dịch thanh toán {ref}"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.PAYMENT_SUCCEEDED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment succeeded for transaction {ref}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thanh toán thành công qua giao dịch {ref}"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.REFUNDED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order refunded"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn hàng đã được hoàn tiền"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.REPLACED_BY": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaced by order {ref}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã thay thế bằng đơn {ref}"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.REUSE_PENDING_PAYMENT": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reused pending order with payment attempt {ref}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tạo lại liên kết thanh toán {ref} trên đơn đang chờ"
+          }
+        }
+      }
+    },
+    "orders.detail.history.reasons.unknown": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order status updated"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cập nhật trạng thái đơn hàng"
+          }
+        }
+      }
+    },
+    "orders.detail.history.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order history"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lịch sử xử lý"
+          }
+        }
+      }
+    },
+    "orders.detail.history.transition": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{from} → {to}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{from} → {to}"
+          }
+        }
+      }
+    },
+    "orders.detail.itemsTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exams in order ({count})"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài thi trong đơn ({count})"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.amount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amount"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số tiền"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.attemptSeq": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attempt"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lần"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.bank": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bank"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngân hàng"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.createdAt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời điểm"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.duplicate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thu trùng"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.empty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free order; no VNPAY payment attempts."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn miễn phí, không phát sinh giao dịch VNPAY."
+          }
+        }
+      }
+    },
+    "orders.detail.payments.emptyVnpay": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No payment attempts yet."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có giao dịch thanh toán."
+          }
+        }
+      }
+    },
+    "orders.detail.payments.reason": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi tiết"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.states.CREATED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khởi tạo"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.states.FAILED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Failed"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thất bại"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.states.SUCCEEDED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Succeeded"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thành công"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.states.UNKNOWN": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa rõ"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.status": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trạng thái"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.tableLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment attempts"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danh sách giao dịch thanh toán"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment attempts"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch thanh toán"
+          }
+        }
+      }
+    },
+    "orders.detail.payments.txnRef": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reference"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã tham chiếu"
+          }
+        }
+      }
+    },
+    "orders.detail.selectPrompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select an order to view details."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn một đơn hàng để xem chi tiết."
+          }
+        }
+      }
+    },
+    "orders.detail.snapshotTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order summary"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông tin đơn hàng"
+          }
+        }
+      }
+    },
+    "orders.detailPageTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order details"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi tiết đơn hàng"
+          }
+        }
+      }
+    },
+    "orders.emptyDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you purchase an exam, your orders will appear here."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khi bạn mua bài thi, các đơn hàng sẽ hiện ở đây."
+          }
+        }
+      }
+    },
+    "orders.emptyTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have no orders yet"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn chưa có đơn nào"
+          }
+        }
+      }
+    },
+    "orders.errorDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check your internet connection and try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kiểm tra kết nối mạng rồi thử lại."
+          }
+        }
+      }
+    },
+    "orders.errorTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to load orders"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được danh sách đơn"
+          }
+        }
+      }
+    },
+    "orders.errors.ORDER_EXPIRED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This order has expired. Please create a new order at the current price."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn đã hết hạn thanh toán. Vui lòng tạo đơn mới theo giá hiện tại."
+          }
+        }
+      }
+    },
+    "orders.errors.ORDER_NOT_FOUND": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order not found in the signed-in account. Please check that you are signed in with the account used to purchase."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy đơn trong tài khoản đang đăng nhập. Hãy kiểm tra bạn đã đăng nhập đúng tài khoản dùng để mua chưa."
+          }
+        }
+      }
+    },
+    "orders.errors.ORDER_NOT_PENDING": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This order is no longer awaiting payment."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn không còn ở trạng thái chờ thanh toán."
+          }
+        }
+      }
+    },
+    "orders.errors.PAYMENT_ATTEMPTS_EXCEEDED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This order has exceeded the maximum payment attempts. Please create a new order."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn đã vượt quá số lần tạo giao dịch thanh toán. Vui lòng tạo đơn mới."
+          }
+        }
+      }
+    },
+    "orders.errors.PRODUCT_DISCONTINUED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This exam is no longer on sale. Payment cannot continue for this order."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài thi đã ngừng bán. Không thể tiếp tục thanh toán đơn này."
+          }
+        }
+      }
+    },
+    "orders.errors.PRODUCT_NOT_FOUND": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The exam for this order could not be found."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy bài thi của đơn này."
+          }
+        }
+      }
+    },
+    "orders.errors.RATE_LIMITED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many requests. Please wait a moment and try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại."
+          }
+        }
+      }
+    },
+    "orders.errors.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to complete the action. Please try again or create a new order."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không thực hiện được thao tác. Vui lòng thử lại hoặc tạo đơn mới."
+          }
+        }
+      }
+    },
+    "orders.exploreExams": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explore exams"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khám phá bài thi"
+          }
+        }
+      }
+    },
+    "orders.notFound.backToOrders": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to My orders"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quay lại đơn của tôi"
+          }
+        }
+      }
+    },
+    "orders.notFound.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order not found in the signed-in account. Please check that you are signed in with the account used to purchase."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy đơn trong tài khoản đang đăng nhập. Hãy kiểm tra bạn đã đăng nhập đúng tài khoản dùng để mua chưa."
+          }
+        }
+      }
+    },
+    "orders.notFound.otherAccount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with another account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đăng nhập bằng tài khoản khác"
+          }
+        }
+      }
+    },
+    "orders.notFound.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Order not found"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tìm thấy đơn hàng"
+          }
+        }
+      }
+    },
+    "orders.pageTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My orders"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn của tôi"
+          }
+        }
+      }
+    },
+    "orders.paidChecking": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment received for order {code}. The exam is being granted to your account."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã nhận thanh toán cho đơn {code}. Bài thi đang được cấp cho tài khoản của bạn."
+          }
+        }
+      }
+    },
+    "orders.paidCheckingSupport": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If it takes too long, contact support via {contact} and include order code {code}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu chờ quá lâu, liên hệ hỗ trợ qua {contact} và gửi kèm mã đơn {code}."
+          }
+        }
+      }
+    },
+    "orders.paidCheckingSupportPending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If it takes too long, contact support and include order code {code}. {pending}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nếu chờ quá lâu, hãy liên hệ hỗ trợ kèm mã đơn {code}. {pending}"
+          }
+        }
+      }
+    },
+    "orders.pendingHoldUntil": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Price held until {time}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ giá tới {time}"
+          }
+        }
+      }
+    },
+    "orders.replacedBy": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaced by order {code}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thay bằng đơn {code}"
+          }
+        }
+      }
+    },
+    "orders.staleDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not refresh data; showing the version loaded at {time}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải lại được dữ liệu; đang hiện bản đã tải lúc {time}."
+          }
+        }
+      }
+    },
+    "orders.staleDescriptionNoTime": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not refresh data; showing the previously loaded version."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải lại được dữ liệu; đang hiện bản đã tải trước đó."
+          }
+        }
+      }
+    },
+    "orders.staleTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data may be out of date."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dữ liệu chưa được cập nhật."
+          }
+        }
+      }
+    },
+    "orders.stateSubtext.PAID": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payment received, granting exam"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã nhận tiền, đang cấp bài thi"
+          }
+        }
+      }
+    },
+    "orders.states.CANCELLED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelled"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hủy"
+          }
+        }
+      }
+    },
+    "orders.states.EXPIRED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expired"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hết hạn"
+          }
+        }
+      }
+    },
+    "orders.states.FULFILLED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam granted"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cấp bài thi"
+          }
+        }
+      }
+    },
+    "orders.states.PAID": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang kiểm tra"
+          }
+        }
+      }
+    },
+    "orders.states.PENDING_PAYMENT": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Awaiting payment"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chờ thanh toán"
+          }
+        }
+      }
+    },
+    "orders.states.REFUNDED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refunded"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã hoàn tiền"
+          }
+        }
+      }
+    },
+    "orders.states.REPLACED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replaced"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã thay thế"
+          }
+        }
+      }
+    },
+    "orders.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exam orders for account {username}, newest first. Include your order code when contacting support."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Các đơn mua bài thi của tài khoản {username}, mới nhất trước. Khi cần hỗ trợ, hãy gửi kèm mã đơn."
+          }
+        }
+      }
+    },
+    "orders.tableLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My orders table"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danh sách đơn hàng của tôi"
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.07": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amount deducted, but the transaction is flagged for review."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trừ tiền thành công nhưng giao dịch bị nghi ngờ."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.09": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your card or account is not registered for Internet Banking."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thẻ hoặc tài khoản chưa đăng ký dịch vụ Internet Banking."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.10": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Card or account authentication failed more than 3 times."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác thực thông tin thẻ hoặc tài khoản không đúng quá 3 lần."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.11": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The payment session timed out."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giao dịch đã hết thời gian chờ thanh toán."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.12": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your card or account is locked."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thẻ hoặc tài khoản đang bị khóa."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.13": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You entered an incorrect authentication password (OTP)."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã nhập sai mật khẩu xác thực giao dịch (OTP)."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.24": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You cancelled the payment on VNPAY."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã hủy giao dịch trên VNPAY."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.51": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insufficient bank balance for this payment."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản ngân hàng không đủ số dư để thanh toán."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.65": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your account has exceeded the daily transaction limit."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản đã vượt quá hạn mức giao dịch trong ngày."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.75": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The payment bank is under maintenance."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngân hàng thanh toán đang bảo trì."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.79": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Authentication failed too many times."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã nhập sai thông tin xác thực quá số lần cho phép."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.99": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Final result from the payment gateway is not available yet."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa nhận được kết quả cuối từ cổng thanh toán."
+          }
+        }
+      }
+    },
+    "orders.vnpayReasons.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The bank or VNPAY declined the transaction."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ngân hàng hoặc VNPAY từ chối giao dịch."
+          }
+        }
+      }
+    },
+    "payment.access.attemptsLeft": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, one {# attempt left} other {# attempts left}}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, other {Còn # lượt}}"
+          }
+        }
+      }
+    },
+    "payment.bundle.detail.attemptsPerExam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, one {# attempt per exam} other {# attempts per exam}}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, other {# lượt mỗi bài}}"
+          }
+        }
+      }
+    },
+    "payment.bundle.detail.examCountValue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, one {# exam} other {# exams}}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, other {# bài}}"
+          }
+        }
+      }
+    },
+    "payment.bundle.detail.existingEntitlement": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, one {You already have # attempt for {name}; buying this bundle adds more attempts} other {You already have # attempts for {name}; buying this bundle adds more attempts}}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{count, plural, other {Bạn đã có # lượt bài {name}; mua bộ sẽ cộng thêm lượt}}"
+          }
+        }
+      }
+    },
+    "payment.bundle.detail.unavailableBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An exam in this bundle is currently being updated. You can still purchase individual exams."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Một bài trong bộ đang được cập nhật. Bạn vẫn mua được từng bài lẻ."
+          }
+        }
+      }
+    },
+    "payment.detail.maxScore": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{score} points"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{score} điểm"
+          }
+        }
+      }
+    },
+    "payment.detail.resultViews.FULL_SOLUTION": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Score, answers and solutions"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm, đáp án và lời giải"
+          }
+        }
+      }
+    },
+    "payment.detail.resultViews.SCORE": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Score only"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chỉ điểm"
+          }
+        }
+      }
+    },
+    "payment.detail.resultViews.SCORE_AND_ANSWERS": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Score and answers"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Điểm và đáp án"
+          }
+        }
+      }
+    },
+    "payment.detail.rights.ai": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI explanations"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giải thích bằng AI"
+          }
+        }
+      }
+    },
+    "payment.detail.rights.no": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không"
+          }
+        }
+      }
+    },
+    "payment.detail.rights.practice": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extra practice"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ôn luyện bổ sung"
+          }
+        }
+      }
+    },
+    "payment.detail.rights.strengths": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strengths and weaknesses report"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đánh giá điểm mạnh, điểm yếu"
+          }
+        }
+      }
+    },
+    "payment.detail.rights.yes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có"
+          }
+        }
+      }
+    },
+    "payment.price": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{amount} VND"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{amount} đ"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

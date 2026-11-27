@@ -43,6 +43,7 @@ struct Thi360App: App {
         sessionStore.onSessionReplaced = {
             router.resetForSessionReplaced()
         }
+        PaymentRoutes.register(router: router, sessionStore: sessionStore, sessionCleanup: sessionCleanup)
 
         _preferences = State(initialValue: preferences)
         _router = State(initialValue: router)

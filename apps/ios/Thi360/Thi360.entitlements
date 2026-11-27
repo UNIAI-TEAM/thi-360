@@ -5,6 +5,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:$(THI360_WEB_APPLINKS_HOST)</string>
+		<string>webcredentials:$(THI360_WEB_APPLINKS_HOST)</string>
 	</array>
 </dict>
 </plist>
