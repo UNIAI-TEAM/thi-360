@@ -343,7 +343,14 @@ class EditSessionTest {
         assertEquals(localSid.toString(), takeoverReq["sessionId"]?.jsonPrimitive?.content)
 
         val getCountBefore = server.callCount(AttemptOperation.GET_STATE)
+        val reloadGate = server.gateNext(AttemptOperation.GET_STATE)
         takeoverGate.complete(Unit)
+        runCurrent()
+
+        assertEquals(EditSessionState.OpenElsewhere(otherSeenAt), engine.state.value.session)
+        assertEquals(CommandState.Sending(AttemptCommandKind.Takeover), engine.state.value.command)
+
+        reloadGate.complete(Unit)
         runCurrent()
 
         val editing = engine.state.value.session as EditSessionState.Editing

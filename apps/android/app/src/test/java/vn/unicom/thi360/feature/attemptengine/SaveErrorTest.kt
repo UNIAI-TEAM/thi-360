@@ -224,4 +224,31 @@ class SaveErrorTest {
         assertEquals(SaveStatus.Unsaved(UnsavedReason.SessionConflict), conflictEngine.state.value.save)
         conflictEngine.close()
     }
+
+    @Test
+    fun revertingFailedFlagImmediatelyRestoresSavedStatusAndCancelsRetry() = runTest {
+        val server = FakeAttemptServer()
+        val attempt = server.loadStateFixture("in-progress-per-part") { it.withFutureDeadlines() }
+        val itemId = attempt.firstLeafItem().itemId!!
+        val (engine, _) = newEngineHarness(
+            server = server,
+            storeRoot = File(storeRoot, "revert-flag").apply { mkdirs() },
+        )
+        runCurrent()
+
+        server.enqueueServerError(AttemptOperation.SAVE_ANSWERS, 503)
+        engine.flag(itemId, true)
+        runCurrent()
+        assertEquals(SaveStatus.Unsaved(UnsavedReason.ServerError), engine.state.value.save)
+        assertEquals(1, server.callCount(AttemptOperation.SAVE_ANSWERS))
+
+        engine.flag(itemId, false)
+        assertEquals(SaveStatus.Saved, engine.state.value.save)
+
+        advanceTimeBy(30_000L)
+        runCurrent()
+        assertEquals(1, server.callCount(AttemptOperation.SAVE_ANSWERS))
+        assertEquals(SaveStatus.Saved, engine.state.value.save)
+        engine.close()
+    }
 }

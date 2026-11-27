@@ -171,4 +171,33 @@ class EvictionTest {
         )
         cEngine.close()
     }
+
+    @Test
+    fun evictedEngineIgnoresPositionAndDeadlineExpirationWithZeroCalls() = runTest {
+        val server = FakeAttemptServer()
+        val baseNow = java.time.OffsetDateTime.parse("2026-11-20T10:00:00Z")
+        val attempt = server.loadStateFixture("in-progress-shared") {
+            it.withFutureDeadlines(serverNow = baseNow, attemptRemainingSeconds = 5L)
+        }
+        val openPartId = attempt.firstOpenPart().partId!!
+        val itemId = attempt.firstLeafItem().itemId!!
+        val (engine, _) = newEngineHarness(
+            server = server,
+            storeRoot = File(storeRoot, "evict-clock").apply { mkdirs() },
+        )
+        runCurrent()
+
+        engine.reportSessionRevoked()
+        runCurrent()
+        assertEquals(EditSessionState.Evicted, engine.state.value.session)
+
+        server.resetRecordedCalls()
+        engine.position(openPartId, itemId)
+        advanceTimeBy(60_000L)
+        runCurrent()
+
+        assertEquals(0, server.calls().size)
+        assertEquals(EditSessionState.Evicted, engine.state.value.session)
+        engine.close()
+    }
 }

@@ -74,7 +74,11 @@ internal class SaveQueue(
             if (entry.hasUnresolvedAnswer()) {
                 dirtyAnswerOrder.add(entry.itemId)
             }
+            if (!entry.partClosed && (entry.dirtyFlag || entry.hasUnresolvedAnswer())) {
+                syncDraftForItem(entry)
+            }
         }
+        reconcileErrorState()
         callbacks.onStateChanged()
     }
 
@@ -88,6 +92,7 @@ internal class SaveQueue(
                 dirtyAnswerOrder.remove(entry.itemId)
             }
         }
+        reconcileErrorState()
         callbacks.onStateChanged()
     }
 
@@ -162,6 +167,7 @@ internal class SaveQueue(
         existing.flagged = flagged
         existing.dirtyFlag = flagged != existing.serverFlagged
         syncDraftForItem(existing)
+        reconcileErrorState()
         callbacks.onStateChanged()
 
         if (existing.dirtyFlag && callbacks.isOnline() && callbacks.activeSessionId() != null) {
@@ -271,6 +277,10 @@ internal class SaveQueue(
     }
 
     fun applyFinalAnswerResults(results: List<FinalAnswerResult>) {
+        backoff.reset()
+        if (lastErrorReason != UnsavedReason.SessionConflict) {
+            lastErrorReason = null
+        }
         for (res in results) {
             val item = items[res.itemId] ?: continue
             when (res.status) {
@@ -315,6 +325,7 @@ internal class SaveQueue(
                 }
             }
         }
+        reconcileErrorState()
         callbacks.onStateChanged()
     }
 
@@ -367,6 +378,7 @@ internal class SaveQueue(
             val positionToSend = callbacks.consumePendingPosition()
 
             if (readyAnswers.isEmpty() && pendingFlags.isEmpty() && positionToSend == null) {
+                reconcileErrorState()
                 break
             }
 
@@ -659,6 +671,31 @@ internal class SaveQueue(
             draftStore.deleteDraft(attemptId, item.itemId)
         } else {
             draftStore.writeDraft(attemptId, item.itemId, item.toDraftRecord())
+        }
+    }
+
+    private fun reconcileErrorState() {
+        when (lastErrorReason) {
+            UnsavedReason.Rejected -> {
+                if (items.values.none { !it.partClosed && it.rejectedReason != null }) {
+                    lastErrorReason = null
+                }
+            }
+
+            UnsavedReason.NetworkError,
+            UnsavedReason.ServerError,
+            is UnsavedReason.RateLimited,
+            -> {
+                if (!hasAnyPendingWork() && flushJob?.isActive != true) {
+                    retryJob?.cancel()
+                    retryJob = null
+                    lastErrorReason = null
+                }
+            }
+
+            UnsavedReason.SessionConflict,
+            null,
+            -> Unit
         }
     }
 

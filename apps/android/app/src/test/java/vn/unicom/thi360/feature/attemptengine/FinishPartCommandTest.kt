@@ -295,4 +295,54 @@ class FinishPartCommandTest {
         reconCollector.cancel()
         reconEngine.close()
     }
+
+    @Test
+    fun finishPartClearsPriorSaveErrorAndResetsSaveStatusToSaved() = runTest {
+        val server = FakeAttemptServer()
+        val attempt = server.loadStateFixture("in-progress-per-part") { it.withFutureDeadlines() }
+        val part1 = PartSelection.sortedParts(attempt)[0]
+        val part1Id = part1.partId!!
+        val item1 = PartSelection.leafItems(part1).first().itemId!!
+        val (engine, _) = newEngineHarness(
+            server = server,
+            storeRoot = File(storeRoot, "finish-clears-503").apply { mkdirs() },
+        )
+        runCurrent()
+
+        server.enqueueServerError(AttemptOperation.SAVE_ANSWERS, 503)
+        engine.answer(item1, SingleChoiceAnswer("a"))
+        runCurrent()
+        assertEquals(SaveStatus.Unsaved(UnsavedReason.ServerError), engine.state.value.save)
+
+        engine.finishPart(part1Id)
+        runCurrent()
+        assertEquals(CommandState.Idle, engine.state.value.command)
+        assertEquals(SaveStatus.Saved, engine.state.value.save)
+        engine.close()
+
+        val rejServer = FakeAttemptServer()
+        val rejAttempt = rejServer.loadStateFixture("in-progress-per-part") { it.withFutureDeadlines() }
+        val rejPart1 = PartSelection.sortedParts(rejAttempt)[0]
+        val rejPart1Id = rejPart1.partId!!
+        val rejItem = PartSelection.leafItems(rejPart1).first().itemId!!
+        val (rejEngine, _) = newEngineHarness(
+            server = rejServer,
+            storeRoot = File(storeRoot, "finish-clears-rejected").apply { mkdirs() },
+        )
+        runCurrent()
+
+        rejServer.saveResultMode = FakeAttemptServer.SaveResultOverrideMode.FixedResult(
+            status = vn.unicom.thi360.core.network.generated.model.FinalAnswerResult.Status.REJECTED,
+            reason = "INVALID_ANSWER",
+        )
+        rejEngine.answer(rejItem, SingleChoiceAnswer("bad"))
+        runCurrent()
+        assertEquals(SaveStatus.Unsaved(UnsavedReason.Rejected), rejEngine.state.value.save)
+
+        rejServer.saveResultMode = FakeAttemptServer.SaveResultOverrideMode.Stateful
+        rejEngine.finishPart(rejPart1Id)
+        runCurrent()
+        assertEquals(SaveStatus.Saved, rejEngine.state.value.save)
+        rejEngine.close()
+    }
 }

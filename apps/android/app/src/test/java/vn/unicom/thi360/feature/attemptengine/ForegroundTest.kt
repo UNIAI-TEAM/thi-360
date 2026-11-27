@@ -224,4 +224,99 @@ class ForegroundTest {
         collector.cancel()
         evictEngine.close()
     }
+
+    @Test
+    fun resumesForegroundAfterBackgroundConfigChangeOrBiometricLockUnmount() = runTest {
+        val server = FakeAttemptServer()
+        server.loadStateFixture("in-progress-shared") { it.withFutureDeadlines() }
+        val (engine, _) = newEngineHarness(
+            server = server,
+            storeRoot = File(storeRoot, "bg-recreate").apply { mkdirs() },
+        )
+        runCurrent()
+
+        val router = InboundLinkRouter { "thi360.vn" }
+        var sessionUnlocked = true
+        router.onSessionStateChanged(SessionState.Active(username = "student.demo"))
+
+        val owner1 = object : LifecycleOwner {
+            val registry = LifecycleRegistry.createUnsafe(this)
+            override val lifecycle: Lifecycle get() = registry
+        }
+        owner1.registry.currentState = Lifecycle.State.STARTED
+        val hook1 = EngineLifecycle(
+            engine = engine,
+            lifecycle = owner1.lifecycle,
+            inboundLinkRouter = router,
+            isSessionUnlocked = { sessionUnlocked },
+        ).attach()
+
+        owner1.registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        hook1.close()
+        server.resetRecordedCalls()
+
+        val owner2 = object : LifecycleOwner {
+            val registry = LifecycleRegistry.createUnsafe(this)
+            override val lifecycle: Lifecycle get() = registry
+        }
+        owner2.registry.currentState = Lifecycle.State.STARTED
+        val hook2 = EngineLifecycle(
+            engine = engine,
+            lifecycle = owner2.lifecycle,
+            inboundLinkRouter = router,
+            isSessionUnlocked = { sessionUnlocked },
+        ).attach()
+        runCurrent()
+
+        assertEquals(1, server.callCount(AttemptOperation.HEARTBEAT))
+        assertEquals(1, server.callCount(AttemptOperation.GET_STATE))
+        advanceTimeBy(HEARTBEAT_INTERVAL_MS)
+        runCurrent()
+        assertEquals(2, server.callCount(AttemptOperation.HEARTBEAT))
+
+        owner2.registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        sessionUnlocked = false
+        router.onSessionStateChanged(SessionState.Locked(username = "student.demo"))
+        hook2.close()
+        server.resetRecordedCalls()
+
+        val ownerLocked = object : LifecycleOwner {
+            val registry = LifecycleRegistry.createUnsafe(this)
+            override val lifecycle: Lifecycle get() = registry
+        }
+        ownerLocked.registry.currentState = Lifecycle.State.STARTED
+        val hookLocked = EngineLifecycle(
+            engine = engine,
+            lifecycle = ownerLocked.lifecycle,
+            inboundLinkRouter = router,
+            isSessionUnlocked = { sessionUnlocked },
+        ).attach()
+        runCurrent()
+        assertEquals("Must not resume while session is locked", 0, server.callCount(AttemptOperation.HEARTBEAT))
+        hookLocked.close()
+
+        router.notifyForegroundReturn()
+        sessionUnlocked = true
+        router.onSessionStateChanged(SessionState.Active(username = "student.demo"))
+        runCurrent()
+        assertEquals(0, server.callCount(AttemptOperation.HEARTBEAT))
+
+        val owner3 = object : LifecycleOwner {
+            val registry = LifecycleRegistry.createUnsafe(this)
+            override val lifecycle: Lifecycle get() = registry
+        }
+        owner3.registry.currentState = Lifecycle.State.STARTED
+        val hook3 = EngineLifecycle(
+            engine = engine,
+            lifecycle = owner3.lifecycle,
+            inboundLinkRouter = router,
+            isSessionUnlocked = { sessionUnlocked },
+        ).attach()
+        runCurrent()
+
+        assertEquals(1, server.callCount(AttemptOperation.HEARTBEAT))
+        assertEquals(1, server.callCount(AttemptOperation.GET_STATE))
+        hook3.close()
+        engine.close()
+    }
 }

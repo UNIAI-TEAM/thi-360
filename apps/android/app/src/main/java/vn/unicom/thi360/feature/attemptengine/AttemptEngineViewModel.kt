@@ -40,7 +40,6 @@ class AttemptEngineViewModel(
 
     override fun onCleared() {
         engine.close()
-        super.onCleared()
     }
 
     class Factory(

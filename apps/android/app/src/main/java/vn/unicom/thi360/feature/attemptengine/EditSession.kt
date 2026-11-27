@@ -15,6 +15,7 @@ internal interface EditSessionCallbacks {
     fun isOnline(): Boolean
     fun onSessionStateChanged(state: EditSessionState, claimFailureSaveStatus: SaveStatus?)
     fun onServerNow(serverNow: OffsetDateTime)
+    suspend fun reloadBeforeTakeoverCompletion(): Boolean
     fun onClaimed(response: ClaimSessionResponse, fromTakeover: Boolean)
     fun onAttemptClosedFromSession(reason: AttemptClosedReason)
     fun onEvicted(fromSave: Boolean)
@@ -36,6 +37,7 @@ internal class EditSession(
     private var takeoverJob: Job? = null
     private var closed = false
     private var lastClaimFailure: SaveStatus? = null
+    private var evictionGeneration = 0L
 
     val currentState: EditSessionState
         get() = state
@@ -96,6 +98,7 @@ internal class EditSession(
         if (takeoverJob?.isActive == true) return
 
         val previousState = state
+        val takeoverEvictionGen = evictionGeneration
         val sid = ensureSessionIdPersisted()
         retryJob?.cancel()
         retryJob = null
@@ -118,10 +121,19 @@ internal class EditSession(
                         backoff.reset()
                         lastClaimFailure = null
                         callbacks.onServerNow(result.response.serverNow)
-                        state = EditSessionState.Editing(result.response.sessionId)
-                        callbacks.onSessionStateChanged(state, null)
-                        callbacks.onClaimed(result.response, fromTakeover = true)
-                        onFinished(true, null)
+                        val stillOpen = callbacks.reloadBeforeTakeoverCompletion()
+                        if (closed) return@launch
+                        if (stillOpen &&
+                            state !is EditSessionState.ReadOnly &&
+                            evictionGeneration == takeoverEvictionGen
+                        ) {
+                            state = EditSessionState.Editing(result.response.sessionId)
+                            callbacks.onSessionStateChanged(state, null)
+                            callbacks.onClaimed(result.response, fromTakeover = true)
+                            onFinished(true, null)
+                        } else {
+                            onFinished(false, null)
+                        }
                     }
 
                     is ClaimSessionApiResult.OpenElsewhere -> {
@@ -169,6 +181,7 @@ internal class EditSession(
 
     fun markEvicted(fromSave: Boolean = false) {
         if (closed) return
+        evictionGeneration += 1L
         val wasEvicted = state is EditSessionState.Evicted
         claimJob?.cancel()
         claimJob = null
@@ -182,13 +195,15 @@ internal class EditSession(
         }
     }
 
-    fun markReadOnly(reason: ReadOnlyReason) {
+    fun markReadOnly(reason: ReadOnlyReason, cancelTakeover: Boolean = true) {
         claimJob?.cancel()
         claimJob = null
         retryJob?.cancel()
         retryJob = null
-        takeoverJob?.cancel()
-        takeoverJob = null
+        if (cancelTakeover) {
+            takeoverJob?.cancel()
+            takeoverJob = null
+        }
         state = EditSessionState.ReadOnly(reason)
         lastClaimFailure = null
         callbacks.onSessionStateChanged(state, null)

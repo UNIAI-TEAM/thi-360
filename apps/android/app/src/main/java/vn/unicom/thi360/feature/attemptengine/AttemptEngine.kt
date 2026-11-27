@@ -199,21 +199,22 @@ class AttemptEngine(
                 reanchorClock(serverNow)
             }
 
+            override suspend fun reloadBeforeTakeoverCompletion(): Boolean {
+                val fresh = reloadServerState(preferServerPosition = true)
+                return !isStopped &&
+                    currentClosedReason == null &&
+                    (fresh == null || fresh.state == AttemptStateResponse.State.IN_PROGRESS)
+            }
+
             override fun onClaimed(response: ClaimSessionResponse, fromTakeover: Boolean) {
                 saveQueue.clearSessionConflictError()
                 if (fromTakeover) {
-                    scope.launch {
-                        val fresh = reloadServerState(preferServerPosition = true)
-                        if (isStopped) return@launch
-                        if (fresh == null || fresh.state == AttemptStateResponse.State.IN_PROGRESS) {
-                            if (isForeground) {
-                                heartbeatLoop.restart()
-                            }
-                            syncPollingAndClock()
-                            if (saveQueue.hasAnyPendingWork()) {
-                                saveQueue.flushNow()
-                            }
-                        }
+                    if (isForeground) {
+                        heartbeatLoop.restart()
+                    }
+                    syncPollingAndClock()
+                    if (saveQueue.hasAnyPendingWork()) {
+                        saveQueue.flushNow()
                     }
                 } else {
                     if (isForeground) {
@@ -237,6 +238,10 @@ class AttemptEngine(
             }
 
             override fun onEvicted(fromSave: Boolean) {
+                foregroundResumeJob?.cancel()
+                foregroundResumeJob = null
+                onlineRecoveryJob?.cancel()
+                onlineRecoveryJob = null
                 heartbeatLoop.stop()
                 partPolling.stop()
                 clockTickerJob?.cancel()
@@ -516,7 +521,13 @@ class AttemptEngine(
                 publishState()
 
                 if (fresh.state == AttemptStateResponse.State.IN_PROGRESS) {
-                    editSession.startClaim()
+                    if (currentSessionState is EditSessionState.Editing) {
+                        if (connectivity.online.value && saveQueue.hasAnyPendingWork()) {
+                            saveQueue.flushNow()
+                        }
+                    } else {
+                        editSession.startClaim()
+                    }
                 }
             }
 
@@ -621,7 +632,8 @@ class AttemptEngine(
             knownItemIds = saveQueue.knownItemIds(),
             keepStartContext = keepStartContext,
         )
-        editSession.markReadOnly(ReadOnlyReason.AttemptClosed)
+        currentCommandState = CommandState.Idle
+        editSession.markReadOnly(ReadOnlyReason.AttemptClosed, cancelTakeover = false)
         publishState()
         if (!attemptClosedEventEmitted) {
             attemptClosedEventEmitted = true
@@ -679,26 +691,33 @@ class AttemptEngine(
                     if (partCommands.isUnconfirmed) {
                         partCommands.reconcile()
                     }
+                    if (currentAttempt == null) {
+                        if (currentLoad is LoadState.Failed) {
+                            start()
+                        }
+                        return@collect
+                    }
+                    if (currentClosedReason != null ||
+                        currentAttempt?.state != AttemptStateResponse.State.IN_PROGRESS
+                    ) {
+                        return@collect
+                    }
                     when (currentSessionState) {
                         EditSessionState.Acquiring -> {
                             editSession.onOnline()
                         }
 
                         is EditSessionState.Editing -> {
-                            if (currentAttempt?.state == AttemptStateResponse.State.IN_PROGRESS &&
-                                currentClosedReason == null
-                            ) {
-                                onlineRecoveryJob?.cancel()
-                                onlineRecoveryJob = scope.launch {
-                                    val fresh = reloadServerState()
-                                    if (isStopped) return@launch
-                                    if (fresh != null &&
-                                        fresh.state == AttemptStateResponse.State.IN_PROGRESS &&
-                                        editSession.activeSessionId != null &&
-                                        saveQueue.hasAnyPendingWork()
-                                    ) {
-                                        saveQueue.flushNow()
-                                    }
+                            onlineRecoveryJob?.cancel()
+                            onlineRecoveryJob = scope.launch {
+                                val fresh = reloadServerState()
+                                if (isStopped) return@launch
+                                if (fresh != null &&
+                                    fresh.state == AttemptStateResponse.State.IN_PROGRESS &&
+                                    editSession.activeSessionId != null &&
+                                    saveQueue.hasAnyPendingWork()
+                                ) {
+                                    saveQueue.flushNow()
                                 }
                             }
                         }
@@ -734,6 +753,7 @@ class AttemptEngine(
         val attempt = currentAttempt
         if (isStopped ||
             currentClosedReason != null ||
+            currentSessionState is EditSessionState.Evicted ||
             attempt == null ||
             attempt.state != AttemptStateResponse.State.IN_PROGRESS ||
             !serverClock.isAnchored
@@ -768,6 +788,7 @@ class AttemptEngine(
     }
 
     private fun checkExamDeadlineExpiration() {
+        if (currentSessionState is EditSessionState.Evicted) return
         val attempt = currentAttempt ?: return
         if (attempt.state != AttemptStateResponse.State.IN_PROGRESS) return
         val activePart = activePart()

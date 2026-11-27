@@ -123,4 +123,72 @@ class DraftReconcileTest {
         assertEquals(0, offlineServer.callCount(AttemptOperation.SAVE_ANSWERS))
         oEngine.close()
     }
+
+    @Test
+    fun warmReconcilePreservesDirtyFlagDraftOnDiskAndIgnoresOutOfOrderLowerServerSeq() = runTest {
+        val server = FakeAttemptServer()
+        val attempt = server.loadStateFixture("in-progress-per-part") { it.withFutureDeadlines() }
+        val item = attempt.firstLeafItem().itemId!!
+        val flagRoot = File(storeRoot, "warm-flag").apply { mkdirs() }
+        val flagStore = AccountScopedStore(flagRoot, "account-A")
+        val conn = MutableConnectivityMonitor(true)
+
+        val (engine, _) = newEngineHarness(
+            server = server,
+            storeRoot = flagRoot,
+            connectivity = conn,
+        )
+        runCurrent()
+
+        conn.setOnline(false)
+        runCurrent()
+        engine.flag(item, true)
+        val draftBeforeReconnect = DraftStore(flagStore).readDraft(attempt.attemptId, item)
+        assertTrue(draftBeforeReconnect != null && draftBeforeReconnect.flagged && draftBeforeReconnect.dirtyFlag == true)
+
+        server.enqueueServerError(AttemptOperation.SAVE_ANSWERS, 503)
+        conn.setOnline(true)
+        runCurrent()
+
+        val draftAfterWarmReconcile = DraftStore(flagStore).readDraft(attempt.attemptId, item)
+        assertTrue(
+            "Dirty flag-only draft must remain on disk after warm GET reconcile when PUT fails",
+            draftAfterWarmReconcile != null && draftAfterWarmReconcile.flagged && draftAfterWarmReconcile.dirtyFlag == true,
+        )
+        engine.close()
+
+        val (reopened, _) = newEngineHarness(
+            server = server,
+            storeRoot = flagRoot,
+            connectivity = MutableConnectivityMonitor(true),
+        )
+        runCurrent()
+        assertEquals(true, server.currentAttemptState().allLeafItems().first { it.itemId == item }.flagged)
+        assertEquals(SaveStatus.Saved, reopened.state.value.save)
+        reopened.close()
+
+        val orderServer = FakeAttemptServer()
+        val orderAttempt = orderServer.loadStateFixture("in-progress-per-part") { it.withFutureDeadlines() }
+        val orderItem = orderAttempt.firstLeafItem().itemId!!
+        val (orderEngine, _) = newEngineHarness(
+            server = orderServer,
+            storeRoot = File(storeRoot, "out-of-order").apply { mkdirs() },
+        )
+        runCurrent()
+
+        orderEngine.answer(orderItem, SingleChoiceAnswer("a"))
+        runCurrent()
+        assertEquals(SingleChoiceAnswer("a"), orderEngine.state.value.answers[orderItem]?.value)
+        assertEquals(1L, orderEngine.state.value.answers[orderItem]?.seq)
+
+        orderServer.setServerItemState(orderItem, seq = 0L, answer = null, flagged = false)
+        orderEngine.refresh()
+        runCurrent()
+        assertEquals(
+            "Out-of-order GET with lower serverSeq must not overwrite newer confirmed answer",
+            SingleChoiceAnswer("a"),
+            orderEngine.state.value.answers[orderItem]?.value,
+        )
+        orderEngine.close()
+    }
 }

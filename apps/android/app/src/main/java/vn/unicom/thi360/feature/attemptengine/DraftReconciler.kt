@@ -130,9 +130,8 @@ internal object DraftReconciler {
                         dirtyAnswer = !isStillRejected
                     } else {
                         localSeq = confirmedSeq
-                        answer = item.answer
+                        answer = if (serverSeq >= existing.serverConfirmedSeq) item.answer else existing.answer
                         dirtyAnswer = false
-                        draftsToDelete.add(itemId)
                     }
                     if (existing.dirtyFlag) {
                         flagged = existing.flagged
