@@ -5,14 +5,14 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>vi</string>
 	<key>CFBundleDisplayName</key>
-	<string>Thi 360</string>
+	<string>Thi360</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>vi</string>
 		<string>en</string>
 	</array>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Thi 360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn.</string>
+	<string>Thi360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -43,6 +43,12 @@
 	<string>$(THI360_ENV)</string>
 	<key>THI360_WEB_BASE_URL</key>
 	<string>$(THI360_WEB_BASE_URL)</string>
+	<key>THI360_SUPPORT_PHONE</key>
+	<string>$(THI360_SUPPORT_PHONE)</string>
+	<key>THI360_SUPPORT_EMAIL</key>
+	<string>$(THI360_SUPPORT_EMAIL)</string>
+	<key>THI360_SUPPORT_HOURS</key>
+	<string>$(THI360_SUPPORT_HOURS)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

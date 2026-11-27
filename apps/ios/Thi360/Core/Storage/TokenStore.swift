@@ -8,6 +8,7 @@ struct SessionTokens: Codable, Equatable, Sendable, CustomStringConvertible, Cus
     let refreshExpiresIn: Int
     let mustChangePassword: Bool
     let username: String?
+    let accountId: String?
     let issuedAt: Date
 
     init(
@@ -17,6 +18,7 @@ struct SessionTokens: Codable, Equatable, Sendable, CustomStringConvertible, Cus
         refreshExpiresIn: Int,
         mustChangePassword: Bool,
         username: String? = nil,
+        accountId: String? = nil,
         issuedAt: Date = Date()
     ) {
         self.accessToken = accessToken
@@ -25,6 +27,7 @@ struct SessionTokens: Codable, Equatable, Sendable, CustomStringConvertible, Cus
         self.refreshExpiresIn = refreshExpiresIn
         self.mustChangePassword = mustChangePassword
         self.username = username
+        self.accountId = accountId
         self.issuedAt = issuedAt
     }
 

@@ -15,14 +15,13 @@ final class NewPasswordFromLinkTests: XCTestCase {
             username: "another.student"
         )
 
-        let (sessionStore, tokenStore, transport, _) = SessionTestFactory.makeStack(
+        let (sessionStore, tokenStore, transport, _) = try SessionTestFactory.makeContractStack(
             initialTokens: existingTokens
-        ) { request in
-            if request.path.hasSuffix("/api/v1/auth/password/reset") {
+        ) { transport in
+            transport.register(method: .post, path: "/api/v1/auth/password/reset") { _ in
                 await gate.enterAndWait()
-                return MockClientTransport.emptyResponse(statusCode: 204)
+                return ContractFakeTransport.emptyResponse(statusCode: 204)
             }
-            return MockClientTransport.emptyResponse(statusCode: 500)
         }
         XCTAssertEqual(sessionStore.state, .active)
 
@@ -42,7 +41,7 @@ final class NewPasswordFromLinkTests: XCTestCase {
             await vm.submit()
         }
         await duplicate.value
-        XCTAssertEqual(transport.recordedRequests.count, 1, "Rapid duplicate reset submit must send only once")
+        XCTAssertEqual(transport.callCount(method: .post, path: "/api/v1/auth/password/reset"), 1, "Rapid duplicate reset submit must send only once")
 
         await gate.release()
         await first.value
@@ -66,8 +65,8 @@ final class NewPasswordFromLinkTests: XCTestCase {
 
     func testInvalidOrExpiredResetTokenShowsInvalidLinkScreenAndRoutesToForgotPassword() async throws {
         let invalidFixture = try ContractFixtureLoader.loadApiFixture("password-reset-422-reset-token-invalid.json")
-        let (sessionStore, _, _, _) = SessionTestFactory.makeStack { _ in
-            MockClientTransport.jsonResponse(statusCode: 422, data: invalidFixture)
+        let (sessionStore, _, _, _) = try SessionTestFactory.makeContractStack { transport in
+            transport.registerJSON(method: .post, path: "/api/v1/auth/password/reset", statusCode: 422, data: invalidFixture)
         }
 
         let link = ResetLink(token: "expired-reset-token")
@@ -94,10 +93,8 @@ final class NewPasswordFromLinkTests: XCTestCase {
         XCTAssertEqual(router.signedOutRoute, .forgotPassword)
     }
 
-    func testWeakOrMismatchedPasswordsShowFieldErrorsWithoutCallingNetwork() async {
-        let (sessionStore, _, transport, _) = SessionTestFactory.makeStack { _ in
-            MockClientTransport.emptyResponse(statusCode: 500)
-        }
+    func testWeakOrMismatchedPasswordsShowFieldErrorsWithoutCallingNetwork() async throws {
+        let (sessionStore, _, transport, _) = try SessionTestFactory.makeContractStack()
 
         let vm = NewPasswordViewModel(
             mode: .fromLink(ResetLink(token: "valid-token")),

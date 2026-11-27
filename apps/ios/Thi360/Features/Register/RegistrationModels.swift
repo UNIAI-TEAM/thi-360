@@ -25,7 +25,6 @@ enum RegistrationState: Equatable, Sendable {
 }
 
 enum RegistrationValidation {
-    static let termsVersion = "2026-11"
     static let maxFullNameLength = 200
     static let otpLength = 6
 
