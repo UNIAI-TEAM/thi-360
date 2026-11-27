@@ -2,7 +2,7 @@
 
 import { SESSION_QUERY_KEY } from "@/features/session/api";
 import type { Session } from "@/features/session/types";
-import { cn, focusRing, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from "@thi360/ui";
+import { cn, focusRing, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, Tooltip } from "@thi360/ui";
 import { Check, CircleAlert, TriangleAlert } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/core";
@@ -15,7 +15,7 @@ import { DisplayToggle } from "./display-toggle";
 import { KatexSpan } from "./katex-span";
 import { checkLatex, type LatexCheck, type LatexErrorKind } from "./latex-check";
 import { MathField, type MathFieldHandle } from "./math-field";
-import { PALETTE_TABS, type PaletteTabId } from "./math-palette";
+import { PALETTE_TABS, type PaletteTabId, SPACING_LATEX, type SpacingId } from "./math-palette";
 import { PaletteGrid } from "./palette-grid";
 
 /** Dữ liệu `openForSelection` của mục `math` trả về — mở lại hộp với công thức đang chọn. */
@@ -126,19 +126,41 @@ export default function MathInsertDialog({ editor, open, onOpenChange, editing }
 
           <div className="flex flex-col gap-1.5">
             <span className="text-field-label text-text">{t("visualLabel")}</span>
-            <MathField
-              ref={fieldRef}
-              initialLatex={latex}
-              ariaLabel={t("visualAriaLabel")}
-              onLatexChange={setLatex}
-              onStatusChange={setFieldStatus}
-              className={cn(
-                "flex min-h-[150px] items-center justify-center rounded-xl border border-border bg-surface p-4 transition-colors duration-150 motion-reduce:transition-none",
-                "focus-within:border-primary-text focus-within:ring-3 focus-within:ring-primary-text/15",
-                "[&_math-field]:w-full [&_math-field]:border-0 [&_math-field]:bg-transparent [&_math-field]:text-[28px] [&_math-field]:text-text [&_math-field]:outline-hidden",
-                "[&_math-field::part(menu-toggle)]:hidden [&_math-field::part(virtual-keyboard-toggle)]:hidden",
-              )}
-            />
+            <div className="relative">
+              <MathField
+                ref={fieldRef}
+                initialLatex={latex}
+                ariaLabel={t("visualAriaLabel")}
+                onLatexChange={setLatex}
+                onStatusChange={setFieldStatus}
+                className={cn(
+                  "flex min-h-[150px] items-center justify-center rounded-xl border border-border bg-surface p-4 transition-colors duration-150 motion-reduce:transition-none",
+                  "focus-within:border-primary-text focus-within:ring-3 focus-within:ring-primary-text/15",
+                  "[&_math-field]:w-full [&_math-field]:border-0 [&_math-field]:bg-transparent [&_math-field]:text-[28px] [&_math-field]:text-text [&_math-field]:outline-hidden",
+                  "[&_math-field::part(menu-toggle)]:hidden [&_math-field::part(virtual-keyboard-toggle)]:hidden",
+                )}
+              />
+              {/* Khoảng cách: hai nút chữ nhỏ ở góc ô soạn, không chiếm ô trong bảng mẫu (UNI-2878). */}
+              <div role="group" aria-label={t("spacing.label")} className="absolute top-2 right-2 flex gap-1">
+                {(Object.keys(SPACING_LATEX) as SpacingId[]).map((id) => (
+                  <Tooltip key={id} content={t(`spacing.${id}Hint`)}>
+                    <button
+                      type="button"
+                      disabled={!fieldReady}
+                      aria-label={t(`spacing.${id}Hint`)}
+                      onClick={() => fieldRef.current?.insert(SPACING_LATEX[id])}
+                      className={cn(
+                        "h-6 rounded-md border border-border bg-surface px-2 text-caption text-text-muted",
+                        "hover:border-border-strong hover:bg-subtle hover:text-text disabled:pointer-events-none disabled:opacity-50",
+                        focusRing,
+                      )}
+                    >
+                      {t(`spacing.${id}`)}
+                    </button>
+                  </Tooltip>
+                ))}
+              </div>
+            </div>
             <p className="text-caption text-text-muted">
               {fieldStatus === "failed" ? t("visualFailed") : fieldStatus === "loading" ? t("visualLoading") : t("visualHint")}
             </p>

@@ -881,7 +881,7 @@ test.describe("FA-4 Hàng chờ chấm tự luận & vận hành lượt thi", (
       expect(claim403.status()).toBe(403);
 
       await roPage.goto(`${ADMIN_URL}/attempts`);
-      await expect(roPage.getByText("MÃ LỖI 403")).toBeVisible();
+      await expect(roPage.getByText("Không có quyền", { exact: true })).toBeVisible();
       await expect(roPage.getByRole("heading", { name: "Bạn không có quyền vào trang này" })).toBeVisible();
 
       // 2) Tài khoản không có GRADING.VIEW / ATTEMPT.VIEW

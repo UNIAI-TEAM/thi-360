@@ -748,9 +748,9 @@
   },
   "errorPage": {
     "description": "An unexpected error occurred while processing your request. Please try again later.",
-    "eyebrow": "ERROR 500",
+    "eyebrow": "System error",
     "title": "Server error",
-    "traceLabel": "Request ID: {traceId}"
+    "traceLabel": "If you contact support, include this code: {traceId}"
   },
   "errors": {
     "forbiddenToast": "You do not have permission to perform this action.",
@@ -804,7 +804,7 @@
   "forbidden": {
     "description": "Account <strong>{username}</strong> does not have permission to access this page or feature. Contact an administrator if you need access.",
     "descriptionAnonymous": "Your account does not have permission to access this page or feature. Contact an administrator if you need access.",
-    "eyebrow": "ERROR 403",
+    "eyebrow": "No access",
     "otherAccount": "Sign in with another account",
     "title": "You do not have access to this page"
   },
@@ -1283,7 +1283,7 @@
   },
   "notFound": {
     "description": "The page you opened does not exist or has been moved.",
-    "eyebrow": "ERROR 404",
+    "eyebrow": "Not found",
     "title": "Page not found"
   },
   "orders": {
@@ -1630,6 +1630,7 @@
       "SUBMITTED": "Submitted",
       "TIME_UP": "Time up"
     },
+    "endReasonUnknown": "The attempt has ended",
     "errorDescription": "Check your network connection and try again.",
     "errorTitle": "Unable to load attempt result",
     "eyebrow": "Attempt result",
@@ -1676,7 +1677,7 @@
     },
     "notFound": {
       "description": "This attempt does not exist or does not belong to the signed-in account.",
-      "eyebrow": "ERROR 404",
+      "eyebrow": "Not found",
       "title": "Attempt result not found",
       "toHistory": "Practice history",
       "toHome": "My exams"
@@ -1821,7 +1822,7 @@
     },
     "notFound": {
       "description": "This attempt does not exist or does not belong to the signed-in account.",
-      "eyebrow": "ERROR 404",
+      "eyebrow": "Not found",
       "title": "Attempt review not found",
       "toHistory": "Practice history",
       "toHome": "My exams"
@@ -1998,7 +1999,7 @@
     },
     "gone": {
       "descriptionTail": "is no longer on sale. You can pick another exam from the catalog.",
-      "eyebrow": "ERROR 410",
+      "eyebrow": "No longer available",
       "myExams": "My exams",
       "owned": "If you already bought this exam, your access and remaining attempts are still in My exams.",
       "title": "This exam is no longer on sale",
@@ -2007,7 +2008,7 @@
     "listPriceLabel": "List price",
     "notFound": {
       "description": "The link is wrong or the exam has not been published.",
-      "eyebrow": "ERROR 404",
+      "eyebrow": "Not found",
       "title": "Exam not found",
       "toCatalog": "Back to the exam catalog"
     },

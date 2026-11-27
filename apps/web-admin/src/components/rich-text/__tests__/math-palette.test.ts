@@ -2,7 +2,7 @@ import katex from "katex";
 import { describe, expect, it } from "vitest";
 import en from "@/messages/en.json";
 import vi from "@/messages/vi.json";
-import { PALETTE_GLYPH_LATEX, PALETTE_LATEX, PALETTE_TABS, PLACEHOLDER, paletteGlyphLatex } from "../insert/math/math-palette";
+import { PALETTE_GLYPH_LATEX, PALETTE_LATEX, PALETTE_TABS, PLACEHOLDER, paletteGlyphLatex, SPACING_LATEX } from "../insert/math/math-palette";
 
 function keyPaths(value: unknown, prefix = ""): string[] {
   if (typeof value !== "object" || value === null) return [prefix];
@@ -59,11 +59,10 @@ describe("math palette data", () => {
     expect(paletteGlyphLatex(PALETTE_LATEX.frac ?? "")).toBe("\\frac{\\square}{\\square}");
   });
 
-  it("offers a space and a wide space in the common tab, since typed spaces are ignored in math (UNI-2878)", () => {
-    expect(PALETTE_TABS.find((tab) => tab.id === "common")?.items).toEqual(expect.arrayContaining(["space", "wideSpace"]));
-    expect(PALETTE_LATEX.space).toBe("\\ ");
-    expect(PALETTE_LATEX.wideSpace).toBe("\\quad");
-    expect(vi.richText.insertDialog.math.palette.space).toBe("Dấu cách");
-    expect(vi.richText.insertDialog.math.palette.wideSpace).toBe("Khoảng cách rộng (tách hai công thức)");
+  it("keeps spacing out of the palette: two small buttons in the corner of the visual field insert it (UNI-2878)", () => {
+    for (const tab of PALETTE_TABS) expect(tab.items, tab.id).not.toEqual(expect.arrayContaining(["space"]));
+    expect(SPACING_LATEX).toEqual({ space: "\\ ", wideSpace: "\\quad" });
+    expect(vi.richText.insertDialog.math.spacing.space).toBe("Dấu cách");
+    expect(vi.richText.insertDialog.math.spacing.wideSpace).toBe("Cách rộng");
   });
 });

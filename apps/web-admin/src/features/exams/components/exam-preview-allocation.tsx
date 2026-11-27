@@ -234,7 +234,7 @@ function ChecksList({ checks }: { checks: PreviewCheck[] }) {
                 className={`mt-0.5 size-[18px] shrink-0 ${check.status === "PASS" ? "text-success" : check.status === "FAIL" ? "text-danger" : "text-text-muted"}`}
               />
               <span className="min-w-0 flex-1 text-body text-text">
-                {t(`name.${check.code}`, { value: check.value ?? 0 })}
+                {t.has(`name.${check.code}`) ? t(`name.${check.code}`, { value: check.value ?? 0 }) : t("nameUnknown")}
               </span>
               <StatusChip tone={CHECK_TONE[check.status]}>{t(`status.${check.status}`)}</StatusChip>
             </li>

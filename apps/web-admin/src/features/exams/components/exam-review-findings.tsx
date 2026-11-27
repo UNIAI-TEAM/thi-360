@@ -324,7 +324,6 @@ function IssueRow({
               examId={exam.id}
             />
           )}
-          <p className="font-mono text-caption text-text-muted">{issue.code}</p>
         </div>
         {href && (
           <Button asChild variant="link" size="sm">

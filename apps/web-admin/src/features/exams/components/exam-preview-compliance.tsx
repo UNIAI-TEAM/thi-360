@@ -180,7 +180,7 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
         case "MAPID": {
           // Quy tắc của dòng gọi bằng câu mô tả của nó; "Chỉ xuất hiện ở nhóm này" có hai dòng (ngoài nhóm, số câu trong nhóm).
           const found = rules ? resolveMapidRow(row, rules) : null;
-          if (!found) return t("criterion.MAPID_UNKNOWN", { id: ref.ruleId });
+          if (!found) return t("criterion.MAPID_UNKNOWN");
           const text = sentence(found.section, found.rule, true);
           const label =
             found.rule.type !== "ONLY_IN_GROUP"
@@ -189,7 +189,8 @@ export function ExamPreviewCompliance({ paper, compliance, dropped, examId, orig
           return <ExamContentText text={label} />;
         }
         default:
-          return ref.raw;
+          // Tiêu chí mới chưa có câu dịch: không in chuỗi thô của máy chủ (UNI-2889).
+          return t("criterion.UNKNOWN");
       }
     };
     const scope = (row: PreviewCompliance) => {

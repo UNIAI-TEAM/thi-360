@@ -155,7 +155,7 @@ describe("dòng MAPID của bảng đối chiếu", () => {
     expect(rows[3]).toHaveTextContent("Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3/15 câu · ngoài nhóm này");
     expect(rows[4]).toHaveTextContent("Hàm số chỉ xuất hiện ở nhóm Trả lời ngắn · Đúng 3/15 câu · số câu trong nhóm");
     expect(within(rows[4]!).getByText("Đạt")).toBeInTheDocument();
-    expect(within(rows[5]!).getByText("Quy tắc MAPID gone")).toBeInTheDocument();
+    expect(within(rows[5]!).getByText("Quy tắc MAPID không còn trong bài")).toBeInTheDocument();
   });
 
   it("en", async () => {

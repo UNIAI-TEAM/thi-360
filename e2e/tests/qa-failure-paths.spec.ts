@@ -340,7 +340,7 @@ test.describe("AC-18 QA failure paths (IPN replay, late expiry, timeout submit, 
 
       await page.goto(`${WEB_URL}/attempts/${encodeURIComponent(attemptId)}/result`);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByText(/MÃ LỖI 500|ERROR 500/i)).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: /Đã có lỗi máy chủ|Server error/ })).toHaveCount(0);
 
       const afterSubmit = (await getMyExams(page)).find((item) => item.entitlementId === entitlementId);
       expect(afterSubmit?.attemptsLeft).toBe((beforeStart?.attemptsLeft ?? 3) - 1);

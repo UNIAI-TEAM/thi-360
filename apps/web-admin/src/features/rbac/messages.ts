@@ -167,5 +167,6 @@ export function resolveBulkReasonMessage(
   if (isInList(KNOWN_BULK_REASON_CODES, reasonCode)) {
     return t(`bulk.reasonCodes.${reasonCode as KnownBulkReasonCode}`);
   }
-  return reasonCode;
+  // Mã lý do mới chưa có câu dịch: câu chung, không hiện mã (UNI-2889).
+  return t("bulk.reasonUnknown");
 }

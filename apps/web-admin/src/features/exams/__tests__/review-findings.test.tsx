@@ -90,15 +90,28 @@ describe("Kiểm tra: lỗi và cảnh báo tách riêng", () => {
     expect(warnings.queryByText("SECTION_INCOMPLETE")).not.toBeInTheDocument();
   });
 
-  it("lời lỗi là chữ chính, mã kỹ thuật là chữ phụ", async () => {
+  it("chỉ hiện lời lỗi dễ hiểu, không hiện mã kỹ thuật của máy chủ (UNI-2889)", async () => {
     renderCheck(new FakeServer().on("GET", `${EXAM_PATH}/check`, { status: 200, body: wire(ERRORS) }));
 
     const errors = await errorsList();
     const message = await errors.findByText("Môn MATH chưa hoàn tất cấu hình.");
-    const code = errors.getByText("SECTION_INCOMPLETE");
-    expect(code.className).toContain("text-caption");
     expect(message.className).toContain("text-body");
-    expect(message.compareDocumentPosition(code) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(errors.queryByText("SECTION_INCOMPLETE")).toBeNull();
+  });
+
+  it("mã kiểm tra mới chưa có câu dịch: câu chung, không hiện mã hay đường dẫn khóa (UNI-2889)", async () => {
+    renderCheck(
+      new FakeServer().on("GET", `${EXAM_PATH}/check`, {
+        status: 200,
+        body: wire([issue({ key: "n1", code: "BRAND_NEW_CHECK" })]),
+      }),
+    );
+
+    const errors = await errorsList();
+    expect(
+      await errors.findByText("Bài thi còn một điểm cần xem lại. Hãy kiểm tra lại cấu trúc và ma trận."),
+    ).toBeInTheDocument();
+    expect(errors.queryByText(/BRAND_NEW_CHECK/)).toBeNull();
   });
 
   it("không có lỗi chặn thì báo công bố được; cảnh báo vẫn hiện", async () => {

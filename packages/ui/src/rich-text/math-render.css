@@ -1,8 +1,9 @@
 /*
  * Dấu + / − của điện tích ion trong công thức mhchem (lớp do `markChargeSigns` gắn): glyph KaTeX ở cỡ chỉ số trên chỉ
  * dày khoảng nửa điểm ảnh nên trông nhạt hơn chữ số cạnh nó. Tô thêm viền nét bằng chính màu chữ (không thêm màu mới)
- * để dấu đậm ngang chữ số, cả sáng lẫn tối.
+ * để dấu đậm ngang chữ số, cả sáng lẫn tối. Nét tối thiểu 0,5px: điện tích trong nhãn trên/dưới mũi tên ở cỡ chỉ số của
+ * chỉ số (rất nhỏ), 0,03em ở cỡ đó gần như không thấy (UNI-2878).
  */
 .katex .math-charge-sign {
-  -webkit-text-stroke: 0.03em currentColor;
+  -webkit-text-stroke: max(0.03em, 0.5px) currentColor;
 }

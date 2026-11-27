@@ -11,7 +11,11 @@
 - **Kiểm chứng:** web-admin typecheck, lint, test 306 file / 3.229 test (UNI-2876); web-student typecheck, lint, test 75 file / 565 test, web-admin typecheck, lint, test shell (UNI-2877); e2e typecheck; backend `test-compile`, 467 unit test của module exam; `ExamMapidRulesIT` chạy trên `bro`.
 - **uniworkos:** `UNI-1720`–`UNI-1731` (PR #225, demo `04a9457b`) đã chuyển In review. `UNI-1732` (V-ACT) chỉ có tiêu đề, chưa làm, chờ người hỏi BA.
 - **PR:** #237 (UNI-2877), #238 (UNI-2876), #239 (UNI-2878). CI bắt hai lỗi đã sửa: hàng tab bước Kiểm tra cuộn ngang ở 390px bản EN (giảm đệm thanh thao tác trên màn hẹp); ô chọn có lọc cắt chữ "…" ở màn Người mua 390px (cho xuống dòng như Select). Tắt `smartSuperscript` nghĩa là gõ `x^2+1` thì `+1` nằm trong mũ: bấm → để ra khỏi mũ, gợi ý trong hộp đã ghi.
-- **Tiếp theo:** merge #239, deploy demo, xem giao diện thật trên demo (1440px, thanh dính, hộp Hóa học), chuyển `UNI-1733`, `UNI-1734` sang In review. Chờ người trả lời: Phần II "Dữ liệu tổng hợp" của SP2E 2026 và cảnh báo năm cấu trúc ≠ năm ma trận ở SP2E Toán.
+- **Đã xong phần trên:** #237, #238, #239 merge vào `develop` (`d8c386c8`), demo deploy lại, đã xem giao diện thật (bước 1 dính, SP2E Toán theo MAPID, Thêm nhãn có ô lọc); `UNI-1733`, `UNI-1734` đã In review.
+- **Bổ sung `UNI-2878`, nhánh `fix/UNI-2878-nut-dau-cach-goc`:** hai nút khoảng cách rời khỏi bảng mẫu thành nút chữ nhỏ ở góc ô Soạn trực quan; dấu điện tích trong điều kiện trên mũi tên đậm (nét tối thiểu 0,5px).
+- **`UNI-2888`, nhánh `fix/UNI-2888-the-bai-da-mua`:** thẻ danh mục đã mua cùng khung thẻ chưa mua (nút chính kèm số lượt, hàng phụ Mua thêm lượt | Xem chi tiết); dải danh mục bỏ phân trang, cuộn gần cuối tự tải trang kế, hết thì vòng về đầu.
+- **`UNI-2889`, nhánh `fix/UNI-2889-loi-than-thien`:** rà lỗi hiện cho người dùng: trang lỗi bỏ số HTTP, mã yêu cầu ghi "Khi cần hỗ trợ, gửi kèm mã này"; bỏ "(412)" ở Khuyến mãi; kiểm tra bài thi không hiện mã kỹ thuật, mã mới ra câu chung; MAPID không in mã quy tắc/nút cây; lý do gán quyền hàng loạt, lý do đóng/kết thúc lượt lạ ra câu chung; ô Kỳ thi có câu lỗi tiếng Việt.
+- **Tiếp theo:** người cho commit/PR ba nhánh `UNI-2878` bổ sung, `UNI-2888`, `UNI-2889`; sau merge deploy demo. Vẫn chờ người trả lời: Phần II "Dữ liệu tổng hợp" SP2E 2026 và cảnh báo năm cấu trúc ≠ năm ma trận.
 
 ### App học viên native: port cổng thi — kế hoạch bản 8 đã duyệt; bản 9 đối chiếu lại với `develop`, chờ duyệt (2026-11-26, `UNI-2820`)
 

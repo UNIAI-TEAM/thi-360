@@ -26,6 +26,7 @@ export { ChoiceCardGroup, type ChoiceCardGroupProps, type ChoiceCardOption };
 function useExamInfoMessages(): ExamInfoSchemaMessages {
   const t = useTranslations("exams.create.validation");
   return {
+    kindRequired: t("kindRequired"),
     nameRequired: t("nameRequired"),
     nameMax: t("nameMax", { max: EXAM_NAME_MAX }),
     codeRequired: t("codeRequired"),

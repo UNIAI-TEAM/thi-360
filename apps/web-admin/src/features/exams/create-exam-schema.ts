@@ -326,6 +326,7 @@ export interface ExamInfoFormValues {
 }
 
 export interface ExamInfoSchemaMessages {
+  kindRequired: string;
   nameRequired: string;
   nameMax: string;
   codeRequired: string;
@@ -352,7 +353,7 @@ const infoShape = (messages: ExamInfoSchemaMessages, takenCodes: TakenCodes) => 
     .transform((value) => value.toUpperCase())
     .refine((value) => CODE_PATTERN.test(value), messages.codeInvalid)
     .refine((value) => !takenCodes.has(value), messages.codeTaken),
-  kind: z.string().min(1),
+  kind: z.string().min(1, messages.kindRequired),
   scope: z.enum(["FULL", "PART", "SUBJECT"]),
   partCode: z.string(),
   subjectCode: z.string(),
