@@ -162,7 +162,9 @@ class CatalogScreenshotTest {
                     composeRule.onAllNodesWithTag(ProductDetailTestTags.PRODUCT_CODE)
                         .fetchSemanticsNodes().isNotEmpty() &&
                         composeRule.onAllNodesWithTag(ProductDetailTestTags.HERO_BRAND_PLACEHOLDER)
-                            .fetchSemanticsNodes().isEmpty()
+                            .fetchSemanticsNodes().isEmpty() &&
+                        composeRule.onAllNodesWithTag(CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+                            .fetchSemanticsNodes().isNotEmpty()
                 }
                 composeRule.waitForIdle()
                 assertNoHorizontalOverflow()
@@ -196,14 +198,14 @@ class CatalogScreenshotTest {
     @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun catalog_1280x800_light() = captureCatalog("catalog_1280x800_light", ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun catalog_1280x800_dark() = captureCatalog("catalog_1280x800_dark", ThemeMode.DARK)
 
-    @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun exam_detail_360x640_light() = captureProductRoute("exam_detail_360x640_light", "EXAM-DEMO-01", ThemeMode.LIGHT, ProductDetailTestTags.PRODUCT_CODE)
-    @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun exam_detail_360x640_dark() = captureProductRoute("exam_detail_360x640_dark", "EXAM-DEMO-01", ThemeMode.DARK, ProductDetailTestTags.PRODUCT_CODE)
-    @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun exam_detail_412x915_light() = captureProductRoute("exam_detail_412x915_light", "EXAM-DEMO-01", ThemeMode.LIGHT, ProductDetailTestTags.PRODUCT_CODE)
-    @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun exam_detail_412x915_dark() = captureProductRoute("exam_detail_412x915_dark", "EXAM-DEMO-01", ThemeMode.DARK, ProductDetailTestTags.PRODUCT_CODE)
-    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun exam_detail_840x720_light() = captureProductRoute("exam_detail_840x720_light", "EXAM-DEMO-01", ThemeMode.LIGHT, ProductDetailTestTags.PRODUCT_CODE)
-    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun exam_detail_840x720_dark() = captureProductRoute("exam_detail_840x720_dark", "EXAM-DEMO-01", ThemeMode.DARK, ProductDetailTestTags.PRODUCT_CODE)
-    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun exam_detail_1280x800_light() = captureProductRoute("exam_detail_1280x800_light", "EXAM-DEMO-01", ThemeMode.LIGHT, ProductDetailTestTags.PRODUCT_CODE)
-    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun exam_detail_1280x800_dark() = captureProductRoute("exam_detail_1280x800_dark", "EXAM-DEMO-01", ThemeMode.DARK, ProductDetailTestTags.PRODUCT_CODE)
+    @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun exam_detail_360x640_light() = captureProductRoute("exam_detail_360x640_light", "EXAM-DEMO-01", ThemeMode.LIGHT, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+    @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun exam_detail_360x640_dark() = captureProductRoute("exam_detail_360x640_dark", "EXAM-DEMO-01", ThemeMode.DARK, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+    @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun exam_detail_412x915_light() = captureProductRoute("exam_detail_412x915_light", "EXAM-DEMO-01", ThemeMode.LIGHT, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+    @Test @Config(qualifiers = "w412dp-h915dp-xhdpi") fun exam_detail_412x915_dark() = captureProductRoute("exam_detail_412x915_dark", "EXAM-DEMO-01", ThemeMode.DARK, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun exam_detail_840x720_light() = captureProductRoute("exam_detail_840x720_light", "EXAM-DEMO-01", ThemeMode.LIGHT, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+    @Test @Config(qualifiers = "w840dp-h720dp-xhdpi") fun exam_detail_840x720_dark() = captureProductRoute("exam_detail_840x720_dark", "EXAM-DEMO-01", ThemeMode.DARK, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun exam_detail_1280x800_light() = captureProductRoute("exam_detail_1280x800_light", "EXAM-DEMO-01", ThemeMode.LIGHT, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
+    @Test @Config(qualifiers = "w1280dp-h800dp-xhdpi") fun exam_detail_1280x800_dark() = captureProductRoute("exam_detail_1280x800_dark", "EXAM-DEMO-01", ThemeMode.DARK, CatalogTestTags.productPrimaryAction("EXAM-DEMO-01"))
 
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun exam_detail_with_cover_360x640_light() = captureExamDetailWithCover("exam_detail_with_cover_360x640_light", ThemeMode.LIGHT)
     @Test @Config(qualifiers = "w360dp-h640dp-xhdpi") fun exam_detail_with_cover_360x640_dark() = captureExamDetailWithCover("exam_detail_with_cover_360x640_dark", ThemeMode.DARK)

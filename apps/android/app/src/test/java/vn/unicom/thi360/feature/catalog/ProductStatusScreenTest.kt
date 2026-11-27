@@ -83,10 +83,12 @@ class ProductStatusScreenTest {
             composeRule.waitForIdle()
 
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).performClick()
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
+                val state = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
-                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 2
+                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 2 &&
+                    state.query.kind == "HSA" &&
+                    state.accessMap["EXAM-DEMO-01"] is AccessCell.Ready
             }
             composeRule.waitForIdle()
             val accessBeforeGone = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")
@@ -110,6 +112,10 @@ class ProductStatusScreenTest {
 
             val productsBeforeBack = harness.server.requestCount("GET", "/api/v1/public/storefront/products")
             composeRule.onNodeWithTag(ProductDetailTestTags.STATUS_TO_CATALOG).performClick()
+            composeRule.waitUntilIdle {
+                harness.server.requestCount("POST", "/api/v1/me/exam-access/query") > accessBeforeGone &&
+                    feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.accessMap["EXAM-DEMO-01"] is AccessCell.Ready
+            }
             composeRule.waitForIdle()
             assertEquals("HSA", feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.query.kind)
             assertEquals(productsBeforeBack, harness.server.requestCount("GET", "/api/v1/public/storefront/products"))
@@ -126,6 +132,9 @@ class ProductStatusScreenTest {
             composeRule.onNodeWithTag(ShellTestTags.screenTitle(Destination.MyExams)).assertIsDisplayed()
 
             composeRule.onNodeWithTag(ShellTestTags.navItem(Destination.Home)).performClick()
+            composeRule.waitUntilIdle {
+                composeRule.onAllNodesWithTag(ProductDetailTestTags.STATUS_GONE).fetchSemanticsNodes().isNotEmpty()
+            }
             composeRule.waitForIdle()
             val accessBefore404 = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")
             composeRule.runOnIdle { navRef!!.openProduct("EXAM-NOPE-404") }
@@ -185,10 +194,10 @@ class ProductStatusScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
-                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
+                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1 &&
+                    deps.feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.accessMap["EXAM-DEMO-01"] is AccessCell.Ready
             }
             composeRule.waitForIdle()
             val accessBefore = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")
@@ -254,10 +263,10 @@ class ProductStatusScreenTest {
                     )
                 }
             }
-            composeRule.waitUntil(10_000) {
-                Shadows.shadowOf(Looper.getMainLooper()).idle()
+            composeRule.waitUntilIdle {
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 1 &&
-                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1
+                    harness.server.requestCount("POST", "/api/v1/me/exam-access/query") >= 1 &&
+                    deps.feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.accessMap["EXAM-DEMO-01"] is AccessCell.Ready
             }
             composeRule.waitForIdle()
             val accessBefore = harness.server.requestCount("POST", "/api/v1/me/exam-access/query")

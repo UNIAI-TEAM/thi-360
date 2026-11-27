@@ -143,7 +143,10 @@ class CatalogTwoPaneTest {
             composeRule.onNodeWithTag(ListDetailTestTags.TWO_COLUMN).assertIsDisplayed()
             composeRule.onNodeWithTag(CatalogTestTags.kindChip("HSA")).performClick()
             composeRule.waitUntilIdle {
+                val state = feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value
                 harness.server.requestCount("GET", "/api/v1/public/storefront/products") == 2 &&
+                    state.query.kind == "HSA" &&
+                    state.accessMap["EXAM-DEMO-01"] is AccessCell.Ready &&
                     composeRule.onAllNodesWithTag(CatalogTestTags.productViewDetail("EXAM-DEMO-01"))
                         .fetchSemanticsNodes().isNotEmpty()
             }

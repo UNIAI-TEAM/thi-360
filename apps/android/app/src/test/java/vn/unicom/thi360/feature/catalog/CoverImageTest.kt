@@ -151,16 +151,30 @@ class CoverImageTest {
                 }
 
                 composeRule.waitUntilIdle {
+                    val accessMap = deps.feedStore.getOrCreate("acc-catalog-1", 0L, deps).state.value.accessMap
                     harness.server.requestCount("GET", "/api/v1/public/storefront/covers/ok.png") >= 1 &&
+                        loader.imageLoader.memoryCache?.keys?.isNotEmpty() == true &&
+                        accessMap["EX-COVER-OK"] is AccessCell.Ready &&
+                        accessMap["EX-COVER-404"] is AccessCell.Ready &&
                         composeRule.onAllNodesWithTag(
                             CatalogTestTags.productCover("EX-COVER-OK"),
                             useUnmergedTree = true,
+                        ).fetchSemanticsNodes().isNotEmpty() &&
+                        composeRule.onAllNodesWithTag(
+                            CatalogTestTags.productPrimaryAction("EX-COVER-OK"),
                         ).fetchSemanticsNodes().isNotEmpty()
                 }
                 composeRule.waitForIdle()
 
                 val okReq = harness.server.lastRequest("GET", "/api/v1/public/storefront/covers/ok.png")!!
                 assertNull(okReq.getHeader("Authorization"))
+                assertTrue(
+                    "Loaded cover must not show error fallback",
+                    composeRule.onAllNodesWithTag(
+                        CatalogTestTags.productCoverFallback("EX-COVER-OK"),
+                        useUnmergedTree = true,
+                    ).fetchSemanticsNodes().isEmpty(),
+                )
                 val coverNode = composeRule.onNodeWithTag(
                     CatalogTestTags.productCover("EX-COVER-OK"),
                     useUnmergedTree = true,
@@ -169,6 +183,18 @@ class CoverImageTest {
                 assertTrue(
                     "Decorative cover image must not set contentDescription",
                     contentDesc.isNullOrEmpty(),
+                )
+                val okCoverBounds = composeRule.onNodeWithTag(
+                    CatalogTestTags.productCover("EX-COVER-OK"),
+                    useUnmergedTree = true,
+                ).getUnclippedBoundsInRoot()
+                assertTrue(
+                    "Loaded cover width (${okCoverBounds.width}) must be positive",
+                    okCoverBounds.width.value > 0f,
+                )
+                assertTrue(
+                    "Loaded cover (${okCoverBounds.width}x${okCoverBounds.height}) should keep 16:9 aspect ratio",
+                    abs(okCoverBounds.height.value - okCoverBounds.width.value * 9f / 16f) <= 2f,
                 )
                 val okBounds = composeRule.onNodeWithTag(CatalogTestTags.productCard("EX-COVER-OK"))
                     .getUnclippedBoundsInRoot()
@@ -179,6 +205,9 @@ class CoverImageTest {
                         composeRule.onAllNodesWithTag(
                             CatalogTestTags.productCoverFallback("EX-COVER-404"),
                             useUnmergedTree = true,
+                        ).fetchSemanticsNodes().isNotEmpty() &&
+                        composeRule.onAllNodesWithTag(
+                            CatalogTestTags.productPrimaryAction("EX-COVER-404"),
                         ).fetchSemanticsNodes().isNotEmpty()
                 }
                 composeRule.waitForIdle()
@@ -186,6 +215,18 @@ class CoverImageTest {
                     CatalogTestTags.productCoverFallback("EX-COVER-404"),
                     useUnmergedTree = true,
                 ).assertIsDisplayed()
+                val fallbackCoverBounds = composeRule.onNodeWithTag(
+                    CatalogTestTags.productCoverFallback("EX-COVER-404"),
+                    useUnmergedTree = true,
+                ).getUnclippedBoundsInRoot()
+                assertTrue(
+                    "Fallback cover width (${fallbackCoverBounds.width}) should match normal cover (${okCoverBounds.width})",
+                    abs(fallbackCoverBounds.width.value - okCoverBounds.width.value) <= 2f,
+                )
+                assertTrue(
+                    "Fallback cover height (${fallbackCoverBounds.height}) should match normal cover (${okCoverBounds.height})",
+                    abs(fallbackCoverBounds.height.value - okCoverBounds.height.value) <= 2f,
+                )
                 val fallbackBounds = composeRule.onNodeWithTag(CatalogTestTags.productCard("EX-COVER-404"))
                     .getUnclippedBoundsInRoot()
                 assertTrue(
