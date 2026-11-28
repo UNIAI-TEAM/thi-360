@@ -199,9 +199,12 @@ class CatalogNavigationTest {
             composeRule.onNodeWithTag(CatalogTestTags.LIST).performScrollToKey("EX-CONT")
             composeRule.onNodeWithTag(CatalogTestTags.productPrimaryAction("EX-CONT")).performClick()
             composeRule.waitForIdle()
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("attempt")
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS)
-                .assertTextContains("attemptId=00000000-0000-7000-8000-000000000022", substring = true)
+            composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertIsDisplayed()
+            val attemptArgs = navigatorRef!!.navController.currentBackStackEntry?.arguments
+            assertEquals(
+                "00000000-0000-7000-8000-000000000022",
+                attemptArgs?.getString(AppRoute.ARG_ATTEMPT_ID),
+            )
             composeRule.runOnIdle { navigatorRef!!.closeAttempt() }
             composeRule.waitForIdle()
             now.addAndGet(1_000L)

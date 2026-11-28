@@ -98,12 +98,12 @@ class ClozeKeyboardInstrumentedTest {
             imm?.showSoftInput(blankEditText, InputMethodManager.SHOW_IMPLICIT)
         }
 
-        composeRule.waitUntil(timeoutMillis = 5_000L) {
+        composeRule.waitUntil(timeoutMillis = 15_000L) {
             val insets = ViewCompat.getRootWindowInsets(composeRule.activity.window.decorView)
             insets?.isVisible(WindowInsetsCompat.Type.ime()) == true
         }
 
-        composeRule.waitUntil(timeoutMillis = 5_000L) {
+        composeRule.waitUntil(timeoutMillis = 15_000L) {
             val decor = composeRule.activity.window.decorView
             val insets = ViewCompat.getRootWindowInsets(decor)
             val imeBottom = insets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0

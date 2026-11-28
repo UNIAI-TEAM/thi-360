@@ -19,15 +19,16 @@ import org.robolectric.annotation.Config
 import vn.unicom.thi360.core.network.MutableConnectivityMonitor
 import vn.unicom.thi360.core.preferences.AppLocale
 import vn.unicom.thi360.core.preferences.AppPreferences
+import vn.unicom.thi360.feature.player.PlayerTestTags
 import vn.unicom.thi360.feature.result.review.ReviewTestTags
 import vn.unicom.thi360.feature.richcontent.formula.SourceBoxFormulaEngine
 import vn.unicom.thi360.shell.Destination
 import vn.unicom.thi360.shell.ShellTestTags
 import vn.unicom.thi360.shell.Thi360App
 import vn.unicom.thi360.shell.routes.AppNavigator
+import vn.unicom.thi360.shell.routes.AppRoute
 import vn.unicom.thi360.shell.routes.LocalResultDependenciesOverride
 import vn.unicom.thi360.shell.routes.ResultRouteDependencies
-import vn.unicom.thi360.shell.routes.RoutePlaceholderTestTags
 import vn.unicom.thi360.testing.ContractFakeServer
 
 @RunWith(RobolectricTestRunner::class)
@@ -95,7 +96,11 @@ class ResultNavigationTest {
         composeRule.waitForIdle()
         composeRule.runOnIdle { nav.openAttempt(attemptId) }
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("attempt")
+        composeRule.onNodeWithTag(PlayerTestTags.SCREEN).assertIsDisplayed()
+        assertEquals(
+            attemptId,
+            nav.navController.currentBackStackEntry?.arguments?.getString(AppRoute.ARG_ATTEMPT_ID),
+        )
 
         composeRule.runOnIdle { nav.openResultFromAttempt(attemptId) }
         composeRule.waitUntil(5_000L) {

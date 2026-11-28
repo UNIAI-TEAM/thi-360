@@ -69,6 +69,7 @@ fun QuestionSetView(
     formulaEngine: FormulaEngine? = null,
     attachments: (@Composable () -> Unit)? = null,
     childAttachments: (childId: String) -> (@Composable () -> Unit)? = { null },
+    forceTwoColumn: Boolean? = null,
     modifier: Modifier = Modifier,
 ) {
     val brand = Thi360Theme.colors
@@ -100,7 +101,7 @@ fun QuestionSetView(
             .fillMaxWidth()
             .testTag(QuestionTestTags.SET_ROOT),
     ) {
-        val isTwoColumn = maxWidth >= SET_TWO_COLUMN_BREAKPOINT_DP
+        val isTwoColumn = forceTwoColumn ?: (maxWidth >= SET_TWO_COLUMN_BREAKPOINT_DP)
         val hasBoundedHeight = constraints.hasBoundedHeight && maxHeight != Dp.Infinity
         val defaultUnboundedLimit = (screenHeightDp - 96.dp).coerceIn(240.dp, SET_UNBOUNDED_PANE_MAX_HEIGHT)
         val observedViewportLimit = if (visibleViewportHeightPx > 0) {
