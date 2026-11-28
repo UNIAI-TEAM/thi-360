@@ -104,25 +104,33 @@ final class ReviewGridTests: XCTestCase {
         let model = ReviewMapper.map(payload)
         let firstGroup = try XCTUnwrap(model.groups.first)
 
-        let wideSizes: [(String, CGSize)] = [
-            ("iPad-landscape", CGSize(width: 1180, height: 820)),
-            ("iPad-portrait", CGSize(width: 820, height: 1180)),
-            ("Duo-unfolded", CGSize(width: 669, height: 951)),
-            ("Duo-unfolded-585", CGSize(width: 585, height: 951))
+        let wideCases: [(label: String, windowSize: CGSize, explicitContentWidth: CGFloat?)] = [
+            ("iPad-landscape", CGSize(width: 1180, height: 820), nil),
+            ("iPad-portrait", CGSize(width: 820, height: 1180), nil),
+            ("Duo-unfolded", CGSize(width: 669, height: 951), nil),
+            ("Duo-unfolded-585", CGSize(width: 720, height: 951), 585)
         ]
 
-        for (label, size) in wideSizes {
+        for testCase in wideCases {
+            let label = testCase.label
             let vm = try makeViewModel(model: model)
+            let reviewView = ReviewView(
+                viewModel: vm,
+                locale: .vi,
+                onBackToResult: {},
+                onGoMyExams: {},
+                onGoHistory: {},
+                autoLoadOnAppear: false
+            )
             let (window, controller, sink, _) = ResultViewTestHelper.host(
-                ReviewView(
-                    viewModel: vm,
-                    locale: .vi,
-                    onBackToResult: {},
-                    onGoMyExams: {},
-                    onGoHistory: {},
-                    autoLoadOnAppear: false
-                ),
-                size: size,
+                Group {
+                    if let width = testCase.explicitContentWidth {
+                        reviewView.frame(width: width)
+                    } else {
+                        reviewView
+                    }
+                },
+                size: testCase.windowSize,
                 sizeClass: .regular,
                 shellWidth: .twoColumn
             )
