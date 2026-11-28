@@ -147,18 +147,21 @@ class LockOnPortalRoutesTest {
         // Same lock/unlock protection applies to chromeless attempt/{attemptId} route.
         composeRule.runOnIdle { nav.openAttempt("att-lock-9") }
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("attempt")
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertIsDisplayed()
         composeRule.runOnIdle { stack.sessionManager.lockSession() }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertIsDisplayed()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertDoesNotExist()
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertDoesNotExist()
 
         composeRule.onNodeWithTag(LockTestTags.UNLOCK_BUTTON).performClick()
         composeRule.waitUntil(timeoutMillis = 5_000) {
             stack.sessionManager.state.value is SessionState.Active
         }
         composeRule.waitForIdle()
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertIsDisplayed().assertTextContains("attempt")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=att-lock-9", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertIsDisplayed()
+        org.junit.Assert.assertEquals(
+            "att-lock-9",
+            nav.navController.currentBackStackEntry?.arguments?.getString(vn.unicom.thi360.shell.routes.AppRoute.ARG_ATTEMPT_ID),
+        )
     }
 }

@@ -152,7 +152,7 @@ class RecentsPrivacyAttemptOverlayTest {
             val nav = checkNotNull(navigator)
             composeRule.runOnIdle { nav.openAttempt("att-secret-77") }
             composeRule.waitForIdle()
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.SCREEN).assertIsDisplayed()
+            composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertIsDisplayed()
 
             // Entering Recents shows privacy shield over attempt route (attempt is in the same window/overlay tree).
             composeRule.runOnIdle {
@@ -169,7 +169,7 @@ class RecentsPrivacyAttemptOverlayTest {
             }
             composeRule.waitForIdle()
             composeRule.onNodeWithTag(LockTestTags.LOCK_SCREEN).assertIsDisplayed()
-            composeRule.onNodeWithTag(RoutePlaceholderTestTags.SCREEN).assertDoesNotExist()
+            composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertDoesNotExist()
         } finally {
             server.shutdown()
         }
