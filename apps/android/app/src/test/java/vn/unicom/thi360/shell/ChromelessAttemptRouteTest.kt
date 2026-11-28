@@ -48,8 +48,11 @@ class ChromelessAttemptRouteTest {
         composeRule.runOnIdle { nav.openAttempt("att-compact-1") }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("attempt")
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_PARAMS).assertTextContains("attemptId=att-compact-1", substring = true)
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertIsDisplayed()
+        org.junit.Assert.assertEquals(
+            "att-compact-1",
+            nav.navController.currentBackStackEntry?.arguments?.getString(vn.unicom.thi360.shell.routes.AppRoute.ARG_ATTEMPT_ID),
+        )
         composeRule.onNodeWithTag(ShellTestTags.BOTTOM_BAR).assertDoesNotExist()
         composeRule.onNodeWithTag(ShellTestTags.NAV_RAIL).assertDoesNotExist()
 
@@ -96,7 +99,7 @@ class ChromelessAttemptRouteTest {
         composeRule.runOnIdle { nav.openAttempt("att-tablet-1") }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(RoutePlaceholderTestTags.ROUTE_NAME).assertTextContains("attempt")
+        composeRule.onNodeWithTag(vn.unicom.thi360.feature.player.PlayerTestTags.SCREEN).assertIsDisplayed()
         composeRule.onNodeWithTag(ShellTestTags.NAV_RAIL).assertDoesNotExist()
         composeRule.onNodeWithTag(ShellTestTags.BOTTOM_BAR).assertDoesNotExist()
 
