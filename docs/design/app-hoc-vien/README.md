@@ -80,6 +80,7 @@ Mỗi màn chỉ có tối đa hai Tweaks ngoài `dark`, nên phần lớn màn 
 - `A-Fold-Player` vẽ ba cột liền nhau, không chừa dải bản lề; `I-Duo-Open-Player` đặt danh sách câu và ngữ liệu ở nửa trái, thanh đầu và câu hỏi ở nửa phải. Hai cách đặt này đã được duyệt (D-9).
 - `Review` trên điện thoại vẽ lưới câu thành một dải cuộn ngang kèm nút trước và sau (đã duyệt, D-9).
 - `ProfileEmail` vẽ Đổi email thành một màn riêng; app làm theo đặc tả: biểu mẫu mở ngay trong màn Hồ sơ như web (D-25).
+  - Bổ sung đối chiếu thực thi (ĐT 681): bản vẽ `ProfileEmail` vẽ biểu mẫu đổi email thành màn riêng; app theo đặc tả, biểu mẫu mở ngay trong khối Email của màn Hồ sơ (không có tuyến riêng).
 - Bảng câu hỏi (`PlayerNav`, `Fold-Player`, `Tablet-Player`, `Pad-Player`, `Duo-Open-Player`): ô của câu được đánh dấu đã vẽ lại theo web (D-29), tô đỏ theo ba mức hoàn thành, hình cờ nhỏ ở góc dưới phải, chấm "chưa lưu" ở góc trên phải. Màu đỏ trong bản vẽ là giá trị token của web lúc vẽ; app lấy từ `StatusPalette` và `BrandPalette`.
 - Lớp phủ mờ sau tấm chọn ảnh ở `Profile` dùng màu đen 30–32%, không có trong bảng màu; app dùng lớp phủ chuẩn của hệ điều hành.
 - Câu chữ trong bản vẽ có thể lệch vài chữ so với đặc tả; chuỗi của app lấy theo đặc tả và `apps/web-student/src/messages/vi.json`.

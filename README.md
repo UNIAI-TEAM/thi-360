@@ -1,4 +1,4 @@
-# Thi 360
+# Thi360
 
 Cổng luyện thi trực tuyến cho 9 kỳ thi (`HSA`, `QDA`, `BCA`, `V-ACT`, `SP2E`, `SPT`, `THPTQG`, `H-SCA`, `V-SAT`), gồm ngân hàng câu hỏi, soạn và công bố đề, thương mại/thanh toán (khuyến mãi, bộ đề, VNPAY) và phòng thi/chấm điểm học viên.
 
@@ -79,12 +79,24 @@ Kiểm tra không lệch OpenAPI sau `verify`: `diff -u packages/api-client/open
 
 ## App học viên (Android & iOS)
 
-Ứng dụng di động cho cổng thi học viên được viết native riêng cho từng nền tảng (đợt đầu gồm khung điều hướng và xác thực, `UNI-2785`):
+Ứng dụng di động cho cổng thi học viên được viết native riêng cho từng nền tảng, với đủ bốn mục có nội dung thật sau đăng nhập (**Trang chủ** — danh mục, chi tiết bài thi/bộ đề, mua bài và thanh toán VNPAY; **Bài thi của tôi** — bài đã mua, chuẩn bị, làm bài, kết quả, xem lại; **Lịch sử** — lịch sử lượt thi, bộ lọc, kết quả, xem lại; **Tài khoản** — hồ sơ, đơn của tôi, đổi mật khẩu, hai văn bản pháp lý, xóa tài khoản, ngôn ngữ, giao diện và sinh trắc học):
 
-- **Android** (`apps/android/README.md`, tạo trong task `AND-1`): Kotlin, Jetpack Compose, Material 3, hỗ trợ từ Android 8.0 (API 26).
-- **iOS** (`apps/ios/README.md`, tạo trong task `IOS-1`): Swift, SwiftUI, hỗ trợ từ iOS 17, sinh dự án bằng XcodeGen trên macOS.
-- **Hợp đồng dùng chung** (`contracts/mobile/`, tạo trong `BE-1`, `WEB-1`): tệp mẫu phản hồi `auth/`, `api/`, `appearance/` và bản lọc OpenAPI `contracts/mobile/openapi-mobile.json` để sinh client lúc build.
-- **Tài liệu đợt chạy:** [Đặc tả](docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md), [Kế hoạch](docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md), [Bản thiết kế 28 màn](docs/design/app-hoc-vien/README.md); quy ước giao diện app nằm ở `DESIGN.md` mục 11 và kiến trúc xác thực/phiên/màu ở `ARCHITECTURE.md` mục 5.9.
+- **Android** (`apps/android/README.md`): Kotlin, Jetpack Compose, Material 3, hỗ trợ từ Android 8.0 (API 26); bộ vẽ công thức RaTeX và các thư viện ghim ở `apps/android/gradle/libs.versions.toml` (khóa ở `apps/android/app/gradle.lockfile`).
+- **iOS** (`apps/ios/README.md`): Swift, SwiftUI, hỗ trợ từ iOS 18, sinh dự án bằng XcodeGen trên macOS; bộ vẽ công thức SwaTex và các gói phụ thuộc ghim ở `apps/ios/project.yml` (khóa ở `apps/ios/Thi360.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`).
+- **Hợp đồng dùng chung** (`contracts/mobile/`): bản lọc OpenAPI `contracts/mobile/openapi-mobile.json` để sinh client lúc build, tệp mẫu phản hồi `contracts/mobile/auth/`, `contracts/mobile/api/` (kèm `contracts/mobile/api/index.json`), màu giao diện và trạng thái `contracts/mobile/appearance/` (`tokens-thi360-green.json`, `status-colors.json`), hai văn bản pháp lý `contracts/mobile/legal/` và bộ mẫu đối chiếu nội dung đề `contracts/mobile/rich-text/`.
+- **Tài liệu đợt chạy:** đợt khung ([Đặc tả](docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md), [Kế hoạch](docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md)), đợt cổng thi ([Đặc tả](docs/specs/2026-11-26-app-hoc-vien-cong-thi.md), [Kế hoạch](docs/plans/2026-11-26-app-hoc-vien-cong-thi.md)), [Bản thiết kế 110 màn](docs/design/app-hoc-vien/README.md); quy ước giao diện app nằm ở `DESIGN.md` mục 11 và kiến trúc ở `ARCHITECTURE.md` mục 5.9.
+
+**Lệnh build và kiểm thử cho app và hợp đồng (theo Kế hoạch A5):**
+
+| Việc | Lệnh |
+|---|---|
+| Hợp đồng mobile | `cd backend && ./mvnw -B -ntp verify -Dit.test=MobileOpenApiExportIT -Dtest=None -Dsurefire.failIfNoSpecifiedTests=false && cd .. && diff -u contracts/mobile/openapi-mobile.json backend/target/openapi-mobile.json` |
+| Web, chụp ảnh tham chiếu công thức | `pnpm --filter @thi360/e2e exec playwright test -c formula-sheets.config.ts` |
+| Android, sinh client & build | `cd apps/android && ./gradlew :app:generateMobileOpenApiClient` và `./gradlew :app:assembleDevDebug :app:assembleDemoDebug` |
+| Android, test JVM, ảnh chụp & lint | `cd apps/android && ./gradlew :app:testDevDebugUnitTest :app:testDemoDebugUnitTest`, `./gradlew :app:verifyRoborazziDevDebug`, `./gradlew :app:lintDevDebug` |
+| Android, trên máy ảo | `cd apps/android && ./gradlew :app:connectedDevDebugAndroidTest` (máy ảo Pixel 7 API 34) |
+| iOS, chọn Xcode & sinh dự án (`devin-mac`) | `export DEVELOPER_DIR=/Applications/Xcode-27.1.0.app/Contents/Developer` rồi `cd apps/ios && xcodegen generate` |
+| iOS, build & test (`devin-mac`) | `cd apps/ios && xcodebuild -project Thi360.xcodeproj -scheme Thi360Dev -derivedDataPath DerivedData -destination 'platform=iOS Simulator,name=iPhone 17' test` và `xcodebuild -project Thi360.xcodeproj -scheme Thi360Demo -derivedDataPath DerivedData -destination 'generic/platform=iOS Simulator' build` |
 
 ## Đăng nhập dev (tài khoản mẫu)
 
@@ -196,13 +208,13 @@ Trên máy chủ Keycloak thật (dùng chung với các dự án khác), ứng 
 backend/            Spring Boot (modular monolith)
 apps/web-admin/     Next.js, trang quản trị
 apps/web-student/   Next.js, trang học viên
-apps/android/       app học viên Android (Kotlin + Compose, API 26+; tạo trong đợt app học viên)
-apps/ios/           app học viên iOS (Swift + SwiftUI, iOS 17+, XcodeGen; tạo trong đợt app học viên)
+apps/android/       app học viên Android (Kotlin + Compose, API 26+)
+apps/ios/           app học viên iOS (Swift + SwiftUI, iOS 18+, XcodeGen)
 packages/ui/        token và thành phần giao diện dùng chung (`@thi360/ui`)
 packages/web-kit/   proxy, phiên và tiện ích Next.js dùng chung (`@thi360/web-kit`)
 packages/api-client/  client sinh từ OpenAPI
 packages/config/    cấu hình TypeScript dùng chung
-contracts/mobile/   hợp đồng dùng chung giữa backend, web và hai app (`auth/`, `api/`, `appearance/`, `openapi-mobile.json`; tạo trong đợt app học viên)
+contracts/mobile/   hợp đồng dùng chung giữa backend, web và hai app (`auth/`, `api/`, `appearance/`, `legal/`, `rich-text/`, `openapi-mobile.json`)
 e2e/                bộ kiểm thử đầu-cuối Playwright (`@thi360/e2e`)
 infra/              Docker Compose, realm Keycloak
 docs/               spec, plan

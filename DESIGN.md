@@ -1,8 +1,8 @@
-# DESIGN — Thi 360
+# DESIGN — Thi360
 
-> Cập nhật: 2026-11-22 (đã cập nhật hết đợt 3 · QA UNI-2744) · Tham khảo phong cách: https://hsavnu.edu.vn (đã xem trang chủ, Thi thử, Khóa học, chi tiết khóa học, Tin tức, Đăng nhập). Số liệu dưới đây đo trực tiếp từ các trang đó.
+> Cập nhật: 2026-11-28 (đã cập nhật hết đợt 3 · QA UNI-2744 và đợt port cổng thi lên app học viên · UNI-2820 / DOC-1 UNI-2872) · Tham khảo phong cách: https://hsavnu.edu.vn (đã xem trang chủ, Thi thử, Khóa học, chi tiết khóa học, Tin tức, Đăng nhập). Số liệu dưới đây đo trực tiếp từ các trang đó.
 >
-> Chỉ tham khảo **phong cách**. Không dùng logo, tên, ảnh hay nội dung của HSA Education. Thi 360 cần logo riêng.
+> Chỉ tham khảo **phong cách**. Không dùng logo, tên, ảnh hay nội dung của HSA Education. Hai web dùng logo hiện có ở `packages/ui/src/components/brand-logo.tsx` (`BrandLogo`, `BrandWordmark`; tài sản ở `apps/web-student/public/logo.svg`, `apps/web-student/public/logo.png`, `apps/web-student/public/logo-full.png`, `apps/web-admin/public/logo.svg`, `apps/web-admin/public/logo.png`, `apps/web-admin/public/logo-full.png`); quy tắc logo và biểu tượng riêng của hai app native xem mục 11.
 
 ## 1. Phong cách
 
@@ -334,7 +334,7 @@ Bổ sung sau đợt nâng cấp các màn (UNI-2581, 2026-11-15):
 - **Vòng focus** luôn lấy từ `focusRing` / `focusRingInset` của kit (xuất từ `@thi360/ui`), không viết tay `focus-visible:ring-*`. Tắt viền ngoài bằng `outline-hidden`, không bằng `outline-none` (mục 8).
 - **Thông báo cho trình đọc màn hình:** kết quả của thao tác không đồng bộ (số kết quả sau khi lọc/tìm, sắp xếp, số dòng chọn, kết quả kiểm tra tên đăng nhập, bắt đầu/kết thúc một tác vụ dài) đi qua **một** `LiveStatus` cho mỗi khu vực, luôn có mặt trong DOM, chỉ đổi `message`. Không làm bộ đếm tiến độ đọc lên từng bước.
 - **Tiến độ** dùng `<progress>` gốc của trình duyệt, tô bằng token.
-- **Mỗi trang có tiêu đề tab riêng** theo mẫu "‹trang› · Thi 360" (trang chi tiết: "‹đối tượng› · ‹mục› · Thi 360").
+- **Mỗi trang có tiêu đề tab riêng** theo mẫu "‹trang› · Thi360" (trang chi tiết: "‹đối tượng› · ‹mục› · Thi360").
 - **Một `<main>` mỗi trang.** Trang trạng thái (403, 404) hiện trong khung admin dùng `StatusPage embedded`; `EmptyState` chọn cấp tiêu đề bằng `headingLevel` cho đúng thứ bậc của trang.
 - **Lỗi lưu dưới dạng mã hoặc khóa dịch**, dịch lúc hiển thị, để lỗi đang hiện đổi theo ngôn ngữ vừa chọn.
 - **Nút bật/tắt** nêu trạng thái **một lần**: hoặc nhãn hành động đổi theo trạng thái ("Chuyển sang chế độ tối"), hoặc nhãn cố định kèm `aria-pressed`, không dùng cả hai. Thành phần chung dùng kiểu nhãn đổi theo trạng thái.
@@ -598,34 +598,34 @@ Token khai báo một lần trong `packages/ui/src/styles/tokens.css` bằng `@t
 
 ## 11. App học viên
 
-Quy ước giao diện cho hai ứng dụng native dành riêng cho học viên cổng thi Thi 360 (đợt khung và xác thực, `UNI-2785`). Nguồn ràng buộc: đặc tả `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (R-1, R-2, R-12, R-13, mục 9), kế hoạch `docs/plans/2026-11-25-app-hoc-vien-khung-xac-thuc.md` (mục B1.4, B1.7) và bản thiết kế đã duyệt tại `docs/design/app-hoc-vien/README.md`.
+Quy ước giao diện cho hai ứng dụng native dành riêng cho học viên cổng thi Thi360 (đợt khung và xác thực `UNI-2785` và đợt cổng thi `UNI-2820`). Nguồn ràng buộc: đặc tả đợt khung `docs/specs/2026-11-25-app-hoc-vien-khung-xac-thuc.md`, đặc tả đợt cổng thi `docs/specs/2026-11-26-app-hoc-vien-cong-thi.md`, kế hoạch `docs/plans/2026-11-26-app-hoc-vien-cong-thi.md` (mục B1) và bản thiết kế đã duyệt tại `docs/design/app-hoc-vien/README.md`.
 
 ### 11.1 Thành phần gốc theo nền tảng và bản thiết kế tham chiếu
 
-- **Android (`apps/android/`):** Kotlin + Jetpack Compose + Material 3; hỗ trợ từ Android 8.0 (API 26); định danh `vn.unicom.thi360`, tên hiển thị tạm `Thi 360`.
-- **iOS (`apps/ios/`):** Swift + SwiftUI theo kiểu iOS thuần; hỗ trợ từ iOS 17.0; định danh `vn.unicom.thi360`, tên hiển thị tạm `Thi 360`.
-- **Bản thiết kế tham chiếu:** 28 màn `*.dc.html` trong `docs/design/app-hoc-vien/` (bảng ánh xạ từng màn theo yêu cầu nằm ở `docs/design/app-hoc-vien/README.md`). Hai tệp `m3.css` và `ios.css` chỉ dùng để xem bản vẽ, **không** chép style sang mã thật; mỗi app dùng thành phần gốc của hệ điều hành.
-- **Đặc tả thắng bản vẽ khi có khác biệt:** nền, bề mặt, viền và chữ trung tính dùng đúng token trung tính của web ở từng chế độ (AC-78, quyết định D-21), không dùng sắc xanh nhạt mặc định của bảng màu hệ thống trong bản vẽ Android.
-- **Màn và trạng thái chưa vẽ nhưng bắt buộc theo đặc tả (R-11, R-13):** màn chọn ngôn ngữ, hộp thoại Điều khoản sử dụng (dùng bản tạm của web), hộp xác nhận đăng xuất, bản giao diện tiếng Anh, khung chờ đang tải, thông báo lỗi kèm nút "Thử lại", và trạng thái mất kết nối (khi lỗi hoặc mất mạng, các mục cài đặt lưu trên máy gồm ngôn ngữ, giao diện sáng/tối, sinh trắc học vẫn dùng được).
+- **Android (`apps/android/`):** Kotlin + Jetpack Compose + Material 3; hỗ trợ từ Android 8.0 (API 26); định danh `vn.unicom.thi360`, tên hiển thị `Thi360`.
+- **iOS (`apps/ios/`):** Swift + SwiftUI theo kiểu iOS thuần; hỗ trợ từ iOS 18.0; định danh `vn.unicom.thi360`, tên hiển thị `Thi360`.
+- **Bản thiết kế tham chiếu:** 110 màn `*.dc.html` (28 màn khung và xác thực + 82 màn cổng thi) trong `docs/design/app-hoc-vien/` (bảng ánh xạ từng màn theo yêu cầu nằm ở `docs/design/app-hoc-vien/README.md`). Hai tệp `m3.css` và `ios.css` chỉ dùng để xem bản vẽ, **không** chép style sang mã thật; mỗi app dùng thành phần gốc của hệ điều hành.
+- **Đặc tả thắng bản vẽ khi có khác biệt:** nền, bề mặt, viền và chữ trung tính dùng đúng token trung tính của web ở từng chế độ (AC-78 của đặc tả khung, quyết định D-21), không dùng sắc xanh nhạt mặc định của bản vẽ Android hay nền xám của bản vẽ iOS; không dùng nền gradient. Các chỗ bản vẽ khác đặc tả của đợt 2 ghi trong `docs/design/app-hoc-vien/README.md` (bao gồm `ProfileEmail` mở ngay trong khối Email của màn Hồ sơ theo ĐT 681).
+- **Màn và trạng thái chưa vẽ nhưng bắt buộc theo đặc tả (R-5, R-11, R-13, R-181):** màn chọn ngôn ngữ, hai màn văn bản pháp lý `LegalDocumentView` (vẽ từ `contracts/mobile/legal/`), hộp xác nhận đăng xuất, bản giao diện tiếng Anh, bốn trạng thái chuẩn của `LoadStateView` (đang tải, rỗng, lỗi kèm nút "Thử lại", mất kết nối — khi mất mạng các mục cài đặt trên máy và văn bản pháp lý đóng gói sẵn vẫn dùng được), màn chờ thất bại, thanh đầu thu gọn, chế độ khóa của câu hỏi, ảnh đang tải và ảnh lỗi.
 
-### 11.2 Nguồn màu, bảng `Palette` và chế độ sáng/tối
+### 11.2 Nguồn màu, bảng `Palette`, màu trạng thái và chế độ sáng/tối
 
-- **Nguồn màu duy nhất (R-12, B1.4, D-36):** route công khai của web học viên `GET {THI360_WEB_URL}/mobile/appearance-tokens.json`. Route đọc `GET /api/v1/appearance` và chạy `deriveTokens` qua `packages/ui/src/theme/mobile-tokens.ts`; **không** port công thức suy ra màu sang Kotlin hay Swift.
+- **Nguồn màu duy nhất (R-12 đợt khung, B1.4, D-36):** route công khai của web học viên `GET {THI360_WEB_URL}/mobile/appearance-tokens.json` (`apps/web-student/src/app/mobile/appearance-tokens.json/route.ts`). Route đọc `GET /api/v1/appearance` và chạy `deriveTokens` qua `packages/ui/src/theme/mobile-tokens.ts`; **không** port công thức suy ra màu sang Kotlin hay Swift.
   - Phản hồi `200` gồm: `version`, `mode` (`"light"` | `"dark"`), `presetId`, `light` (`Palette`), `dark` (`Palette`).
-  - Bộ đệm và chu kỳ cập nhật: `ETag` theo `version`, `Cache-Control: no-cache`, trả `304 Not Modified` khi `If-None-Match` khớp. App nạp lại khi mở app hoặc đưa app từ nền trở lại sau ít nhất **60 giây** (AC-72), áp ngay ở mọi màn khi `version` đổi mà không cần đăng nhập lại.
-  - Xử lý lỗi: route trả `503` khi backend lỗi hoặc khi `presetId` không có trong danh sách bộ màu của web; khi gặp `503`, lỗi mạng hoặc JSON sai hình, app giữ bảng màu đang dùng và không rơi về mặc định một cách im lặng (AC-77).
-- **Bảng `Palette` (17 màu định dạng `#RRGGBB`, đọc qua đối tượng `BrandPalette` trong app — B1.7):**
+  - Bộ đệm và chu kỳ cập nhật: `ETag` theo `version`, `Cache-Control: no-cache`, trả `304 Not Modified` khi `If-None-Match` khớp. App nạp lại khi mở app hoặc đưa app từ nền trở lại sau ít nhất **60 giây**, áp ngay ở mọi màn khi `version` đổi mà không cần đăng nhập lại.
+  - Xử lý lỗi: route trả `503` khi backend lỗi hoặc khi `presetId` không có trong danh sách bộ màu của web; khi gặp `503`, lỗi mạng hoặc JSON sai hình, app giữ bảng màu đang dùng và không rơi về mặc định một cách im lặng.
+- **Bảng `Palette` (17 màu định dạng `#RRGGBB`, đọc qua đối tượng `BrandPalette` trong app):**
 
 | Nhóm | Trường trong `Palette` | Token web tương ứng | Quy tắc giá trị |
 |---|---|---|---|
-| Thương hiệu (7 màu) | `primaryFill` | `primary-fill` | Trùng `deriveTokens` cho 9 bộ cố định và `custom` ở cả sáng và tối (AC-71) |
+| Thương hiệu (7 màu) | `primaryFill` | `primary-fill` | Trùng `deriveTokens` cho 9 bộ cố định và `custom` ở cả sáng và tối |
 | Thương hiệu | `onPrimary` | `on-primary` | Trùng `deriveTokens` (sáng/tối) |
 | Thương hiệu | `primaryText` | `primary-text` | Trùng `deriveTokens` (sáng/tối) |
 | Thương hiệu | `primaryContainer` | `primary-50` | Trùng `deriveTokens` (sáng/tối) |
 | Thương hiệu | `primaryContainerStrong` | `primary-100` | Trùng `deriveTokens` (sáng/tối) |
 | Thương hiệu | `accent` | `accent-500` | Trùng `deriveTokens` (sáng/tối) |
 | Thương hiệu | `onAccent` | `on-accent` | Trùng `deriveTokens` (sáng/tối) |
-| Trung tính (8 màu) | `bgPage` | `bg-page` (`--color-page`) | Sáng `#F7F8F9` (mục 2.3) · Tối `#0F1418` (`packages/ui/src/styles/tokens.css`), không đổi theo bộ màu (AC-78) |
+| Trung tính (8 màu) | `bgPage` | `bg-page` (`--color-page`) | Sáng `#F7F8F9` (mục 2.3) · Tối `#0F1418` (`packages/ui/src/styles/tokens.css`), không đổi theo bộ màu |
 | Trung tính | `bgSurface` | `bg-surface` (`--color-surface`) | Sáng `#FFFFFF` · Tối `#171D22`, không đổi theo bộ màu |
 | Trung tính | `bgSubtle` | `bg-subtle` (`--color-subtle`) | Sáng `#F1F2F4` · Tối `#1E262C`, không đổi theo bộ màu |
 | Trung tính | `text` | `text` (`--color-text`) | Sáng `#11181C` · Tối `#E6EAED`, không đổi theo bộ màu |
@@ -636,46 +636,95 @@ Quy ước giao diện cho hai ứng dụng native dành riêng cho học viên 
 | Lỗi / nguy hiểm (2 màu) | `dangerText` | `danger` (`--color-danger`) | Sáng `#B91C1C` · Tối `#F87171` |
 | Lỗi / nguy hiểm | `dangerBg` | `danger-bg` (`--color-danger-bg`) | Sáng `#FEF2F2` · Tối `#2E1517` |
 
-- **Độ tương phản (mục 8, AC-76):** chữ đạt tối thiểu **4,5:1** (WCAG AA) và thành phần không phải chữ đạt tối thiểu **3:1** (WCAG 1.4.11) với cả 9 bộ cố định và cấu hình `custom` ở hai chế độ sáng/tối, kiểm tĩnh trên cùng tập cặp chữ–nền của `packages/ui/src/styles/tokens.test.ts`.
-- **Mặc định và ngoại tuyến (AC-75):** lần mở đầu tiên chưa lấy được cấu hình từ máy chủ dùng bộ mặc định `thi360-green` chế độ `light` (khớp tệp hợp đồng `contracts/mobile/appearance/tokens-thi360-green.json`). Khi mất mạng ở các lần sau, app giữ bảng màu đã lưu gần nhất trên máy.
-- **Chế độ sáng/tối (D-20, AC-73, AC-74):** người dùng chưa tự chọn trên máy (`AppPreferences.themeMode` trống) dùng `mode` của cấu hình admin, **không theo chế độ sáng/tối của hệ điều hành**. Khi người dùng chọn Sáng hoặc Tối trong mục Tài khoản, lựa chọn `AppPreferences.themeMode` ghi đè `mode` của admin, lưu trên máy và giữ nguyên qua các lần tắt app và đăng xuất (như cookie `thi360_theme` trên web).
+- **Bảng 8 màu trạng thái (`StatusPalette` — R-6, B1.5, D-29):** khai báo cố định theo chế độ sáng/tối, trùng từng giá trị trong `contracts/mobile/appearance/status-colors.json` (và khớp `packages/ui/src/styles/tokens.css`; đối chiếu tự động bởi `packages/ui/src/theme/status-colors.test.ts`, `StatusPaletteTest` trên Android và `StatusPaletteTests` trên iOS):
+
+| Trường trong `StatusPalette` | Token web tương ứng | Chế độ sáng (`light`) | Chế độ tối (`dark`) | Dùng cho |
+|---|---|---|---|---|
+| `success` | `--color-success` | `#047857` | `#34d399` | Chữ/icon thành công, đáp án đúng, phần đã hoàn thành |
+| `successBg` | `--color-success-bg` | `#ecfdf5` | `#0f2a21` | Nền chip/thẻ trạng thái thành công |
+| `warning` | `--color-warning` | `#b45309` | `#fbbf24` | Cảnh báo thời gian, nút cờ đánh dấu trên khung câu, câu chờ chấm |
+| `warningBg` | `--color-warning-bg` | `#fffbeb` | `#2b2210` | Nền cảnh báo, khung công thức lỗi |
+| `info` | `--color-info` | `#0e7490` | `#22d3ee` | Thông tin, chip chỗ trống trong ngữ liệu |
+| `infoBg` | `--color-info-bg` | `#ecfeff` | `#0f2a30` | Nền thông tin, nền chip chỗ trống |
+| `dangerSolid` | `--color-danger-solid` | `#dc2626` | `#dc2626` | Nền ô câu đã trả lời được đánh dấu trong bảng câu hỏi (D-29) |
+| `onDanger` | `--color-on-danger` | `#ffffff` | `#ffffff` | Chữ trên nền `dangerSolid` |
+
+- **Độ tương phản (mục 8, R-6):** chữ đạt tối thiểu **4,5:1** (WCAG AA, gồm cả `onDanger` trên `dangerSolid` và các cặp màu trạng thái trên nền tương ứng) và thành phần không phải chữ đạt tối thiểu **3:1** (WCAG 1.4.11) với cả 9 bộ cố định và cấu hình `custom` ở hai chế độ sáng/tối, kiểm tĩnh trên cùng tập cặp chữ–nền của `packages/ui/src/styles/tokens.test.ts`.
+- **Mặc định và ngoại tuyến:** lần mở đầu tiên chưa lấy được cấu hình từ máy chủ dùng bộ mặc định `thi360-green` chế độ `light` (khớp tệp hợp đồng `contracts/mobile/appearance/tokens-thi360-green.json`). Khi mất mạng ở các lần sau, app giữ bảng màu đã lưu gần nhất trên máy.
+- **Chế độ sáng/tối:** người dùng chưa tự chọn trên máy (`AppPreferences.themeMode` trống) dùng `mode` của cấu hình admin, **không theo chế độ sáng/tối của hệ điều hành**. Khi người dùng chọn Sáng hoặc Tối trong mục Tài khoản, lựa chọn `AppPreferences.themeMode` ghi đè `mode` của admin, lưu trên máy và giữ nguyên qua các lần tắt app và đăng xuất (như cookie `thi360_theme` trên web).
 
 ### 11.3 Khung điều hướng và bố cục theo bề rộng
 
-- **Bốn mục sau đăng nhập:** **Trang chủ**, **Bài thi của tôi**, **Lịch sử** và **Tài khoản**. Đợt đầu, ba mục đầu là màn giữ chỗ chỉ hiện tiêu đề mục và dòng `"Chưa có nội dung"`, không gọi API nghiệp vụ (AC-10); mục **Tài khoản** hiển thị thông tin chỉ đọc từ `GET /api/v1/me/profile` cùng các cài đặt trên máy (R-11).
-- **Quy tắc đáp ứng (R-2, AC-6..11, AC-13):** kiểu điều hướng và số cột phụ thuộc bề rộng cửa sổ khả dụng / size class, không phụ thuộc tên máy. Xoay máy, gập/mở máy hoặc đổi kích thước cửa sổ phải giữ đúng màn hiện tại, mục đang chọn và dữ liệu đang nhập dở (AC-11). Khi chạy chia đôi màn hình trên tablet/iPad ở bề rộng hẹp, bố cục tự lùi về 1 cột kèm thanh điều hướng dưới và vẫn dùng đủ chức năng (AC-13).
+- **Bốn mục sau đăng nhập (R-1):** **Trang chủ** (danh mục và chi tiết bài thi/bộ đề), **Bài thi của tôi** (bài đã mua, gom theo bộ, lối vào chuẩn bị/tiếp tục thi/kết quả), **Lịch sử** (lịch sử lượt thi, bộ lọc, kết quả và xem lại) và **Tài khoản** (hồ sơ, đơn của tôi, đổi mật khẩu, hai văn bản pháp lý, xóa tài khoản, ngôn ngữ, giao diện, sinh trắc học).
+- **Màn làm bài toàn màn (R-1, B1.3):** tuyến `attempt/{attemptId}` che thanh điều hướng dưới, thanh bên và sidebar; rời màn làm bài thì thanh điều hướng hiển thị lại. Trên iOS màn này nằm trong `ZStack` gốc (không dùng `fullScreenCover` hay `sheet`) để vẫn nằm sau màn khóa và lớp che riêng tư.
+- **Quy tắc đáp ứng (R-1, B1.3):** kiểu điều hướng và số cột phụ thuộc bề rộng cửa sổ khả dụng / size class, không phụ thuộc tên máy. Các màn cặp danh sách–chi tiết dùng `ListDetailLayout`, các màn trải hai nửa trên màn rộng dùng `TwoColumnLayout`. Xoay máy, gập/mở máy hoặc đổi kích thước cửa sổ giữ nguyên màn hiện tại, mục đang chọn, vị trí cuộn và dữ liệu đang nhập dở. Khi chạy chia đôi màn hình ở bề rộng hẹp, bố cục tự lùi về 1 cột kèm thanh điều hướng dưới.
 
 | Nền tảng | Bề rộng cửa sổ / size class | Thanh điều hướng | Bố cục nội dung |
 |---|---|---|---|
-| Android | `< 600dp` (bề rộng hẹp, gồm chia đôi hẹp) | Thanh điều hướng dưới (bottom bar) | 1 cột (AC-6, AC-13) |
-| Android | `600dp` đến `< 840dp` | Thanh điều hướng bên trái (navigation rail) | 1 cột (AC-7) |
-| Android | `>= 840dp` (màn hình gập mở, tablet) | Thanh điều hướng bên trái (navigation rail) | Mục Tài khoản 2 cột: danh sách bên trái, chi tiết bên phải (AC-7) |
-| iOS | `horizontalSizeClass == compact` (iPhone, màn ngoài iPhone Duo, iPad chia đôi hẹp) | Thanh tab dưới (tab bar) | 1 cột (AC-6, AC-13) |
-| iOS (iPad) | `horizontalSizeClass == regular` | Sidebar bên trái | Hai cột (sidebar trái + vùng nội dung bên phải; mục Tài khoản hiện trong vùng nội dung cạnh sidebar) (AC-8) |
-| iOS (iPhone `regular` / iPhone Duo mở) | `regular × regular` (đo trên simulator Xcode 27.1: màn trong `669×951pt`, ngang `951×669pt`; màn ngoài `466×678pt` compact) | Hai nửa; thanh tab nằm ở nửa trái | Nửa trái hiện danh sách Tài khoản kèm thanh tab, nửa phải hiện chi tiết mục đang chọn; gập về màn ngoài quay lại 1 cột (AC-9, D-17) |
+| Android | `< 600dp` (bề rộng hẹp, gồm chia đôi hẹp) | Thanh điều hướng dưới (bottom bar) | 1 cột |
+| Android | `600dp` đến `< 840dp` | Thanh điều hướng bên trái (navigation rail) | 1 cột |
+| Android | `>= 840dp` (màn hình gập mở, tablet) | Thanh điều hướng bên trái (navigation rail) | 2 cột danh sách–chi tiết (Danh mục, Tài khoản mặc định mở Hồ sơ, Xem lại); màn làm bài hỗ trợ 3 cột liền nhau trên màn gập mở (`A-Fold-Player`, D-9) |
+| iOS | `horizontalSizeClass == compact` (iPhone, màn ngoài iPhone Duo, iPad chia đôi hẹp) | Thanh tab dưới (tab bar) | 1 cột |
+| iOS (iPad) | `horizontalSizeClass == regular` | Sidebar bên trái | 2 cột (sidebar trái + vùng nội dung / danh sách–chi tiết bên phải) |
+| iOS (iPhone `regular` / iPhone Duo mở) | `regular × regular` (đo trên simulator Xcode 27.1: màn trong `669×951pt`, ngang `951×669pt`; màn ngoài `466×678pt` compact) | Hai nửa; thanh tab nằm ở nửa trái | Nửa trái hiện mục gốc kèm thanh tab, nửa phải hiện màn con/chi tiết; màn Bài thi của tôi, Lịch sử dùng `TwoColumnLayout`; màn làm bài đặt danh sách câu và ngữ liệu ở nửa trái, thanh đầu và câu hỏi ở nửa phải (`I-Duo-Open-Player`, D-9) |
 
-- **Ma trận kích thước kiểm thử tương thích (đặc tả mục 9):** mỗi kích thước kiểm ở cả chế độ sáng và tối cho các màn Đăng nhập, Đăng ký, Khóa, Trang chủ, Tài khoản; không tràn ngang, không cắt nội dung:
+- **Ma trận kích thước kiểm thử tương thích (đặc tả mục 9):** mỗi kích thước kiểm ở cả chế độ sáng và tối; không tràn ngang, không cắt nội dung:
   - **Android:** `360×640dp`, `412×915dp`, màn hình gập mở `840×720dp`, tablet `1280×800dp`.
   - **iOS:** iPhone `390×844pt`, iPad `1180×820pt` và `820×1180pt`, iPhone Duo màn ngoài `466×678pt` và màn trong `669×951pt` (`951×669pt` khi cạnh dài nằm ngang).
 
 ### 11.4 Quy tắc xoay màn hình
 
-- **Khóa chiều dọc (AC-12, D-8):** áp dụng cho điện thoại — Android có bề rộng nhỏ nhất (`sw`) `< 600dp`; iPhone có bề rộng `compact`, kể cả màn ngoài iPhone Duo.
+- **Khóa chiều dọc:** áp dụng cho điện thoại — Android có bề rộng nhỏ nhất (`sw`) `< 600dp`; iPhone có bề rộng `compact`, kể cả màn ngoài iPhone Duo (áp dụng cho mọi màn, kể cả màn làm bài).
 - **Xoay tự do cả hai chiều:** áp dụng cho tablet Android (`sw >= 600dp`), iPad, màn hình gập Android khi mở và màn trong iPhone Duo.
 
 ### 11.5 Ngôn ngữ
 
-- **Mặc định tiếng Việt (`vi`)** ở lần mở đầu tiên, bất kể ngôn ngữ hệ điều hành (AC-79, D-22).
-- **Song ngữ `vi` / `en` cùng bộ khóa (AC-81):**
-  - Android: cặp tệp `res/values/strings_*.xml` và `res/values-en/strings_*.xml`.
-  - iOS: các String Catalog `*.xcstrings` (`Shell.xcstrings`, `Auth.xcstrings`, `Recovery.xcstrings`, `Account.xcstrings`, `InfoPlist.xcstrings`).
-  - Không lẫn ngôn ngữ trên mọi màn.
-- **Đổi tức thì và lưu bền (AC-80):** đổi tại màn Đăng nhập hoặc mục Tài khoản (`AppPreferences.locale`), chữ giao diện đổi ngay, lưu trên máy và giữ qua lần tắt app và đăng xuất.
-- **Câu chữ và thông báo lỗi:** câu chữ luồng xác thực lấy theo khóa web học viên trong `apps/web-student/src/messages/vi.json`. Tên sinh trắc học theo thiết bị: Android ghi `"vân tay hoặc khuôn mặt"`; iOS ghi `"Face ID"` hoặc `"Touch ID"` đúng loại phần cứng (AC-66). Mã lỗi máy chủ chưa định nghĩa hiện câu chung thân thiện của màn đó, không lộ mã kỹ thuật (AC-83).
+- **Mặc định tiếng Việt (`vi`)** ở lần mở đầu tiên, bất kể ngôn ngữ hệ điều hành.
+- **Song ngữ `vi` / `en` cùng bộ khóa (R-7, B1.10):**
+  - Android: cặp tệp `strings_<nhóm>.xml` trong `apps/android/app/src/main/res/values/` và `apps/android/app/src/main/res/values-en/` (`strings_common.xml`, `strings_shell.xml`, `strings_login.xml`, `strings_recovery.xml`, `strings_account.xml`, `strings_legal.xml`, `strings_catalog.xml`, `strings_payment.xml`, `strings_myexams.xml`, `strings_profile.xml`, `strings_prepare.xml`, `strings_richcontent.xml`, `strings_question.xml`, `strings_player.xml`, `strings_attachments.xml`, `strings_result.xml`), kiểm bởi `StringKeyParityTest`.
+  - iOS: các String Catalog `*.xcstrings` trong `apps/ios/Thi360/Resources/` (`Common.xcstrings`, `Shell.xcstrings`, `Auth.xcstrings`, `Recovery.xcstrings`, `Account.xcstrings`, `InfoPlist.xcstrings`, `Legal.xcstrings`, `Catalog.xcstrings`, `Payment.xcstrings`, `MyExams.xcstrings`, `Profile.xcstrings`, `Prepare.xcstrings`, `RichContent.xcstrings`, `Question.xcstrings`, `Player.xcstrings`, `Attachments.xcstrings`, `Result.xcstrings`), kiểm bởi `StringCatalogParityTests`.
+  - Không lẫn ngôn ngữ trên mọi màn; tên bài thi và nội dung đề giữ nguyên theo dữ liệu máy chủ trả về.
+- **Đổi tức thì và lưu bền:** đổi tại màn Đăng nhập hoặc mục Tài khoản (`AppPreferences.locale`), chữ giao diện đổi ngay, lưu trên máy và giữ qua lần tắt app và đăng xuất.
+- **Câu chữ và thông báo lỗi:** câu chữ giữ đường dẫn khóa và câu chữ của web (`apps/web-student/src/messages/vi.json`, `apps/web-student/src/messages/en.json`, `packages/ui/src/messages/ui-strings.ts`). Tên sinh trắc học theo thiết bị: Android ghi `"vân tay hoặc khuôn mặt"`; iOS ghi `"Face ID"` hoặc `"Touch ID"` đúng loại phần cứng. Mã lỗi máy chủ chưa định nghĩa hiện câu chung thân thiện của màn đó, không lộ mã kỹ thuật.
 
 ### 11.6 Truy cập, vùng bấm và cỡ chữ
 
 - **Vùng bấm tối thiểu (đặc tả mục 9):** `48dp` trên Android và `44pt` trên iOS.
 - **Trình đọc màn hình:** mọi điều khiển có nhãn rõ ràng cho **TalkBack** (Android) và **VoiceOver** (iOS), thứ tự đọc theo thứ tự nhìn; không truyền đạt trạng thái chỉ bằng màu.
 - **Phóng cỡ chữ hệ thống:** mức `130%` không cắt hay chồng chữ; mức `200%` mọi màn vẫn cuộn được và dùng được.
-- **Che nội dung khi khóa sinh trắc học (AC-58):** màn khóa che hoàn toàn nội dung app, và ảnh xem trước trong trình chuyển ứng dụng không để lộ nội dung bên trong.
+- **Che nội dung khi khóa sinh trắc học (R-8):** màn khóa che hoàn toàn nội dung app (kể cả câu hỏi, câu trả lời, đơn hàng, hồ sơ), và ảnh xem trước trong trình chuyển ứng dụng không để lộ nội dung bên trong.
+
+### 11.7 Biểu tượng và logo của app (R-179, B1.14)
+
+Quy tắc mục này **chỉ áp dụng cho hai app native**; hai web giữ nguyên `BrandLogo` / `BrandWordmark` như UNI-2828 (`packages/ui/src/components/brand-logo.tsx`).
+
+- **Thành phần dùng chung `BrandMark`:** mọi màn trong app hiện logo dùng `BrandMark` (`apps/android/app/src/main/java/vn/unicom/thi360/core/brand/BrandMark.kt` trên Android, `apps/ios/Thi360/Core/Brand/BrandMark.swift` trên iOS) gồm hình dấu màu gốc kèm tên `"Thi360"` viết bằng chữ của app theo màu `text` của chế độ sáng/tối đang dùng (độ tương phản tối thiểu `4,5:1`).
+- **Giữ màu gốc của hình dấu:** hình dấu luôn hiển thị đúng màu gốc ở cả chế độ sáng và tối, **không** tô màu theo bảng màu cấu hình giao diện của admin (`BrandPalette`).
+- **Cấm hình logo có chữ trên nền tối:** không đặt hình logo có chữ `"THI360"` (`docs/design/app-hoc-vien/brand/thi360-wordmark.png`) trên nền tối trong app.
+- **Biểu tượng app:** là hình dấu trên nền trắng — Android dùng biểu tượng thích ứng (lớp trước nằm gọn trong vùng an toàn đường kính `66dp` của khung `108dp`, nền trắng); iOS dùng ảnh `1024×1024` không có vùng trong suốt.
+- **Đường dẫn tệp nguồn và tệp trong hai app:**
+  - **Tệp nguồn:** `docs/design/app-hoc-vien/brand/thi360-icon.png` (700×700, nguồn dựng bitmap cho hai app để giữ cạnh mượt và đủ mảng màu), `docs/design/app-hoc-vien/brand/thi360-wordmark.png`, `docs/design/app-hoc-vien/brand/thi360-icon.svg` (không dùng bản SVG dò lại trong app).
+  - **Android:** hình dấu cho `BrandMark` ở `apps/android/app/src/main/res/drawable-mdpi/ic_brand_mark.png`, `apps/android/app/src/main/res/drawable-hdpi/ic_brand_mark.png`, `apps/android/app/src/main/res/drawable-xhdpi/ic_brand_mark.png`, `apps/android/app/src/main/res/drawable-xxhdpi/ic_brand_mark.png`, `apps/android/app/src/main/res/drawable-xxxhdpi/ic_brand_mark.png`; biểu tượng thích ứng ở `apps/android/app/src/main/res/mipmap-anydpi/ic_launcher.xml`, `apps/android/app/src/main/res/mipmap-anydpi/ic_launcher_round.xml`, `apps/android/app/src/main/res/drawable/ic_launcher_background.xml` và các ảnh lớp trước `apps/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png`, `apps/android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png`, `apps/android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png`, `apps/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png`, `apps/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png`.
+  - **iOS:** hình dấu cho `BrandMark` ở `apps/ios/Thi360/Resources/Assets.xcassets/BrandMark.imageset/BrandMark@1x.png`, `apps/ios/Thi360/Resources/Assets.xcassets/BrandMark.imageset/BrandMark@2x.png`, `apps/ios/Thi360/Resources/Assets.xcassets/BrandMark.imageset/BrandMark@3x.png`; biểu tượng app ở `apps/ios/Thi360/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png`.
+
+### 11.8 Nội dung đề và thành phần câu hỏi trên app (R-106 đến R-142, B1.6, B1.7)
+
+- **Dựng native, không dùng WebView:** nội dung đề, phương án, ngữ liệu, hướng dẫn và lời giải vẽ qua `RichContentView` (`apps/android/app/src/main/java/vn/unicom/thi360/feature/richcontent/ui/RichContentView.kt`, `apps/ios/Thi360/Features/RichContent/View/RichContentView.swift`). Công thức toán và hóa học (`\ce{…}`, `\pu{…}`) vẽ bằng **RaTeX** trên Android (`RaTeXFormulaEngine`, khai báo phiên bản ở `apps/android/gradle/libs.versions.toml`) và **SwaTex** trên iOS (`SwaTexFormulaEngine`, khai báo phiên bản ở `apps/ios/project.yml`). Công thức không vẽ được rơi về khung cảnh báo dùng `warning` / `warningBg` kèm mã nguồn.
+- **Bảng và công thức rộng cuộn trong khung riêng (R-108, R-115):** bảng (`figure.data-table`, `figure.cross`, bảng thường) và công thức (công thức dòng dài hơn cột hoặc công thức khối rộng hơn cột) cuộn ngang trong khung riêng của chính nó; không ngắt một công thức dòng ra nhiều dòng; phần còn lại của tờ đề đứng yên và cả trang không bao giờ cuộn ngang. Công thức dòng nằm cùng đường chân chữ với văn bản xung quanh.
+- **Phóng to ảnh (R-110):** ảnh trong `figure.image[data-zoom="true"]` bấm mở xem toàn màn hình, hỗ trợ chụm hai ngón phóng to tối đa `4×` và kéo di chuyển, đóng bằng nút đóng hoặc cử chỉ quay lại và giữ nguyên vị trí cuộn của tờ đề. Ảnh có `data-zoom="false"` hoặc nằm ngoài `figure.image` không mở phóng to. Ảnh giữ nguyên màu gốc ở cả sáng và tối.
+- **Màu đầu bảng và cỡ chữ ở hai chế độ (R-113):** màu chữ, viền bảng (`borderStrong`), đoạn trích (`bgSubtle`), chip chỗ trống (`info` / `infoBg`) và khung cảnh báo (`warning` / `warningBg`) đi theo token của chế độ đang dùng. Riêng nền ô tiêu đề bảng (`th`) dùng màu đầu bảng cố định trùng `--color-table-head` của web (`packages/ui/src/styles/tokens.css`, khai báo trong `apps/android/app/src/main/java/vn/unicom/thi360/feature/richcontent/ui/RichContentTheme.kt` và `apps/ios/Thi360/Features/RichContent/View/RichContentTheme.swift`): sáng `#fafafb`, tối `#1a2126`. Cỡ chữ và công thức phóng cùng tỉ lệ theo cỡ chữ hệ thống (tới `200%`), giữ độ tương phản chữ trên nền tối thiểu `4,5:1`.
+- **Thành phần câu hỏi và trình phát audio (R-118 đến R-134):** `QuestionView` và `QuestionSetView` dùng chung cho màn làm bài và màn xem lại ở ba chế độ (`Answering`, `Locked`, `Review`). Tệp đính kèm và audio nằm ở khe `AttachmentsView`; trình phát audio (`AttemptAudioPlayer` trên Android, `AttemptAudioPlayerView` trên iOS) hiển thị một nút chính (`Nghe` / `Đang phát…` / `Phát lại`), nhãn lượt nghe còn lại theo chính sách máy chủ (hiện tối đa 2 lượt), thời gian `mm:ss / mm:ss` và thanh tiến độ chỉ xem (không nhận chạm): **không tua, không tạm dừng, không đổi tốc độ (tốc độ luôn cố định `1×`)**, kể cả trên điều khiển phát của hệ điều hành, màn khóa và tai nghe Bluetooth (R-133, R-134).
+
+### 11.9 Danh sách màn mới theo bảng tuyến (B1.3)
+
+Mỗi nhóm tuyến dưới đây đối chiếu trực tiếp tới thành phần hiện có trên nhánh tích hợp và bản vẽ `*.dc.html` trong `docs/design/app-hoc-vien/`:
+
+| Tuyến (B1.3) | Màn Android | Màn iOS | Bản vẽ trong `docs/design/app-hoc-vien/` |
+|---|---|---|---|
+| `CatalogRoutes`: `catalog`, `product/{code}` | `CatalogScreen`, `ProductDetailScreen` (`ExamDetailScreen`, `BundleDetailScreen`) | `CatalogHomeView`, `ProductDetailScreen` (`ExamDetailView`, `BundleDetailView`) | `docs/design/app-hoc-vien/A-Catalog.dc.html`, `docs/design/app-hoc-vien/I-Catalog.dc.html`, `docs/design/app-hoc-vien/A-CatalogFilter.dc.html`, `docs/design/app-hoc-vien/I-CatalogFilter.dc.html`, `docs/design/app-hoc-vien/A-ExamDetail.dc.html`, `docs/design/app-hoc-vien/I-ExamDetail.dc.html`, `docs/design/app-hoc-vien/A-BundleDetail.dc.html`, `docs/design/app-hoc-vien/I-BundleDetail.dc.html`, `docs/design/app-hoc-vien/A-Tablet-Catalog.dc.html`, `docs/design/app-hoc-vien/I-Pad-Catalog.dc.html` |
+| `PaymentRoutes`: `checkout/{code}`, `payment-result`, `orders`, `order/{orderCode}` | `CheckoutScreen`, `PaymentResultScreen`, `OrdersScreen`, `OrderDetailScreen` | `CheckoutView`, `PaymentResultView`, `OrdersView`, `OrderDetailView` | `docs/design/app-hoc-vien/A-Checkout.dc.html`, `docs/design/app-hoc-vien/I-Checkout.dc.html`, `docs/design/app-hoc-vien/A-PayResult.dc.html`, `docs/design/app-hoc-vien/I-PayResult.dc.html`, `docs/design/app-hoc-vien/A-Orders.dc.html`, `docs/design/app-hoc-vien/I-Orders.dc.html`, `docs/design/app-hoc-vien/A-OrderDetail.dc.html`, `docs/design/app-hoc-vien/I-OrderDetail.dc.html` |
+| `MyExamsRoutes`: `my-exams`, `history` | `MyExamsScreen`, `HistoryScreen` | `MyExamsScreen`, `HistoryScreen` | `docs/design/app-hoc-vien/A-MyExams.dc.html`, `docs/design/app-hoc-vien/I-MyExams.dc.html`, `docs/design/app-hoc-vien/A-History.dc.html`, `docs/design/app-hoc-vien/I-History.dc.html`, `docs/design/app-hoc-vien/A-HistoryFilter.dc.html`, `docs/design/app-hoc-vien/I-HistoryFilter.dc.html`, `docs/design/app-hoc-vien/A-Fold-MyExams.dc.html`, `docs/design/app-hoc-vien/I-Duo-Open-MyExams.dc.html` |
+| `PrepareRoutes`: `prepare/{entitlementId}` | `PrepareScreen`, `AttemptWaitingScreen` | `PrepareView`, `AttemptWaitingView` | `docs/design/app-hoc-vien/A-Prepare.dc.html`, `docs/design/app-hoc-vien/I-Prepare.dc.html`, `docs/design/app-hoc-vien/A-Starting.dc.html`, `docs/design/app-hoc-vien/I-Starting.dc.html` |
+| `AttemptRoutes`: `attempt/{attemptId}` | `PlayerScreen` (nhúng `AttemptWaitingScreen`; dùng `QuestionView`, `QuestionSetView`, `RichContentView`, `AttachmentsView`, `AttemptAudioPlayer`) | `PlayerView` (nhúng `AttemptWaitingView`; dùng `QuestionView`, `QuestionSetView`, `RichContentView`, `AttachmentsView`, `AttemptAudioPlayerView`) | `docs/design/app-hoc-vien/A-PartChoice.dc.html`, `docs/design/app-hoc-vien/I-PartChoice.dc.html`, `docs/design/app-hoc-vien/A-Player.dc.html`, `docs/design/app-hoc-vien/I-Player.dc.html`, `docs/design/app-hoc-vien/A-PlayerNav.dc.html`, `docs/design/app-hoc-vien/I-PlayerNav.dc.html`, `docs/design/app-hoc-vien/A-PlayerDialogs.dc.html`, `docs/design/app-hoc-vien/I-PlayerDialogs.dc.html`, `docs/design/app-hoc-vien/A-Fold-Player.dc.html`, `docs/design/app-hoc-vien/A-Tablet-Player.dc.html`, `docs/design/app-hoc-vien/I-Pad-Player.dc.html`, `docs/design/app-hoc-vien/I-Duo-Open-Player.dc.html`; dạng câu: `docs/design/app-hoc-vien/A-Q-Choice.dc.html`, `docs/design/app-hoc-vien/I-Q-Choice.dc.html`, `docs/design/app-hoc-vien/A-Q-TrueFalse.dc.html`, `docs/design/app-hoc-vien/I-Q-TrueFalse.dc.html`, `docs/design/app-hoc-vien/A-Q-ShortAnswer.dc.html`, `docs/design/app-hoc-vien/I-Q-ShortAnswer.dc.html`, `docs/design/app-hoc-vien/A-Q-Cloze.dc.html`, `docs/design/app-hoc-vien/I-Q-Cloze.dc.html`, `docs/design/app-hoc-vien/A-Q-Matching.dc.html`, `docs/design/app-hoc-vien/I-Q-Matching.dc.html`, `docs/design/app-hoc-vien/A-Q-Essay.dc.html`, `docs/design/app-hoc-vien/I-Q-Essay.dc.html`, `docs/design/app-hoc-vien/A-Q-Audio.dc.html`, `docs/design/app-hoc-vien/I-Q-Audio.dc.html`, `docs/design/app-hoc-vien/A-Q-Set.dc.html`, `docs/design/app-hoc-vien/I-Q-Set.dc.html`, `docs/design/app-hoc-vien/A-Q-Rich.dc.html`, `docs/design/app-hoc-vien/I-Q-Rich.dc.html`, `docs/design/app-hoc-vien/A-Q-Review.dc.html`, `docs/design/app-hoc-vien/I-Q-Review.dc.html` |
+| `ResultRoutes`: `result/{attemptId}`, `review/{attemptId}` | `ResultScreen`, `ReviewScreen` | `ResultView`, `ReviewView` | `docs/design/app-hoc-vien/A-Result.dc.html`, `docs/design/app-hoc-vien/I-Result.dc.html`, `docs/design/app-hoc-vien/A-ResultBreakdown.dc.html`, `docs/design/app-hoc-vien/I-ResultBreakdown.dc.html`, `docs/design/app-hoc-vien/A-Review.dc.html`, `docs/design/app-hoc-vien/I-Review.dc.html`, `docs/design/app-hoc-vien/A-Tablet-Review.dc.html`, `docs/design/app-hoc-vien/I-Pad-Review.dc.html` |
+| `ProfileRoutes`: `profile`, `profile/verify-email`, `account/delete`; tuyến `legal/{id}` (Android `LegalRoutes`, iOS `AppRouteView`) | `AccountScreen`, `ProfileScreen`, `VerifyEmailScreen`, `DeleteAccountScreen`, `LegalDocumentView` | `AccountView`, `ProfileView`, `VerifyEmailView`, `DeleteAccountView`, `LegalDocumentView` | `docs/design/app-hoc-vien/A-AccountV2.dc.html`, `docs/design/app-hoc-vien/I-AccountV2.dc.html`, `docs/design/app-hoc-vien/A-Profile.dc.html`, `docs/design/app-hoc-vien/I-Profile.dc.html`, `docs/design/app-hoc-vien/A-ProfileEmail.dc.html`, `docs/design/app-hoc-vien/I-ProfileEmail.dc.html` (chỉ tham khảo bố cục; app mở biểu mẫu ngay trong khối Email của màn Hồ sơ theo ĐT 681), `docs/design/app-hoc-vien/A-VerifyEmail.dc.html`, `docs/design/app-hoc-vien/I-VerifyEmail.dc.html`, `docs/design/app-hoc-vien/A-Fold-Profile.dc.html`, `docs/design/app-hoc-vien/I-Pad-Profile.dc.html`, `docs/design/app-hoc-vien/A-DeleteAccount.dc.html`, `docs/design/app-hoc-vien/I-DeleteAccount.dc.html` (hai màn `legal/{id}` vẽ từ `contracts/mobile/legal/`, chưa vẽ bản vẽ riêng) |

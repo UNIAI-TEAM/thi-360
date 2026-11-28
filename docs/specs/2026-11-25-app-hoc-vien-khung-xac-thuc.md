@@ -201,7 +201,8 @@ Phiên mobile hết khi người dùng không quay lại app trong 7 ngày, và 
   - **AC-47** *(Từ chối)* Cho liên kết đã hết hạn hoặc đã dùng (`RESET_TOKEN_INVALID`), khi bấm lưu, thì hiện "Liên kết không còn dùng được" kèm nút yêu cầu liên kết mới (mở màn Quên mật khẩu).
   - **AC-48** *(Từ chối)* Cho mật khẩu nhập lại không khớp hoặc chưa đạt điều kiện, khi bấm lưu, thì lỗi hiện dưới ô và không gọi API.
   - **AC-49** Cho app đang ở trạng thái khóa, khi mở từ liên kết đặt lại mật khẩu, thì màn Đặt mật khẩu mới hiện ngay, không đòi mở khóa.
-  - **AC-50** Cho tên miền web học viên của môi trường `demo`, khi gọi `GET /.well-known/assetlinks.json` và `GET /.well-known/apple-app-site-association`, thì nhận 200, `Content-Type: application/json`, nội dung khai đúng định danh hai app và chỉ đường dẫn `/reset-password`.
+  - **AC-50** Cho tên miền web học viên của môi trường `demo`, khi gọi `GET /.well-known/assetlinks.json` và `GET /.well-known/apple-app-site-association`, thì nhận 200, `Content-Type: application/json`, nội dung khai đúng định danh hai app và hai đường dẫn `/reset-password` và `/checkout/result/app`.
+    - *Ghi chú sửa (`UNI-2872`): sửa từ "chỉ đường dẫn `/reset-password`" sang hai đường dẫn theo đặc tả `docs/specs/2026-11-26-app-hoc-vien-cong-thi.md` mục 7 (R-40).*
   - **AC-51** Mã trong liên kết không xuất hiện trong log của app, không ghi xuống bộ nhớ lưu trữ của máy, và không còn trong trạng thái của màn sau khi rời màn: quay lại màn đó không gửi lại được mã cũ.
 
 ### R-9 Bắt đổi mật khẩu và đổi mật khẩu
