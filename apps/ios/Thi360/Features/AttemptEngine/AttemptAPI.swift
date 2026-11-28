@@ -186,14 +186,16 @@ struct AttemptWireMiddleware: ClientMiddleware {
         next: @Sendable (HTTPRequest, HTTPBody?, URL) async throws -> (HTTPResponse, HTTPBody?)
     ) async throws -> (HTTPResponse, HTTPBody?) {
         let context = AttemptWireContext.current
+        var outgoingRequest = request
         let effectiveBody: HTTPBody?
         if let overrideData = context?.outgoingBodyData {
             effectiveBody = HTTPBody(overrideData)
+            outgoingRequest.headerFields[.contentLength] = String(overrideData.count)
         } else {
             effectiveBody = body
         }
 
-        let (response, responseBody) = try await next(request, effectiveBody, baseURL)
+        let (response, responseBody) = try await next(outgoingRequest, effectiveBody, baseURL)
 
         if let context, response.status.code == 429 {
             context.setRawRetryAfterSeconds(Self.parseRetryAfterAllowingZero(from: response.headerFields))

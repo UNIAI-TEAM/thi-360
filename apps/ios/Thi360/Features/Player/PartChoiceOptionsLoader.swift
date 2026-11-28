@@ -115,7 +115,7 @@ final class PartChoiceOptionsLoader: Sendable {
                     }
                 }
             }
-            for choice in response.afterStartChoices ?? [] {
+            for choice in response.afterStartChoices {
                 for opt in choice.options ?? [] {
                     for subj in opt.subjects ?? [] {
                         if let code = subj.code?.trimmingCharacters(in: .whitespacesAndNewlines), !code.isEmpty {
@@ -128,7 +128,7 @@ final class PartChoiceOptionsLoader: Sendable {
             return .loaded(
                 value: PartChoiceMetadata(
                     entitlementId: entitlementId,
-                    choices: response.afterStartChoices ?? [],
+                    choices: response.afterStartChoices,
                     subjectsByCode: subjects
                 ),
                 stale: false

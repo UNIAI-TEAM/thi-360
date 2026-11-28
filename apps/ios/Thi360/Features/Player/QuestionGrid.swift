@@ -214,9 +214,9 @@ struct QuestionGridCellStyle: Equatable {
             )
         case .partial:
             return QuestionGridCellStyle(
-                backgroundHex: statusPalette.warningBg,
-                foregroundHex: statusPalette.warning,
-                borderHex: statusPalette.warning,
+                backgroundHex: palette.primaryContainer,
+                foregroundHex: palette.primaryText,
+                borderHex: palette.primaryFill,
                 flagHex: nil,
                 isDashed: true
             )
@@ -544,10 +544,10 @@ struct QuestionGridBody: View {
                 identifier: "player.grid.legend.partial"
             ) {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(statusPalette.warningBgColor)
+                    .fill(palette.primaryContainerColor)
                     .overlay(
                         RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .strokeBorder(statusPalette.warningColor, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                            .strokeBorder(palette.primaryFillColor, style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
                     )
                     .frame(width: 16, height: 16)
             }

@@ -6,16 +6,6 @@ final class PlayerQuestionBodyStore: @unchecked Sendable {
     private let lock = NSLock()
     private var bodiesByAttempt: [String: [ItemID: AttemptQuestionBodyValue]] = [:]
 
-    func update(_ bodies: [ItemID: AttemptQuestionBodyValue], for attemptId: String) {
-        lock.lock()
-        var existing = bodiesByAttempt[attemptId] ?? [:]
-        for (key, value) in bodies {
-            existing[key] = value
-        }
-        bodiesByAttempt[attemptId] = existing
-        lock.unlock()
-    }
-
     func replace(_ bodies: [ItemID: AttemptQuestionBodyValue], for attemptId: String) {
         lock.lock()
         bodiesByAttempt[attemptId] = bodies

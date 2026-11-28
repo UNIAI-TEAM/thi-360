@@ -2,6 +2,21 @@ import Foundation
 import XCTest
 @testable import Thi360
 
+private final class LockedTimeline: @unchecked Sendable {
+    private let lock = NSLock()
+    private var entries: [String] = []
+
+    func append(_ entry: String) {
+        lock.withLock {
+            entries.append(entry)
+        }
+    }
+
+    var snapshot: [String] {
+        lock.withLock { entries }
+    }
+}
+
 @MainActor
 final class PlayerAudioStopOrderTests: XCTestCase {
     func testAudioAttachmentStopsStrictlyBeforeHttpFinishPartAndSubmit() async throws {
@@ -9,22 +24,17 @@ final class PlayerAudioStopOrderTests: XCTestCase {
         defer { perPart.dispose() }
         await perPart.settle()
 
-        let lock = NSLock()
-        var finishTimeline: [String] = []
+        let finishTimeline = LockedTimeline()
 
         let mockHost1 = MockPlayerAttachmentHost()
         mockHost1.onBeforeCloseHook = { target in
-            lock.withLock {
-                if case let .part(partId) = target {
-                    finishTimeline.append("audioStop:part:\(partId)")
-                }
+            if case let .part(partId) = target {
+                finishTimeline.append("audioStop:part:\(partId)")
             }
         }
         perPart.server.onBeforeHandle = { call in
             if call.endpoint == .finishPart {
-                lock.withLock {
-                    finishTimeline.append("http:finishPart")
-                }
+                finishTimeline.append("http:finishPart")
             }
         }
 
@@ -43,9 +53,8 @@ final class PlayerAudioStopOrderTests: XCTestCase {
         perPart.engine.finishPart(partId: part0)
         await perPart.settle()
 
-        let capturedFinish = lock.withLock { finishTimeline }
         XCTAssertEqual(
-            capturedFinish,
+            finishTimeline.snapshot,
             ["audioStop:part:\(part0)", "http:finishPart"],
             "Attachment host must receive stop strictly BEFORE HTTP POST .../finish"
         )
@@ -54,20 +63,16 @@ final class PlayerAudioStopOrderTests: XCTestCase {
         defer { shared.dispose() }
         await shared.settle()
 
-        var submitTimeline: [String] = []
+        let submitTimeline = LockedTimeline()
         let mockHost2 = MockPlayerAttachmentHost()
         mockHost2.onBeforeCloseHook = { target in
-            lock.withLock {
-                if case .attempt = target {
-                    submitTimeline.append("audioStop:attempt")
-                }
+            if case .attempt = target {
+                submitTimeline.append("audioStop:attempt")
             }
         }
         shared.server.onBeforeHandle = { call in
             if call.endpoint == .submit {
-                lock.withLock {
-                    submitTimeline.append("http:submit")
-                }
+                submitTimeline.append("http:submit")
             }
         }
 
@@ -85,9 +90,8 @@ final class PlayerAudioStopOrderTests: XCTestCase {
         shared.engine.submit()
         await shared.settle()
 
-        let capturedSubmit = lock.withLock { submitTimeline }
         XCTAssertEqual(
-            capturedSubmit,
+            submitTimeline.snapshot,
             ["audioStop:attempt", "http:submit"],
             "Attachment host must receive stop strictly BEFORE HTTP POST .../submit"
         )

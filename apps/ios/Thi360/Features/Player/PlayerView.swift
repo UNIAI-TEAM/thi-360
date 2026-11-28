@@ -1138,6 +1138,7 @@ struct PlayerView: View {
                     DuoPassagePane(
                         attemptId: attemptId,
                         ui: ui,
+                        answers: engineState.answers,
                         locale: locale,
                         assets: assets,
                         formulaEngine: formulaEngine,
@@ -1149,7 +1150,7 @@ struct PlayerView: View {
             .frame(width: halfWidth)
             .frame(maxHeight: .infinity)
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("player.duo.leftPane")
+            .playerProbe("player.duo.leftPane")
 
             Rectangle()
                 .fill(palette.borderColor)
@@ -1186,11 +1187,11 @@ struct PlayerView: View {
             .frame(width: halfWidth)
             .frame(maxHeight: .infinity)
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("player.duo.rightPane")
+            .playerProbe("player.duo.rightPane")
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("player.layout.duoOpen")
+        .playerProbe("player.layout.duoOpen")
     }
 
     private func hasQuestionSetInCurrentPosition(ui: PlayerUI) -> Bool {

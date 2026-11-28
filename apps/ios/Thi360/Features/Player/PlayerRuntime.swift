@@ -35,8 +35,7 @@ final class PlayerRuntime {
     func engine(
         for attemptId: String,
         sessionStore: SessionStore?,
-        connectivity: ConnectivityMonitor?,
-        localeProvider: @escaping @Sendable () -> AppLocale
+        connectivity: ConnectivityMonitor?
     ) -> AttemptEngine {
         let accountId = sessionStore?.currentAccountId ?? "anonymous"
         let resolvedConnectivity = connectivity ?? ConnectivityMonitor()

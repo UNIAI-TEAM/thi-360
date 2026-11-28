@@ -37,6 +37,8 @@ struct PlayerContent: View {
 
     @State private var lastInitialScrolledPartKey: String?
     @State private var suppressTrackingUntil: Date = .distantPast
+    @State private var isUserScrollTracking: Bool = false
+    @State private var latestAnchors: [VisibleUnitAnchor] = []
 
     init(
         attemptId: String,
@@ -132,8 +134,28 @@ struct PlayerContent: View {
                 }
             }
             .coordinateSpace(name: "player.content.scroll")
+            .onScrollPhaseChange { oldPhase, newPhase in
+                switch newPhase {
+                case .interacting, .decelerating:
+                    isUserScrollTracking = true
+                case .idle:
+                    if (oldPhase == .interacting || oldPhase == .decelerating),
+                       Date() >= suppressTrackingUntil,
+                       !activePartId.isEmpty,
+                       let topItem = Self.pickTopVisibleItem(from: latestAnchors),
+                       ui.currentItemId != topItem
+                    {
+                        onVisibleItemChanged(activePartId, topItem)
+                    }
+                    isUserScrollTracking = false
+                default:
+                    isUserScrollTracking = false
+                }
+            }
             .onPreferenceChange(VisibleUnitPreferenceKey.self) { anchors in
-                guard Date() >= suppressTrackingUntil,
+                latestAnchors = anchors
+                guard isUserScrollTracking,
+                      Date() >= suppressTrackingUntil,
                       !activePartId.isEmpty,
                       let topItem = Self.pickTopVisibleItem(from: anchors)
                 else {
@@ -169,29 +191,22 @@ struct PlayerContent: View {
     }
 
     private func performScroll(to itemId: ItemID, proxy: ScrollViewProxy, animated: Bool) {
-        let anchorId = scrollAnchorId(for: itemId)
-        suppressTrackingUntil = Date().addingTimeInterval(0.45)
-        if animated {
-            withAnimation(.easeInOut(duration: 0.2)) {
-                proxy.scrollTo(anchorId, anchor: .top)
-            }
-        } else {
-            proxy.scrollTo(anchorId, anchor: .top)
-        }
-    }
-
-    private func scrollAnchorId(for itemId: ItemID) -> String {
-        for group in ui.unitGroups {
-            for unit in group.units {
-                if unit.leafIdSet.contains(itemId) {
-                    if unit.kind == .questionSet && !duoRightPaneQuestionsOnly {
-                        return itemId
-                    }
-                    return itemId
+        suppressTrackingUntil = Date().addingTimeInterval(0.6)
+        isUserScrollTracking = false
+        let apply = {
+            if animated {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    proxy.scrollTo(itemId, anchor: .top)
                 }
+            } else {
+                proxy.scrollTo(itemId, anchor: .top)
             }
         }
-        return itemId
+        apply()
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(80))
+            apply()
+        }
     }
 
     @ViewBuilder
@@ -332,7 +347,8 @@ struct PlayerContent: View {
                         mode: childMode,
                         mappedAnswers: mappedAnswers,
                         flagged: flagged,
-                        cardWidth: cardWidth
+                        cardWidth: cardWidth,
+                        showsAttachments: false
                     )
                     .id(childId)
                     .background(anchorReader(itemId: childId))
@@ -363,7 +379,7 @@ struct PlayerContent: View {
                     fixedWidth: cardWidth,
                     forceTwoColumn: useTwoColumnForQuestionSet
                 ) {
-                    attachmentsSlot(item: unit.parentItem, partId: partId, mode: setMode)
+                    questionSetAttachmentsSlot(unit: unit, partId: partId, mode: setMode)
                 }
             }
             .padding(14)
@@ -404,7 +420,8 @@ struct PlayerContent: View {
         mode: QuestionMode,
         mappedAnswers: [String: AnswerValue],
         flagged: Set<String>,
-        cardWidth: CGFloat?
+        cardWidth: CGFloat?,
+        showsAttachments: Bool = true
     ) -> some View {
         QuestionView(
             item: item,
@@ -426,7 +443,9 @@ struct PlayerContent: View {
             locale: locale,
             fixedWidth: cardWidth
         ) {
-            attachmentsSlot(item: rawItem, partId: partId, mode: mode)
+            if showsAttachments {
+                attachmentsSlot(item: rawItem, partId: partId, mode: mode)
+            }
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -462,6 +481,29 @@ struct PlayerContent: View {
         }
     }
 
+    @ViewBuilder
+    private func questionSetAttachmentsSlot(
+        unit: QuestionDisplayUnit,
+        partId: PartID,
+        mode: QuestionMode
+    ) -> some View {
+        if let attachmentHost,
+           PlayerAttachmentContext.hasQuestionSetAttachments(parent: unit.parentItem, children: unit.childItems)
+        {
+            attachmentHost.attachmentsView(
+                for: PlayerAttachmentContext(
+                    attemptId: attemptId,
+                    partId: partId,
+                    item: unit.parentItem,
+                    childItems: unit.childItems,
+                    canInteract: ui.canUseAttachments && mode.isAnswering,
+                    isLocked: !mode.isAnswering,
+                    locale: locale
+                )
+            )
+        }
+    }
+
     private func anchorReader(itemId: ItemID) -> some View {
         GeometryReader { geo in
             Color.clear.preference(
@@ -484,6 +526,7 @@ struct PlayerContent: View {
 struct DuoPassagePane: View {
     let attemptId: String
     let ui: PlayerUI
+    let answers: [ItemID: LocalAnswer]
     let locale: AppLocale
     let assets: AttemptAssetSource?
     let formulaEngine: any FormulaEngine
@@ -512,6 +555,8 @@ struct DuoPassagePane: View {
             let rangeText = QuestionStrings.questionRangeLabel(from: range.from, to: range.to, locale: locale)
             let caption = QuestionStrings.setPassageCaption(from: range.from, to: range.to, locale: locale)
             let richWidth = paneWidth.map { max($0 - 32, 160) }
+            let anyChildEditable = unit.leafIds.contains { ui.questionMode(for: $0, answers: answers).isAnswering }
+            let setMode: QuestionMode = anyChildEditable ? .answering : .locked
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
@@ -529,8 +574,7 @@ struct DuoPassagePane: View {
                     }
 
                     if let attachmentHost,
-                       let list = unit.parentItem.attachments,
-                       !list.isEmpty,
+                       PlayerAttachmentContext.hasQuestionSetAttachments(parent: unit.parentItem, children: unit.childItems),
                        let partId = ui.activePart?.partId
                     {
                         attachmentHost.attachmentsView(
@@ -538,8 +582,9 @@ struct DuoPassagePane: View {
                                 attemptId: attemptId,
                                 partId: partId,
                                 item: unit.parentItem,
-                                canInteract: ui.canUseAttachments,
-                                isLocked: !ui.canEdit,
+                                childItems: unit.childItems,
+                                canInteract: ui.canUseAttachments && setMode.isAnswering,
+                                isLocked: !setMode.isAnswering,
                                 locale: locale
                             )
                         )
@@ -549,7 +594,7 @@ struct DuoPassagePane: View {
                         QuestionRichText(
                             document: RichHTMLParser.parse(stem),
                             assets: assets,
-                            mode: ui.questionMode.richContentMode,
+                            mode: setMode.richContentMode,
                             formulaEngine: formulaEngine,
                             locale: locale,
                             fixedWidth: richWidth
@@ -560,7 +605,7 @@ struct DuoPassagePane: View {
                         QuestionRichText(
                             document: RichHTMLParser.parse(passage),
                             assets: assets,
-                            mode: ui.questionMode.richContentMode,
+                            mode: setMode.richContentMode,
                             blankNumberStart: blankStart ?? 1,
                             formulaEngine: formulaEngine,
                             locale: locale,
@@ -578,7 +623,7 @@ struct DuoPassagePane: View {
                     .frame(width: 1)
             }
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("player.duo.passagePane")
+            .playerProbe("player.duo.passagePane", label: rangeText)
         }
     }
 }

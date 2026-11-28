@@ -41,12 +41,9 @@ private struct AttemptRouteHostView: View {
         let engine = runtime.engine(
             for: attemptId,
             sessionStore: sessionStore,
-            connectivity: connectivityMonitor,
-            localeProvider: { preferences.locale }
+            connectivity: connectivityMonitor
         )
-        let startContextStore = sessionStore.map { store in
-            StartContextStore(provider: store.storeProvider, accountId: { store.currentAccountId })
-        }
+        let startContextStore = sessionStore?.currentAccountStore().map(StartContextStore.init(store:))
         let prepareAPI: (any PrepareAPIClientProtocol)? = sessionStore.map {
             PrepareAPI(apiClient: $0.apiClient)
         }

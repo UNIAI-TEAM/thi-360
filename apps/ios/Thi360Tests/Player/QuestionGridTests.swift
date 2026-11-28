@@ -47,6 +47,27 @@ final class QuestionGridTests: XCTestCase {
             XCTAssertEqual(flaggedBlank.borderHex, pal.dangerText)
             XCTAssertEqual(flaggedBlank.flagHex, pal.dangerText)
             XCTAssertFalse(flaggedBlank.isDashed)
+
+            let unflaggedAnswered = QuestionGridCellStyle.resolve(completion: .answered, flagged: false, palette: pal, statusPalette: stat)
+            XCTAssertEqual(unflaggedAnswered.backgroundHex, pal.primaryContainer)
+            XCTAssertEqual(unflaggedAnswered.foregroundHex, pal.primaryText)
+            XCTAssertEqual(unflaggedAnswered.borderHex, pal.primaryFill)
+            XCTAssertNil(unflaggedAnswered.flagHex)
+            XCTAssertFalse(unflaggedAnswered.isDashed)
+
+            let unflaggedPartial = QuestionGridCellStyle.resolve(completion: .partial, flagged: false, palette: pal, statusPalette: stat)
+            XCTAssertEqual(unflaggedPartial.backgroundHex, pal.primaryContainer)
+            XCTAssertEqual(unflaggedPartial.foregroundHex, pal.primaryText)
+            XCTAssertEqual(unflaggedPartial.borderHex, pal.primaryFill)
+            XCTAssertNil(unflaggedPartial.flagHex)
+            XCTAssertTrue(unflaggedPartial.isDashed)
+
+            let unflaggedBlank = QuestionGridCellStyle.resolve(completion: .blank, flagged: false, palette: pal, statusPalette: stat)
+            XCTAssertEqual(unflaggedBlank.backgroundHex, pal.bgSurface)
+            XCTAssertEqual(unflaggedBlank.foregroundHex, pal.text)
+            XCTAssertEqual(unflaggedBlank.borderHex, pal.borderStrong)
+            XCTAssertNil(unflaggedBlank.flagHex)
+            XCTAssertFalse(unflaggedBlank.isDashed)
         }
 
         let allUI = PlayerUI.make(state: state, layout: .wide, local: PlayerLocalUI(gridFilter: .all), bodies: bodies)

@@ -59,10 +59,9 @@ final class PlayerAccessibilityUITests: XCTestCase {
             XCTAssertFalse(timerEl.label.isEmpty, "Timer must expose VoiceOver label at \(category)")
 
             let openGridBtn = app.buttons["player.bottomBar.openGrid"].firstMatch
-            if openGridBtn.waitForExistence(timeout: 4) {
-                XCTAssertFalse(openGridBtn.label.isEmpty)
-                XCTAssertGreaterThanOrEqual(openGridBtn.frame.height, 43.0)
-            }
+            XCTAssertTrue(openGridBtn.waitForExistence(timeout: 6), "Compact iPhone must display openGrid button at \(category)")
+            XCTAssertFalse(openGridBtn.label.isEmpty)
+            XCTAssertGreaterThanOrEqual(openGridBtn.frame.height, 43.0)
 
             let content = app.scrollViews.firstMatch
             XCTAssertTrue(content.waitForExistence(timeout: 5))

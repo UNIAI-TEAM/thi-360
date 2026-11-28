@@ -23,6 +23,7 @@ final class PlayerSnapshotTests: XCTestCase {
 
     func testPlayerSurfaceMatrixLightAndDarkAcrossAllViewports() throws {
         let (sharedAttempt, sharedBodies) = try PlayerTestFixtures.decodeAttemptState(variant: "in-progress-shared")
+        let (attempt50, bodies50) = try PlayerTestFixtures.decodeAttempt50()
         let (perPartAttempt, perPartBodies) = try PlayerTestFixtures.decodeAttemptState(variant: "in-progress-per-part")
         let (choiceAttempt, choiceBodies) = try PlayerTestFixtures.decodeAttemptState(variant: "awaiting-choice")
         let (genAttempt, _) = try PlayerTestFixtures.decodeAttemptState(variant: "generating")
@@ -38,6 +39,18 @@ final class PlayerSnapshotTests: XCTestCase {
         activeState.clock = Countdown(target: .attempt, remaining: .seconds(1520))
         if let firstPart = sharedAttempt.parts?.first {
             activeState.position = Position(partId: firstPart.partId ?? "", itemId: UnitGrouping.leafItems(in: firstPart).first?.itemId)
+        }
+
+        var questionSetState = EngineState.initial(isOnline: true)
+        questionSetState.load = .loaded(value: (), stale: false)
+        questionSetState.attempt = attempt50
+        questionSetState.session = .editing(sessionId: "sess-snap-qs")
+        questionSetState.clock = Countdown(target: .attempt, remaining: .seconds(1800))
+        if let firstPart50 = attempt50.parts?.first {
+            let parentSetId = (firstPart50.items ?? []).first(where: { $0.questionType == .QUESTION_SET })?.itemId
+            let firstSetChildId = (firstPart50.items ?? []).first(where: { $0.parentItemId == parentSetId })?.itemId
+            XCTAssertNotNil(firstSetChildId, "attempt-50 fixture must contain a QUESTION_SET with child items")
+            questionSetState.position = Position(partId: firstPart50.partId ?? "", itemId: firstSetChildId)
         }
 
         var takeoverState = activeState
@@ -88,6 +101,7 @@ final class PlayerSnapshotTests: XCTestCase {
 
         let scenarios: [(name: String, state: EngineState, bodies: [ItemID: AttemptQuestionBodyValue], local: PlayerLocalUI, meta: LoadState<PartChoiceMetadata>)] = [
             ("player-active", activeState, sharedBodies, PlayerLocalUI(), .loading),
+            ("player-active-question-set", questionSetState, bodies50, PlayerLocalUI(), .loading),
             ("player-part-choice", choiceState, choiceBodies, PlayerLocalUI(), .loaded(value: choiceMeta, stale: false)),
             ("player-generating", genState, [:], PlayerLocalUI(), .loading),
             ("player-generation-failed", genFailState, [:], PlayerLocalUI(), .loading),
@@ -98,26 +112,8 @@ final class PlayerSnapshotTests: XCTestCase {
             ("player-evicted", evictedState, sharedBodies, PlayerLocalUI(), .loading)
         ]
 
-        for viewport in viewports {
-            let (lightPNG, darkPNG) = try captureLightAndDark(
-                prefix: "player-active-\(viewport.name)",
-                viewport: viewport
-            ) {
-                PlayerView(
-                    attemptId: sharedAttempt.attemptId,
-                    engineState: activeState,
-                    localUI: PlayerLocalUI(),
-                    bodies: sharedBodies,
-                    locale: .vi,
-                    idiomOverride: viewport.idiom
-                )
-            }
-            XCTAssertNotEqual(lightPNG, darkPNG)
-        }
-
-        let primaryViewports = [viewports[0], viewports[1]]
-        for scenario in scenarios.dropFirst() {
-            for viewport in primaryViewports {
+        for scenario in scenarios {
+            for viewport in viewports {
                 let (lightPNG, darkPNG) = try captureLightAndDark(
                     prefix: "\(scenario.name)-\(viewport.name)",
                     viewport: viewport
@@ -134,6 +130,48 @@ final class PlayerSnapshotTests: XCTestCase {
                 }
                 XCTAssertNotEqual(lightPNG, darkPNG)
             }
+        }
+
+        let duoViewport = viewports[4]
+        let (duoWin, duoVC) = PlayerViewTestHost.host(
+            PlayerView(
+                attemptId: attempt50.attemptId,
+                engineState: questionSetState,
+                localUI: PlayerLocalUI(),
+                bodies: bodies50,
+                locale: .vi,
+                idiomOverride: duoViewport.idiom
+            ),
+            size: duoViewport.size,
+            style: .light,
+            sizeClass: duoViewport.sizeClass,
+            settleSeconds: 0.1
+        )
+        defer { duoWin.isHidden = true }
+        XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.leftPane", in: duoVC.view, window: duoWin))
+        XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.passagePane", in: duoVC.view, window: duoWin))
+        XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.rightPane", in: duoVC.view, window: duoWin))
+
+        let compactGridUI = PlayerUI.make(
+            state: activeState,
+            layout: .compact,
+            local: PlayerLocalUI(gridOpen: true),
+            bodies: sharedBodies
+        )
+        for compactViewport in [viewports[0], viewports[3]] {
+            let (lightSheetPNG, darkSheetPNG) = try captureLightAndDark(
+                prefix: "player-grid-sheet-\(compactViewport.name)",
+                viewport: compactViewport
+            ) {
+                QuestionGridSheet(
+                    ui: compactGridUI,
+                    locale: .vi,
+                    onDismiss: {},
+                    onSelectFilter: { _ in },
+                    onSelectItem: { _ in }
+                )
+            }
+            XCTAssertNotEqual(lightSheetPNG, darkSheetPNG)
         }
     }
 

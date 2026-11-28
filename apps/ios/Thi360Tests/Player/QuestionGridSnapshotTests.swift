@@ -7,15 +7,16 @@ import XCTest
 @MainActor
 final class QuestionGridSnapshotTests: XCTestCase {
     func testFlaggedCellsThreeTiersLightAndDarkSnapshots() throws {
-        // Plan A6 mutation: set 3 leaf items in certified fixture to Cloze (partial) and SingleChoice (answered/blank) to exercise all 3 D-29 flagged tiers.
+        // Plan A6 mutation: set 5 leaf items in certified fixture to exercise all 3 D-29 flagged tiers plus unflagged answered/partial/blank cells.
         let (attempt, baseBodies) = try PlayerTestFixtures.decodeAttemptState(variant: "in-progress-shared") { json in
             if var parts = json["parts"] as? [[String: Any]], !parts.isEmpty,
-               var items = parts[0]["items"] as? [[String: Any]], items.count >= 4
+               var items = parts[0]["items"] as? [[String: Any]], items.count >= 5
             {
                 items[0]["questionType"] = "SINGLE_CHOICE"
                 items[1]["questionType"] = "CLOZE"
                 items[2]["questionType"] = "SINGLE_CHOICE"
                 items[3]["questionType"] = "SINGLE_CHOICE"
+                items[4]["questionType"] = "CLOZE"
                 parts[0]["items"] = items
                 json["parts"] = parts
             }
@@ -26,14 +27,17 @@ final class QuestionGridSnapshotTests: XCTestCase {
         let id1 = try XCTUnwrap(leaves[1].itemId)
         let id2 = try XCTUnwrap(leaves[2].itemId)
         let id3 = try XCTUnwrap(leaves[3].itemId)
+        let id4 = try XCTUnwrap(leaves[4].itemId)
 
         var bodies = baseBodies
-        bodies[id1] = .cloze(
+        let twoBlankCloze = AttemptQuestionBodyValue.cloze(
             Components.Schemas.Cloze(
                 value1: .init(_type: "CLOZE"),
                 value2: .init(blanks: [.init(id: "b1"), .init(id: "b2")], passage: "")
             )
         )
+        bodies[id1] = twoBlankCloze
+        bodies[id4] = twoBlankCloze
 
         var state = EngineState.initial(isOnline: true)
         state.load = .loaded(value: (), stale: false)
@@ -44,6 +48,7 @@ final class QuestionGridSnapshotTests: XCTestCase {
         state.answers[id1] = LocalAnswer(value: .cloze(blanks: ["b1": "done"]), seq: 1, flagged: true, sync: .pending)
         state.answers[id2] = LocalAnswer(value: nil, seq: 0, flagged: true, sync: .saved)
         state.answers[id3] = LocalAnswer(value: .singleChoice(optionId: "opt-2"), seq: 1, flagged: false, sync: .saved)
+        state.answers[id4] = LocalAnswer(value: .cloze(blanks: ["b1": "half"]), seq: 1, flagged: false, sync: .saved)
 
         let ui = PlayerUI.make(state: state, layout: .wide, local: PlayerLocalUI(), bodies: bodies)
         XCTAssertEqual(ui.allGridCells[0].completion, .answered)
@@ -52,6 +57,8 @@ final class QuestionGridSnapshotTests: XCTestCase {
         XCTAssertTrue(ui.allGridCells[1].flagged)
         XCTAssertEqual(ui.allGridCells[2].completion, .blank)
         XCTAssertTrue(ui.allGridCells[2].flagged)
+        XCTAssertEqual(ui.allGridCells[4].completion, .partial)
+        XCTAssertFalse(ui.allGridCells[4].flagged)
 
         let size = CGSize(width: 340, height: 560)
         let (lightWin, _) = PlayerViewTestHost.host(
