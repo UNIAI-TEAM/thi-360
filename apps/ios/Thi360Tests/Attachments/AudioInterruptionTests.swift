@@ -29,7 +29,9 @@ final class AudioInterruptionTests: XCTestCase {
 
         let itemId = stack.server.firstLeafItemId()
         stack.engine.answer(itemId: itemId, value: .singleChoice(optionId: "opt-a"))
-        await stack.clock.settle()
+        let saved = await stack.clock.waitUntil { stack.engine.state.answers[itemId]?.sync == .saved }
+        XCTAssertTrue(saved)
+        await stack.engine.waitForIdleForTesting()
 
         let realEngine = AVAudioPlayerPlaybackEngine(coordinator: coordinator)
         let controller = stack.makeController(
