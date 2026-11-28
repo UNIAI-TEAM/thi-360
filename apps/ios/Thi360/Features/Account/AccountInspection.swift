@@ -42,46 +42,61 @@ extension EnvironmentValues {
     }
 }
 
+private struct AccountProbeAnchor: View {
+    let inspector: AccountInspectionSink
+    let identifier: String
+    let label: String
+
+    @State private var instanceID = UUID()
+
+    var body: some View {
+        GeometryReader { proxy in
+            let frame = proxy.frame(in: .global)
+            Color.clear
+                .onAppear {
+                    record(frame: frame)
+                }
+                .onChange(of: identifier) { _, _ in
+                    record(frame: proxy.frame(in: .global))
+                }
+                .onChange(of: label) { _, _ in
+                    record(frame: proxy.frame(in: .global))
+                }
+                .onChange(of: frame) { _, newFrame in
+                    record(frame: newFrame)
+                }
+                .onDisappear {
+                    inspector.remove(instanceID: instanceID)
+                }
+        }
+    }
+
+    private func record(frame: CGRect) {
+        inspector.record(
+            instanceID: instanceID,
+            node: AccountInspectedNode(identifier: identifier, label: label, frame: frame)
+        )
+    }
+}
+
 private struct AccountProbeModifier: ViewModifier {
     let identifier: String
     let label: String
 
     @Environment(\.accountInspector) private var inspector
-    @State private var instanceID = UUID()
 
     func body(content: Content) -> some View {
         if let inspector {
             content.background {
-                GeometryReader { proxy in
-                    let frame = proxy.frame(in: .global)
-                    Color.clear
-                        .onAppear {
-                            record(inspector: inspector, frame: frame)
-                        }
-                        .onChange(of: identifier) { _, _ in
-                            record(inspector: inspector, frame: proxy.frame(in: .global))
-                        }
-                        .onChange(of: label) { _, _ in
-                            record(inspector: inspector, frame: proxy.frame(in: .global))
-                        }
-                        .onChange(of: frame) { _, newFrame in
-                            record(inspector: inspector, frame: newFrame)
-                        }
-                        .onDisappear {
-                            inspector.remove(instanceID: instanceID)
-                        }
-                }
+                AccountProbeAnchor(
+                    inspector: inspector,
+                    identifier: identifier,
+                    label: label
+                )
             }
         } else {
             content
         }
-    }
-
-    private func record(inspector: AccountInspectionSink, frame: CGRect) {
-        inspector.record(
-            instanceID: instanceID,
-            node: AccountInspectedNode(identifier: identifier, label: label, frame: frame)
-        )
     }
 }
 
