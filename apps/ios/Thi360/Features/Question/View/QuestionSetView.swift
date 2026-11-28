@@ -14,12 +14,50 @@ struct QuestionSetView<Attachments: View>: View {
     let formulaEngine: any FormulaEngine
     let locale: AppLocale
     let fixedWidth: CGFloat?
+    let forceTwoColumn: Bool?
     @ViewBuilder let attachments: () -> Attachments
 
     @Environment(\.brandPalette) private var brandPalette
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
+    init(
+        item: QuestionItem,
+        passage: String,
+        blankNumberStart: Int?,
+        children: [QuestionItem],
+        answers: [String: AnswerValue],
+        mode: QuestionMode,
+        flaggedIds: Set<String>,
+        onAnswer: @escaping (String, AnswerValue) -> Void,
+        onFlag: @escaping (String, Bool) -> Void,
+        assets: AttemptAssetSource?,
+        formulaEngine: any FormulaEngine,
+        locale: AppLocale,
+        fixedWidth: CGFloat?,
+        forceTwoColumn: Bool? = nil,
+        @ViewBuilder attachments: @escaping () -> Attachments
+    ) {
+        self.item = item
+        self.passage = passage
+        self.blankNumberStart = blankNumberStart
+        self.children = children
+        self.answers = answers
+        self.mode = mode
+        self.flaggedIds = flaggedIds
+        self.onAnswer = onAnswer
+        self.onFlag = onFlag
+        self.assets = assets
+        self.formulaEngine = formulaEngine
+        self.locale = locale
+        self.fixedWidth = fixedWidth
+        self.forceTwoColumn = forceTwoColumn
+        self.attachments = attachments
+    }
+
     private var isSideBySide: Bool {
+        if let forceTwoColumn {
+            return forceTwoColumn
+        }
         if let fixedWidth {
             return horizontalSizeClass == .regular && fixedWidth >= 700
         }
@@ -41,7 +79,11 @@ struct QuestionSetView<Attachments: View>: View {
     var body: some View {
         Group {
             if isSideBySide {
-                regularSplitLayout
+                if forceTwoColumn == true {
+                    inlineSplitLayout
+                } else {
+                    regularSplitLayout
+                }
             } else {
                 compactStackedLayout
             }
@@ -84,6 +126,31 @@ struct QuestionSetView<Attachments: View>: View {
                 .padding(.bottom, 16)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .accessibilityIdentifier("question.\(item.id).childrenScroll")
+            .questionProbe(id: "question.\(item.id).childrenScroll")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("question.\(item.id).setRegularSplit")
+        .questionProbe(id: "question.\(item.id).setRegularSplit", label: captionText)
+    }
+
+    private var inlineSplitLayout: some View {
+        let paneWidth = fixedWidth.map { max(($0 - 20) / 2, 240) }
+
+        return HStack(alignment: .top, spacing: 20) {
+            passageCard(
+                contentWidth: paneWidth.map { max($0 - 28, 120) },
+                showRangeBar: true
+            )
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .accessibilityIdentifier("question.\(item.id).passageScroll")
+            .questionProbe(id: "question.\(item.id).passageScroll", label: rangeBarText)
+
+            VStack(alignment: .leading, spacing: 18) {
+                childrenStack(contentWidth: paneWidth)
+                setSolutionBlock(contentWidth: paneWidth.map { max($0 - 32, 120) })
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .accessibilityIdentifier("question.\(item.id).childrenScroll")
             .questionProbe(id: "question.\(item.id).childrenScroll")
         }

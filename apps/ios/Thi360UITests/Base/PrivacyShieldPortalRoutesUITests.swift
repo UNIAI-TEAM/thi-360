@@ -8,9 +8,49 @@ final class PrivacyShieldPortalRoutesUITests: XCTestCase {
         continueAfterFailure = false
         let mockServer = try ContractFixtureHTTPServer()
         try mockServer.registerStandardAuthFixtures()
+        try registerAttemptFixtures(on: mockServer, attemptId: "att-shield-42")
         try mockServer.start()
         self.server = mockServer
         SimulatorBiometricHelper.setEnrolled(true)
+    }
+
+    private func registerAttemptFixtures(on mockServer: ContractFixtureHTTPServer, attemptId: String) throws {
+        let indexData = try ContractFixtureHTTPServer.loadFixture("api/index.json")
+        struct Entry: Decodable {
+            let file: String
+            let operationId: String
+            let status: Int
+            let variant: String?
+        }
+        let entries = try JSONDecoder().decode([Entry].self, from: indexData)
+        func load(_ op: String, status: Int, variant: String = "") throws -> [String: Any] {
+            let match = try XCTUnwrap(entries.first {
+                $0.operationId == op && $0.status == status && ($0.variant ?? "") == variant
+            })
+            let rel = match.file.contains("/") ? match.file : "api/\(match.file)"
+            let data = try ContractFixtureHTTPServer.loadFixture(rel)
+            return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        }
+
+        var stateObj = try load("getState", status: 200, variant: "in-progress-shared")
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let now = Date()
+        stateObj["attemptId"] = attemptId
+        stateObj["serverNow"] = iso.string(from: now)
+        stateObj["deadlineAt"] = iso.string(from: now.addingTimeInterval(1800))
+        let stateData = try JSONSerialization.data(withJSONObject: stateObj)
+        mockServer.register(method: "GET", path: "/api/v1/me/attempts/\(attemptId)", statusCode: 200, body: stateData)
+
+        var claimObj = try load("claimSession", status: 200)
+        claimObj["serverNow"] = iso.string(from: now)
+        let claimData = try JSONSerialization.data(withJSONObject: claimObj)
+        mockServer.register(method: "POST", path: "/api/v1/me/attempts/\(attemptId)/session", statusCode: 200, body: claimData)
+
+        var hbObj = try load("heartbeat", status: 200)
+        hbObj["serverNow"] = iso.string(from: now)
+        let hbData = try JSONSerialization.data(withJSONObject: hbObj)
+        mockServer.register(method: "POST", path: "/api/v1/me/attempts/\(attemptId)/heartbeat", statusCode: 200, body: hbData)
     }
 
     override func tearDownWithError() throws {
@@ -53,10 +93,9 @@ final class PrivacyShieldPortalRoutesUITests: XCTestCase {
         enableButton.tap()
         PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 2.5)
 
-        let attemptParam = app.staticTexts["route.placeholder.param.attemptId"].firstMatch
-        PortalBiometricUITestHelper.waitForBiometricMatch(until: attemptParam, timeout: 10)
-        XCTAssertTrue(attemptParam.exists)
-        XCTAssertEqual(attemptParam.label, "att-shield-42")
+        let examTitle = app.staticTexts["player.topBar.examTitle"].firstMatch
+        PortalBiometricUITestHelper.waitForBiometricMatch(until: examTitle, timeout: 10)
+        XCTAssertTrue(examTitle.exists)
         XCTAssertFalse(app.tabBars.firstMatch.exists, "Attempt screen must be chromeless")
 
         XCUIDevice.shared.press(.home)
@@ -65,11 +104,11 @@ final class PrivacyShieldPortalRoutesUITests: XCTestCase {
 
         let unlockButton = app.buttons["lock.unlockBiometricButton"].firstMatch
         XCTAssertTrue(unlockButton.waitForExistence(timeout: 8))
-        XCTAssertFalse(attemptParam.exists, "Attempt content must never be visible behind lock screen")
+        XCTAssertFalse(examTitle.exists, "Attempt content must never be visible behind lock screen")
 
         unlockButton.tap()
         PortalBiometricUITestHelper.acceptFaceIDPermissionIfPresent(timeout: 1.5)
-        PortalBiometricUITestHelper.waitForBiometricMatch(until: attemptParam, timeout: 10)
-        XCTAssertTrue(attemptParam.exists)
+        PortalBiometricUITestHelper.waitForBiometricMatch(until: examTitle, timeout: 10)
+        XCTAssertTrue(examTitle.exists)
     }
 }
