@@ -15,6 +15,7 @@ struct QuestionView<Attachments: View>: View {
     let formulaEngine: any FormulaEngine
     let locale: AppLocale
     let fixedWidth: CGFloat?
+    let forceTwoColumn: Bool?
     @ViewBuilder let attachments: () -> Attachments
 
     init(
@@ -32,6 +33,7 @@ struct QuestionView<Attachments: View>: View {
         formulaEngine: any FormulaEngine = SwaTexFormulaEngine.shared,
         locale: AppLocale = .vi,
         fixedWidth: CGFloat? = nil,
+        forceTwoColumn: Bool? = nil,
         @ViewBuilder attachments: @escaping () -> Attachments = { EmptyView() }
     ) {
         self.item = item
@@ -48,6 +50,7 @@ struct QuestionView<Attachments: View>: View {
         self.formulaEngine = formulaEngine
         self.locale = locale
         self.fixedWidth = fixedWidth
+        self.forceTwoColumn = forceTwoColumn
         self.attachments = attachments
     }
 
@@ -226,6 +229,7 @@ struct QuestionView<Attachments: View>: View {
                 formulaEngine: formulaEngine,
                 locale: locale,
                 fixedWidth: fixedWidth,
+                forceTwoColumn: forceTwoColumn,
                 attachments: attachments
             )
         }
