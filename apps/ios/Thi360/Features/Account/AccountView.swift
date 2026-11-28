@@ -8,9 +8,17 @@ struct AccountView: View {
     let serverDefaultThemeMode: ThemeMode
     var isTwoPaneBook: Bool = false
     var showsInlineProbe: Bool = true
+    var onOpenProfile: (() -> Void)? = nil
+    var onOpenOrders: (() -> Void)? = nil
+    var onOpenLegal: ((LegalId) -> Void)? = nil
+    var onOpenDeleteAccount: (() -> Void)? = nil
     var onOpenChangePassword: () -> Void
 
     @Environment(\.brandPalette) private var palette
+    @Environment(\.statusPalette) private var statusPalette
+    @Environment(\.imageLoader) private var envImageLoader
+    @State private var avatarReloadToken: Int = 0
+    @State private var didDisappearOnce: Bool = false
 
     private var locale: AppLocale { preferences.locale }
 
@@ -37,11 +45,17 @@ struct AccountView: View {
 
                 profileSection
 
+                accountQuickLinksSection
+
                 securitySection
 
                 displaySection
 
+                legalSection
+
                 logoutSection
+
+                deleteAccountSection
             }
             .frame(maxWidth: isTwoPaneBook ? .infinity : 620, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -50,6 +64,17 @@ struct AccountView: View {
         .background(palette.bgPageColor.ignoresSafeArea())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("shell.account.view")
+        .accountProbe(id: "shell.account.view")
+        .onAppear {
+            viewModel.attachImageLoader(envImageLoader)
+            if didDisappearOnce {
+                didDisappearOnce = false
+                avatarReloadToken &+= 1
+            }
+        }
+        .onDisappear {
+            didDisappearOnce = true
+        }
         .task {
             await viewModel.loadProfileIfNeeded()
         }
@@ -77,21 +102,57 @@ struct AccountView: View {
         }
     }
 
+    private func triggerOpenProfile() {
+        viewModel.selectDetail(.profile)
+        if let onOpenProfile {
+            onOpenProfile()
+        } else if !isTwoPaneBook {
+            router.openProfile()
+        }
+    }
+
+    private func triggerOpenOrders() {
+        viewModel.selectDetail(.orders)
+        if let onOpenOrders {
+            onOpenOrders()
+        } else if !isTwoPaneBook {
+            router.openOrders()
+        }
+    }
+
+    private func triggerOpenLegal(_ legalId: LegalId) {
+        viewModel.selectDetail(legalId == .terms ? .legalTerms : .legalPrivacy)
+        if let onOpenLegal {
+            onOpenLegal(legalId)
+        } else if !isTwoPaneBook {
+            router.openLegal(legalId)
+        }
+    }
+
+    private func triggerOpenDeleteAccount() {
+        viewModel.selectDetail(.deleteAccount)
+        if let onOpenDeleteAccount {
+            onOpenDeleteAccount()
+        } else if !isTwoPaneBook {
+            router.openDeleteAccount()
+        }
+    }
+
     @ViewBuilder
     private var profileSection: some View {
         Group {
             switch viewModel.profileState {
             case .loading:
                 profileLoadingCard
-            case let .loaded(profile):
+            case let .loaded(profile, _):
                 profileLoadedCard(profile)
-            case .offline:
+            case let .failed(kind, _, _) where kind == .offline:
                 profileFailureCard(
                     icon: "wifi.slash",
                     message: AccountStrings.text("account.profile.offline", locale: locale),
                     identifier: "account.profile.offline"
                 )
-            case .error:
+            case .empty, .failed:
                 profileFailureCard(
                     icon: "exclamationmark.triangle",
                     message: AccountStrings.text("account.profile.error", locale: locale),
@@ -133,15 +194,15 @@ struct AccountView: View {
         let avatarSize: CGFloat = isTwoPaneBook ? 48 : 56
 
         return HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(palette.primaryContainerStrongColor)
-                    .frame(width: avatarSize, height: avatarSize)
-                Text(profile.initials)
-                    .font(.system(size: isTwoPaneBook ? 17 : 20, weight: .semibold))
-                    .foregroundStyle(palette.primaryTextColor)
-            }
-            .accessibilityHidden(true)
+            AvatarCircleView(
+                avatarUrl: profile.trimmedAvatarUrl,
+                initials: profile.initials,
+                size: avatarSize,
+                fontSize: isTwoPaneBook ? 17 : 20,
+                locale: locale,
+                exposeAvatarAccessibility: false,
+                reloadToken: avatarReloadToken
+            )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(profile.displayName)
@@ -175,17 +236,41 @@ struct AccountView: View {
                         )
                         .font(.footnote.weight(.semibold))
                     }
-                    .foregroundStyle(profile.emailVerified ? palette.primaryTextColor : palette.textMutedColor)
+                    .foregroundStyle(profile.emailVerified ? palette.primaryTextColor : statusPalette.warningColor)
+                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("account.profile.emailStatus")
                 }
             }
 
             Spacer(minLength: 0)
+
+            if !isTwoPaneBook {
+                Button {
+                    triggerOpenProfile()
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(palette.textMutedColor)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(ProfileStrings.text("header.nav.profile", locale: locale))
+                .accessibilityIdentifier("account.profile.openButton")
+            }
         }
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(cardSurface)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            triggerOpenProfile()
+        }
         .accessibilityElement(children: .contain)
+        .accessibilityAction(named: ProfileStrings.text("header.nav.profile", locale: locale)) {
+            triggerOpenProfile()
+        }
         .accessibilityIdentifier("account.profile.loaded")
     }
 
@@ -228,6 +313,34 @@ struct AccountView: View {
         .accessibilityIdentifier(identifier)
     }
 
+    private var accountQuickLinksSection: some View {
+        VStack(spacing: 0) {
+            navigationRow(
+                icon: "person.crop.circle",
+                title: ProfileStrings.text("header.nav.profile", locale: locale),
+                selection: .profile,
+                identifier: "account.profileRow"
+            ) {
+                triggerOpenProfile()
+            }
+
+            Divider()
+                .overlay(palette.borderColor)
+                .padding(.leading, 58)
+
+            navigationRow(
+                icon: "doc.text.fill",
+                title: ProfileStrings.text("header.nav.orders", locale: locale),
+                selection: .orders,
+                identifier: "account.ordersRow"
+            ) {
+                triggerOpenOrders()
+            }
+        }
+        .background(cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
     private var securitySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(AccountStrings.text("account.section.security", locale: locale))
@@ -243,6 +356,7 @@ struct AccountView: View {
                 biometricToggleRow
             }
             .background(cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
 
             if let feedback = viewModel.biometricFeedbackMessage(locale: locale) {
                 Text(feedback)
@@ -256,36 +370,15 @@ struct AccountView: View {
     }
 
     private var changePasswordRow: some View {
-        let isHighlighted = isTwoPaneBook && viewModel.selectedDetail == .changePassword
-
-        return Button {
-            viewModel.selectedDetail = .changePassword
+        navigationRow(
+            icon: "key.fill",
+            title: AccountStrings.text("account.changePassword", locale: locale),
+            selection: .changePassword,
+            identifier: "account.changePasswordButton"
+        ) {
+            viewModel.selectDetail(.changePassword)
             onOpenChangePassword()
-        } label: {
-            HStack(spacing: 12) {
-                settingIconTile(systemName: "key.fill")
-
-                Text(AccountStrings.text("account.changePassword", locale: locale))
-                    .font(.body.weight(isHighlighted ? .semibold : .regular))
-                    .foregroundStyle(palette.textColor)
-                    .lineLimit(2)
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(palette.textMutedColor)
-                    .accessibilityHidden(true)
-            }
-            .frame(minHeight: 52)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .background(isHighlighted ? palette.bgSubtleColor : Color.clear)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isHighlighted ? [.isSelected] : [])
-        .accessibilityIdentifier("account.changePasswordButton")
     }
 
     private var biometricToggleRow: some View {
@@ -347,6 +440,34 @@ struct AccountView: View {
             }
             .background(cardSurface)
         }
+    }
+
+    private var legalSection: some View {
+        VStack(spacing: 0) {
+            navigationRow(
+                icon: "doc.plaintext",
+                title: AppStrings.legal("legal.terms.title", locale: locale),
+                selection: .legalTerms,
+                identifier: "account.legalTermsRow"
+            ) {
+                triggerOpenLegal(.terms)
+            }
+
+            Divider()
+                .overlay(palette.borderColor)
+                .padding(.leading, 58)
+
+            navigationRow(
+                icon: "hand.raised.fill",
+                title: AppStrings.legal("legal.privacy.title", locale: locale),
+                selection: .legalPrivacy,
+                identifier: "account.legalPrivacyRow"
+            ) {
+                triggerOpenLegal(.privacy)
+            }
+        }
+        .background(cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private var languageRow: some View {
@@ -479,6 +600,74 @@ struct AccountView: View {
         .disabled(viewModel.isLoggingOut)
         .background(cardSurface)
         .accessibilityIdentifier("account.logoutButton")
+        .accountProbe(
+            id: "account.logoutButton",
+            label: AccountStrings.text("account.logout.button", locale: locale)
+        )
+    }
+
+    private var deleteAccountSection: some View {
+        let isHighlighted = isTwoPaneBook && viewModel.selectedDetail == .deleteAccount
+        let title = ProfileStrings.text("account.deletion.title", locale: locale)
+        return Button {
+            triggerOpenDeleteAccount()
+        } label: {
+            HStack(spacing: 8) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(palette.dangerTextColor)
+                    .lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .background(isHighlighted ? palette.dangerBgColor : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .accessibilityAddTraits(isHighlighted ? [.isSelected] : [])
+        .accessibilityIdentifier("account.deleteAccountRow")
+        .accountProbe(id: "account.deleteAccountRow", label: title)
+    }
+
+    private func navigationRow(
+        icon: String,
+        title: String,
+        selection: AccountDetailSelection,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        let isHighlighted = isTwoPaneBook && viewModel.selectedDetail == selection
+
+        return Button(action: action) {
+            HStack(spacing: 12) {
+                settingIconTile(systemName: icon)
+
+                Text(title)
+                    .font(.body.weight(isHighlighted ? .semibold : .regular))
+                    .foregroundStyle(palette.textColor)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 8)
+
+                if !isTwoPaneBook {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(palette.textMutedColor)
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(minHeight: 52)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .background(isHighlighted ? palette.bgSubtleColor : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isHighlighted ? [.isSelected] : [])
+        .accessibilityIdentifier(identifier)
+        .accountProbe(id: identifier, label: title)
     }
 
     private var cardSurface: some View {
@@ -529,11 +718,14 @@ struct AccountView: View {
     }
 }
 
-struct AccountDuoDetailView: View {
+struct AccountDetailPaneView: View {
+    @Bindable var accountViewModel: AccountViewModel
     @Bindable var router: AppRouter
     @Bindable var preferences: AppPreferences
     let sessionStore: SessionStore
     let effectiveSizeClass: UserInterfaceSizeClass?
+    var legalRepository: LegalRepository = LegalRepository()
+    var webBaseURL: URL = AppEnvironment.current.webBaseURL
 
     @Environment(\.brandPalette) private var palette
 
@@ -549,15 +741,127 @@ struct AccountDuoDetailView: View {
                 .padding(.top, 16)
             }
 
-            NewPasswordView(
-                viewModel: router.voluntaryChangePasswordViewModel(sessionStore: sessionStore),
-                preferences: preferences,
-                isEmbeddedPane: true
-            )
+            detailContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(palette.bgPageColor.ignoresSafeArea())
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("shell.account.detailPane")
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
+        switch accountViewModel.selectedDetail {
+        case .profile:
+            ProfileView(
+                viewModel: accountViewModel.ensureProfileViewModel(),
+                preferences: preferences,
+                isEmbeddedPane: true,
+                onVerifyEmail: {
+                    router.openProfileVerifyEmail()
+                }
+            )
+            .onDisappear {
+                accountViewModel.handleEmbeddedProfileDisappear(
+                    isOnAccountTab: router.selectedDestination == .account,
+                    accountPath: router.path(for: .account)
+                )
+            }
+        case .orders:
+            ZStack {
+                AppRouteView(
+                    route: .orders,
+                    destination: .account,
+                    router: router,
+                    preferences: preferences,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("account.detail.orders")
+            .accountProbe(
+                id: "account.detail.orders",
+                label: ProfileStrings.text("header.nav.orders", locale: preferences.locale)
+            )
+        case .changePassword:
+            NewPasswordView(
+                viewModel: router.voluntaryChangePasswordViewModel(sessionStore: sessionStore),
+                preferences: preferences,
+                isEmbeddedPane: true
+            )
+        case .legalTerms:
+            ZStack {
+                AppRouteView(
+                    route: .legal(.terms),
+                    destination: .account,
+                    router: router,
+                    preferences: preferences,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("account.detail.legalTerms")
+            .accountProbe(
+                id: "account.detail.legalTerms",
+                label: AppStrings.legal("legal.terms.title", locale: preferences.locale)
+            )
+        case .legalPrivacy:
+            ZStack {
+                AppRouteView(
+                    route: .legal(.privacy),
+                    destination: .account,
+                    router: router,
+                    preferences: preferences,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("account.detail.legalPrivacy")
+            .accountProbe(
+                id: "account.detail.legalPrivacy",
+                label: AppStrings.legal("legal.privacy.title", locale: preferences.locale)
+            )
+        case .deleteAccount:
+            DeleteAccountView(
+                viewModel: accountViewModel.ensureDeleteAccountViewModel(),
+                preferences: preferences,
+                isEmbeddedPane: true,
+                onOpenMyExams: {
+                    router.switchTab(.myExams)
+                },
+                onOpenOrders: {
+                    router.openOrders()
+                }
+            )
+        }
+    }
+}
+
+struct AccountDuoDetailView: View {
+    @Bindable var accountViewModel: AccountViewModel
+    @Bindable var router: AppRouter
+    @Bindable var preferences: AppPreferences
+    let sessionStore: SessionStore
+    let effectiveSizeClass: UserInterfaceSizeClass?
+    var legalRepository: LegalRepository = LegalRepository()
+    var webBaseURL: URL = AppEnvironment.current.webBaseURL
+
+    var body: some View {
+        AccountDetailPaneView(
+            accountViewModel: accountViewModel,
+            router: router,
+            preferences: preferences,
+            sessionStore: sessionStore,
+            effectiveSizeClass: effectiveSizeClass,
+            legalRepository: legalRepository,
+            webBaseURL: webBaseURL
+        )
     }
 }

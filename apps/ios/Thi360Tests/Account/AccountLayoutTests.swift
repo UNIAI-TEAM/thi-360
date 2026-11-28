@@ -81,6 +81,27 @@ final class AccountLayoutTests: XCTestCase {
         XCTAssertEqual(ShellLayoutResolver.resolve(idiom: .pad, horizontalSizeClass: .regular), .iPadSidebar)
         XCTAssertFalse(findControllers(ofType: UISplitViewController.self, in: controller).isEmpty)
         XCTAssertTrue(RecoveryViewTestHelper.findViews(ofType: UITabBar.self, in: controller.view).isEmpty)
+        XCTAssertEqual(accountVM.selectedDetail, .profile)
+
+        let padReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 2
+                && RecoveryViewTestHelper.findViews(ofType: UISwitch.self, in: controller.view).count == 1
+        }
+        XCTAssertTrue(padReady)
+
+        let textFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
+        XCTAssertEqual(
+            textFields.count,
+            2,
+            "iPad regular Account must render two-pane list and default Profile detail pane (fullName + phone)"
+        )
+        let switches = RecoveryViewTestHelper.findViews(ofType: UISwitch.self, in: controller.view)
+        XCTAssertEqual(switches.count, 1, "iPad Account list column must display biometric UISwitch")
+        if let firstField = textFields.first, let bioSwitch = switches.first {
+            let fieldMidX = firstField.convert(firstField.bounds, to: controller.view).midX
+            let switchMidX = bioSwitch.convert(bioSwitch.bounds, to: controller.view).midX
+            XCTAssertGreaterThan(fieldMidX, switchMidX, "Profile detail pane must sit to the right of Account list")
+        }
     }
 
     func testIPhoneRegularUnfoldedRendersTwoPaneWithLeftAccountListAndRightDetailForm() async throws {
@@ -117,13 +138,19 @@ final class AccountLayoutTests: XCTestCase {
 
         XCTAssertEqual(ShellLayoutResolver.resolve(idiom: .phone, horizontalSizeClass: .regular), .phoneTwoPaneBook)
         XCTAssertTrue(RecoveryViewTestHelper.findViews(ofType: UITabBar.self, in: controller.view).isEmpty)
+        XCTAssertEqual(accountVM.selectedDetail, .profile)
 
-        // Left half renders Account list + toggle switch, right half renders embedded Change Password detail (3 password fields).
+        let duoReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 2
+                && RecoveryViewTestHelper.findViews(ofType: UISwitch.self, in: controller.view).count == 1
+        }
+        XCTAssertTrue(duoReady)
+
         let textFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
         XCTAssertEqual(
             textFields.count,
-            3,
-            "iPhone Duo unfolded Account right pane must display embedded voluntary Change Password form with 3 fields"
+            2,
+            "iPhone Duo unfolded Account right pane must default to Profile detail form with fullName and phone fields"
         )
         let switches = RecoveryViewTestHelper.findViews(ofType: UISwitch.self, in: controller.view)
         XCTAssertEqual(switches.count, 1, "Left pane must display biometric UISwitch")
@@ -133,6 +160,19 @@ final class AccountLayoutTests: XCTestCase {
             XCTAssertLessThan(switchMidX, controller.view.bounds.midX, "Account settings list must live in left half")
             XCTAssertGreaterThan(fieldMidX, controller.view.bounds.midX, "Selected Account detail must live in right half")
         }
+
+        accountVM.selectDetail(.changePassword)
+        let passwordReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 3
+        }
+        XCTAssertTrue(passwordReady)
+
+        let passwordFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
+        XCTAssertEqual(
+            passwordFields.count,
+            3,
+            "Selecting Change Password in iPhone Duo two-pane must switch right pane to 3 password fields"
+        )
     }
 
     private func findControllers<T: UIViewController>(

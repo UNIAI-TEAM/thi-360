@@ -1,0 +1,1995 @@
+{
+  "sourceLanguage": "vi",
+  "strings": {
+    "account.deletion.acknowledge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I understand that a deleted account cannot be recovered."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tôi hiểu tài khoản bị xóa sẽ không khôi phục được."
+          }
+        }
+      }
+    },
+    "account.deletion.blockedAttempt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have an unsubmitted exam attempt. Please submit it and come back."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đang có lượt thi chưa nộp. Hãy nộp bài rồi quay lại."
+          }
+        }
+      }
+    },
+    "account.deletion.blockedOrder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have an order being checked. Please wait for the exam to be granted or contact support and come back."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có đơn hàng đang được kiểm tra. Hãy chờ bài thi được cấp hoặc liên hệ hỗ trợ rồi quay lại."
+          }
+        }
+      }
+    },
+    "account.deletion.blockedPendingPayment": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have an order pending payment. Please cancel the order or wait for it to expire and come back."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có đơn hàng đang chờ thanh toán. Hãy hủy đơn hoặc chờ đơn hết hạn rồi quay lại."
+          }
+        }
+      }
+    },
+    "account.deletion.confirmAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa tài khoản"
+          }
+        }
+      }
+    },
+    "account.deletion.confirmCancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy"
+          }
+        }
+      }
+    },
+    "account.deletion.confirmTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account permanently?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa tài khoản vĩnh viễn?"
+          }
+        }
+      }
+    },
+    "account.deletion.explanation": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you delete your account, you will be signed out of all devices and will not be able to sign in again. Your full name, email, phone number, and profile photo will be removed from your profile. Your exam submissions will be kept without being linked to you. Orders, payments, system logs, and sent emails are retained in accordance with legal requirements and retention periods."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Khi xóa tài khoản, bạn sẽ bị đăng xuất khỏi mọi thiết bị và không đăng nhập lại được. Họ tên, email, số điện thoại và ảnh đại diện của bạn bị xóa khỏi hồ sơ. Bài làm của bạn được giữ ở dạng không còn gắn với bạn. Đơn hàng, thanh toán, nhật ký hệ thống và thư đã gửi được lưu theo quy định của pháp luật và thời hạn lưu trữ."
+          }
+        }
+      }
+    },
+    "account.deletion.failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not delete your account. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa xóa được tài khoản. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "account.deletion.openMyExams": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My exams"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bài thi của tôi"
+          }
+        }
+      }
+    },
+    "account.deletion.openMyOrders": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My orders"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn của tôi"
+          }
+        }
+      }
+    },
+    "account.deletion.passwordLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current password"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu hiện tại"
+          }
+        }
+      }
+    },
+    "account.deletion.pendingGradingWarning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have an exam waiting to be graded. If you delete your account, you will not be able to view the results."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có bài đang chờ chấm. Xóa tài khoản thì bạn sẽ không xem được kết quả."
+          }
+        }
+      }
+    },
+    "account.deletion.submit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa tài khoản"
+          }
+        }
+      }
+    },
+    "account.deletion.throttled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have entered the wrong password too many times. Please try again later."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã nhập sai nhiều lần. Vui lòng thử lại sau."
+          }
+        }
+      }
+    },
+    "account.deletion.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa tài khoản"
+          }
+        }
+      }
+    },
+    "account.deletion.unusedAttemptsWarning": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have {n} unused exam attempts left. These attempts will be lost and will not be refunded."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn còn {n} lượt thi chưa dùng. Các lượt này sẽ mất và không được hoàn tiền."
+          }
+        }
+      }
+    },
+    "account.deletion.wrongPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current password is incorrect."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu hiện tại chưa đúng."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.cameraDenied": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thi360 does not have camera access. Enable camera permission in Settings to take a profile photo."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thi360 chưa được dùng máy ảnh. Bật quyền trong Cài đặt để chụp ảnh đại diện."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.current": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current profile picture"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ảnh đại diện hiện tại"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.currentEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No profile picture, showing name initials"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa có ảnh đại diện, đang hiện chữ cái đầu tên"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.errors.DIMENSIONS_EXCEEDED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image is larger than 4,096 × 4,096 px. Please choose a smaller image."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ảnh lớn hơn 4.096 × 4.096 px. Hãy chọn ảnh nhỏ hơn."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.errors.INVALID_IMAGE": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image cannot be read. Please choose a valid JPG, PNG or WEBP file."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không đọc được ảnh. Hãy chọn tệp JPG, PNG hoặc WEBP hợp lệ."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.errors.TOO_LARGE": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The image is larger than 5 MB. Please choose a smaller image."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ảnh lớn hơn 5 MB. Hãy chọn ảnh nhỏ hơn."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.errors.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to update the profile picture. Your current picture is unchanged."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không cập nhật được ảnh đại diện. Ảnh hiện tại được giữ nguyên."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPG, PNG or WEBP; up to 5 MB and 4,096 × 4,096 px. The image is cropped to a square."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JPG, PNG hoặc WEBP; tối đa 5 MB và 4.096 × 4.096 px. Ảnh được cắt vuông."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.openSettings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mở Cài đặt"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.remove": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove picture"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xóa ảnh"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.removed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile picture removed."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xóa ảnh đại diện."
+          }
+        }
+      }
+    },
+    "account.profile.avatar.sourceCamera": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take photo"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chụp ảnh"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.sourceGallery": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose from library"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chọn từ thư viện"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile picture"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ảnh đại diện"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.upload": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upload picture"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tải ảnh lên"
+          }
+        }
+      }
+    },
+    "account.profile.avatar.uploaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile picture updated."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã cập nhật ảnh đại diện."
+          }
+        }
+      }
+    },
+    "account.profile.email.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy"
+          }
+        }
+      }
+    },
+    "account.profile.email.change": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change email"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi email"
+          }
+        }
+      }
+    },
+    "account.profile.email.changeErrors.RATE_LIMITED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You requested codes too fast or too many times. Please try again later."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn gửi mã quá nhanh hoặc quá số lần cho phép. Vui lòng thử lại sau."
+          }
+        }
+      }
+    },
+    "account.profile.email.changeErrors.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to send the verification code. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không gửi được mã xác minh. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "account.profile.email.changeTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change email"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi email"
+          }
+        }
+      }
+    },
+    "account.profile.email.changed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email changed."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã đổi email."
+          }
+        }
+      }
+    },
+    "account.profile.email.codeInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incorrect code. You have {count} attempts left."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã chưa đúng. Bạn còn {count} lần thử."
+          }
+        }
+      }
+    },
+    "account.profile.email.codeLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verification code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã xác minh"
+          }
+        }
+      }
+    },
+    "account.profile.email.codePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 digits"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 chữ số"
+          }
+        }
+      }
+    },
+    "account.profile.email.codeRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter the 6-digit code."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng nhập mã gồm 6 chữ số."
+          }
+        }
+      }
+    },
+    "account.profile.email.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác nhận"
+          }
+        }
+      }
+    },
+    "account.profile.email.confirmErrors.EMAIL_TAKEN": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This email has just been taken by another account. Please choose a different email."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email này vừa thuộc về tài khoản khác. Hãy chọn email khác."
+          }
+        }
+      }
+    },
+    "account.profile.email.confirmErrors.EXPIRED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This code can no longer be used. Click Resend code to get a new one."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã này không còn dùng được. Bấm Gửi lại mã để nhận mã mới."
+          }
+        }
+      }
+    },
+    "account.profile.email.confirmErrors.SYNC_FAILED": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to change the email; your current email is unchanged. Please try again later."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa đổi được email, email hiện tại giữ nguyên. Vui lòng thử lại sau."
+          }
+        }
+      }
+    },
+    "account.profile.email.confirmErrors.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to confirm the new email. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không xác nhận được email mới. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "account.profile.email.cooldownEnd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can resend the code now."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có thể gửi lại mã bây giờ."
+          }
+        }
+      }
+    },
+    "account.profile.email.cooldownStart": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can resend the code in {time}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có thể gửi lại mã sau {time}."
+          }
+        }
+      }
+    },
+    "account.profile.email.currentPasswordLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current password"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu hiện tại"
+          }
+        }
+      }
+    },
+    "account.profile.email.currentPasswordRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter your current password."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng nhập mật khẩu hiện tại."
+          }
+        }
+      }
+    },
+    "account.profile.email.newEmailInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email format is not valid."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email chưa đúng định dạng."
+          }
+        }
+      }
+    },
+    "account.profile.email.newEmailLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New email"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email mới"
+          }
+        }
+      }
+    },
+    "account.profile.email.newEmailRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter the new email."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng nhập email mới."
+          }
+        }
+      }
+    },
+    "account.profile.email.newEmailTaken": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This email already belongs to another account."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email này đã thuộc tài khoản khác."
+          }
+        }
+      }
+    },
+    "account.profile.email.none": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This account has no email."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tài khoản chưa có email."
+          }
+        }
+      }
+    },
+    "account.profile.email.passwordHide": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide current password"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ẩn mật khẩu hiện tại"
+          }
+        }
+      }
+    },
+    "account.profile.email.passwordShow": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show current password"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiện mật khẩu hiện tại"
+          }
+        }
+      }
+    },
+    "account.profile.email.pendingBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A 6-digit code was sent to the new address and is valid for 10 minutes. Meanwhile your current email is still used to recover your account. If the code expires, your profile keeps the current email."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã 6 số đã gửi tới địa chỉ mới, có hiệu lực trong 10 phút. Trong lúc chờ, email hiện tại vẫn dùng để khôi phục tài khoản. Mã hết hạn thì hồ sơ giữ email hiện tại."
+          }
+        }
+      }
+    },
+    "account.profile.email.pendingTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting to verify the new email: {email}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đang chờ xác minh email mới: {email}"
+          }
+        }
+      }
+    },
+    "account.profile.email.resend": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã"
+          }
+        }
+      }
+    },
+    "account.profile.email.resendIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend code in {time}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã sau {time}"
+          }
+        }
+      }
+    },
+    "account.profile.email.sendCode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send verification code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi mã xác minh"
+          }
+        }
+      }
+    },
+    "account.profile.email.sendCodeIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send verification code in {time}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi mã xác minh sau {time}"
+          }
+        }
+      }
+    },
+    "account.profile.email.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        }
+      }
+    },
+    "account.profile.email.unverified": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not verified"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa xác minh"
+          }
+        }
+      }
+    },
+    "account.profile.email.verified": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verified"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã xác minh"
+          }
+        }
+      }
+    },
+    "account.profile.email.wrongPassword": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current password is incorrect."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mật khẩu hiện tại không đúng."
+          }
+        }
+      }
+    },
+    "account.profile.errorDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An error occurred while loading your profile. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã có lỗi khi tải hồ sơ. Hãy thử lại."
+          }
+        }
+      }
+    },
+    "account.profile.errorTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to load profile"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được hồ sơ"
+          }
+        }
+      }
+    },
+    "account.profile.info.cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard changes"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hủy thay đổi"
+          }
+        }
+      }
+    },
+    "account.profile.info.fullNameLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full name"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Họ và tên"
+          }
+        }
+      }
+    },
+    "account.profile.info.fullNameRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter your full name."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng nhập họ và tên."
+          }
+        }
+      }
+    },
+    "account.profile.info.fullNameTooLong": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full name is up to 200 characters."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Họ và tên tối đa 200 ký tự."
+          }
+        }
+      }
+    },
+    "account.profile.info.genericError": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to save changes. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không lưu được thay đổi. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "account.profile.info.phoneEmpty": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have not entered a phone number."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn chưa nhập số điện thoại."
+          }
+        }
+      }
+    },
+    "account.profile.info.phoneInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phone number has 10 digits and starts with 0."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số điện thoại gồm 10 chữ số, bắt đầu bằng 0."
+          }
+        }
+      }
+    },
+    "account.profile.info.phoneLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phone number (optional)"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Số điện thoại (không bắt buộc)"
+          }
+        }
+      }
+    },
+    "account.profile.info.phonePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For example 0912345678"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ví dụ 0912345678"
+          }
+        }
+      }
+    },
+    "account.profile.info.save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save changes"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lưu thay đổi"
+          }
+        }
+      }
+    },
+    "account.profile.info.saved": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal information saved."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã lưu thông tin cá nhân."
+          }
+        }
+      }
+    },
+    "account.profile.info.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal information"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thông tin cá nhân"
+          }
+        }
+      }
+    },
+    "account.profile.info.usernameHint": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The username cannot be changed."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên đăng nhập không đổi được."
+          }
+        }
+      }
+    },
+    "account.profile.info.usernameLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Username"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tên đăng nhập"
+          }
+        }
+      }
+    },
+    "account.profile.intro": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changing your name, email or password does not affect purchased exams, remaining attempts or your results."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi họ tên, email hay mật khẩu không ảnh hưởng tới bài đã mua, số lượt còn lại và kết quả của bạn."
+          }
+        }
+      }
+    },
+    "account.profile.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồ sơ"
+          }
+        }
+      }
+    },
+    "account.profile.unverifiedBody": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify it to use this email for account recovery and order emails."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác minh để dùng email này khôi phục tài khoản và nhận thư về đơn hàng."
+          }
+        }
+      }
+    },
+    "account.profile.unverifiedTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email not verified."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email chưa xác minh."
+          }
+        }
+      }
+    },
+    "account.profile.verifyEmail": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify email"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác minh email"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.alerts.codeExpired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This code can no longer be used. Click Resend code to get a new one."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã này không còn dùng được. Bấm Gửi lại mã để nhận mã mới."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.alerts.generic": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to verify the email. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không xác minh được email. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.alerts.resendFailed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to send a new code. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không gửi được mã mới. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.alreadyVerified": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your email is already verified."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email của bạn đã được xác minh."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.codeInvalid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incorrect code. You have {count} attempts left."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã chưa đúng. Bạn còn {count} lần thử."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.codeLabel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verification code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mã xác minh"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.codePlaceholder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 digits"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 chữ số"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.codeRequired": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter the 6-digit code."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vui lòng nhập mã gồm 6 chữ số."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.codeResent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A new code was sent. The previous code no longer works."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đã gửi mã mới. Mã cũ không còn dùng được."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tiếp tục"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.cooldownEnd": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can resend the code now."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn có thể gửi lại mã bây giờ."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.cooldownStart": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can resend the code in {time}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Có thể gửi lại mã sau {time}."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.dailyLimit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have resent the code too many times. Try again after {time}."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bạn đã gửi lại mã quá số lần cho phép. Thử lại sau {time}."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.errorLoad": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to load account details. Please try again."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được thông tin tài khoản. Hãy thử lại."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.errorLoadTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unable to load screen"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Không tải được màn hình"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.footnote": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Until verified you can still buy and take exams, but this email cannot be used to reset your password. You can verify it again in your <profile>Profile</profile>. You can resend the code up to 5 times a day."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa xác minh bạn vẫn mua bài và làm bài được, nhưng chưa dùng email này để đặt lại mật khẩu. Bạn có thể xác minh lại ở <profile>Hồ sơ</profile>. Gửi lại mã tối đa 5 lần mỗi ngày."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.later": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Để sau"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.notReceived": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Did not get the code?"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa nhận được mã?"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.resend": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend code"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.resendIn": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resend code in {time}"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gửi lại mã sau {time}"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.sentTo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We sent a 6-digit code to {email}. The code is valid for 10 minutes."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chúng tôi đã gửi mã 6 số tới {email}. Mã có hiệu lực trong 10 phút."
+          }
+        }
+      }
+    },
+    "account.verifyEmail.submit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác minh"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verify email"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xác minh email"
+          }
+        }
+      }
+    },
+    "account.verifyEmail.verifiedContinue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your email is verified. You can continue."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email đã được xác minh. Bạn có thể tiếp tục."
+          }
+        }
+      }
+    },
+    "header.nav.orders": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My orders"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đơn của tôi"
+          }
+        }
+      }
+    },
+    "header.nav.profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hồ sơ"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

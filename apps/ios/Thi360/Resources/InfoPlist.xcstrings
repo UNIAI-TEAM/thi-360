@@ -1,6 +1,23 @@
 {
   "sourceLanguage" : "vi",
   "strings" : {
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thi360 uses the camera to take your profile picture."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thi360 dùng máy ảnh để chụp ảnh đại diện của bạn."
+          }
+        }
+      }
+    },
     "NSFaceIDUsageDescription" : {
       "extractionState" : "manual",
       "localizations" : {

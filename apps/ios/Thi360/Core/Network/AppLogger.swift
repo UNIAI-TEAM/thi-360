@@ -77,6 +77,7 @@ struct RedactingAppLogger: Sendable {
         "refresh_token",
         "password",
         "oldpassword",
+        "currentpassword",
         "newpassword",
         "confirmpassword",
         "code",
@@ -99,7 +100,7 @@ struct RedactingAppLogger: Sendable {
     }()
 
     private static let redactionPatterns: [(NSRegularExpression, String)] = {
-        let sensitiveFieldNames = "password|oldPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode|voucherCode|voucher_code|vnp_[A-Za-z0-9_]+|x-attempt-session|answer|finalAnswers|html|text"
+        let sensitiveFieldNames = "password|oldPassword|currentPassword|newPassword|confirmPassword|accessToken|refreshToken|resetToken|reset_token|token|code|otp|otpCode|verificationCode|voucherCode|voucher_code|vnp_[A-Za-z0-9_]+|x-attempt-session|answer|finalAnswers|html|text"
         let definitions: [(String, String)] = [
             (#"(?i)(Bearer\s+)[^\s,;"')]+"#, "$1<redacted>"),
             ("(?i)(\"(?:\(sensitiveFieldNames))\"\\s*:\\s*\")(?:\\\\.|[^\"\\\\])*(\")", "$1<redacted>$2"),

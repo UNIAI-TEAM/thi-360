@@ -104,7 +104,7 @@ struct AuthBearerMiddleware: ClientMiddleware {
 
         let bufferedBodyData: Data?
         if let body {
-            bufferedBodyData = try await Data(collecting: body, upTo: 1_048_576)
+            bufferedBodyData = try await Data(collecting: body, upTo: 6_291_456)
         } else {
             bufferedBodyData = nil
         }
@@ -120,7 +120,10 @@ struct AuthBearerMiddleware: ClientMiddleware {
         }
 
         let (response, responseBody) = try await next(authedRequest, makeBody(), baseURL)
-        guard response.status.code == 401, let failedAccessToken = initialTokens?.accessToken else {
+        guard response.status.code == 401,
+              operationID != Operations.deleteMyAccount.id,
+              let failedAccessToken = initialTokens?.accessToken
+        else {
             return (response, responseBody)
         }
 

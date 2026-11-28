@@ -13,6 +13,8 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Thi360 sử dụng Face ID để mở khóa ứng dụng nhanh và an toàn.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Thi360 dùng máy ảnh để chụp ảnh đại diện của bạn.</string>
 	<key>THI360_API_BASE_URL</key>
 	<string>$(THI360_API_BASE_URL)</string>
 	<key>THI360_ENV</key>

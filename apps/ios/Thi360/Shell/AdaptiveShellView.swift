@@ -13,6 +13,7 @@ struct AdaptiveShellView: View {
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.brandPalette) private var palette
+    @Environment(\.accountInspector) private var accountInspector
 
     private var effectiveSizeClass: UserInterfaceSizeClass? {
         if router.stateProbeEnabled, let forced = router.forcedSizeClassForUITest {
@@ -48,9 +49,22 @@ struct AdaptiveShellView: View {
         .accessibilityIdentifier(layoutMode.accessibilityIdentifier)
         .onAppear {
             Thi360AppDelegate.refreshSupportedOrientations(for: effectiveSizeClass)
+            accountViewModel?.isInTwoPaneLayout = (layoutMode == .iPadSidebar || layoutMode == .phoneTwoPaneBook)
         }
         .onChange(of: effectiveSizeClass) { _, newValue in
             Thi360AppDelegate.refreshSupportedOrientations(for: newValue)
+        }
+        .onChange(of: layoutMode) { oldMode, newMode in
+            syncAccountNavigationOnLayoutTransition(from: oldMode, to: newMode)
+        }
+        .onChange(of: router.selectedDestination) { oldDestination, newDestination in
+            if oldDestination == .account,
+               newDestination != .account,
+               let accountViewModel,
+               layoutMode == .iPadSidebar || layoutMode == .phoneTwoPaneBook
+            {
+                accountViewModel.handleAccountTabExitInTwoPane()
+            }
         }
     }
 
@@ -103,15 +117,14 @@ struct AdaptiveShellView: View {
 
                 if let profile = accountViewModel?.loadedProfile {
                     HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(palette.primaryContainerStrongColor)
-                                .frame(width: 36, height: 36)
-                            Text(profile.initials)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(palette.primaryTextColor)
-                        }
-                        .accessibilityHidden(true)
+                        AvatarCircleView(
+                            avatarUrl: profile.trimmedAvatarUrl,
+                            initials: profile.initials,
+                            size: 36,
+                            fontSize: 13,
+                            locale: preferences.locale,
+                            exposeAvatarAccessibility: false
+                        )
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(profile.displayName)
@@ -153,6 +166,7 @@ struct AdaptiveShellView: View {
                         )
                     }
             }
+            .environment(\.accountInspector, accountInspector)
         }
         .navigationSplitViewStyle(.balanced)
     }
@@ -292,7 +306,31 @@ struct AdaptiveShellView: View {
                     serverDefaultThemeMode: serverDefaultThemeMode,
                     isTwoPaneBook: true,
                     showsInlineProbe: false,
-                    onOpenChangePassword: {}
+                    onOpenProfile: {
+                        if !router.path(for: .account).isEmpty {
+                            router.setPath([], for: .account)
+                        }
+                    },
+                    onOpenOrders: {
+                        if !router.path(for: .account).isEmpty {
+                            router.setPath([], for: .account)
+                        }
+                    },
+                    onOpenLegal: { _ in
+                        if !router.path(for: .account).isEmpty {
+                            router.setPath([], for: .account)
+                        }
+                    },
+                    onOpenDeleteAccount: {
+                        if !router.path(for: .account).isEmpty {
+                            router.setPath([], for: .account)
+                        }
+                    },
+                    onOpenChangePassword: {
+                        if !router.path(for: .account).isEmpty {
+                            router.setPath([], for: .account)
+                        }
+                    }
                 )
             } else {
                 AccountShellView(
@@ -311,12 +349,15 @@ struct AdaptiveShellView: View {
     private var rightBookPaneContent: some View {
         switch router.selectedDestination {
         case .account:
-            if let sessionStore, accountViewModel != nil {
+            if let sessionStore, let accountViewModel {
                 AccountDuoDetailView(
+                    accountViewModel: accountViewModel,
                     router: router,
                     preferences: preferences,
                     sessionStore: sessionStore,
-                    effectiveSizeClass: effectiveSizeClass
+                    effectiveSizeClass: effectiveSizeClass,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
                 )
             } else {
                 AccountDetailShellView(
@@ -350,24 +391,174 @@ struct AdaptiveShellView: View {
             )
         case .account:
             if let accountViewModel {
-                AccountView(
-                    viewModel: accountViewModel,
-                    router: router,
-                    preferences: preferences,
-                    effectiveSizeClass: effectiveSizeClass,
-                    serverDefaultThemeMode: serverDefaultThemeMode,
-                    isTwoPaneBook: false,
-                    showsInlineProbe: true,
-                    onOpenChangePassword: {
-                        router.isPresentingChangePassword = true
-                    }
-                )
+                if layoutMode == .iPadSidebar, let sessionStore {
+                    accountTwoPaneListDetail(
+                        accountViewModel: accountViewModel,
+                        sessionStore: sessionStore
+                    )
+                } else {
+                    AccountView(
+                        viewModel: accountViewModel,
+                        router: router,
+                        preferences: preferences,
+                        effectiveSizeClass: effectiveSizeClass,
+                        serverDefaultThemeMode: serverDefaultThemeMode,
+                        isTwoPaneBook: false,
+                        showsInlineProbe: true,
+                        onOpenProfile: {
+                            router.openProfile()
+                        },
+                        onOpenOrders: {
+                            router.openOrders()
+                        },
+                        onOpenLegal: { legalId in
+                            router.openLegal(legalId)
+                        },
+                        onOpenDeleteAccount: {
+                            router.openDeleteAccount()
+                        },
+                        onOpenChangePassword: {
+                            router.isPresentingChangePassword = true
+                        }
+                    )
+                }
             } else {
                 AccountShellView(
                     router: router,
                     preferences: preferences,
                     effectiveSizeClass: effectiveSizeClass
                 )
+            }
+        }
+    }
+
+    private func accountTwoPaneListDetail(
+        accountViewModel: AccountViewModel,
+        sessionStore: SessionStore
+    ) -> some View {
+        let selectionBinding = Binding<AccountDetailSelection?>(
+            get: { accountViewModel.selectedDetail },
+            set: { newValue in
+                if let newValue {
+                    accountViewModel.selectDetail(newValue)
+                }
+            }
+        )
+        return ListDetailLayout(
+            selection: selectionBinding,
+            listWidthFraction: 0.42
+        ) {
+            AccountView(
+                viewModel: accountViewModel,
+                router: router,
+                preferences: preferences,
+                effectiveSizeClass: effectiveSizeClass,
+                serverDefaultThemeMode: serverDefaultThemeMode,
+                isTwoPaneBook: true,
+                showsInlineProbe: false,
+                onOpenProfile: {
+                    if !router.path(for: .account).isEmpty {
+                        router.setPath([], for: .account)
+                    }
+                },
+                onOpenOrders: {
+                    if !router.path(for: .account).isEmpty {
+                        router.setPath([], for: .account)
+                    }
+                },
+                onOpenLegal: { _ in
+                    if !router.path(for: .account).isEmpty {
+                        router.setPath([], for: .account)
+                    }
+                },
+                onOpenDeleteAccount: {
+                    if !router.path(for: .account).isEmpty {
+                        router.setPath([], for: .account)
+                    }
+                },
+                onOpenChangePassword: {
+                    if !router.path(for: .account).isEmpty {
+                        router.setPath([], for: .account)
+                    }
+                }
+            )
+        } detail: { _ in
+            AccountDetailPaneView(
+                accountViewModel: accountViewModel,
+                router: router,
+                preferences: preferences,
+                sessionStore: sessionStore,
+                effectiveSizeClass: effectiveSizeClass,
+                legalRepository: legalRepository,
+                webBaseURL: webBaseURL
+            )
+        } emptyDetail: {
+            AccountDetailPaneView(
+                accountViewModel: accountViewModel,
+                router: router,
+                preferences: preferences,
+                sessionStore: sessionStore,
+                effectiveSizeClass: effectiveSizeClass,
+                legalRepository: legalRepository,
+                webBaseURL: webBaseURL
+            )
+        }
+    }
+
+    private func syncAccountNavigationOnLayoutTransition(
+        from oldMode: ShellLayoutMode,
+        to newMode: ShellLayoutMode
+    ) {
+        let wasTwoPane = oldMode == .iPadSidebar || oldMode == .phoneTwoPaneBook
+        let isTwoPane = newMode == .iPadSidebar || newMode == .phoneTwoPaneBook
+        accountViewModel?.isInTwoPaneLayout = isTwoPane
+        guard router.selectedDestination == .account, let accountViewModel else { return }
+        guard wasTwoPane != isTwoPane else { return }
+
+        var accountPath = router.path(for: .account)
+        if isTwoPane {
+            if let first = accountPath.first {
+                switch first {
+                case .profile:
+                    accountViewModel.selectDetail(.profile)
+                    accountPath.removeFirst()
+                    router.setPath(accountPath, for: .account)
+                case .orders:
+                    accountViewModel.selectDetail(.orders)
+                    accountPath.removeFirst()
+                    router.setPath(accountPath, for: .account)
+                case .deleteAccount:
+                    accountViewModel.selectDetail(.deleteAccount)
+                    accountPath.removeFirst()
+                    router.setPath(accountPath, for: .account)
+                case let .legal(legalId):
+                    accountViewModel.selectDetail(legalId == .terms ? .legalTerms : .legalPrivacy)
+                    accountPath.removeFirst()
+                    router.setPath(accountPath, for: .account)
+                default:
+                    break
+                }
+            }
+        } else {
+            let hasProfileDraft = accountViewModel.existingProfileViewModel()?.hasUnsavedDraft == true
+            if accountPath.isEmpty && (hasProfileDraft || accountViewModel.hasExplicitDetailSelection) {
+                switch accountViewModel.selectedDetail {
+                case .profile:
+                    router.openProfile()
+                case .orders:
+                    router.openOrders()
+                case .deleteAccount:
+                    router.openDeleteAccount()
+                case .legalTerms:
+                    router.openLegal(.terms)
+                case .legalPrivacy:
+                    router.openLegal(.privacy)
+                case .changePassword:
+                    router.isPresentingChangePassword = true
+                }
+            } else if accountPath.first == .profileVerifyEmail {
+                accountPath.insert(.profile, at: 0)
+                router.setPath(accountPath, for: .account)
             }
         }
     }
