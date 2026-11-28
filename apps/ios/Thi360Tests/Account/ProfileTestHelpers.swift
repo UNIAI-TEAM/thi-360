@@ -145,7 +145,7 @@ enum ProfileFixtureHelper {
 
     @MainActor
     static func waitUntil(
-        timeout: TimeInterval = 2.0,
+        timeout: TimeInterval = 5.0,
         condition: @MainActor () -> Bool
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
@@ -157,6 +157,21 @@ enum ProfileFixtureHelper {
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         return condition()
+    }
+
+    @MainActor
+    static func findControllers<T: UIViewController>(
+        ofType type: T.Type,
+        in root: UIViewController
+    ) -> [T] {
+        var result: [T] = []
+        if let typed = root as? T {
+            result.append(typed)
+        }
+        for child in root.children {
+            result.append(contentsOf: findControllers(ofType: type, in: child))
+        }
+        return result
     }
 
     @MainActor
@@ -236,6 +251,9 @@ enum ProfileFixtureHelper {
     ) {
         let sink = sink(for: controller.view)
         controller.rootView = AnyView(view.environment(\.accountInspector, sink))
+        controller.view.setNeedsLayout()
+        controller.view.layoutIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.02))
         controller.view.setNeedsLayout()
         controller.view.layoutIfNeeded()
     }

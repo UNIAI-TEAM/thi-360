@@ -83,6 +83,12 @@ final class AccountLayoutTests: XCTestCase {
         XCTAssertTrue(RecoveryViewTestHelper.findViews(ofType: UITabBar.self, in: controller.view).isEmpty)
         XCTAssertEqual(accountVM.selectedDetail, .profile)
 
+        let padReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 2
+                && RecoveryViewTestHelper.findViews(ofType: UISwitch.self, in: controller.view).count == 1
+        }
+        XCTAssertTrue(padReady)
+
         let textFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
         XCTAssertEqual(
             textFields.count,
@@ -134,6 +140,12 @@ final class AccountLayoutTests: XCTestCase {
         XCTAssertTrue(RecoveryViewTestHelper.findViews(ofType: UITabBar.self, in: controller.view).isEmpty)
         XCTAssertEqual(accountVM.selectedDetail, .profile)
 
+        let duoReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 2
+                && RecoveryViewTestHelper.findViews(ofType: UISwitch.self, in: controller.view).count == 1
+        }
+        XCTAssertTrue(duoReady)
+
         let textFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
         XCTAssertEqual(
             textFields.count,
@@ -150,10 +162,10 @@ final class AccountLayoutTests: XCTestCase {
         }
 
         accountVM.selectDetail(.changePassword)
-        window.setNeedsLayout()
-        window.layoutIfNeeded()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.08))
-        window.layoutIfNeeded()
+        let passwordReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 3
+        }
+        XCTAssertTrue(passwordReady)
 
         let passwordFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
         XCTAssertEqual(

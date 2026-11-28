@@ -98,7 +98,7 @@ final class AvatarImageTests: XCTestCase {
         )
 
         await gate.release()
-        let loaded = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let loaded = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view).contains("profile.avatar.image")
         }
         XCTAssertTrue(loaded, "Avatar image must render once 200 completes")
@@ -155,11 +155,12 @@ final class AvatarImageTests: XCTestCase {
         )
         defer { window.isHidden = true }
 
-        let firstDone = await ProfileFixtureHelper.waitUntil(timeout: 1.5) {
+        let firstDone = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             stack.transport.callCount(method: .get, path: self.avatarPath) == 1
+                && ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view).contains("profile.avatar.initials")
         }
         XCTAssertTrue(firstDone)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.25)
+        try await Task.sleep(nanoseconds: 200_000_000)
 
         XCTAssertEqual(stack.transport.callCount(method: .get, path: avatarPath), 1, "404 must not trigger a retry loop")
         XCTAssertTrue(ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view).contains("profile.avatar.initials"))
@@ -179,11 +180,12 @@ final class AvatarImageTests: XCTestCase {
             on: controller
         )
 
-        let secondDone = await ProfileFixtureHelper.waitUntil(timeout: 1.5) {
+        let secondDone = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             stack.transport.callCount(method: .get, path: self.avatarPath) == 2
+                && ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view).contains("profile.avatar.initials")
         }
         XCTAssertTrue(secondDone)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.2)
+        try await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertEqual(stack.transport.callCount(method: .get, path: avatarPath), 2, "Offline failure must not retry in a loop")
         XCTAssertTrue(ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view).contains("profile.avatar.initials"))
 
@@ -202,7 +204,7 @@ final class AvatarImageTests: XCTestCase {
             on: controller
         )
 
-        let recovered = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let recovered = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view).contains("profile.avatar.image")
         }
         XCTAssertTrue(recovered, "Next open must retry strictly once and display recovered image")
@@ -234,7 +236,7 @@ final class AvatarImageTests: XCTestCase {
         } catch {
         }
 
-        let signedOut = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let signedOut = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             stack.sessionStore.state == .signedOut(reason: .expired)
         }
         XCTAssertTrue(signedOut, "401 on avatar with revoked session must sign out to Login")

@@ -38,11 +38,15 @@ final class AccountTwoPaneTests: XCTestCase {
         defer { window.isHidden = true }
 
         XCTAssertEqual(accountVM.selectedDetail, .profile)
+        let padProfileReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 2
+        }
+        XCTAssertTrue(padProfileReady)
         let profileFields = RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
         XCTAssertEqual(profileFields.count, 2, "Default iPad Account detail must be Profile (fullName + phone)")
 
         accountVM.selectDetail(.orders)
-        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
             return !ids.contains("profile.info.fullNameField")
                 && (ids.contains("account.detail.orders") || ids.contains("orders.screen") || ids.contains("payment.orders.screen"))
@@ -58,7 +62,7 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertNotEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 2)
 
         accountVM.selectDetail(.changePassword)
-        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 3
         }
         XCTAssertEqual(accountVM.selectedDetail, .changePassword)
@@ -101,10 +105,14 @@ final class AccountTwoPaneTests: XCTestCase {
         defer { window.isHidden = true }
 
         XCTAssertEqual(accountVM.selectedDetail, .profile)
+        let duoProfileReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 2
+        }
+        XCTAssertTrue(duoProfileReady)
         XCTAssertEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 2)
 
         accountVM.selectDetail(.orders)
-        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
             return !ids.contains("profile.info.fullNameField")
                 && (ids.contains("account.detail.orders") || ids.contains("orders.screen") || ids.contains("payment.orders.screen"))
@@ -120,7 +128,7 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertNotEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 2)
 
         accountVM.selectDetail(.changePassword)
-        _ = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        _ = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 3
         }
         XCTAssertEqual(accountVM.selectedDetail, .changePassword)
@@ -140,7 +148,7 @@ final class AccountTwoPaneTests: XCTestCase {
         let sink = ProfileFixtureHelper.sink(for: controller.view)
         XCTAssertNotNil(sink)
 
-        let initialReady = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let initialReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             (sink?.identifiers.contains("probe.group.container") ?? false)
                 && Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
                 && !(sink?.identifiers.contains("probe.group.loadedText") ?? true)
@@ -149,15 +157,20 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertTrue(ProfileFixtureHelper.collectAccessibilityLabels(in: controller.view).contains("Conditional Group"))
 
         model.showsContent = true
-        let switchedReady = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let switchedReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
+            let frame = ProfileFixtureHelper.findElementFrame(
+                identifier: "probe.group.container",
+                in: controller.view,
+                window: window
+            )
             return ids.contains("probe.group.loadedText")
                 && ids.contains("probe.group.container")
                 && (sink?.identifiers.contains("probe.group.container") ?? false)
                 && Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
+                && (frame.map { !$0.isEmpty } ?? false)
         }
         XCTAssertTrue(switchedReady, "AccountProbeModifier must retain identifier after Group flips from Color.clear to content")
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
         XCTAssertTrue(sink?.identifiers.contains("probe.group.loadedText") ?? false)
         XCTAssertTrue(sink?.identifiers.contains("probe.group.container") ?? false)
         XCTAssertTrue(Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view))
@@ -172,16 +185,27 @@ final class AccountTwoPaneTests: XCTestCase {
         }
 
         model.showsContent = false
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.08)
+        let flippedToClear = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            !(sink?.identifiers.contains("probe.group.loadedText") ?? true)
+                && (sink?.identifiers.contains("probe.group.container") ?? false)
+                && Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
+        }
+        XCTAssertTrue(flippedToClear)
         XCTAssertTrue(sink?.identifiers.contains("probe.group.container") ?? false)
         XCTAssertTrue(Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view))
+
         model.showsContent = true
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let flippedBackToContent = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            (sink?.identifiers.contains("probe.group.loadedText") ?? false)
+                && (sink?.identifiers.contains("probe.group.container") ?? false)
+                && Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
+        }
+        XCTAssertTrue(flippedBackToContent)
         XCTAssertTrue(sink?.identifiers.contains("probe.group.container") ?? false)
         XCTAssertTrue(Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view))
 
         ProfileFixtureHelper.setRootView(Color.clear, on: controller)
-        let unmounted = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let unmounted = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             !(sink?.identifiers.contains("probe.group.container") ?? true)
                 && !Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
         }

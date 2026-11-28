@@ -37,6 +37,15 @@ final class AccountLegalRowsTests: XCTestCase {
         )
         defer { phoneWindow.isHidden = true }
 
+        let phoneRowsReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: phoneController.view)
+            let labels = ProfileFixtureHelper.collectAccessibilityLabels(in: phoneController.view)
+            return ids.contains("account.legalTermsRow")
+                && ids.contains("account.legalPrivacyRow")
+                && labels.contains("Điều kiện giao dịch chung")
+                && labels.contains("Chính sách bảo mật thông tin")
+        }
+        XCTAssertTrue(phoneRowsReady)
         let phoneIDs = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: phoneController.view)
         XCTAssertTrue(phoneIDs.contains("account.legalTermsRow"))
         XCTAssertTrue(phoneIDs.contains("account.legalPrivacyRow"))
@@ -45,15 +54,39 @@ final class AccountLegalRowsTests: XCTestCase {
         XCTAssertTrue(phoneLabels.contains("Chính sách bảo mật thông tin"))
 
         phoneRouter.openLegal(.terms)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let termsPushed = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            phoneRouter.path(for: .account) == [.legal(.terms)]
+                && ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: phoneController)
+                    .contains { $0.viewControllers.count == 2 && $0.transitionCoordinator == nil }
+        }
+        XCTAssertTrue(termsPushed)
         XCTAssertEqual(phoneRouter.path(for: .account), [.legal(.terms)])
         phoneRouter.back()
+        let termsPopped = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            let navs = ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: phoneController)
+            return phoneRouter.path(for: .account).isEmpty
+                && !navs.isEmpty
+                && navs.allSatisfy { $0.viewControllers.count <= 1 && $0.transitionCoordinator == nil }
+        }
+        XCTAssertTrue(termsPopped)
         XCTAssertTrue(phoneRouter.path(for: .account).isEmpty)
 
         phoneRouter.openLegal(.privacy)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let privacyPushed = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            phoneRouter.path(for: .account) == [.legal(.privacy)]
+                && ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: phoneController)
+                    .contains { $0.viewControllers.count == 2 && $0.transitionCoordinator == nil }
+        }
+        XCTAssertTrue(privacyPushed)
         XCTAssertEqual(phoneRouter.path(for: .account), [.legal(.privacy)])
         phoneRouter.back()
+        let privacyPopped = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            let navs = ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: phoneController)
+            return phoneRouter.path(for: .account).isEmpty
+                && !navs.isEmpty
+                && navs.allSatisfy { $0.viewControllers.count <= 1 && $0.transitionCoordinator == nil }
+        }
+        XCTAssertTrue(privacyPopped)
         XCTAssertTrue(phoneRouter.path(for: .account).isEmpty)
 
         let padRouter = AppRouter(initialDestination: .account)
@@ -79,7 +112,13 @@ final class AccountLegalRowsTests: XCTestCase {
         defer { padWindow.isHidden = true }
 
         padAccountVM.selectDetail(.legalTerms)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let termsDetailReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            padAccountVM.selectedDetail == .legalTerms
+                && ProfileFixtureHelper.collectAccessibilityIdentifiers(in: padController.view).contains("account.detail.legalTerms")
+                && RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: padController.view).isEmpty
+                && RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: padController.view).count >= 3
+        }
+        XCTAssertTrue(termsDetailReady)
         XCTAssertEqual(padAccountVM.selectedDetail, .legalTerms)
         XCTAssertTrue(
             ProfileFixtureHelper.collectAccessibilityIdentifiers(in: padController.view).contains("account.detail.legalTerms"),
@@ -96,7 +135,12 @@ final class AccountLegalRowsTests: XCTestCase {
         )
 
         padAccountVM.selectDetail(.legalPrivacy)
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let privacyDetailReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            padAccountVM.selectedDetail == .legalPrivacy
+                && ProfileFixtureHelper.collectAccessibilityIdentifiers(in: padController.view).contains("account.detail.legalPrivacy")
+                && RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: padController.view).count >= 3
+        }
+        XCTAssertTrue(privacyDetailReady)
         XCTAssertEqual(padAccountVM.selectedDetail, .legalPrivacy)
         XCTAssertTrue(
             ProfileFixtureHelper.collectAccessibilityIdentifiers(in: padController.view).contains("account.detail.legalPrivacy"),

@@ -68,7 +68,7 @@ final class AccountDeletedElsewhereTests: XCTestCase {
 
         await accountVM.loadProfile()
 
-        let signedOut = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let signedOut = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             stack.sessionStore.state == .signedOut(reason: .expired)
         }
         XCTAssertTrue(signedOut, "401 + rejected refresh must return to Login as expired session")

@@ -150,7 +150,7 @@ final class AvatarCacheTests: XCTestCase {
 
         await gate.release()
         let loadedLabel = ProfileStrings.text("account.profile.avatar.current", locale: .vi)
-        let allRendered = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+        let allRendered = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             ProfileFixtureHelper.collectAccessibilityLabels(in: controller.view)
                 .filter { $0 == loadedLabel }
                 .count == 3

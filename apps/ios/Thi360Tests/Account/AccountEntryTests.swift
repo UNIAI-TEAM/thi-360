@@ -29,37 +29,73 @@ final class AccountEntryTests: XCTestCase {
             biometricManager: stack.biometricManager,
             idiomOverride: .phone
         )
-        let (window, controller) = RecoveryViewTestHelper.host(
+        let (window, controller) = ProfileFixtureHelper.host(
             rootView,
-            size: CGSize(width: 390, height: 844),
+            size: CGSize(width: 390, height: 520),
             sizeClass: .compact,
             themeMode: .light
         )
         defer { window.isHidden = true }
 
-        let scrollViewsBefore = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view)
-        if let accountScroll = scrollViewsBefore.first {
-            accountScroll.setContentOffset(CGPoint(x: 0, y: 120), animated: false)
-            ProfileFixtureHelper.pumpMainRunLoop()
+        let scrollReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            guard let scrollView = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first else {
+                return false
+            }
+            return scrollView.contentSize.height > 650
         }
+        XCTAssertTrue(scrollReady, "Account scroll view must have scrollable content > 650pt")
+        let accountScroll = try XCTUnwrap(RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first)
+        accountScroll.setContentOffset(CGPoint(x: 0, y: 120), animated: false)
+        let offsetApplied = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            accountScroll.contentOffset.y >= 100
+        }
+        XCTAssertTrue(offsetApplied, "Account scroll offset must advance to >= 100pt before pushing Profile")
 
         router.openProfile()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let profilePushed = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            router.path(for: .account) == [.profile]
+                && ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: controller)
+                    .contains { $0.viewControllers.count == 2 && $0.transitionCoordinator == nil }
+                && !RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).isEmpty
+        }
+        XCTAssertTrue(profilePushed, "Pushing Profile must finish navigation transition and mount ProfileView")
         XCTAssertEqual(router.path(for: .account), [.profile])
 
         router.back()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
-        XCTAssertTrue(router.path(for: .account).isEmpty)
-        if let restoredScroll = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first {
-            XCTAssertGreaterThanOrEqual(restoredScroll.contentOffset.y, 100, "Returning from Profile must preserve Account scroll offset")
+        let scrollRestored = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            let navs = ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: controller)
+            guard router.path(for: .account).isEmpty,
+                  !navs.isEmpty,
+                  navs.allSatisfy({ $0.viewControllers.count <= 1 && $0.transitionCoordinator == nil }),
+                  RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).isEmpty,
+                  let restoredScroll = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first
+            else {
+                return false
+            }
+            return restoredScroll.contentOffset.y >= 100
         }
+        XCTAssertTrue(scrollRestored, "Returning from Profile must finish pop transition and preserve Account scroll offset")
+        XCTAssertTrue(router.path(for: .account).isEmpty)
+        let restoredScroll = try XCTUnwrap(RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first)
+        XCTAssertGreaterThanOrEqual(restoredScroll.contentOffset.y, 100, "Returning from Profile must preserve Account scroll offset")
 
         router.openOrders()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let ordersPushed = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            router.path(for: .account) == [.orders]
+                && ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: controller)
+                    .contains { $0.viewControllers.count == 2 && $0.transitionCoordinator == nil }
+        }
+        XCTAssertTrue(ordersPushed, "Pushing Orders must finish navigation transition")
         XCTAssertEqual(router.path(for: .account), [.orders])
 
         router.back()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let ordersPopped = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            let navs = ProfileFixtureHelper.findControllers(ofType: UINavigationController.self, in: controller)
+            return router.path(for: .account).isEmpty
+                && !navs.isEmpty
+                && navs.allSatisfy { $0.viewControllers.count <= 1 && $0.transitionCoordinator == nil }
+        }
+        XCTAssertTrue(ordersPopped, "Returning from Orders must finish pop transition")
         XCTAssertTrue(router.path(for: .account).isEmpty)
     }
 

@@ -46,6 +46,11 @@ final class AccountDeletionRowTests: XCTestCase {
         )
         defer { phoneWindow.isHidden = true }
 
+        let rowsReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            ProfileFixtureHelper.findElementFrame(identifier: "account.logoutButton", in: phoneController.view, window: phoneWindow) != nil
+                && ProfileFixtureHelper.findElementFrame(identifier: "account.deleteAccountRow", in: phoneController.view, window: phoneWindow) != nil
+        }
+        XCTAssertTrue(rowsReady)
         let logoutFrame = ProfileFixtureHelper.findElementFrame(identifier: "account.logoutButton", in: phoneController.view, window: phoneWindow)
         let deleteFrame = ProfileFixtureHelper.findElementFrame(identifier: "account.deleteAccountRow", in: phoneController.view, window: phoneWindow)
         XCTAssertNotNil(logoutFrame, "Logout button must exist")
@@ -103,6 +108,10 @@ final class AccountDeletionRowTests: XCTestCase {
             themeMode: .light
         )
         defer { padWindow.isHidden = true }
+        let padDeleteReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            ProfileFixtureHelper.collectAccessibilityIdentifiers(in: padController.view).contains("deleteAccount.screen")
+        }
+        XCTAssertTrue(padDeleteReady)
         let padIDs = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: padController.view)
         XCTAssertEqual(padAccountVM.selectedDetail, .deleteAccount)
         XCTAssertTrue(padIDs.contains("deleteAccount.screen"))

@@ -56,8 +56,14 @@ final class VerifyEmailAutoSendTests: XCTestCase {
 
         window.frame = CGRect(x: 0, y: 0, width: 951, height: 669)
         controller.traitOverrides.horizontalSizeClass = .regular
+        window.setNeedsLayout()
         window.layoutIfNeeded()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.1)
+        let regularLayoutReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            controller.view.bounds.width >= 950
+                && controller.traitCollection.horizontalSizeClass == .regular
+                && !RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).isEmpty
+        }
+        XCTAssertTrue(regularLayoutReady)
 
         _ = stack.biometricManager.handleScenePhaseChange(.background, sessionState: stack.sessionStore.state)
         stack.sessionStore.lockSession()

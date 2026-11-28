@@ -39,7 +39,11 @@ final class ProfileFoldTests: XCTestCase {
         defer { window.isHidden = true }
 
         router.openProfile()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        let profilePushed = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            router.path(for: .account) == [.profile]
+                && RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count == 2
+        }
+        XCTAssertTrue(profilePushed)
         XCTAssertEqual(router.path(for: .account), [.profile])
 
         let profileVM = accountVM.ensureProfileViewModel()
@@ -51,7 +55,13 @@ final class ProfileFoldTests: XCTestCase {
         controller.traitOverrides.horizontalSizeClass = .regular
         window.setNeedsLayout()
         window.layoutIfNeeded()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.15)
+        let unfoldedReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            accountVM.selectedDetail == .profile
+                && router.path(for: .account).isEmpty
+                && RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
+                    .contains { $0.text == "Nguyễn Đang Sửa Dở" }
+        }
+        XCTAssertTrue(unfoldedReady)
 
         XCTAssertEqual(accountVM.selectedDetail, .profile, "Unfolding while editing Profile must keep Profile selected in right pane")
         XCTAssertTrue(router.path(for: .account).isEmpty, "Unfolding promotes pushed Profile route to right pane")
@@ -65,7 +75,12 @@ final class ProfileFoldTests: XCTestCase {
         controller.traitOverrides.horizontalSizeClass = .compact
         window.setNeedsLayout()
         window.layoutIfNeeded()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.15)
+        let foldedReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            router.path(for: .account) == [.profile]
+                && RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view)
+                    .contains { $0.text == "Nguyễn Đang Sửa Dở" }
+        }
+        XCTAssertTrue(foldedReady)
 
         XCTAssertEqual(router.path(for: .account), [.profile], "Folding back while editing Profile must keep Profile pushed on compact stack")
         XCTAssertEqual(profileVM.fullName, "Nguyễn Đang Sửa Dở", "Mid-edit fullName must be preserved when folding back")
@@ -113,7 +128,10 @@ final class ProfileFoldTests: XCTestCase {
         controller.traitOverrides.horizontalSizeClass = .compact
         window.setNeedsLayout()
         window.layoutIfNeeded()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.15)
+        let compactedReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            router.path(for: .account) == [.profile]
+        }
+        XCTAssertTrue(compactedReady)
 
         XCTAssertEqual(router.path(for: .account), [.profile])
         XCTAssertEqual(profileVM.fullName, "Trần Đang Sửa iPad")
@@ -124,7 +142,11 @@ final class ProfileFoldTests: XCTestCase {
         controller.traitOverrides.horizontalSizeClass = .regular
         window.setNeedsLayout()
         window.layoutIfNeeded()
-        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.15)
+        let regularReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
+            accountVM.selectedDetail == .profile
+                && router.path(for: .account).isEmpty
+        }
+        XCTAssertTrue(regularReady)
 
         XCTAssertEqual(accountVM.selectedDetail, .profile)
         XCTAssertEqual(profileVM.fullName, "Trần Đang Sửa iPad")
