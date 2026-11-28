@@ -125,43 +125,56 @@ final class ReviewAssetsTests: XCTestCase {
 
         let payload = try ResultTestFixtures.decodeReviewPayload(variant: "full-solution") { root in
             root["attemptId"] = self.attemptId
-            root["parts"] = [[
+            let part: [String: Any] = [
                 "partId": "p-img",
                 "partCode": "P-IMG",
                 "partName": "Phần hình ảnh",
                 "ord": 1,
                 "state": "CLOSED",
                 "pendingReview": false
-            ]]
-            root["items"] = [[
+            ]
+            let parts: [[String: Any]] = [part]
+            root["parts"] = parts
+
+            let contentHtml = """
+            <p>Nội dung đề vẫn hiển thị rõ ràng</p>
+            <figure class="image" data-width="medium" data-zoom="false">
+              <img src="/api/v1/me/attempts/\(self.attemptId)/assets/\(self.questionAssetId)" alt="Ảnh đề thi">
+            </figure>
+            """
+            let solutionHtml = """
+            <p>Giải thích kèm hình ảnh</p>
+            <figure class="image" data-width="medium" data-zoom="false">
+              <img src="/api/v1/me/attempts/\(self.attemptId)/solution-assets/\(self.solutionAssetId)" alt="Ảnh lời giải">
+            </figure>
+            <figure class="image" data-width="medium" data-zoom="false">
+              <img src="/api/v1/me/attempts/\(self.attemptId)/solution-assets/\(self.missingSolutionAssetId)" alt="Ảnh bị thiếu">
+            </figure>
+            """
+            let option: [String: Any] = ["id": "o1", "content": "<p>Đáp án đúng</p>"]
+            let options: [[String: Any]] = [option]
+            let body: [String: Any] = ["options": options]
+            let studentAnswer: [String: Any] = ["type": "SINGLE_CHOICE", "optionId": "o1"]
+            let expectedIds: [String] = ["o1"]
+            let expectedAnswer: [String: Any] = ["expectedOptionIds": expectedIds]
+            let item: [String: Any] = [
                 "itemId": "q-img-1",
                 "partId": "p-img",
                 "partCode": "P-IMG",
                 "ord": 1,
                 "displayNo": 1,
                 "questionType": "SINGLE_CHOICE",
-                "content": """
-                <p>Nội dung đề vẫn hiển thị rõ ràng</p>
-                <figure class="image" data-width="medium" data-zoom="false">
-                  <img src="/api/v1/me/attempts/\(self.attemptId)/assets/\(self.questionAssetId)" alt="Ảnh đề thi">
-                </figure>
-                """,
-                "body": ["options": [["id": "o1", "content": "<p>Đáp án đúng</p>"]]],
-                "studentAnswer": ["type": "SINGLE_CHOICE", "optionId": "o1"],
-                "expectedAnswer": ["expectedOptionIds": ["o1"]],
-                "solution": """
-                <p>Giải thích kèm hình ảnh</p>
-                <figure class="image" data-width="medium" data-zoom="false">
-                  <img src="/api/v1/me/attempts/\(self.attemptId)/solution-assets/\(self.solutionAssetId)" alt="Ảnh lời giải">
-                </figure>
-                <figure class="image" data-width="medium" data-zoom="false">
-                  <img src="/api/v1/me/attempts/\(self.attemptId)/solution-assets/\(self.missingSolutionAssetId)" alt="Ảnh bị thiếu">
-                </figure>
-                """,
+                "content": contentHtml,
+                "body": body,
+                "studentAnswer": studentAnswer,
+                "expectedAnswer": expectedAnswer,
+                "solution": solutionHtml,
                 "outcome": "CORRECT",
                 "earnedPoints": 1.0,
                 "pointsMax": 1.0
-            ]]
+            ]
+            let items: [[String: Any]] = [item]
+            root["items"] = items
         }
 
         let (_, _, transport, preferences) = try SessionTestFactory.makeContractStack(

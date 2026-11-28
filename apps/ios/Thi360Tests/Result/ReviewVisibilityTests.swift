@@ -8,122 +8,158 @@ final class ReviewVisibilityTests: XCTestCase {
     private func makeMutatedPayload(resultView: String) throws -> ReviewWirePayload {
         try ResultTestFixtures.decodeReviewPayload(variant: "full-solution") { root in
             root["resultView"] = resultView
-            root["parts"] = [[
+            let part: [String: Any] = [
                 "partId": "p-vis",
                 "partCode": "P-VIS",
                 "partName": "Phần kiểm tra mức xem",
                 "ord": 1,
                 "state": "CLOSED",
                 "pendingReview": false
-            ]]
-            root["items"] = [
-                [
-                    "itemId": "q-with-sol",
-                    "partId": "p-vis",
-                    "partCode": "P-VIS",
-                    "ord": 1,
-                    "displayNo": 1,
-                    "questionType": "SINGLE_CHOICE",
-                    "content": "<p>Câu có lời giải</p>",
-                    "body": [
-                        "options": [
-                            ["id": "o1", "content": "<p>Đáp án 1</p>"],
-                            ["id": "o2", "content": "<p>Đáp án 2</p>"]
-                        ]
-                    ],
-                    "studentAnswer": ["type": "SINGLE_CHOICE", "optionId": "o1"],
-                    "expectedAnswer": ["expectedOptionIds": ["o2"]],
-                    "solution": "<p>Giải thích chi tiết cho câu 1</p>",
-                    "outcome": "WRONG",
-                    "earnedPoints": 0.0,
-                    "pointsMax": 1.0
-                ],
-                [
-                    "itemId": "q-no-sol",
-                    "partId": "p-vis",
-                    "partCode": "P-VIS",
-                    "ord": 2,
-                    "displayNo": 2,
-                    "questionType": "SINGLE_CHOICE",
-                    "content": "<p>Câu không có lời giải</p>",
-                    "body": ["options": [["id": "o1", "content": "<p>Đáp án 1</p>"]]],
-                    "studentAnswer": ["type": "SINGLE_CHOICE", "optionId": "o1"],
-                    "expectedAnswer": ["expectedOptionIds": ["o1"]],
-                    "outcome": "CORRECT",
-                    "earnedPoints": 1.0,
-                    "pointsMax": 1.0
-                ],
-                [
-                    "itemId": "essay-graded",
-                    "partId": "p-vis",
-                    "partCode": "P-VIS",
-                    "ord": 3,
-                    "displayNo": 3,
-                    "questionType": "ESSAY",
-                    "content": "<p>Bài tự luận đã chấm</p>",
-                    "studentAnswer": ["type": "ESSAY", "html": "<p>Bài viết của học viên</p>", "wordCount": 5],
-                    "outcome": "PARTIAL",
-                    "earnedPoints": 6.5,
-                    "pointsMax": 10.0,
-                    "essayFeedback": [
-                        "comment": "Lập luận chặt chẽ, cần mở rộng ví dụ",
-                        "criteria": [
-                            ["id": "Nội dung", "points": 4.0, "comment": "Đủ ý chính"],
-                            ["points": 2.5],
-                            ["id": "Trình bày"]
-                        ]
-                    ]
-                ],
-                [
-                    "itemId": "essay-blank",
-                    "partId": "p-vis",
-                    "partCode": "P-VIS",
-                    "ord": 4,
-                    "displayNo": 4,
-                    "questionType": "ESSAY",
-                    "content": "<p>Bài tự luận bỏ trống</p>",
-                    "outcome": "BLANK",
-                    "earnedPoints": 0.0,
-                    "pointsMax": 5.0,
-                    "essayFeedback": [
-                        "comment": "Không được hiện khi BLANK",
-                        "criteria": [
-                            ["id": "Tiêu chí ẩn", "points": 0.0, "comment": "Ẩn"]
-                        ]
-                    ]
-                ],
-                [
-                    "itemId": "set-essay",
-                    "partId": "p-vis",
-                    "partCode": "P-VIS",
-                    "ord": 5,
-                    "questionType": "QUESTION_SET",
-                    "content": "<p>Chùm có câu tự luận con</p>",
-                    "body": ["passage": "<p>Ngữ liệu chùm</p>"],
-                    "outcome": "PARTIAL",
-                    "earnedPoints": 3.0,
-                    "pointsMax": 5.0
-                ],
-                [
-                    "itemId": "set-essay-child",
-                    "parentItemId": "set-essay",
-                    "partId": "p-vis",
-                    "partCode": "P-VIS",
-                    "ord": 6,
-                    "displayNo": 5,
-                    "questionType": "ESSAY",
-                    "content": "<p>Câu tự luận con</p>",
-                    "studentAnswer": ["type": "ESSAY", "html": "<p>Trả lời câu con</p>", "wordCount": 3],
-                    "outcome": "PARTIAL",
-                    "earnedPoints": 3.0,
-                    "pointsMax": 5.0,
-                    "essayFeedback": [
-                        "criteria": [
-                            ["id": "Ý chính", "points": 3.0, "comment": "Tốt"]
-                        ]
-                    ]
-                ]
             ]
+            let parts: [[String: Any]] = [part]
+            root["parts"] = parts
+
+            let q1Opt1: [String: Any] = ["id": "o1", "content": "<p>Đáp án 1</p>"]
+            let q1Opt2: [String: Any] = ["id": "o2", "content": "<p>Đáp án 2</p>"]
+            let q1Options: [[String: Any]] = [q1Opt1, q1Opt2]
+            let q1Body: [String: Any] = ["options": q1Options]
+            let q1Student: [String: Any] = ["type": "SINGLE_CHOICE", "optionId": "o1"]
+            let q1ExpectedIds: [String] = ["o2"]
+            let q1Expected: [String: Any] = ["expectedOptionIds": q1ExpectedIds]
+            let qWithSol: [String: Any] = [
+                "itemId": "q-with-sol",
+                "partId": "p-vis",
+                "partCode": "P-VIS",
+                "ord": 1,
+                "displayNo": 1,
+                "questionType": "SINGLE_CHOICE",
+                "content": "<p>Câu có lời giải</p>",
+                "body": q1Body,
+                "studentAnswer": q1Student,
+                "expectedAnswer": q1Expected,
+                "solution": "<p>Giải thích chi tiết cho câu 1</p>",
+                "outcome": "WRONG",
+                "earnedPoints": 0.0,
+                "pointsMax": 1.0
+            ]
+
+            let q2Opt1: [String: Any] = ["id": "o1", "content": "<p>Đáp án 1</p>"]
+            let q2Options: [[String: Any]] = [q2Opt1]
+            let q2Body: [String: Any] = ["options": q2Options]
+            let q2Student: [String: Any] = ["type": "SINGLE_CHOICE", "optionId": "o1"]
+            let q2ExpectedIds: [String] = ["o1"]
+            let q2Expected: [String: Any] = ["expectedOptionIds": q2ExpectedIds]
+            let qNoSol: [String: Any] = [
+                "itemId": "q-no-sol",
+                "partId": "p-vis",
+                "partCode": "P-VIS",
+                "ord": 2,
+                "displayNo": 2,
+                "questionType": "SINGLE_CHOICE",
+                "content": "<p>Câu không có lời giải</p>",
+                "body": q2Body,
+                "studentAnswer": q2Student,
+                "expectedAnswer": q2Expected,
+                "outcome": "CORRECT",
+                "earnedPoints": 1.0,
+                "pointsMax": 1.0
+            ]
+
+            let essayStudent: [String: Any] = [
+                "type": "ESSAY",
+                "html": "<p>Bài viết của học viên</p>",
+                "wordCount": 5
+            ]
+            let essayCriterion1: [String: Any] = ["id": "Nội dung", "points": 4.0, "comment": "Đủ ý chính"]
+            let essayCriterion2: [String: Any] = ["points": 2.5]
+            let essayCriterion3: [String: Any] = ["id": "Trình bày"]
+            let essayCriteria: [[String: Any]] = [essayCriterion1, essayCriterion2, essayCriterion3]
+            let essayFeedback: [String: Any] = [
+                "comment": "Lập luận chặt chẽ, cần mở rộng ví dụ",
+                "criteria": essayCriteria
+            ]
+            let essayGraded: [String: Any] = [
+                "itemId": "essay-graded",
+                "partId": "p-vis",
+                "partCode": "P-VIS",
+                "ord": 3,
+                "displayNo": 3,
+                "questionType": "ESSAY",
+                "content": "<p>Bài tự luận đã chấm</p>",
+                "studentAnswer": essayStudent,
+                "outcome": "PARTIAL",
+                "earnedPoints": 6.5,
+                "pointsMax": 10.0,
+                "essayFeedback": essayFeedback
+            ]
+
+            let blankCriterion: [String: Any] = ["id": "Tiêu chí ẩn", "points": 0.0, "comment": "Ẩn"]
+            let blankCriteria: [[String: Any]] = [blankCriterion]
+            let blankFeedback: [String: Any] = [
+                "comment": "Không được hiện khi BLANK",
+                "criteria": blankCriteria
+            ]
+            let essayBlank: [String: Any] = [
+                "itemId": "essay-blank",
+                "partId": "p-vis",
+                "partCode": "P-VIS",
+                "ord": 4,
+                "displayNo": 4,
+                "questionType": "ESSAY",
+                "content": "<p>Bài tự luận bỏ trống</p>",
+                "outcome": "BLANK",
+                "earnedPoints": 0.0,
+                "pointsMax": 5.0,
+                "essayFeedback": blankFeedback
+            ]
+
+            let setBody: [String: Any] = ["passage": "<p>Ngữ liệu chùm</p>"]
+            let setEssay: [String: Any] = [
+                "itemId": "set-essay",
+                "partId": "p-vis",
+                "partCode": "P-VIS",
+                "ord": 5,
+                "questionType": "QUESTION_SET",
+                "content": "<p>Chùm có câu tự luận con</p>",
+                "body": setBody,
+                "outcome": "PARTIAL",
+                "earnedPoints": 3.0,
+                "pointsMax": 5.0
+            ]
+
+            let childStudent: [String: Any] = [
+                "type": "ESSAY",
+                "html": "<p>Trả lời câu con</p>",
+                "wordCount": 3
+            ]
+            let childCriterion: [String: Any] = ["id": "Ý chính", "points": 3.0, "comment": "Tốt"]
+            let childCriteria: [[String: Any]] = [childCriterion]
+            let childFeedback: [String: Any] = ["criteria": childCriteria]
+            let setEssayChild: [String: Any] = [
+                "itemId": "set-essay-child",
+                "parentItemId": "set-essay",
+                "partId": "p-vis",
+                "partCode": "P-VIS",
+                "ord": 6,
+                "displayNo": 5,
+                "questionType": "ESSAY",
+                "content": "<p>Câu tự luận con</p>",
+                "studentAnswer": childStudent,
+                "outcome": "PARTIAL",
+                "earnedPoints": 3.0,
+                "pointsMax": 5.0,
+                "essayFeedback": childFeedback
+            ]
+
+            let items: [[String: Any]] = [
+                qWithSol,
+                qNoSol,
+                essayGraded,
+                essayBlank,
+                setEssay,
+                setEssayChild
+            ]
+            root["items"] = items
         }
     }
 

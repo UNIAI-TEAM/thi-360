@@ -126,7 +126,7 @@ final class ReviewViewTests: XCTestCase {
         let payload = try ResultTestFixtures.decodeReviewPayload(variant: "full-solution") { root in
             let partId = "part-q-1"
             let partCode = "PART-Q"
-            root["parts"] = [[
+            let part: [String: Any] = [
                 "partId": partId,
                 "partCode": partCode,
                 "partName": "Phần kiểm thử",
@@ -135,164 +135,191 @@ final class ReviewViewTests: XCTestCase {
                 "pendingReview": false,
                 "score": 4.0,
                 "maxScore": 8.0
-            ]]
-            root["items"] = [
-                [
-                    "itemId": "q-sc-1",
-                    "partId": partId,
-                    "partCode": partCode,
-                    "ord": 1,
-                    "displayNo": 1,
-                    "questionType": "SINGLE_CHOICE",
-                    "content": "<p>Câu một đáp án</p>",
-                    "optionOrder": ["opt-b", "opt-a"],
-                    "body": [
-                        "options": [
-                            ["id": "opt-a", "content": "<p>Lựa chọn A</p>"],
-                            ["id": "opt-b", "content": "<p>Lựa chọn B</p>"]
-                        ]
-                    ],
-                    "studentAnswer": ["type": "SINGLE_CHOICE", "optionId": "opt-a"],
-                    "expectedAnswer": ["expectedOptionIds": ["opt-b"]],
-                    "outcome": "WRONG",
-                    "earnedPoints": 0.0,
-                    "pointsMax": 1.0
-                ],
-                [
-                    "itemId": "q-unscored-2",
-                    "partId": partId,
-                    "partCode": partCode,
-                    "ord": 2,
-                    "displayNo": 2,
-                    "questionType": "SHORT_ANSWER",
-                    "content": "<p>Câu chưa có điểm</p>",
-                    "body": ["answerFormat": "TEXT"],
-                    "studentAnswer": ["type": "SHORT_ANSWER", "text": "42"],
-                    "outcome": "PARTIAL",
-                    "pointsMax": 2.0
-                ],
-                [
-                    "itemId": "q-match-3",
-                    "partId": partId,
-                    "partCode": partCode,
-                    "ord": 3,
-                    "displayNo": 3,
-                    "questionType": "MATCHING",
-                    "content": "<p>Ghép đôi</p>",
-                    "body": [
-                        "left": [
-                            ["id": "l1", "content": "<p>Trái 1</p>"],
-                            ["id": "l2", "content": "<p>Trái 2</p>"]
-                        ],
-                        "right": [
-                            ["id": "r1", "content": "<p>Phải 1</p>"],
-                            ["id": "r2", "content": "<p>Phải 2</p>"]
-                        ],
-                        "reuseRight": false
-                    ],
-                    "studentAnswer": ["type": "MATCHING", "pairs": ["l1": "r1", "l2": "r1"]],
-                    "expectedAnswer": [
-                        "matchingKeys": [
-                            ["leftId": "l1", "rightId": "r1"],
-                            ["leftId": "l2", "rightId": "r2"]
-                        ]
-                    ],
-                    "gradingDetail": [
-                        "pairResults": [
-                            ["leftId": "l1", "matched": true, "pointsEarned": 1.0],
-                            ["leftId": "l2", "matched": false, "pointsEarned": 0.0]
-                        ]
-                    ],
-                    "outcome": "PARTIAL",
-                    "earnedPoints": 1.0,
-                    "pointsMax": 2.0
-                ],
-                [
-                    "itemId": "q-tf-4",
-                    "partId": partId,
-                    "partCode": partCode,
-                    "ord": 4,
-                    "displayNo": 4,
-                    "questionType": "TRUE_FALSE",
-                    "content": "<p>Đúng sai</p>",
-                    "body": [
-                        "statements": [
-                            ["id": "s1", "content": "<p>Ý 1</p>"],
-                            ["id": "s2", "content": "<p>Ý 2</p>"],
-                            ["id": "s3", "content": "<p>Ý 3</p>"]
-                        ]
-                    ],
-                    "studentAnswer": ["type": "TRUE_FALSE", "statements": ["s1": true, "s2": false]],
-                    "expectedAnswer": [
-                        "trueFalseKeys": [
-                            ["statementId": "s1", "expected": true],
-                            ["statementId": "s2", "expected": true],
-                            ["statementId": "s3", "expected": false]
-                        ]
-                    ],
-                    "gradingDetail": [
-                        "statementResults": [
-                            ["id": "s1", "answered": true, "matched": true],
-                            ["id": "s2", "answered": true, "matched": false],
-                            ["id": "s3", "answered": false, "matched": false]
-                        ]
-                    ],
-                    "outcome": "PARTIAL",
-                    "earnedPoints": 0.5,
-                    "pointsMax": 1.0
-                ],
-                [
-                    "itemId": "q-set-5",
-                    "partId": partId,
-                    "partCode": partCode,
-                    "ord": 5,
-                    "questionType": "QUESTION_SET",
-                    "content": "<p>Chùm câu hỏi</p>",
-                    "body": ["passage": "<p>Đoạn dẫn cho câu 5 và 6</p>"],
-                    "outcome": "PARTIAL",
-                    "earnedPoints": 1.0,
-                    "pointsMax": 2.0
-                ],
-                [
-                    "itemId": "q-set-5-c1",
-                    "parentItemId": "q-set-5",
-                    "partId": partId,
-                    "partCode": partCode,
-                    "ord": 6,
-                    "displayNo": 5,
-                    "questionType": "SINGLE_CHOICE",
-                    "content": "<p>Câu con 5</p>",
-                    "body": [
-                        "options": [
-                            ["id": "c1-a", "content": "<p>Đáp án 5A</p>"]
-                        ]
-                    ],
-                    "studentAnswer": ["type": "SINGLE_CHOICE", "optionId": "c1-a"],
-                    "expectedAnswer": ["expectedOptionIds": ["c1-a"]],
-                    "outcome": "CORRECT",
-                    "earnedPoints": 1.0,
-                    "pointsMax": 1.0
-                ],
-                [
-                    "itemId": "q-set-5-c2",
-                    "parentItemId": "q-set-5",
-                    "partId": partId,
-                    "partCode": partCode,
-                    "ord": 7,
-                    "displayNo": 6,
-                    "questionType": "SINGLE_CHOICE",
-                    "content": "<p>Câu con 6</p>",
-                    "body": [
-                        "options": [
-                            ["id": "c2-a", "content": "<p>Đáp án 6A</p>"]
-                        ]
-                    ],
-                    "expectedAnswer": ["expectedOptionIds": ["c2-a"]],
-                    "outcome": "BLANK",
-                    "earnedPoints": 0.0,
-                    "pointsMax": 1.0
-                ]
             ]
+            let parts: [[String: Any]] = [part]
+            root["parts"] = parts
+
+            let scOptionA: [String: Any] = ["id": "opt-a", "content": "<p>Lựa chọn A</p>"]
+            let scOptionB: [String: Any] = ["id": "opt-b", "content": "<p>Lựa chọn B</p>"]
+            let scOptions: [[String: Any]] = [scOptionA, scOptionB]
+            let scBody: [String: Any] = ["options": scOptions]
+            let scStudentAnswer: [String: Any] = ["type": "SINGLE_CHOICE", "optionId": "opt-a"]
+            let scExpectedIds: [String] = ["opt-b"]
+            let scExpectedAnswer: [String: Any] = ["expectedOptionIds": scExpectedIds]
+            let scOptionOrder: [String] = ["opt-b", "opt-a"]
+            let scItem: [String: Any] = [
+                "itemId": "q-sc-1",
+                "partId": partId,
+                "partCode": partCode,
+                "ord": 1,
+                "displayNo": 1,
+                "questionType": "SINGLE_CHOICE",
+                "content": "<p>Câu một đáp án</p>",
+                "optionOrder": scOptionOrder,
+                "body": scBody,
+                "studentAnswer": scStudentAnswer,
+                "expectedAnswer": scExpectedAnswer,
+                "outcome": "WRONG",
+                "earnedPoints": 0.0,
+                "pointsMax": 1.0
+            ]
+
+            let unscoredBody: [String: Any] = ["answerFormat": "TEXT"]
+            let unscoredStudentAnswer: [String: Any] = ["type": "SHORT_ANSWER", "text": "42"]
+            let unscoredItem: [String: Any] = [
+                "itemId": "q-unscored-2",
+                "partId": partId,
+                "partCode": partCode,
+                "ord": 2,
+                "displayNo": 2,
+                "questionType": "SHORT_ANSWER",
+                "content": "<p>Câu chưa có điểm</p>",
+                "body": unscoredBody,
+                "studentAnswer": unscoredStudentAnswer,
+                "outcome": "PARTIAL",
+                "pointsMax": 2.0
+            ]
+
+            let matchLeft1: [String: Any] = ["id": "l1", "content": "<p>Trái 1</p>"]
+            let matchLeft2: [String: Any] = ["id": "l2", "content": "<p>Trái 2</p>"]
+            let matchLeft: [[String: Any]] = [matchLeft1, matchLeft2]
+            let matchRight1: [String: Any] = ["id": "r1", "content": "<p>Phải 1</p>"]
+            let matchRight2: [String: Any] = ["id": "r2", "content": "<p>Phải 2</p>"]
+            let matchRight: [[String: Any]] = [matchRight1, matchRight2]
+            let matchBody: [String: Any] = [
+                "left": matchLeft,
+                "right": matchRight,
+                "reuseRight": false
+            ]
+            let matchPairs: [String: String] = ["l1": "r1", "l2": "r1"]
+            let matchStudentAnswer: [String: Any] = ["type": "MATCHING", "pairs": matchPairs]
+            let matchKey1: [String: Any] = ["leftId": "l1", "rightId": "r1"]
+            let matchKey2: [String: Any] = ["leftId": "l2", "rightId": "r2"]
+            let matchKeys: [[String: Any]] = [matchKey1, matchKey2]
+            let matchExpectedAnswer: [String: Any] = ["matchingKeys": matchKeys]
+            let matchPairResult1: [String: Any] = ["leftId": "l1", "matched": true, "pointsEarned": 1.0]
+            let matchPairResult2: [String: Any] = ["leftId": "l2", "matched": false, "pointsEarned": 0.0]
+            let matchPairResults: [[String: Any]] = [matchPairResult1, matchPairResult2]
+            let matchGradingDetail: [String: Any] = ["pairResults": matchPairResults]
+            let matchItem: [String: Any] = [
+                "itemId": "q-match-3",
+                "partId": partId,
+                "partCode": partCode,
+                "ord": 3,
+                "displayNo": 3,
+                "questionType": "MATCHING",
+                "content": "<p>Ghép đôi</p>",
+                "body": matchBody,
+                "studentAnswer": matchStudentAnswer,
+                "expectedAnswer": matchExpectedAnswer,
+                "gradingDetail": matchGradingDetail,
+                "outcome": "PARTIAL",
+                "earnedPoints": 1.0,
+                "pointsMax": 2.0
+            ]
+
+            let tfStmt1: [String: Any] = ["id": "s1", "content": "<p>Ý 1</p>"]
+            let tfStmt2: [String: Any] = ["id": "s2", "content": "<p>Ý 2</p>"]
+            let tfStmt3: [String: Any] = ["id": "s3", "content": "<p>Ý 3</p>"]
+            let tfStatements: [[String: Any]] = [tfStmt1, tfStmt2, tfStmt3]
+            let tfBody: [String: Any] = ["statements": tfStatements]
+            let tfStudentStatements: [String: Bool] = ["s1": true, "s2": false]
+            let tfStudentAnswer: [String: Any] = ["type": "TRUE_FALSE", "statements": tfStudentStatements]
+            let tfKey1: [String: Any] = ["statementId": "s1", "expected": true]
+            let tfKey2: [String: Any] = ["statementId": "s2", "expected": true]
+            let tfKey3: [String: Any] = ["statementId": "s3", "expected": false]
+            let tfKeys: [[String: Any]] = [tfKey1, tfKey2, tfKey3]
+            let tfExpectedAnswer: [String: Any] = ["trueFalseKeys": tfKeys]
+            let tfResult1: [String: Any] = ["id": "s1", "answered": true, "matched": true]
+            let tfResult2: [String: Any] = ["id": "s2", "answered": true, "matched": false]
+            let tfResult3: [String: Any] = ["id": "s3", "answered": false, "matched": false]
+            let tfStatementResults: [[String: Any]] = [tfResult1, tfResult2, tfResult3]
+            let tfGradingDetail: [String: Any] = ["statementResults": tfStatementResults]
+            let tfItem: [String: Any] = [
+                "itemId": "q-tf-4",
+                "partId": partId,
+                "partCode": partCode,
+                "ord": 4,
+                "displayNo": 4,
+                "questionType": "TRUE_FALSE",
+                "content": "<p>Đúng sai</p>",
+                "body": tfBody,
+                "studentAnswer": tfStudentAnswer,
+                "expectedAnswer": tfExpectedAnswer,
+                "gradingDetail": tfGradingDetail,
+                "outcome": "PARTIAL",
+                "earnedPoints": 0.5,
+                "pointsMax": 1.0
+            ]
+
+            let setBody: [String: Any] = ["passage": "<p>Đoạn dẫn cho câu 5 và 6</p>"]
+            let setItem: [String: Any] = [
+                "itemId": "q-set-5",
+                "partId": partId,
+                "partCode": partCode,
+                "ord": 5,
+                "questionType": "QUESTION_SET",
+                "content": "<p>Chùm câu hỏi</p>",
+                "body": setBody,
+                "outcome": "PARTIAL",
+                "earnedPoints": 1.0,
+                "pointsMax": 2.0
+            ]
+
+            let child1Option: [String: Any] = ["id": "c1-a", "content": "<p>Đáp án 5A</p>"]
+            let child1Options: [[String: Any]] = [child1Option]
+            let child1Body: [String: Any] = ["options": child1Options]
+            let child1StudentAnswer: [String: Any] = ["type": "SINGLE_CHOICE", "optionId": "c1-a"]
+            let child1ExpectedIds: [String] = ["c1-a"]
+            let child1ExpectedAnswer: [String: Any] = ["expectedOptionIds": child1ExpectedIds]
+            let child1Item: [String: Any] = [
+                "itemId": "q-set-5-c1",
+                "parentItemId": "q-set-5",
+                "partId": partId,
+                "partCode": partCode,
+                "ord": 6,
+                "displayNo": 5,
+                "questionType": "SINGLE_CHOICE",
+                "content": "<p>Câu con 5</p>",
+                "body": child1Body,
+                "studentAnswer": child1StudentAnswer,
+                "expectedAnswer": child1ExpectedAnswer,
+                "outcome": "CORRECT",
+                "earnedPoints": 1.0,
+                "pointsMax": 1.0
+            ]
+
+            let child2Option: [String: Any] = ["id": "c2-a", "content": "<p>Đáp án 6A</p>"]
+            let child2Options: [[String: Any]] = [child2Option]
+            let child2Body: [String: Any] = ["options": child2Options]
+            let child2ExpectedIds: [String] = ["c2-a"]
+            let child2ExpectedAnswer: [String: Any] = ["expectedOptionIds": child2ExpectedIds]
+            let child2Item: [String: Any] = [
+                "itemId": "q-set-5-c2",
+                "parentItemId": "q-set-5",
+                "partId": partId,
+                "partCode": partCode,
+                "ord": 7,
+                "displayNo": 6,
+                "questionType": "SINGLE_CHOICE",
+                "content": "<p>Câu con 6</p>",
+                "body": child2Body,
+                "expectedAnswer": child2ExpectedAnswer,
+                "outcome": "BLANK",
+                "earnedPoints": 0.0,
+                "pointsMax": 1.0
+            ]
+
+            let items: [[String: Any]] = [
+                scItem,
+                unscoredItem,
+                matchItem,
+                tfItem,
+                setItem,
+                child1Item,
+                child2Item
+            ]
+            root["items"] = items
         }
 
         let model = ReviewMapper.map(payload)
@@ -316,20 +343,21 @@ final class ReviewViewTests: XCTestCase {
         XCTAssertEqual(qSink.nodes["question.q-sc-1.option.opt-a"]?.isSelected, true)
         XCTAssertEqual(qSink.nodes["question.q-sc-1.option.opt-a.pickTag"]?.label, "Bạn chọn · Sai")
         XCTAssertEqual(qSink.nodes["question.q-sc-1.option.opt-b.correctTag"]?.label, "Đáp án đúng")
-        let optBNode = try XCTUnwrap(qSink.nodes["question.q-sc-1.option.opt-b"])
-        let optANode = try XCTUnwrap(qSink.nodes["question.q-sc-1.option.opt-a"])
+        let optBNode: QuestionInspectedNode = try XCTUnwrap(qSink.nodes["question.q-sc-1.option.opt-b"])
+        let optANode: QuestionInspectedNode = try XCTUnwrap(qSink.nodes["question.q-sc-1.option.opt-a"])
         XCTAssertEqual(optBNode.label, "A.")
         XCTAssertEqual(optANode.label, "B.")
         XCTAssertLessThan(optBNode.frame.minY, optANode.frame.minY, "optionOrder must display opt-b before opt-a")
 
         XCTAssertEqual(qSink.nodes["question.q-unscored-2.reviewPoints"]?.label, "Chưa có điểm · tối đa 2 điểm")
 
-        let matchSummary = try XCTUnwrap(qSink.nodes["question.q-match-3.matchReviewList"]?.label)
+        let matchSummary: String = try XCTUnwrap(qSink.nodes["question.q-match-3.matchReviewList"]?.label)
         XCTAssertTrue(matchSummary.contains("1 / 1"), "Each matching pair max must equal pointsMax / pairCount (2 / 2 = 1): \(matchSummary)")
         XCTAssertTrue(matchSummary.contains("0 / 1"))
 
         XCTAssertNotNil(qSink.nodes["question.q-tf-4.tfReviewList"])
-        let tfGroup = try XCTUnwrap(model.groups.first(where: { $0.id == "q-tf-4" }))
+        let matchedTFGroup: ReviewGroup? = model.groups.first(where: { $0.id == "q-tf-4" })
+        let tfGroup: ReviewGroup = try XCTUnwrap(matchedTFGroup)
         XCTAssertEqual(
             tfGroup.studentAnswer?.trueFalseStatements,
             ["s1": true, "s2": false],

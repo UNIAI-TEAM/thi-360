@@ -56,43 +56,46 @@ final class ResultSnapshotTests: XCTestCase {
         let gradingError = try ResultTestFixtures.decodeResult(variant: "grading-error")
         let vact = try ResultTestFixtures.decodeResult(variant: "vact")
         let breakdown = try ResultTestFixtures.decodeResult(variant: "scored") { root in
-            root["segments"] = [
-                [
-                    "partCode": "P1",
-                    "code": "SEG1",
-                    "name": "Toán học",
-                    "fromPosition": 1,
-                    "toPosition": 50,
-                    "score": 40.0,
-                    "maxPoints": 50.0,
-                    "pendingReview": false,
-                    "stats": [
-                        "correctCount": 40,
-                        "partialCount": 0,
-                        "wrongCount": 8,
-                        "blankCount": 2,
-                        "pendingReviewCount": 0,
-                        "totalCount": 50
-                    ]
-                ]
+            let segStats: [String: Any] = [
+                "correctCount": 40,
+                "partialCount": 0,
+                "wrongCount": 8,
+                "blankCount": 2,
+                "pendingReviewCount": 0,
+                "totalCount": 50
             ]
-            root["subjects"] = [
-                [
-                    "code": "TOAN",
-                    "name": "Toán học",
-                    "score": 40.0,
-                    "maxScore": 50.0,
-                    "pendingReview": false,
-                    "stats": [
-                        "correctCount": 40,
-                        "partialCount": 0,
-                        "wrongCount": 8,
-                        "blankCount": 2,
-                        "pendingReviewCount": 0,
-                        "totalCount": 50
-                    ]
-                ]
+            let segment: [String: Any] = [
+                "partCode": "P1",
+                "code": "SEG1",
+                "name": "Toán học",
+                "fromPosition": 1,
+                "toPosition": 50,
+                "score": 40.0,
+                "maxPoints": 50.0,
+                "pendingReview": false,
+                "stats": segStats
             ]
+            let segments: [[String: Any]] = [segment]
+            root["segments"] = segments
+
+            let subStats: [String: Any] = [
+                "correctCount": 40,
+                "partialCount": 0,
+                "wrongCount": 8,
+                "blankCount": 2,
+                "pendingReviewCount": 0,
+                "totalCount": 50
+            ]
+            let subject: [String: Any] = [
+                "code": "TOAN",
+                "name": "Toán học",
+                "score": 40.0,
+                "maxScore": 50.0,
+                "pendingReview": false,
+                "stats": subStats
+            ]
+            let subjects: [[String: Any]] = [subject]
+            root["subjects"] = subjects
         }
         XCTAssertEqual(breakdown.segments.first?.fromPosition, 1)
         XCTAssertEqual(breakdown.segments.first?.toPosition, 50)

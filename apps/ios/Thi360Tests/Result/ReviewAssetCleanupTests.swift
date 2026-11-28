@@ -67,15 +67,29 @@ final class ReviewAssetCleanupTests: XCTestCase {
 
         let payload = try ResultTestFixtures.decodeReviewPayload(variant: "full-solution") { root in
             root["attemptId"] = self.attemptId
-            root["parts"] = [[
+            let part: [String: Any] = [
                 "partId": "p-clean",
                 "partCode": "P-CLEAN",
                 "partName": "Dọn tài nguyên",
                 "ord": 1,
                 "state": "CLOSED",
                 "pendingReview": false
-            ]]
-            root["items"] = [[
+            ]
+            let parts: [[String: Any]] = [part]
+            root["parts"] = parts
+
+            let solutionHtml = """
+            <figure class="image" data-width="medium" data-zoom="false">
+              <img src="/api/v1/me/attempts/\(self.attemptId)/solution-assets/\(self.solutionAssetId)" alt="Lời giải nhạy cảm">
+            </figure>
+            """
+            let option: [String: Any] = ["id": "o1", "content": "<p>A</p>"]
+            let options: [[String: Any]] = [option]
+            let body: [String: Any] = ["options": options]
+            let studentAnswer: [String: Any] = ["type": "SINGLE_CHOICE", "optionId": "o1"]
+            let expectedIds: [String] = ["o1"]
+            let expectedAnswer: [String: Any] = ["expectedOptionIds": expectedIds]
+            let item: [String: Any] = [
                 "itemId": "q-clean-1",
                 "partId": "p-clean",
                 "partCode": "P-CLEAN",
@@ -83,18 +97,16 @@ final class ReviewAssetCleanupTests: XCTestCase {
                 "displayNo": 1,
                 "questionType": "SINGLE_CHOICE",
                 "content": "<p>Câu kiểm tra dọn bộ đệm</p>",
-                "body": ["options": [["id": "o1", "content": "<p>A</p>"]]],
-                "studentAnswer": ["type": "SINGLE_CHOICE", "optionId": "o1"],
-                "expectedAnswer": ["expectedOptionIds": ["o1"]],
-                "solution": """
-                <figure class="image" data-width="medium" data-zoom="false">
-                  <img src="/api/v1/me/attempts/\(self.attemptId)/solution-assets/\(self.solutionAssetId)" alt="Lời giải nhạy cảm">
-                </figure>
-                """,
+                "body": body,
+                "studentAnswer": studentAnswer,
+                "expectedAnswer": expectedAnswer,
+                "solution": solutionHtml,
                 "outcome": "CORRECT",
                 "earnedPoints": 1.0,
                 "pointsMax": 1.0
-            ]]
+            ]
+            let items: [[String: Any]] = [item]
+            root["items"] = items
         }
 
         let (_, _, transport, preferences) = try SessionTestFactory.makeContractStack(

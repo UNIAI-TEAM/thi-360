@@ -30,43 +30,53 @@ final class ResultLogRedactionTests: XCTestCase {
             variant: "full-solution"
         )
         var reviewRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: baseReviewData) as? [String: Any])
-        reviewRoot["items"] = [
-            [
-                "itemId": "demo-redact-1",
-                "partId": "part-1",
-                "partCode": "PART-1",
-                "ord": 1,
-                "displayNo": 1,
-                "questionType": "SHORT_ANSWER",
-                "content": "<p>Câu hỏi ngắn</p>",
-                "body": ["answerFormat": "TEXT"],
-                "studentAnswer": ["type": "SHORT_ANSWER", "text": shortTextSentinel],
-                "expectedAnswer": ["acceptedTexts": [expectedAnswerSentinel]],
-                "solution": "<p>\(solutionHtmlSentinel)</p>",
-                "outcome": "CORRECT",
-                "earnedPoints": 1.0,
-                "pointsMax": 1.0
-            ],
-            [
-                "itemId": "demo-redact-2",
-                "partId": "part-1",
-                "partCode": "PART-1",
-                "ord": 2,
-                "displayNo": 2,
-                "questionType": "ESSAY",
-                "content": "<p>Câu tự luận</p>",
-                "studentAnswer": ["type": "ESSAY", "html": "<p>\(studentEssaySentinel)</p>", "wordCount": 1],
-                "outcome": "PARTIAL",
-                "earnedPoints": 5.0,
-                "pointsMax": 10.0,
-                "essayFeedback": [
-                    "comment": graderCommentSentinel,
-                    "criteria": [
-                        ["id": "C1", "points": 5.0, "comment": criterionCommentSentinel]
-                    ]
-                ]
-            ]
+        let shortBody: [String: Any] = ["answerFormat": "TEXT"]
+        let shortStudent: [String: Any] = ["type": "SHORT_ANSWER", "text": shortTextSentinel]
+        let acceptedTexts: [String] = [expectedAnswerSentinel]
+        let shortExpected: [String: Any] = ["acceptedTexts": acceptedTexts]
+        let shortItem: [String: Any] = [
+            "itemId": "demo-redact-1",
+            "partId": "part-1",
+            "partCode": "PART-1",
+            "ord": 1,
+            "displayNo": 1,
+            "questionType": "SHORT_ANSWER",
+            "content": "<p>Câu hỏi ngắn</p>",
+            "body": shortBody,
+            "studentAnswer": shortStudent,
+            "expectedAnswer": shortExpected,
+            "solution": "<p>\(solutionHtmlSentinel)</p>",
+            "outcome": "CORRECT",
+            "earnedPoints": 1.0,
+            "pointsMax": 1.0
         ]
+        let essayStudent: [String: Any] = [
+            "type": "ESSAY",
+            "html": "<p>\(studentEssaySentinel)</p>",
+            "wordCount": 1
+        ]
+        let criterion: [String: Any] = ["id": "C1", "points": 5.0, "comment": criterionCommentSentinel]
+        let criteria: [[String: Any]] = [criterion]
+        let essayFeedback: [String: Any] = [
+            "comment": graderCommentSentinel,
+            "criteria": criteria
+        ]
+        let essayItem: [String: Any] = [
+            "itemId": "demo-redact-2",
+            "partId": "part-1",
+            "partCode": "PART-1",
+            "ord": 2,
+            "displayNo": 2,
+            "questionType": "ESSAY",
+            "content": "<p>Câu tự luận</p>",
+            "studentAnswer": essayStudent,
+            "outcome": "PARTIAL",
+            "earnedPoints": 5.0,
+            "pointsMax": 10.0,
+            "essayFeedback": essayFeedback
+        ]
+        let items: [[String: Any]] = [shortItem, essayItem]
+        reviewRoot["items"] = items
         let reviewData = try JSONSerialization.data(withJSONObject: reviewRoot)
 
         let logSink = InMemoryLogSink()

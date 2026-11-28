@@ -18,10 +18,15 @@ final class ResultViewTests: XCTestCase {
             root["startedAt"] = "2026-11-26T01:05:00Z"
             root["finishedAt"] = "2026-11-26T02:20:30Z"
             root["endReason"] = "CHOICE_TIMEOUT"
-            root["choices"] = [
-                "a_part3": ["optionCode": "KH", "subjectCodes": ["LY", "HOA"]],
-                "b_part4": ["optionCode": "ANH", "subjectCodes": []]
+            let part3Subjects: [String] = ["LY", "HOA"]
+            let part3Choice: [String: Any] = ["optionCode": "KH", "subjectCodes": part3Subjects]
+            let part4Subjects: [String] = []
+            let part4Choice: [String: Any] = ["optionCode": "ANH", "subjectCodes": part4Subjects]
+            let choices: [String: Any] = [
+                "a_part3": part3Choice,
+                "b_part4": part4Choice
             ]
+            root["choices"] = choices
         }
 
         let (sessionStore, _, _, _) = try SessionTestFactory.makeContractStack(

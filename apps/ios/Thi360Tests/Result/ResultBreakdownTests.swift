@@ -8,43 +8,44 @@ final class ResultBreakdownTests: XCTestCase {
     func testParts() throws {
         let result = try ResultTestFixtures.decodeResult(variant: "pending-review") { root in
             root["endReason"] = "CHOICE_TIMEOUT"
-            root["parts"] = [
-                [
-                    "partId": "p1",
-                    "partCode": "P1",
-                    "partName": "Tư duy định lượng",
-                    "ord": 0,
-                    "skipped": false,
-                    "pendingReview": false,
-                    "score": 36.5,
-                    "maxScore": 50.0,
-                    "stats": [
-                        "correctCount": 31,
-                        "partialCount": 4,
-                        "wrongCount": 11,
-                        "blankCount": 4,
-                        "pendingReviewCount": 0,
-                        "totalCount": 50
-                    ]
-                ],
-                [
-                    "partId": "p2",
-                    "partCode": "P2_CODE",
-                    "ord": 1,
-                    "skipped": true,
-                    "pendingReview": false,
-                    "maxScore": 50.0
-                ],
-                [
-                    "partId": "p3",
-                    "partCode": "P3",
-                    "partName": "Tự luận Ngữ văn",
-                    "ord": 2,
-                    "skipped": false,
-                    "pendingReview": true,
-                    "maxScore": 25.0
-                ]
+            let p1Stats: [String: Any] = [
+                "correctCount": 31,
+                "partialCount": 4,
+                "wrongCount": 11,
+                "blankCount": 4,
+                "pendingReviewCount": 0,
+                "totalCount": 50
             ]
+            let part1: [String: Any] = [
+                "partId": "p1",
+                "partCode": "P1",
+                "partName": "Tư duy định lượng",
+                "ord": 0,
+                "skipped": false,
+                "pendingReview": false,
+                "score": 36.5,
+                "maxScore": 50.0,
+                "stats": p1Stats
+            ]
+            let part2: [String: Any] = [
+                "partId": "p2",
+                "partCode": "P2_CODE",
+                "ord": 1,
+                "skipped": true,
+                "pendingReview": false,
+                "maxScore": 50.0
+            ]
+            let part3: [String: Any] = [
+                "partId": "p3",
+                "partCode": "P3",
+                "partName": "Tự luận Ngữ văn",
+                "ord": 2,
+                "skipped": false,
+                "pendingReview": true,
+                "maxScore": 25.0
+            ]
+            let parts: [[String: Any]] = [part1, part2, part3]
+            root["parts"] = parts
         }
 
         let (window, _, sink, _) = ResultViewTestHelper.host(
@@ -89,57 +90,98 @@ final class ResultBreakdownTests: XCTestCase {
         let subjectOptions = try ResultTestFixtures.decodeCatalogOptions(variant: "subject")
 
         let result = try ResultTestFixtures.decodeResult(variant: "scored") { root in
-            root["segments"] = [
-                [
-                    "partCode": "P1",
-                    "code": "SEG1",
-                    "name": "Toán học",
-                    "fromPosition": 1,
-                    "toPosition": 35,
-                    "pendingReview": false,
-                    "score": 25.5,
-                    "maxPoints": 35.0,
-                    "stats": ["correctCount": 22, "partialCount": 3, "wrongCount": 8, "blankCount": 2, "pendingReviewCount": 0, "totalCount": 35]
-                ],
-                [
-                    "partCode": "P2",
-                    "code": "SEG2_CODE",
-                    "fromPosition": 36,
-                    "toPosition": 50,
-                    "pendingReview": true,
-                    "stats": ["correctCount": 0, "partialCount": 0, "wrongCount": 0, "blankCount": 0, "pendingReviewCount": 1, "totalCount": 1]
-                ],
-                [
-                    "partCode": "P3",
-                    "code": "SEG3",
-                    "name": "Không điểm tối đa",
-                    "pendingReview": false,
-                    "score": 9.0,
-                    "stats": ["correctCount": 9, "partialCount": 0, "wrongCount": 0, "blankCount": 0, "pendingReviewCount": 0, "totalCount": 9]
-                ]
+            let seg1Stats: [String: Any] = [
+                "correctCount": 22,
+                "partialCount": 3,
+                "wrongCount": 8,
+                "blankCount": 2,
+                "pendingReviewCount": 0,
+                "totalCount": 35
             ]
-            root["subjects"] = [
-                [
-                    "code": "TOAN",
-                    "name": "Fallback Name",
-                    "pendingReview": false,
-                    "score": 36.5,
-                    "maxScore": 50.0,
-                    "stats": ["correctCount": 31, "partialCount": 2, "wrongCount": 11, "blankCount": 6, "pendingReviewCount": 0, "totalCount": 50]
-                ],
-                [
-                    "code": "CUSTOM_SUB",
-                    "name": "Môn tự định nghĩa",
-                    "pendingReview": true,
-                    "stats": ["correctCount": 0, "partialCount": 0, "wrongCount": 0, "blankCount": 0, "pendingReviewCount": 1, "totalCount": 1]
-                ],
-                [
-                    "code": "RAW_ONLY",
-                    "pendingReview": false,
-                    "score": 4.0,
-                    "maxScore": 10.0
-                ]
+            let seg1: [String: Any] = [
+                "partCode": "P1",
+                "code": "SEG1",
+                "name": "Toán học",
+                "fromPosition": 1,
+                "toPosition": 35,
+                "pendingReview": false,
+                "score": 25.5,
+                "maxPoints": 35.0,
+                "stats": seg1Stats
             ]
+            let seg2Stats: [String: Any] = [
+                "correctCount": 0,
+                "partialCount": 0,
+                "wrongCount": 0,
+                "blankCount": 0,
+                "pendingReviewCount": 1,
+                "totalCount": 1
+            ]
+            let seg2: [String: Any] = [
+                "partCode": "P2",
+                "code": "SEG2_CODE",
+                "fromPosition": 36,
+                "toPosition": 50,
+                "pendingReview": true,
+                "stats": seg2Stats
+            ]
+            let seg3Stats: [String: Any] = [
+                "correctCount": 9,
+                "partialCount": 0,
+                "wrongCount": 0,
+                "blankCount": 0,
+                "pendingReviewCount": 0,
+                "totalCount": 9
+            ]
+            let seg3: [String: Any] = [
+                "partCode": "P3",
+                "code": "SEG3",
+                "name": "Không điểm tối đa",
+                "pendingReview": false,
+                "score": 9.0,
+                "stats": seg3Stats
+            ]
+            let segments: [[String: Any]] = [seg1, seg2, seg3]
+            root["segments"] = segments
+
+            let sub1Stats: [String: Any] = [
+                "correctCount": 31,
+                "partialCount": 2,
+                "wrongCount": 11,
+                "blankCount": 6,
+                "pendingReviewCount": 0,
+                "totalCount": 50
+            ]
+            let sub1: [String: Any] = [
+                "code": "TOAN",
+                "name": "Fallback Name",
+                "pendingReview": false,
+                "score": 36.5,
+                "maxScore": 50.0,
+                "stats": sub1Stats
+            ]
+            let sub2Stats: [String: Any] = [
+                "correctCount": 0,
+                "partialCount": 0,
+                "wrongCount": 0,
+                "blankCount": 0,
+                "pendingReviewCount": 1,
+                "totalCount": 1
+            ]
+            let sub2: [String: Any] = [
+                "code": "CUSTOM_SUB",
+                "name": "Môn tự định nghĩa",
+                "pendingReview": true,
+                "stats": sub2Stats
+            ]
+            let sub3: [String: Any] = [
+                "code": "RAW_ONLY",
+                "pendingReview": false,
+                "score": 4.0,
+                "maxScore": 10.0
+            ]
+            let subjects: [[String: Any]] = [sub1, sub2, sub3]
+            root["subjects"] = subjects
         }
 
         let (sessionStore, _, _, _) = try SessionTestFactory.makeContractStack(
@@ -189,9 +231,15 @@ final class ResultBreakdownTests: XCTestCase {
         XCTAssertTrue(sub2.contains("RAW_ONLY"))
 
         let vactWithSubjects = try ResultTestFixtures.decodeResult(variant: "vact") { root in
-            root["subjects"] = [
-                ["code": "TOAN", "name": "Toán học", "pendingReview": false, "score": 10.0, "maxScore": 30.0]
+            let vactSubject: [String: Any] = [
+                "code": "TOAN",
+                "name": "Toán học",
+                "pendingReview": false,
+                "score": 10.0,
+                "maxScore": 30.0
             ]
+            let subjects: [[String: Any]] = [vactSubject]
+            root["subjects"] = subjects
         }
         vm.setStateForTesting(loadState: .loaded(value: vactWithSubjects, stale: false), subjectOptions: subjectOptions)
         let (vactWin, _, vactSink, _) = ResultViewTestHelper.host(
