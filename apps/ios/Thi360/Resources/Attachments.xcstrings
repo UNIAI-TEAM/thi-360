@@ -1,0 +1,312 @@
+{
+  "sourceLanguage" : "vi",
+  "strings" : {
+    "attempt.attachments.openError" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not open the file. Please try again."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không mở được tệp. Vui lòng thử lại."
+          }
+        }
+      }
+    },
+    "attempt.player.attachmentsLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attachments"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tệp đính kèm"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.disabledReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio player is currently disabled."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trình phát audio đang tạm khóa."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.evictedReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Session moved to another device; audio playback stopped."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phiên làm bài đã chuyển sang thiết bị khác, audio đã dừng."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.exhaustedReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You have used all plays for this audio."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bạn đã dùng hết số lần nghe cho tệp audio này."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.offlineWaiting" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection lost; waiting to reconnect to resume playback."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mất kết nối mạng, đang chờ kết nối lại để phát tiếp."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.partClosedReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This part is closed; audio playback is unavailable."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phần thi đã đóng, không thể nghe tiếp audio."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.pausedResumable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio paused. Tap Resume to continue without using a play."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Âm thanh đã tạm dừng. Bấm Phát lại để nghe tiếp mà không mất lượt nghe."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.play" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nghe"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.playErrorRetry" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not start audio right now. Click again to retry."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Không thể phát audio lúc này. Bấm lại để thử tiếp."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.playing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playing…"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đang phát…"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.playsExhaustedBadge" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No plays left (0/{max})"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã hết lượt nghe (0/{max})"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.playsRemaining" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "{left}/{max} plays left"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Còn {left}/{max} lần nghe"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.progressLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio playback progress"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiến độ phát audio"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.regionLabel" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio player"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trình phát audio"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.resume" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume playback"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Phát lại"
+          }
+        }
+      }
+    },
+    "question.audioPlayer.submittedReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Attempt submitted; audio playback has stopped."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bài thi đã nộp, audio đã dừng phát."
+          }
+        }
+      }
+    },
+    "question.audioPlayer.timeUpReason" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time is up; audio playback has stopped."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đã hết giờ làm bài, audio đã dừng phát."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

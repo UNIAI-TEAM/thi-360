@@ -428,6 +428,15 @@ struct AppRootView: View {
             RichContentUITestHarnessView(scenario: richScenario, preferences: preferences)
         } else if let questionScenario = QuestionUITestScenario.fromLaunchArguments() {
             QuestionUITestHarnessView(scenario: questionScenario, preferences: preferences)
+        } else if let attachmentsScenario = AttachmentsUITestScenario.fromLaunchArguments(),
+                  sessionStore == nil || (sessionStore?.state == .active && resolvedBiometricManager?.isPromptingEnable != true)
+        {
+            AttachmentsUITestHarnessView(
+                scenario: attachmentsScenario,
+                preferences: preferences,
+                sessionStore: sessionStore,
+                connectivityMonitor: connectivityMonitor
+            )
         } else {
             standardRootContent
         }
