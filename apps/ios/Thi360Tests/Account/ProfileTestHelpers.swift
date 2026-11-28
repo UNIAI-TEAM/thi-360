@@ -225,6 +225,22 @@ enum ProfileFixtureHelper {
         controller.traitOverrides.userInterfaceStyle = (themeMode == .dark) ? .dark : .light
         controller.traitOverrides.preferredContentSizeCategory = contentSizeCategory
 
+        let container = UIViewController()
+        container.view.backgroundColor = .clear
+        container.traitOverrides.horizontalSizeClass = sizeClass
+        container.traitOverrides.userInterfaceStyle = (themeMode == .dark) ? .dark : .light
+        container.traitOverrides.preferredContentSizeCategory = contentSizeCategory
+        container.addChild(controller)
+        controller.view.translatesAutoresizingMaskIntoConstraints = false
+        container.view.addSubview(controller.view)
+        NSLayoutConstraint.activate([
+            controller.view.leadingAnchor.constraint(equalTo: container.view.leadingAnchor),
+            controller.view.topAnchor.constraint(equalTo: container.view.topAnchor),
+            controller.view.widthAnchor.constraint(equalToConstant: size.width),
+            controller.view.heightAnchor.constraint(equalToConstant: size.height)
+        ])
+        controller.didMove(toParent: container)
+
         let window: UIWindow
         if let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
             window = UIWindow(windowScene: scene)
@@ -234,7 +250,7 @@ enum ProfileFixtureHelper {
         }
         inspectionSinks.setObject(sink, forKey: window)
         inspectionSinks.setObject(sink, forKey: controller.view)
-        window.rootViewController = controller
+        window.rootViewController = container
         window.overrideUserInterfaceStyle = (themeMode == .dark) ? .dark : .light
         window.makeKeyAndVisible()
         window.setNeedsLayout()
@@ -242,6 +258,13 @@ enum ProfileFixtureHelper {
         RunLoop.main.run(until: Date().addingTimeInterval(0.08))
         window.layoutIfNeeded()
         return (window, controller)
+    }
+
+    @MainActor
+    static func teardown(_ window: UIWindow) {
+        window.isHidden = true
+        window.rootViewController = nil
+        window.windowScene = nil
     }
 
     @MainActor

@@ -35,7 +35,7 @@ final class AccountTwoPaneTests: XCTestCase {
             sizeClass: .regular,
             themeMode: .light
         )
-        defer { window.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(window) }
 
         XCTAssertEqual(accountVM.selectedDetail, .profile)
         let padProfileReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
@@ -102,7 +102,7 @@ final class AccountTwoPaneTests: XCTestCase {
             sizeClass: .regular,
             themeMode: .light
         )
-        defer { window.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(window) }
 
         XCTAssertEqual(accountVM.selectedDetail, .profile)
         let duoProfileReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
@@ -143,7 +143,7 @@ final class AccountTwoPaneTests: XCTestCase {
             sizeClass: .regular,
             themeMode: .light
         )
-        defer { window.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(window) }
 
         let sink = ProfileFixtureHelper.sink(for: controller.view)
         XCTAssertNotNil(sink)

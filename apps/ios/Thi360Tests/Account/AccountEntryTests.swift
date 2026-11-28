@@ -35,7 +35,7 @@ final class AccountEntryTests: XCTestCase {
             sizeClass: .compact,
             themeMode: .light
         )
-        defer { window.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(window) }
 
         let scrollReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             guard let scrollView = RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first else {
@@ -45,11 +45,12 @@ final class AccountEntryTests: XCTestCase {
         }
         XCTAssertTrue(scrollReady, "Account scroll view must have scrollable content > 650pt")
         let accountScroll = try XCTUnwrap(RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first)
-        accountScroll.setContentOffset(CGPoint(x: 0, y: 120), animated: false)
+        accountScroll.setContentOffset(CGPoint(x: 0, y: 200), animated: false)
         let offsetApplied = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
-            accountScroll.contentOffset.y >= 100
+            accountScroll.contentOffset.y >= 180
         }
-        XCTAssertTrue(offsetApplied, "Account scroll offset must advance to >= 100pt before pushing Profile")
+        XCTAssertTrue(offsetApplied, "Account scroll offset must advance to >= 180pt before pushing Profile")
+        let scrolledDistanceBefore = accountScroll.contentOffset.y + accountScroll.adjustedContentInset.top
 
         router.openProfile()
         let profilePushed = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
@@ -72,12 +73,19 @@ final class AccountEntryTests: XCTestCase {
             else {
                 return false
             }
-            return restoredScroll.contentOffset.y >= 100
+            let restoredDistance = restoredScroll.contentOffset.y + restoredScroll.adjustedContentInset.top
+            return restoredScroll.contentOffset.y >= 100 && abs(restoredDistance - scrolledDistanceBefore) <= 2.0
         }
         XCTAssertTrue(scrollRestored, "Returning from Profile must finish pop transition and preserve Account scroll offset")
         XCTAssertTrue(router.path(for: .account).isEmpty)
         let restoredScroll = try XCTUnwrap(RecoveryViewTestHelper.findViews(ofType: UIScrollView.self, in: controller.view).first)
         XCTAssertGreaterThanOrEqual(restoredScroll.contentOffset.y, 100, "Returning from Profile must preserve Account scroll offset")
+        XCTAssertEqual(
+            restoredScroll.contentOffset.y + restoredScroll.adjustedContentInset.top,
+            scrolledDistanceBefore,
+            accuracy: 2.0,
+            "Returning from Profile must preserve visual Account scroll distance across navigation bar inset updates"
+        )
 
         router.openOrders()
         let ordersPushed = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {

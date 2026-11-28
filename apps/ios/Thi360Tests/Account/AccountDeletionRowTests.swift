@@ -44,7 +44,7 @@ final class AccountDeletionRowTests: XCTestCase {
             sizeClass: .compact,
             themeMode: .light
         )
-        defer { phoneWindow.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(phoneWindow) }
 
         let rowsReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             ProfileFixtureHelper.findElementFrame(identifier: "account.logoutButton", in: phoneController.view, window: phoneWindow) != nil
@@ -77,7 +77,7 @@ final class AccountDeletionRowTests: XCTestCase {
             sizeClass: .compact,
             themeMode: .light
         )
-        defer { lockWindow.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(lockWindow) }
         let lockedIDs = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: lockController.view)
         XCTAssertTrue(RecoveryViewTestHelper.findViews(ofType: UITabBar.self, in: lockController.view).isEmpty, "Lock screen must replace authenticated tab shell")
         XCTAssertFalse(lockedIDs.contains("shell.account.view"), "Account list must remain hidden behind lock screen")
@@ -107,7 +107,7 @@ final class AccountDeletionRowTests: XCTestCase {
             sizeClass: .regular,
             themeMode: .light
         )
-        defer { padWindow.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(padWindow) }
         let padDeleteReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             ProfileFixtureHelper.collectAccessibilityIdentifiers(in: padController.view).contains("deleteAccount.screen")
         }

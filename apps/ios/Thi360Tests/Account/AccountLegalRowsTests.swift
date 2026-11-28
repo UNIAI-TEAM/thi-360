@@ -35,7 +35,7 @@ final class AccountLegalRowsTests: XCTestCase {
             sizeClass: .compact,
             themeMode: .light
         )
-        defer { phoneWindow.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(phoneWindow) }
 
         let phoneRowsReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
             let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: phoneController.view)
@@ -109,7 +109,7 @@ final class AccountLegalRowsTests: XCTestCase {
             sizeClass: .regular,
             themeMode: .light
         )
-        defer { padWindow.isHidden = true }
+        defer { ProfileFixtureHelper.teardown(padWindow) }
 
         padAccountVM.selectDetail(.legalTerms)
         let termsDetailReady = await ProfileFixtureHelper.waitUntil(timeout: 5.0) {
