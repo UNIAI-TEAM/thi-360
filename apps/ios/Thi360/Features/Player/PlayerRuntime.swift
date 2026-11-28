@@ -9,6 +9,7 @@ final class PlayerRuntime {
     let bodyStore = PlayerQuestionBodyStore()
 
     private var assetSources: [String: AttemptAssetSource] = [:]
+    private var attachmentHosts: [String: LivePlayerAttachmentHost] = [:]
     private var registeredCleanupIds: Set<ObjectIdentifier> = []
     private var boundRouterIds: Set<ObjectIdentifier> = []
 
@@ -78,13 +79,45 @@ final class PlayerRuntime {
         return created
     }
 
+    func attachmentHost(
+        for attemptId: String,
+        engine: AttemptEngine,
+        sessionStore: SessionStore?,
+        assets: AttemptAssetSource?
+    ) -> LivePlayerAttachmentHost? {
+        if let existing = attachmentHosts[attemptId] {
+            return existing
+        }
+        guard let sessionStore, let assets else { return nil }
+        let gateway = OpenAPIAttemptAudioGateway(
+            attemptId: attemptId,
+            apiClient: sessionStore.apiClient,
+            activeSessionIdProvider: { @MainActor [weak engine] in
+                engine?.state.session.activeSessionId
+            }
+        )
+        let created = LivePlayerAttachmentHost(
+            attemptId: attemptId,
+            engine: engine,
+            gateway: gateway,
+            assetSource: assets
+        )
+        attachmentHosts[attemptId] = created
+        return created
+    }
+
     func release(attemptId: String) {
+        attachmentHosts.removeValue(forKey: attemptId)?.close()
         engineRegistry.release(attemptId)
         bodyStore.remove(for: attemptId)
         assetSources.removeValue(forKey: attemptId)?.purgeAll()
     }
 
     func releaseAll() {
+        for host in attachmentHosts.values {
+            host.close()
+        }
+        attachmentHosts.removeAll()
         engineRegistry.releaseAll()
         bodyStore.removeAll()
         for source in assetSources.values {

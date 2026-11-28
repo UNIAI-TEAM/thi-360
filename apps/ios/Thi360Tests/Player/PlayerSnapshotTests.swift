@@ -46,12 +46,10 @@ final class PlayerSnapshotTests: XCTestCase {
         questionSetState.attempt = attempt50
         questionSetState.session = .editing(sessionId: "sess-snap-qs")
         questionSetState.clock = Countdown(target: .attempt, remaining: .seconds(1800))
-        if let firstPart50 = attempt50.parts?.first {
-            let parentSetId = (firstPart50.items ?? []).first(where: { $0.questionType == .QUESTION_SET })?.itemId
-            let firstSetChildId = (firstPart50.items ?? []).first(where: { $0.parentItemId == parentSetId })?.itemId
-            XCTAssertNotNil(firstSetChildId, "attempt-50 fixture must contain a QUESTION_SET with child items")
-            questionSetState.position = Position(partId: firstPart50.partId ?? "", itemId: firstSetChildId)
-        }
+        let firstPart50 = try XCTUnwrap(attempt50.parts?.first)
+        let parentSetId = try XCTUnwrap((firstPart50.items ?? []).first(where: { $0.questionType == .QUESTION_SET })?.itemId)
+        let firstSetChildId = try XCTUnwrap((firstPart50.items ?? []).first(where: { $0.parentItemId == parentSetId })?.itemId)
+        questionSetState.position = Position(partId: firstPart50.partId ?? "", itemId: firstSetChildId)
 
         var takeoverState = activeState
         takeoverState.session = .openElsewhere(lastSeenAt: FlexibleISO8601DateTranscoder.parse("2026-11-20T09:50:00Z")!)
@@ -132,25 +130,32 @@ final class PlayerSnapshotTests: XCTestCase {
             }
         }
 
-        let duoViewport = viewports[4]
-        let (duoWin, duoVC) = PlayerViewTestHost.host(
-            PlayerView(
-                attemptId: attempt50.attemptId,
-                engineState: questionSetState,
-                localUI: PlayerLocalUI(),
-                bodies: bodies50,
-                locale: .vi,
-                idiomOverride: duoViewport.idiom
-            ),
-            size: duoViewport.size,
-            style: .light,
-            sizeClass: duoViewport.sizeClass,
-            settleSeconds: 0.1
-        )
-        defer { duoWin.isHidden = true }
-        XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.leftPane", in: duoVC.view, window: duoWin))
-        XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.passagePane", in: duoVC.view, window: duoWin))
-        XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.rightPane", in: duoVC.view, window: duoWin))
+        for checkViewport in [viewports[0], viewports[1], viewports[4]] {
+            let (qsWin, qsVC) = PlayerViewTestHost.host(
+                PlayerView(
+                    attemptId: attempt50.attemptId,
+                    engineState: questionSetState,
+                    localUI: PlayerLocalUI(),
+                    bodies: bodies50,
+                    locale: .vi,
+                    idiomOverride: checkViewport.idiom
+                ),
+                size: checkViewport.size,
+                style: .light,
+                sizeClass: checkViewport.sizeClass,
+                settleSeconds: 0.25
+            )
+            defer { qsWin.isHidden = true }
+            XCTAssertNotNil(
+                PlayerViewTestHost.findNode(id: "question.\(firstSetChildId).title", in: qsVC.view, window: qsWin),
+                "\(checkViewport.name): QUESTION_SET child question must be scrolled into view and materialized"
+            )
+            if checkViewport.name == "duo-open-951x669" {
+                XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.leftPane", in: qsVC.view, window: qsWin))
+                XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.passagePane", in: qsVC.view, window: qsWin))
+                XCTAssertNotNil(PlayerViewTestHost.findNode(id: "player.duo.rightPane", in: qsVC.view, window: qsWin))
+            }
+        }
 
         let compactGridUI = PlayerUI.make(
             state: activeState,
@@ -255,7 +260,7 @@ final class PlayerSnapshotTests: XCTestCase {
             size: viewport.size,
             style: style,
             sizeClass: viewport.sizeClass,
-            settleSeconds: 0.08
+            settleSeconds: name.hasPrefix("player-active-question-set") ? 0.25 : 0.08
         )
         defer { win.isHidden = true }
         let (img, png) = try CatalogViewInspector.renderPNG(window: win, size: viewport.size)

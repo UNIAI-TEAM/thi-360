@@ -17,6 +17,20 @@ private struct VisibleUnitPreferenceKey: PreferenceKey {
     }
 }
 
+private enum ContentRow: Identifiable {
+    case header(id: String, header: UnitGroupHeader)
+    case unit(QuestionDisplayUnit)
+
+    var id: String {
+        switch self {
+        case let .header(id, _):
+            return "header::\(id)"
+        case let .unit(unit):
+            return unit.key
+        }
+    }
+}
+
 struct PlayerContent: View {
     let attemptId: String
     let ui: PlayerUI
@@ -97,14 +111,29 @@ struct PlayerContent: View {
         return false
     }
 
+    private var contentRows: [ContentRow] {
+        var rows: [ContentRow] = []
+        for group in ui.unitGroups {
+            if case .none = group.header {
+            } else {
+                rows.append(.header(id: group.id, header: group.header))
+            }
+            for unit in group.units {
+                rows.append(.unit(unit))
+            }
+        }
+        return rows
+    }
+
     var body: some View {
         let mappedAnswers = answerValuesMap
         let flagged = flaggedIds
         let activePartId = ui.activePart?.partId ?? ""
+        let rows = contentRows
 
         ScrollViewReader { proxy in
             ScrollView {
-                if ui.unitGroups.isEmpty {
+                if rows.isEmpty {
                     Text(PlayerStrings.text("attempt.player.noActiveQuestion", locale: locale))
                         .font(.body)
                         .foregroundStyle(palette.textMutedColor)
@@ -113,16 +142,19 @@ struct PlayerContent: View {
                         .accessibilityIdentifier("player.content.empty")
                 } else {
                     LazyVStack(alignment: .leading, spacing: 20) {
-                        ForEach(ui.unitGroups) { group in
-                            groupHeader(group.header)
+                        ForEach(rows) { row in
+                            switch row {
+                            case let .header(_, header):
+                                groupHeader(header)
 
-                            ForEach(group.units) { unit in
+                            case let .unit(unit):
                                 unitCard(
                                     unit: unit,
                                     partId: activePartId,
                                     mappedAnswers: mappedAnswers,
                                     flagged: flagged
                                 )
+                                .id(unit.key)
                                 .onAppear {
                                     onUnitMaterialized?(unit.key)
                                 }
@@ -190,10 +222,30 @@ struct PlayerContent: View {
         }
     }
 
+    private func unitKey(containing itemId: ItemID) -> String? {
+        for group in ui.unitGroups {
+            for unit in group.units where unit.leafIdSet.contains(itemId) {
+                return unit.key
+            }
+        }
+        return nil
+    }
+
     private func performScroll(to itemId: ItemID, proxy: ScrollViewProxy, animated: Bool) {
         suppressTrackingUntil = Date().addingTimeInterval(0.6)
         isUserScrollTracking = false
-        let apply = {
+        let outerTarget = unitKey(containing: itemId) ?? itemId
+
+        let scrollToOuter = {
+            if animated {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    proxy.scrollTo(outerTarget, anchor: .top)
+                }
+            } else {
+                proxy.scrollTo(outerTarget, anchor: .top)
+            }
+        }
+        let scrollToLeaf = {
             if animated {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     proxy.scrollTo(itemId, anchor: .top)
@@ -202,10 +254,23 @@ struct PlayerContent: View {
                 proxy.scrollTo(itemId, anchor: .top)
             }
         }
-        apply()
+
+        scrollToOuter()
+        DispatchQueue.main.async {
+            scrollToOuter()
+            if outerTarget != itemId {
+                DispatchQueue.main.async {
+                    scrollToLeaf()
+                }
+            }
+        }
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(80))
-            apply()
+            scrollToOuter()
+            if outerTarget != itemId {
+                try? await Task.sleep(for: .milliseconds(40))
+                scrollToLeaf()
+            }
         }
     }
 
@@ -392,7 +457,6 @@ struct PlayerContent: View {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(palette.borderColor, lineWidth: 1)
             )
-            .id(unit.key)
             .background(anchorReader(itemId: firstLeafId))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("player.unit.\(unit.key)")
@@ -408,7 +472,6 @@ struct PlayerContent: View {
                 flagged: flagged,
                 cardWidth: cardWidth
             )
-            .id(itemId)
             .background(anchorReader(itemId: itemId))
         }
     }

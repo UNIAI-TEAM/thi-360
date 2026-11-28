@@ -126,6 +126,159 @@ final class PlayerAttachmentSlotTests: XCTestCase {
         XCTAssertTrue(lockedCtx.isLocked, "DuoPassagePane must propagate item-level .locked state")
     }
 
+    func testLivePlayerAttachmentHostAndAttemptRoutesWireAudioPdfAndCleanup() async throws {
+        // Plan A6 mutation: position certified attempt-50.json on its QUESTION_SET carrying listening-part-1.mp3 and append a parent PDF to verify live AttemptRoutes -> LivePlayerAttachmentHost -> AttachmentsView + AttemptAudioPlayerView rendering and release cleanup.
+        let pdfAssetId = "00000000-0000-7000-8000-00000000b001"
+        let attemptId = "att-live-audio-\(UUID().uuidString.lowercased())"
+        let harness = try PlayerTestHarness(
+            attemptId: attemptId,
+            useRichTextAttempt50: true,
+            autoStart: false,
+            mutateInitialState: { json in
+                guard var parts = json["parts"] as? [[String: Any]], !parts.isEmpty,
+                      var items = parts[0]["items"] as? [[String: Any]],
+                      let parentIdx = items.firstIndex(where: { ($0["questionType"] as? String) == "QUESTION_SET" }),
+                      let parentId = items[parentIdx]["itemId"] as? String,
+                      let firstChildId = items.first(where: { ($0["parentItemId"] as? String) == parentId })?["itemId"] as? String,
+                      let partId = parts[0]["partId"] as? String
+                else {
+                    return
+                }
+                var parentAttachments = (items[parentIdx]["attachments"] as? [[String: Any]]) ?? []
+                parentAttachments.append([
+                    "assetId": pdfAssetId,
+                    "fileName": "reading-sheet.pdf",
+                    "mime": "application/pdf",
+                    "url": "/api/v1/me/attempts/\(attemptId)/assets/\(pdfAssetId)"
+                ])
+                items[parentIdx]["attachments"] = parentAttachments
+                parts[0]["items"] = items
+                json["parts"] = parts
+                json["lastPosition"] = ["partId": partId, "itemId": firstChildId]
+            }
+        )
+        defer {
+            PlayerRuntime.shared.release(attemptId: attemptId)
+            harness.dispose()
+        }
+
+        let tokenStore = InMemoryTokenStore(
+            initialTokens: SessionTokens(
+                accessToken: "player-live-audio-token",
+                refreshToken: "player-live-audio-refresh",
+                accessExpiresIn: 300,
+                refreshExpiresIn: 604_800,
+                mustChangePassword: false,
+                username: "student.audio",
+                accountId: harness.accountId
+            )
+        )
+        let apiClient = MobileAPIClient(
+            serverURL: URL(string: "https://api.thi360.test")!,
+            tokenStore: tokenStore,
+            transport: harness.server.transport,
+            localeProvider: { .vi }
+        )
+        let sessionStore = SessionStore(
+            tokenStore: tokenStore,
+            apiClient: apiClient,
+            storeProvider: harness.storeProvider,
+            initialStateOverride: .active,
+            skipsLaunchValidation: true
+        )
+
+        let suite = "vn.unicom.thi360.tests.liveattach.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let preferences = AppPreferences(userDefaults: defaults)
+        let router = AppRouter(initialDestination: .myExams)
+        router.openAttempt(attemptId: attemptId)
+
+        let engine = PlayerRuntime.shared.engine(
+            for: attemptId,
+            sessionStore: sessionStore,
+            connectivity: harness.connectivity
+        )
+        let assets = try XCTUnwrap(
+            PlayerRuntime.shared.assetSource(
+                for: attemptId,
+                sessionStore: sessionStore,
+                localeProvider: { .vi }
+            )
+        )
+        let liveHost = try XCTUnwrap(
+            PlayerRuntime.shared.attachmentHost(
+                for: attemptId,
+                engine: engine,
+                sessionStore: sessionStore,
+                assets: assets
+            )
+        )
+
+        for _ in 0..<60 {
+            if engine.state.attempt != nil, case .editing = engine.state.session {
+                break
+            }
+            try? await Task.sleep(for: .milliseconds(25))
+        }
+        await engine.waitForIdleForTesting()
+
+        let parentItem = try XCTUnwrap(
+            engine.state.attempt?.parts?.first?.items?.first(where: { $0.questionType == .QUESTION_SET })
+        )
+        let audioAssetId = try XCTUnwrap(
+            parentItem.attachments?.first(where: { ($0.mime ?? "").lowercased().hasPrefix("audio/") })?.assetId
+        )
+
+        let layouts: [(name: String, size: CGSize, sizeClass: UIUserInterfaceSizeClass)] = [
+            ("compact", CGSize(width: 390, height: 844), .compact),
+            ("duoOpen", CGSize(width: 951, height: 669), .regular)
+        ]
+        for layout in layouts {
+            let routeView = AttemptRoutes.attempt(
+                attemptId: attemptId,
+                destination: .myExams,
+                router: router,
+                preferences: preferences
+            )
+            .environment(\.sessionStore, sessionStore)
+            .environment(\.connectivityMonitor, harness.connectivity)
+
+            let (win, vc) = PlayerViewTestHost.host(
+                routeView,
+                size: layout.size,
+                sizeClass: layout.sizeClass,
+                settleSeconds: 0.3
+            )
+            defer { win.isHidden = true }
+
+            XCTAssertNotNil(
+                PlayerViewTestHost.findNode(id: "attachments.container", in: vc.view, window: win),
+                "\(layout.name): live AttemptRoutes must render IOS-AUDIO AttachmentsView container"
+            )
+            XCTAssertNotNil(
+                PlayerViewTestHost.findNode(id: "attachments.label", in: vc.view, window: win),
+                "\(layout.name): live AttemptRoutes must render AttachmentsView section label"
+            )
+            XCTAssertNotNil(
+                PlayerViewTestHost.findNode(id: "audio.player.\(audioAssetId)", in: vc.view, window: win),
+                "\(layout.name): live AttemptRoutes must render AttemptAudioPlayerView for listening-part-1.mp3"
+            )
+            XCTAssertNotNil(
+                PlayerViewTestHost.findNode(id: "attachments.file.\(pdfAssetId)", in: vc.view, window: win),
+                "\(layout.name): live AttemptRoutes must render PDF attachment row"
+            )
+        }
+
+        XCTAssertGreaterThan(liveHost.activeOpenerCount, 0)
+        XCTAssertGreaterThan(liveHost.activeControllerCount, 0)
+
+        liveHost.onBeforeClose(.attempt)
+        PlayerRuntime.shared.release(attemptId: attemptId)
+        XCTAssertEqual(liveHost.activeOpenerCount, 0)
+        XCTAssertEqual(liveHost.activeControllerCount, 0)
+    }
+
     private func decodeQuestionSetWithChildAttachments() throws -> (
         Components.Schemas.AttemptStateResponse,
         [ItemID: AttemptQuestionBodyValue]

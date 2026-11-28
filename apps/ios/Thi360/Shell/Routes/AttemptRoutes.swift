@@ -58,6 +58,12 @@ private struct AttemptRouteHostView: View {
             sessionStore: sessionStore,
             localeProvider: { @MainActor in preferences.locale }
         )
+        let attachmentHost = runtime.attachmentHost(
+            for: attemptId,
+            engine: engine,
+            sessionStore: sessionStore,
+            assets: assets
+        )
 
         PlayerHostView(
             attemptId: attemptId,
@@ -93,6 +99,7 @@ private struct AttemptRouteHostView: View {
             }
         )
         .environment(\.horizontalSizeClass, effectiveSizeClass)
+        .environment(\.playerAttachmentHost, attachmentHost)
         .overlay(alignment: .bottomTrailing) {
             #if THI360_DEV
             if router.stateProbeEnabled {
