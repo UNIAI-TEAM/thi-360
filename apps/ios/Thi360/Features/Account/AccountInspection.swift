@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AccountInspectedNode: Equatable {
     let identifier: String
@@ -42,6 +43,25 @@ extension EnvironmentValues {
     }
 }
 
+private struct AccountProbeUIKitMarker: UIViewRepresentable {
+    let identifier: String
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        view.isAccessibilityElement = false
+        view.accessibilityIdentifier = identifier
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        if uiView.accessibilityIdentifier != identifier {
+            uiView.accessibilityIdentifier = identifier
+        }
+    }
+}
+
 private struct AccountProbeAnchor: View {
     let inspector: AccountInspectionSink
     let identifier: String
@@ -50,24 +70,27 @@ private struct AccountProbeAnchor: View {
     @State private var instanceID = UUID()
 
     var body: some View {
-        GeometryReader { proxy in
-            let frame = proxy.frame(in: .global)
-            Color.clear
-                .onAppear {
-                    record(frame: frame)
-                }
-                .onChange(of: identifier) { _, _ in
-                    record(frame: proxy.frame(in: .global))
-                }
-                .onChange(of: label) { _, _ in
-                    record(frame: proxy.frame(in: .global))
-                }
-                .onChange(of: frame) { _, newFrame in
-                    record(frame: newFrame)
-                }
-                .onDisappear {
-                    inspector.remove(instanceID: instanceID)
-                }
+        ZStack {
+            AccountProbeUIKitMarker(identifier: identifier)
+            GeometryReader { proxy in
+                let frame = proxy.frame(in: .global)
+                Color.clear
+                    .onAppear {
+                        record(frame: frame)
+                    }
+                    .onChange(of: identifier) { _, _ in
+                        record(frame: proxy.frame(in: .global))
+                    }
+                    .onChange(of: label) { _, _ in
+                        record(frame: proxy.frame(in: .global))
+                    }
+                    .onChange(of: frame) { _, newFrame in
+                        record(frame: newFrame)
+                    }
+                    .onDisappear {
+                        inspector.remove(instanceID: instanceID)
+                    }
+            }
         }
     }
 
@@ -87,7 +110,10 @@ private struct AccountProbeModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         if let inspector {
-            content.background {
+            ZStack {
+                content
+            }
+            .background {
                 AccountProbeAnchor(
                     inspector: inspector,
                     identifier: identifier,

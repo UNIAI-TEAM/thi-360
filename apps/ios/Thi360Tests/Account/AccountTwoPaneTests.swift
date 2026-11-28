@@ -126,4 +126,103 @@ final class AccountTwoPaneTests: XCTestCase {
         XCTAssertEqual(accountVM.selectedDetail, .changePassword)
         XCTAssertEqual(RecoveryViewTestHelper.findViews(ofType: UITextField.self, in: controller.view).count, 3)
     }
+
+    func testAccountProbeSurvivesConditionalGroupTransitionFromColorClearToContentAndRemovesOnUnmount() async {
+        let model = ConditionalProbeHostModel()
+        let (window, controller) = ProfileFixtureHelper.host(
+            ConditionalGroupProbeHostView(model: model),
+            size: CGSize(width: 420, height: 320),
+            sizeClass: .regular,
+            themeMode: .light
+        )
+        defer { window.isHidden = true }
+
+        let sink = ProfileFixtureHelper.sink(for: controller.view)
+        XCTAssertNotNil(sink)
+
+        let initialReady = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            (sink?.identifiers.contains("probe.group.container") ?? false)
+                && Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
+                && !(sink?.identifiers.contains("probe.group.loadedText") ?? true)
+        }
+        XCTAssertTrue(initialReady, "AccountProbeModifier must register identifier on initial Color.clear branch")
+        XCTAssertTrue(ProfileFixtureHelper.collectAccessibilityLabels(in: controller.view).contains("Conditional Group"))
+
+        model.showsContent = true
+        let switchedReady = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            let ids = ProfileFixtureHelper.collectAccessibilityIdentifiers(in: controller.view)
+            return ids.contains("probe.group.loadedText")
+                && ids.contains("probe.group.container")
+                && (sink?.identifiers.contains("probe.group.container") ?? false)
+                && Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
+        }
+        XCTAssertTrue(switchedReady, "AccountProbeModifier must retain identifier after Group flips from Color.clear to content")
+        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        XCTAssertTrue(sink?.identifiers.contains("probe.group.loadedText") ?? false)
+        XCTAssertTrue(sink?.identifiers.contains("probe.group.container") ?? false)
+        XCTAssertTrue(Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view))
+        let frame = ProfileFixtureHelper.findElementFrame(
+            identifier: "probe.group.container",
+            in: controller.view,
+            window: window
+        )
+        XCTAssertNotNil(frame)
+        if let frame {
+            XCTAssertFalse(frame.isEmpty, "Probed container must report a non-empty frame after Group transition")
+        }
+
+        model.showsContent = false
+        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.08)
+        XCTAssertTrue(sink?.identifiers.contains("probe.group.container") ?? false)
+        XCTAssertTrue(Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view))
+        model.showsContent = true
+        ProfileFixtureHelper.pumpMainRunLoop(seconds: 0.12)
+        XCTAssertTrue(sink?.identifiers.contains("probe.group.container") ?? false)
+        XCTAssertTrue(Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view))
+
+        ProfileFixtureHelper.setRootView(Color.clear, on: controller)
+        let unmounted = await ProfileFixtureHelper.waitUntil(timeout: 2.0) {
+            !(sink?.identifiers.contains("probe.group.container") ?? true)
+                && !Self.containsUIKitSubview(identifier: "probe.group.container", in: controller.view)
+        }
+        XCTAssertTrue(unmounted, "AccountProbeModifier must clean up identifier when container unmounts")
+    }
+
+    private static func containsUIKitSubview(identifier: String, in root: UIView) -> Bool {
+        if !root.isHidden, root.alpha >= 0.01, root.accessibilityIdentifier == identifier {
+            return true
+        }
+        for subview in root.subviews {
+            if containsUIKitSubview(identifier: identifier, in: subview) {
+                return true
+            }
+        }
+        return false
+    }
+}
+
+@Observable
+@MainActor
+private final class ConditionalProbeHostModel {
+    var showsContent: Bool = false
+}
+
+private struct ConditionalGroupProbeHostView: View {
+    @Bindable var model: ConditionalProbeHostModel
+
+    var body: some View {
+        Group {
+            if model.showsContent {
+                VStack {
+                    Text("Loaded content")
+                        .accessibilityIdentifier("probe.group.loadedText")
+                        .accountProbe(id: "probe.group.loadedText", label: "Loaded content")
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                Color.clear
+            }
+        }
+        .accountProbe(id: "probe.group.container", label: "Conditional Group")
+    }
 }

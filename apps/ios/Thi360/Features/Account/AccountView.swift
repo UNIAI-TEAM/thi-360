@@ -769,14 +769,19 @@ struct AccountDetailPaneView: View {
                 )
             }
         case .orders:
-            AppRouteView(
-                route: .orders,
-                destination: .account,
-                router: router,
-                preferences: preferences,
-                legalRepository: legalRepository,
-                webBaseURL: webBaseURL
-            )
+            ZStack {
+                AppRouteView(
+                    route: .orders,
+                    destination: .account,
+                    router: router,
+                    preferences: preferences,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("account.detail.orders")
             .accountProbe(
                 id: "account.detail.orders",
                 label: ProfileStrings.text("header.nav.orders", locale: preferences.locale)
@@ -788,27 +793,37 @@ struct AccountDetailPaneView: View {
                 isEmbeddedPane: true
             )
         case .legalTerms:
-            AppRouteView(
-                route: .legal(.terms),
-                destination: .account,
-                router: router,
-                preferences: preferences,
-                legalRepository: legalRepository,
-                webBaseURL: webBaseURL
-            )
+            ZStack {
+                AppRouteView(
+                    route: .legal(.terms),
+                    destination: .account,
+                    router: router,
+                    preferences: preferences,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("account.detail.legalTerms")
             .accountProbe(
                 id: "account.detail.legalTerms",
                 label: AppStrings.legal("legal.terms.title", locale: preferences.locale)
             )
         case .legalPrivacy:
-            AppRouteView(
-                route: .legal(.privacy),
-                destination: .account,
-                router: router,
-                preferences: preferences,
-                legalRepository: legalRepository,
-                webBaseURL: webBaseURL
-            )
+            ZStack {
+                AppRouteView(
+                    route: .legal(.privacy),
+                    destination: .account,
+                    router: router,
+                    preferences: preferences,
+                    legalRepository: legalRepository,
+                    webBaseURL: webBaseURL
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("account.detail.legalPrivacy")
             .accountProbe(
                 id: "account.detail.legalPrivacy",
                 label: AppStrings.legal("legal.privacy.title", locale: preferences.locale)
