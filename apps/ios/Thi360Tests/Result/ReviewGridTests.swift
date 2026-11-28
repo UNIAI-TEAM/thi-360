@@ -107,7 +107,8 @@ final class ReviewGridTests: XCTestCase {
         let wideSizes: [(String, CGSize)] = [
             ("iPad-landscape", CGSize(width: 1180, height: 820)),
             ("iPad-portrait", CGSize(width: 820, height: 1180)),
-            ("Duo-unfolded", CGSize(width: 669, height: 951))
+            ("Duo-unfolded", CGSize(width: 669, height: 951)),
+            ("Duo-unfolded-585", CGSize(width: 585, height: 951))
         ]
 
         for (label, size) in wideSizes {

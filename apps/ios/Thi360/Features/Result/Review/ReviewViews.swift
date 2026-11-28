@@ -236,7 +236,7 @@ struct ReviewView: View {
     private func loadedContent(_ model: ReviewModel) -> some View {
         GeometryReader { proxy in
             let availableWidth = proxy.size.width
-            let isTwoPane = shellWidth != .narrow && availableWidth >= 600
+            let isTwoPane = shellWidth != .narrow && availableWidth >= 520
             let part = viewModel.selectedPart
             let groups = viewModel.currentPartGroups
 
@@ -539,8 +539,8 @@ struct ReviewView: View {
         groups: [ReviewGroup],
         availableWidth: CGFloat
     ) -> some View {
-        let sidebarWidth = min(320, max(236, floor(availableWidth * 0.34)))
-        let mainWidth = max(availableWidth - sidebarWidth - 48, 280)
+        let sidebarWidth = min(320, max(196, floor(availableWidth * 0.34)))
+        let mainWidth = max(availableWidth - sidebarWidth - 48, 260)
         let cardInnerWidth = max(mainWidth - 40, 220)
 
         return ScrollViewReader { proxy in
@@ -674,7 +674,7 @@ struct ReviewView: View {
         let summaryText = formattedPaletteSummary
         let prevTitle = ResultStrings.text("review.nav.prev", locale: locale)
         let nextTitle = ResultStrings.text("review.nav.next", locale: locale)
-        let gridColumns = [GridItem(.adaptive(minimum: 54), spacing: 8)]
+        let gridColumns = [GridItem(.adaptive(minimum: 52), spacing: 8)]
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -806,7 +806,7 @@ struct ReviewView: View {
             ]
         )
         let cellId = "review.palette.cell.\(group.id)"
-        let minWidth: CGFloat = (group.rangeFrom != nil && group.rangeTo != nil) ? 62 : 44
+        let minWidth: CGFloat = (!fillsWidth && group.rangeFrom != nil && group.rangeTo != nil) ? 62 : 44
 
         return Button {
             viewModel.selectGroup(id: group.id)
