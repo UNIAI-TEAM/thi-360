@@ -91,7 +91,11 @@ struct RedactingAppLogger: Sendable {
     private static let containerFieldPatterns: [(NSRegularExpression, Character, Character)] = {
         let definitions: [(String, Character, Character)] = [
             (#"(?i)"finalAnswers"\s*:\s*"#, "[", "]"),
-            (#"(?i)"answer"\s*:\s*"#, "{", "}")
+            (#"(?i)"answer"\s*:\s*"#, "{", "}"),
+            (#"(?i)"studentAnswer"\s*:\s*"#, "{", "}"),
+            (#"(?i)"expectedAnswer"\s*:\s*"#, "{", "}"),
+            (#"(?i)"gradingDetail"\s*:\s*"#, "{", "}"),
+            (#"(?i)"essayFeedback"\s*:\s*"#, "{", "}")
         ]
         return definitions.compactMap { pattern, openChar, closeChar in
             guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
@@ -110,6 +114,21 @@ struct RedactingAppLogger: Sendable {
             ("(?i)\\b(\(sensitiveFieldNames))(\\s*:\\s*\")(?:\\\\.|[^\"\\\\])*(\")", "$1$2<redacted>$3"),
             ("(?i)\\b(x-attempt-session)(\\s*:\\s*)[^\\s&,;)\"'\\]\\}]+", "$1$2<redacted>"),
             ("(?i)\\b(\(sensitiveFieldNames))(\\s*=\\s*)[^\\s&,;)\"'\\]\\}]+", "$1$2<redacted>")
+        ]
+        return definitions.compactMap { pattern, replacement in
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+            return (regex, replacement)
+        }
+    }()
+
+    private static let reviewRedactionPatterns: [(NSRegularExpression, String)] = {
+        let fields = "studentAnswer|expectedAnswer|gradingDetail|solution|essayFeedback|comment"
+        let definitions: [(String, String)] = [
+            ("(?i)(\"(?:\(fields))\"\\s*:\\s*\")(?:\\\\.|[^\"\\\\])*(\")", "$1<redacted>$2"),
+            ("(?i)(\"(?:\(fields))\"\\s*:\\s*)(?!\"|null\\b)[^\\s,}\\]]+", "$1\"<redacted>\""),
+            ("(?i)\\b(\(fields))(\\s*:\\s*Optional\\(\")(?:\\\\.|[^\"\\\\])*(\"\\))", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(fields))(\\s*:\\s*\")(?:\\\\.|[^\"\\\\])*(\")", "$1$2<redacted>$3"),
+            ("(?i)\\b(\(fields))(\\s*=\\s*)[^\\s&,;)\"'\\]\\}]+", "$1$2<redacted>")
         ]
         return definitions.compactMap { pattern, replacement in
             guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
@@ -197,7 +216,7 @@ struct RedactingAppLogger: Sendable {
                 closeChar: closeChar
             )
         }
-        for (regex, replacement) in redactionPatterns {
+        for (regex, replacement) in redactionPatterns + reviewRedactionPatterns {
             let range = NSRange(result.startIndex..., in: result)
             result = regex.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: replacement)
         }

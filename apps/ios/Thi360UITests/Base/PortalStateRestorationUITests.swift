@@ -18,7 +18,7 @@ final class PortalStateRestorationUITests: XCTestCase {
             "-uitest-state-probe",
             "-uitest-authenticated",
             "-uitest-destination", "home",
-            "-uitest-route", "result/att-99"
+            "-uitest-route", "attempt/att-99"
         ]
         app.launch()
 
