@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate,UnusedResources">
+    <string name="attempt_errors_loadTitle">Không tải được lượt thi</string>
+    <string name="attempt_errors_loadDescription">Không tải được thông tin lượt thi. Vui lòng thử lại.</string>
+    <string name="attempt_errors_notFoundTitle">Không tìm thấy lượt thi</string>
+    <string name="attempt_errors_notFoundDescription">Lượt thi không tồn tại hoặc thuộc về tài khoản khác.</string>
+    <string name="attempt_errors_retry">Thử lại</string>
+    <string name="attempt_errors_loadBackToMyExams">Về Bài thi của tôi</string>
+
+    <string name="attempt_closed_heading">Lượt thi đã đóng</string>
+    <string name="attempt_closed_headingTimeUp">Đã hết giờ làm bài</string>
+    <string name="attempt_closed_headingChoiceTimeout">Đã quá thời gian chọn phần 3</string>
+    <string name="attempt_closed_description">Lượt thi này đã kết thúc và không thể chỉnh sửa câu trả lời.</string>
+    <string name="attempt_closed_viewResult">Xem kết quả</string>
+    <string name="attempt_closed_backToMyExams">Về Bài thi của tôi</string>
+
+    <string name="attempt_takeover_title">Bài thi đang mở ở một phiên khác</string>
+    <string name="attempt_takeover_description">Bạn có muốn tiếp tục làm bài trên thiết bị này? Thiết bị kia sẽ không sửa bài được nữa.</string>
+    <string name="attempt_takeover_attemptLabel">Bài thi</string>
+    <string name="attempt_takeover_lastSeenLabel">Phiên kia hoạt động lần cuối</string>
+    <string name="attempt_takeover_noteClock">Đồng hồ vẫn tiếp tục chạy trong lúc bạn chọn.</string>
+    <string name="attempt_takeover_noteUnsaved">Các thay đổi chưa kịp lưu trên thiết bị kia sẽ không có ở đây.</string>
+    <string name="attempt_takeover_confirm">Tiếp tục tại đây</string>
+    <string name="attempt_takeover_cancel">Hủy</string>
+    <string name="attempt_takeover_error">Không thể tiếp tục phiên làm bài tại đây. Vui lòng thử lại.</string>
+
+    <string name="attempt_evicted_heading">Lượt thi đã được tiếp tục ở thiết bị khác.</string>
+    <string name="attempt_evicted_description">Phiên làm việc này không thể chỉnh sửa bài làm được nữa. Các thay đổi chưa lưu ở đây không được gửi lên máy chủ.</string>
+    <string name="attempt_evicted_takeoverHere">Tiếp tục tại đây</string>
+    <string name="attempt_evicted_backToMyExams">Về Bài thi của tôi</string>
+
+    <string name="attempt_readOnly_unavailable">Chưa thể mở phiên chỉnh sửa. Chế độ chỉ xem đang được bật.</string>
+    <string name="attempt_readOnly_partClosed">Phần thi này đã đóng và chỉ có thể xem.</string>
+
+    <string name="attempt_header_finishPart">Hoàn thành phần</string>
+    <string name="attempt_header_submit">Nộp bài</string>
+    <string name="attempt_header_collapseHeader">Thu gọn thanh đầu trang</string>
+    <string name="attempt_header_expandHeader">Mở rộng thanh đầu trang</string>
+    <string name="attempt_header_backLabel">Quay lại</string>
+
+    <string name="attempt_player_pageTitle">Làm bài thi</string>
+    <string name="attempt_player_offlineBanner">Mất kết nối. Câu trả lời mới nhất chưa được lưu. Thời gian làm bài vẫn tiếp tục.</string>
+    <string name="attempt_player_noActiveQuestion">Không có câu hỏi để hiển thị.</string>
+
+    <string name="attempt_timer_sharedRemaining">Cả bài còn</string>
+    <string name="attempt_timer_partRemaining">Phần %1$d còn</string>
+    <string name="attempt_timer_ariaLabel">%1$s: %2$d giờ %3$d phút %4$d giây</string>
+    <string name="attempt_timer_ariaLabelShort">%1$s: %2$d phút %3$d giây</string>
+
+    <string name="attempt_parts_navLabel">Các phần của bài thi</string>
+    <string name="attempt_parts_openProgress">%1$d/%2$d câu</string>
+    <string name="attempt_parts_tabAccessibility">%1$s, %2$s</string>
+    <string name="attempt_parts_tabOpenAccessibility">%1$s, %2$s, %3$s</string>
+    <string name="attempt_parts_states_PENDING">Đã khóa</string>
+    <string name="attempt_parts_states_AWAITING_CHOICE">Đang chọn phần</string>
+    <string name="attempt_parts_states_GENERATING">Đang chuẩn bị</string>
+    <string name="attempt_parts_states_GENERATION_FAILED">Chuẩn bị lỗi</string>
+    <string name="attempt_parts_states_OPEN">Đang làm</string>
+    <string name="attempt_parts_states_CLOSED">Đã hoàn thành</string>
+    <string name="attempt_parts_states_SKIPPED">Bỏ qua</string>
+
+    <string name="attempt_nav_gridLabel">Danh sách câu hỏi</string>
+    <string name="attempt_nav_controlsLabel">Điều hướng câu hỏi</string>
+    <string name="attempt_nav_openGrid">Danh sách câu %1$d/%2$d</string>
+    <string name="attempt_nav_openGridCompact">%1$d/%2$d</string>
+    <string name="attempt_nav_closeGrid">Đóng danh sách câu</string>
+    <string name="attempt_nav_answeredCount">%1$d/%2$d câu đã trả lời</string>
+    <string name="attempt_nav_progressLabel">Tiến độ: %1$d trên %2$d câu</string>
+    <string name="attempt_nav_questionPosition">Câu %1$d/%2$d</string>
+    <string name="attempt_nav_questionNumber">Câu %1$d</string>
+    <string name="attempt_nav_prev">Câu trước</string>
+    <string name="attempt_nav_next">Câu sau</string>
+    <string name="attempt_nav_filterAll">Tất cả</string>
+    <string name="attempt_nav_filterUnanswered">Chưa làm</string>
+    <string name="attempt_nav_filterFlagged">Đánh dấu</string>
+    <string name="attempt_nav_emptyFiltered">Không có câu nào khớp bộ lọc.</string>
+    <string name="attempt_nav_legendAnswered">Đã trả lời</string>
+    <string name="attempt_nav_legendPartial">Trả lời một phần</string>
+    <string name="attempt_nav_legendBlank">Chưa trả lời</string>
+    <string name="attempt_nav_legendCurrent">Đang xem</string>
+    <string name="attempt_nav_legendFlagged">Đánh dấu xem lại</string>
+    <string name="attempt_nav_legendUnsaved">Chưa lưu</string>
+    <string name="attempt_nav_stateAnswered">đã trả lời</string>
+    <string name="attempt_nav_statePartial">trả lời một phần</string>
+    <string name="attempt_nav_stateBlank">chưa trả lời</string>
+    <string name="attempt_nav_stateCurrent">đang xem</string>
+    <string name="attempt_nav_stateFlagged">đánh dấu xem lại</string>
+    <string name="attempt_nav_stateSaved">đã lưu</string>
+    <string name="attempt_nav_stateUnsaved">chưa lưu</string>
+
+    <string name="attempt_segments_range">Câu %1$d–%2$d</string>
+    <string name="attempt_segments_maxPoints">%1$s điểm</string>
+    <string name="attempt_segments_ungrouped">Câu hỏi khác</string>
+    <plurals name="attempt_segments_commands">
+        <item quantity="other">%1$d lệnh hỏi</item>
+    </plurals>
+
+    <string name="attempt_subjects_heading">Môn %1$s</string>
+    <string name="attempt_subjects_range">Câu %1$d–%2$d</string>
+    <plurals name="attempt_subjects_questionCount">
+        <item quantity="other">%1$d câu</item>
+    </plurals>
+    <string name="attempt_subjects_codes_ANH">Tiếng Anh</string>
+    <string name="attempt_subjects_codes_CNCN">Công nghệ (định hướng công nghiệp)</string>
+    <string name="attempt_subjects_codes_CNNN">Công nghệ (định hướng nông nghiệp)</string>
+    <string name="attempt_subjects_codes_DIA">Địa lí</string>
+    <string name="attempt_subjects_codes_ECON_LAW">Giáo dục kinh tế và pháp luật</string>
+    <string name="attempt_subjects_codes_GDKTPL">Giáo dục kinh tế và pháp luật</string>
+    <string name="attempt_subjects_codes_HOA">Hóa học</string>
+    <string name="attempt_subjects_codes_INFORMATICS">Tin học</string>
+    <string name="attempt_subjects_codes_LY">Vật lí</string>
+    <string name="attempt_subjects_codes_SCIENTIFIC_THINKING">Tư duy khoa học</string>
+    <string name="attempt_subjects_codes_SINH">Sinh học</string>
+    <string name="attempt_subjects_codes_SU">Lịch sử</string>
+    <string name="attempt_subjects_codes_TECH_AGRICULTURE">Công nghệ (định hướng nông nghiệp)</string>
+    <string name="attempt_subjects_codes_TECH_INDUSTRY">Công nghệ (định hướng công nghiệp)</string>
+    <string name="attempt_subjects_codes_TIENG_ANH">Tiếng Anh</string>
+    <string name="attempt_subjects_codes_TIN">Tin học</string>
+    <string name="attempt_subjects_codes_TOAN">Toán học</string>
+    <string name="attempt_subjects_codes_VAN">Ngữ văn</string>
+    <string name="attempt_subjects_codes_VIETNAMESE">Tiếng Việt</string>
+
+    <string name="attempt_partChoice_title">Chọn phần thi thứ ba</string>
+    <string name="attempt_partChoice_description">Chọn phương án cho phần thi tiếp theo rồi xác nhận. Lựa chọn bị khóa ngay sau khi xác nhận.</string>
+    <string name="attempt_partChoice_timerLabel">Thời gian chọn còn</string>
+    <string name="attempt_partChoice_deadlineWarning">Quá thời gian chọn mà chưa xác nhận thì lượt thi kết thúc, phần 3 được 0 điểm.</string>
+    <string name="attempt_partChoice_deadlineExpired">Đã hết thời gian chọn phần 3.</string>
+    <string name="attempt_partChoice_legendOption">Chọn phương án hoặc tổ hợp</string>
+    <string name="attempt_partChoice_legendSubjects">Chọn môn tự chọn</string>
+    <string name="attempt_partChoice_countsPerSubject">Số câu mỗi môn: %1$s</string>
+    <string name="attempt_partChoice_fixedSubjects">Các môn cố định: %1$s</string>
+    <string name="attempt_partChoice_optionQuestions">%1$d câu</string>
+    <string name="attempt_partChoice_optionMinutes">%1$d phút</string>
+    <string name="attempt_partChoice_selectedProgress">Đã chọn %1$d/%2$d</string>
+    <string name="attempt_partChoice_subjectsLimitReached">Đã đủ %1$d môn. Bỏ chọn một môn để chọn môn khác.</string>
+    <string name="attempt_partChoice_confirmCta">Xác nhận chọn phần 3</string>
+    <string name="attempt_partChoice_generatingTitle">Đang chuẩn bị bộ câu hỏi cho phần thi</string>
+    <string name="attempt_partChoice_generatingDescription">Lựa chọn đã được khóa. Đồng hồ của phần chỉ chạy khi bộ câu hỏi đã sẵn sàng.</string>
+    <string name="attempt_partChoice_busyNotice">Đề vẫn đang được chuẩn bị. Ứng dụng tự kiểm tra lại.</string>
+    <string name="attempt_partChoice_failedTitle">Chưa chuẩn bị được phần thi</string>
+    <string name="attempt_partChoice_failedDescription">Lựa chọn của bạn vẫn được giữ nguyên. Các phần trước không bị ảnh hưởng và đồng hồ phần này chưa chạy.</string>
+    <string name="attempt_partChoice_failedRetry">Thử lại</string>
+    <string name="attempt_partChoice_errors_ATTEMPT_SESSION_REVOKED">Phiên làm bài không còn hợp lệ vì đã mở ở thiết bị khác.</string>
+    <string name="attempt_partChoice_errors_CHOICE_LOCKED">Bạn đã xác nhận lựa chọn khác cho phần này nên không thể đổi.</string>
+    <string name="attempt_partChoice_errors_CHOICE_NOT_ALLOWED">Lựa chọn này không hợp lệ hoặc không thuộc phạm vi bạn đã mua.</string>
+    <string name="attempt_partChoice_errors_CHOICE_WINDOW_CLOSED">Đã quá thời hạn chọn phần 3.</string>
+    <string name="attempt_partChoice_errors_PART_GENERATING">Phần này đang được tạo đề. Vui lòng đợi trong giây lát.</string>
+    <string name="attempt_partChoice_errors_PART_NOT_AWAITING">Phần thi hiện không ở trạng thái chờ chọn.</string>
+    <string name="attempt_partChoice_errors_RATE_LIMITED">Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.</string>
+    <string name="attempt_partChoice_errors_SUBJECTS_INVALID">Bạn cần chọn đúng số môn hợp lệ theo quy định.</string>
+    <string name="attempt_partChoice_errors_generic">Không xác nhận được lựa chọn. Vui lòng thử lại.</string>
+
+    <string name="attempt_saveStatus_saved">Đã lưu</string>
+    <string name="attempt_saveStatus_saving">Đang lưu…</string>
+    <string name="attempt_saveStatus_unsaved">Chưa lưu</string>
+    <string name="attempt_saveStatus_reasons_offline">Mất kết nối</string>
+    <string name="attempt_saveStatus_reasons_network_error">Lỗi kết nối</string>
+    <string name="attempt_saveStatus_reasons_server_error">Máy chủ bận</string>
+    <string name="attempt_saveStatus_reasons_rate_limited">Chờ %1$d giây</string>
+    <string name="attempt_saveStatus_reasons_rejected">Dữ liệu không hợp lệ</string>
+    <string name="attempt_saveStatus_reasons_session_conflict">Mở ở nơi khác</string>
+
+    <string name="attempt_dialogs_closeLabel">Đóng</string>
+    <string name="attempt_dialogs_finishPart_title">Hoàn thành phần?</string>
+    <string name="attempt_dialogs_finishPart_warningIrreversible">Sau khi hoàn thành bạn không thể quay lại phần này.</string>
+    <string name="attempt_dialogs_finishPart_missingSummary">Còn %1$d/%2$d câu chưa trả lời</string>
+    <string name="attempt_dialogs_finishPart_partialSummary">Có %1$d câu đang làm dở</string>
+    <string name="attempt_dialogs_finishPart_nextPartOpensNote">Phần tiếp theo sẽ mở ngay và không thể quay lại phần này.</string>
+    <string name="attempt_dialogs_finishPart_nextPartChoiceNote">Tiếp theo là bước chọn phần 3. Bạn có tối đa 15 phút để xác nhận lựa chọn; quá thời gian thì lượt kết thúc và phần 3 được 0 điểm.</string>
+    <string name="attempt_dialogs_finishPart_confirm">Hoàn thành phần</string>
+    <string name="attempt_dialogs_finishPart_cancel">Quay lại làm tiếp</string>
+    <string name="attempt_dialogs_finishPart_unconfirmedTitle">Chưa xác nhận hoàn thành phần</string>
+    <string name="attempt_dialogs_finishPart_unconfirmedDesc">Mất kết nối trước khi máy chủ trả lời, nên chưa biết phần thi đã đóng hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.</string>
+    <string name="attempt_dialogs_finishPart_reconcile">Kiểm tra trạng thái lượt</string>
+    <string name="attempt_dialogs_finishPart_genericError">Không thể hoàn thành phần thi. Vui lòng thử lại.</string>
+
+    <string name="attempt_dialogs_submitConfirm_title">Nộp bài?</string>
+    <string name="attempt_dialogs_submitConfirm_description">Nộp xong thì lượt thi kết thúc và không thể sửa câu trả lời.</string>
+    <string name="attempt_dialogs_submitConfirm_answeredCount">%1$d/%2$d câu đã làm</string>
+    <string name="attempt_dialogs_submitConfirm_blankCount">Số câu bỏ trống: %1$d</string>
+    <string name="attempt_dialogs_submitConfirm_partialCount">Số câu làm dở: %1$d</string>
+    <string name="attempt_dialogs_submitConfirm_flaggedCount">Đánh dấu xem lại: %1$d</string>
+    <string name="attempt_dialogs_submitConfirm_partBreakdownTitle">Số câu còn thiếu theo từng phần</string>
+    <string name="attempt_dialogs_submitConfirm_partMissingRow">Còn thiếu %1$d/%2$d câu</string>
+    <string name="attempt_dialogs_submitConfirm_essaySectionTitle">Tình trạng bài viết</string>
+    <string name="attempt_dialogs_submitConfirm_essaySaved">%1$d chữ · đã lưu</string>
+    <string name="attempt_dialogs_submitConfirm_essayUnsaved">%1$d chữ · chưa lưu</string>
+    <string name="attempt_dialogs_submitConfirm_essayUnderLimitTitle">Bài viết chưa đủ số chữ tối thiểu (vẫn nộp bài được)</string>
+    <string name="attempt_dialogs_submitConfirm_essayUnderLimitItem">Câu %1$d: %2$d/%3$d chữ — chưa đủ số chữ tối thiểu</string>
+    <string name="attempt_dialogs_submitConfirm_confirm">Nộp bài</string>
+    <string name="attempt_dialogs_submitConfirm_cancel">Quay lại kiểm tra</string>
+    <string name="attempt_dialogs_submitConfirm_unconfirmedTitle">Chưa xác nhận nộp bài</string>
+    <string name="attempt_dialogs_submitConfirm_unconfirmedDesc">Mất kết nối trước khi máy chủ trả lời, nên chưa biết bài đã nộp hay chưa. Khi có mạng lại, hệ thống kiểm tra trạng thái lượt trước khi cho gửi lại.</string>
+    <string name="attempt_dialogs_submitConfirm_reconcile">Kiểm tra trạng thái lượt</string>
+    <string name="attempt_dialogs_submitConfirm_genericError">Không thể nộp bài. Vui lòng thử lại.</string>
+
+    <string name="attempt_dialogs_leaveConfirm_title">Rời màn làm bài?</string>
+    <string name="attempt_dialogs_leaveConfirm_description">Một số câu trả lời chưa được lưu lên máy chủ. Câu trả lời vẫn được giữ trên thiết bị và gửi khi bạn quay lại; đồng hồ vẫn chạy.</string>
+    <string name="attempt_dialogs_leaveConfirm_stay">Ở lại</string>
+    <string name="attempt_dialogs_leaveConfirm_leave">Rời màn</string>
+</resources>
